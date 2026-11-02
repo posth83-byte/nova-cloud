@@ -1,21 +1,31 @@
 
 from fastapi import FastAPI
+from fastapi.responses import FileResponse
 from datetime import datetime, timezone
+from pathlib import Path
 
 app = FastAPI(
     title="NOVA Cloud",
-    description="NOVA AI YouTube Intelligence",
-    version="1.0.0"
+    description="JARVIS & NOVA AI Command Center",
+    version="1.1.0"
 )
+
+BASE_DIR = Path(__file__).resolve().parent
+DASHBOARD = BASE_DIR / "index.html"
+
 
 @app.get("/")
 def home():
+    if DASHBOARD.exists():
+        return FileResponse(DASHBOARD)
+
     return {
         "assistant": "NOVA",
         "status": "online",
         "message": "NOVA Cloud är igång!",
-        "version": "1.0.0"
+        "version": "1.1.0"
     }
+
 
 @app.get("/health")
 def health():
@@ -23,6 +33,7 @@ def health():
         "status": "healthy",
         "time": datetime.now(timezone.utc).isoformat()
     }
+
 
 @app.get("/api/status")
 def status():
@@ -33,9 +44,12 @@ def status():
             "trend_scanner": "planned",
             "youtube_analyst": "planned",
             "video_producer": "planned",
-            "ai_brain": "planned"
+            "ai_brain": "planned",
+            "jarvis_assistant": "online",
+            "command_center": "online"
         }
     }
+
 
 @app.get("/api/ideas")
 def ideas():
