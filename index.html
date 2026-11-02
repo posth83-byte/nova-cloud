@@ -1,150 +1,136 @@
+
 <!DOCTYPE html>
 <html lang="sv">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="theme-color" content="#050b19">
-<title>JARVIS & NOVA | AI Command Center</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#030817">
+<title>JARVIS × NOVA Command Center</title>
 
 <style>
 *{box-sizing:border-box}
 body{
  margin:0;
- background:radial-gradient(ellipse at top,#102c50 0%,#071326 45%,#020610 100%);
+ background:radial-gradient(ellipse at 50% 0%,#15365c,#050c1b 55%,#02050d);
  color:#e8f5ff;
  font-family:Arial,sans-serif;
  min-height:100vh;
 }
-header{
- padding:28px 18px 20px;
- text-align:center;
- border-bottom:1px solid #23517b;
-}
-.logo{
- color:#66d7ff;
- font-size:12px;
- letter-spacing:5px;
-}
-h1{
- font-size:29px;
- letter-spacing:3px;
- text-shadow:0 0 20px #21aaff;
- margin:12px 0;
-}
-.subtitle{color:#86aeca;font-size:12px;letter-spacing:2px}
-.status{
- display:inline-block;
- margin-top:15px;
- padding:8px 15px;
- border:1px solid #1eac8b;
- border-radius:30px;
- color:#68f5c5;
- font-size:11px;
- letter-spacing:2px;
-}
+header{text-align:center;padding:30px 15px 20px;border-bottom:1px solid #285276}
+.logo{font-size:11px;letter-spacing:5px;color:#75d9ff}
+h1{font-size:27px;letter-spacing:3px;text-shadow:0 0 20px #29baff}
+.sub{font-size:11px;color:#8aabc8;letter-spacing:2px}
+.status{display:inline-block;margin-top:15px;padding:8px 15px;border:1px solid #19a985;border-radius:30px;color:#70f5c6;font-size:11px}
 main{max-width:850px;margin:auto;padding:20px 15px}
-.section-title{
- color:#78cfff;
- letter-spacing:3px;
- font-size:12px;
- margin:18px 4px;
-}
+.label{font-size:11px;letter-spacing:3px;color:#7ccfff;margin:15px 5px}
 .office{
- border:1px solid #2677a8;
- border-radius:18px;
- padding:22px 18px;
- margin-bottom:20px;
- background:linear-gradient(145deg,#102b49,#071426 75%);
- box-shadow:0 0 24px #087ac522,inset 0 0 25px #087ac511;
- position:relative;
+ background:linear-gradient(145deg,#102d4b,#071326);
+ border:1px solid #2889bb;border-radius:20px;
+ padding:20px;margin-bottom:22px;
+ box-shadow:0 0 30px #008cff20;
  overflow:hidden;
 }
-.office.nova{
- border-color:#9060bd;
- background:linear-gradient(145deg,#302047,#101021 75%);
- box-shadow:0 0 24px #9d50d522,inset 0 0 25px #9d50d511;
+.nova{
+ background:linear-gradient(145deg,#302047,#101022);
+ border-color:#9867c8;
+ box-shadow:0 0 30px #a44dff20;
 }
-.office:before{
- content:"";
+.tag{font-size:10px;letter-spacing:3px;color:#75d8ff}
+.nova .tag{color:#d2a0ff}
+.office h2{font-size:29px;letter-spacing:5px;margin:12px 0 5px}
+.desc{font-size:13px;color:#a9c5dc;line-height:1.6}
+
+/* HOLOGRAM */
+.holo-stage{
+ height:245px;
+ position:relative;
+ display:flex;
+ justify-content:center;
+ align-items:center;
+ margin:12px 0;
+ overflow:hidden;
+}
+.holo-floor{
  position:absolute;
- width:150px;height:150px;
- border:1px solid #4fcaff33;
+ width:210px;height:42px;
+ border:2px solid #35bfff;
  border-radius:50%;
- right:-65px;top:-70px;
- box-shadow:0 0 35px #42caff22;
+ bottom:18px;
+ box-shadow:0 0 15px #26bfff,0 0 40px #168dff;
+ animation:floor 3s ease-in-out infinite;
 }
-.nova:before{border-color:#d18aff44}
-.tag{
- font-size:10px;
- letter-spacing:3px;
- color:#70d7ff;
+.nova .holo-floor{
+ border-color:#bd82ff;
+ box-shadow:0 0 15px #bd82ff,0 0 40px #984cff;
 }
-.nova .tag{color:#d3a1ff}
-.office h2{
- font-size:28px;
- letter-spacing:4px;
- margin:12px 0 5px;
+.ring{
+ position:absolute;
+ width:175px;height:175px;
+ border:1px solid #40c9ff66;
+ border-radius:50%;
+ animation:rotate 8s linear infinite;
 }
-.description{
- color:#a9c5dc;
- font-size:13px;
- line-height:1.6;
- max-width:400px;
+.ring.two{
+ width:205px;height:205px;
+ border-style:dashed;
+ animation:rotate 14s linear infinite reverse;
 }
-.features{
- display:flex;flex-wrap:wrap;gap:8px;
- margin:18px 0;
+.nova .ring{border-color:#cb9aff66}
+.avatar{
+ position:relative;
+ width:145px;height:195px;
+ animation:float 3s ease-in-out infinite;
+ filter:drop-shadow(0 0 12px #25bfff);
 }
-.feature{
- border:1px solid #39739b;
- color:#b9e6ff;
- border-radius:20px;
- padding:7px 10px;
- font-size:11px;
+.nova .avatar{filter:drop-shadow(0 0 13px #bb7aff)}
+.avatar svg{width:100%;height:100%;overflow:visible}
+.avatar path,.avatar circle{
+ stroke:#65dfff;
+ fill:#147dbb33;
+ stroke-width:2;
 }
+.nova .avatar path,.nova .avatar circle{
+ stroke:#d1a0ff;
+ fill:#9755cb33;
+}
+.scan{
+ position:absolute;left:15%;right:15%;
+ height:2px;top:25%;
+ background:#7deaff;
+ box-shadow:0 0 12px #43d5ff;
+ animation:scan 3s ease-in-out infinite;
+ opacity:.7;
+}
+.nova .scan{background:#d5a1ff;box-shadow:0 0 12px #c37cff}
+.holo-caption{
+ position:absolute;bottom:0;
+ font-size:9px;letter-spacing:3px;
+ color:#77dfff;
+ text-shadow:0 0 10px #32baff;
+}
+.nova .holo-caption{color:#d6a5ff}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-12px)}}
+@keyframes rotate{to{transform:rotate(360deg)}}
+@keyframes scan{0%{top:20%;opacity:0}50%{opacity:1}100%{top:85%;opacity:0}}
+@keyframes floor{50%{transform:scaleX(.8);opacity:.6}}
+.features{display:flex;flex-wrap:wrap;gap:8px;margin:17px 0}
+.feature{border:1px solid #39739b;border-radius:20px;padding:7px 10px;font-size:10px;color:#b9e6ff}
 .nova .feature{border-color:#8b62a9;color:#e3c9ff}
 .launch{
- display:block;
- width:100%;
- padding:15px;
- margin-top:15px;
- border:1px solid #54caff;
- border-radius:10px;
- background:linear-gradient(90deg,#075b92,#117fba);
- color:white;
- text-align:center;
- text-decoration:none;
- font-size:13px;
- font-weight:bold;
- letter-spacing:2px;
+ display:block;text-align:center;text-decoration:none;
+ padding:16px;margin-top:14px;border-radius:10px;
+ background:linear-gradient(90deg,#075b92,#1686c5);
+ border:1px solid #54caff;color:white;
+ font-weight:bold;font-size:12px;letter-spacing:2px;
 }
-.nova .launch{
- border-color:#c08bff;
- background:linear-gradient(90deg,#56317f,#9453c6);
-}
-.panel{
- border:1px solid #24496b;
- border-radius:15px;
- padding:18px;
- background:#091629;
- margin-top:24px;
-}
-.panel h3{
- color:#75cfff;
- font-size:12px;
- letter-spacing:2px;
-}
-.panel p{color:#9db7cb;font-size:12px}
-.indicator{
- color:#69f0c0;
- font-size:12px;
-}
-footer{
- text-align:center;
- padding:25px 10px 35px;
- color:#52738e;
- font-size:10px;
- letter-spacing:2px;
+.nova .launch{background:linear-gradient(90deg,#56317f,#9453c6);border-color:#c08bff}
+.panel{border:1px solid #24496b;border-radius:15px;padding:18px;background:#091629;margin-top:24px}
+.panel h3{font-size:12px;letter-spacing:2px;color:#75cfff}
+.panel p{font-size:12px;color:#9db7cb}
+#cloudStatus{font-size:12px;color:#69f0c0}
+footer{text-align:center;padding:25px;color:#52738e;font-size:10px;letter-spacing:2px}
+@media(prefers-reduced-motion:reduce){
+ *,*:before,*:after{animation:none!important}
 }
 </style>
 </head>
@@ -153,38 +139,70 @@ footer{
 <header>
  <div class="logo">PERSONAL ARTIFICIAL INTELLIGENCE</div>
  <h1>AI COMMAND CENTER</h1>
- <div class="subtitle">YOUR PRIVATE AI HEADQUARTERS</div>
+ <div class="sub">YOUR PRIVATE AI HEADQUARTERS</div>
  <div class="status">● COMMAND CENTER READY</div>
 </header>
 
 <main>
- <div class="section-title">SELECT YOUR AI OFFICE</div>
+ <div class="label">SELECT YOUR AI OFFICE</div>
 
  <section class="office">
   <div class="tag">01 / MAIN CONTROL ROOM</div>
   <h2>JARVIS</h2>
-  <div class="description">
-   Din personliga AI-assistent. Planering, teknik,
-   problemlösning och kontroll över dina projekt.
+  <div class="desc">Din personliga AI-assistent. Alltid redo att hjälpa dig.</div>
+
+  <div class="holo-stage">
+   <div class="ring"></div>
+   <div class="ring two"></div>
+   <div class="avatar">
+    <svg viewBox="0 0 145 195">
+     <circle cx="72" cy="39" r="24"/>
+     <path d="M55 67 L48 83 L32 91 L20 123 L25 174 L120 174 L125 123 L112 91 L96 83 L89 67"/>
+     <path d="M48 91 L72 108 L96 91 M72 108 L72 174"/>
+     <path d="M55 37 L64 37 M81 37 L90 37"/>
+     <path d="M63 53 Q72 59 81 53"/>
+     <path d="M48 91 L39 135 M96 91 L105 135"/>
+     <path d="M58 80 L72 88 L86 80"/>
+    </svg>
+   </div>
+   <div class="scan"></div>
+   <div class="holo-floor"></div>
+   <div class="holo-caption">JARVIS / HOLOGRAPHIC INTERFACE</div>
   </div>
+
   <div class="features">
    <span class="feature">RÖSTSTYRNING</span>
    <span class="feature">PERSONLIG AI</span>
-   <span class="feature">KONTROLL</span>
    <span class="feature">PLANERING</span>
+   <span class="feature">KONTROLL</span>
   </div>
-  <a class="launch" href="shortcuts://run-shortcut?name=JARVIS">
-   ÖPPNA JARVIS →
-  </a>
+  <a class="launch" href="shortcuts://run-shortcut?name=JARVIS">ÖPPNA JARVIS →</a>
  </section>
 
  <section class="office nova">
   <div class="tag">02 / CREATIVE PRODUCTION STUDIO</div>
   <h2>NOVA</h2>
-  <div class="description">
-   Din kreativa AI-produktionsassistent.
-   Från första idé till färdig YouTube-video.
+  <div class="desc">Din kreativa AI-produktionsassistent. Från idé till färdig video.</div>
+
+  <div class="holo-stage">
+   <div class="ring"></div>
+   <div class="ring two"></div>
+   <div class="avatar">
+    <svg viewBox="0 0 145 195">
+     <circle cx="72" cy="39" r="24"/>
+     <path d="M55 67 L48 83 L32 91 L20 123 L25 174 L120 174 L125 123 L112 91 L96 83 L89 67"/>
+     <path d="M48 91 L72 108 L96 91 M72 108 L72 174"/>
+     <path d="M55 37 L64 37 M81 37 L90 37"/>
+     <path d="M63 53 Q72 59 81 53"/>
+     <path d="M48 91 L39 135 M96 91 L105 135"/>
+     <path d="M58 80 L72 88 L86 80"/>
+    </svg>
+   </div>
+   <div class="scan"></div>
+   <div class="holo-floor"></div>
+   <div class="holo-caption">NOVA / CREATIVE AI INTERFACE</div>
   </div>
+
   <div class="features">
    <span class="feature">YOUTUBE</span>
    <span class="feature">VIDEO</span>
@@ -192,23 +210,18 @@ footer{
    <span class="feature">RESEARCH</span>
    <span class="feature">THUMBNAILS</span>
   </div>
-  <a class="launch" href="shortcuts://run-shortcut?name=Nova">
-   ÖPPNA NOVA →
-  </a>
+  <a class="launch" href="shortcuts://run-shortcut?name=Nova">ÖPPNA NOVA →</a>
  </section>
 
  <section class="panel">
   <h3>NOVA CLOUD / SYSTEM STATUS</h3>
-  <p>Serveranslutning:</p>
-  <div class="indicator" id="cloudStatus">● KONTROLLERAR ANSLUTNING...</div>
-  <p id="cloudInfo">Väntar på svar från NOVA Cloud.</p>
+  <p>Serveranslutning</p>
+  <div id="cloudStatus">● KONTROLLERAR...</div>
+  <p id="cloudInfo">Väntar på servern.</p>
  </section>
 </main>
 
-<footer>
- JARVIS × NOVA<br><br>
- PRIVATE AI COMMAND CENTER
-</footer>
+<footer>JARVIS × NOVA<br><br>PRIVATE AI COMMAND CENTER</footer>
 
 <script>
 async function checkCloud(){
@@ -216,14 +229,14 @@ async function checkCloud(){
  const info=document.getElementById("cloudInfo");
  try{
   const response=await fetch("/api/status");
-  if(!response.ok) throw new Error("Serverfel");
-  const data=await response.json();
+  if(!response.ok)throw new Error();
+  await response.json();
   status.textContent="● NOVA CLOUD ONLINE";
   info.textContent="Servern svarar. Systemanslutningen fungerar.";
- }catch(error){
+ }catch(e){
   status.textContent="● ANSLUTNING EJ BEKRÄFTAD";
   status.style.color="#ffbd70";
-  info.textContent="Kontrollera att NOVA Cloud är igång.";
+  info.textContent="Kontrollera NOVA Cloud.";
  }
 }
 checkCloud();
