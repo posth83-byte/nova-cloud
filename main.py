@@ -1,85 +1,119 @@
 
+import os
+import json
+import urllib.request
+import urllib.error
+
+from pathlib import Path
+from datetime import datetime
+
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
-from datetime import datetime, timezone
-from pathlib import Path
-from urllib.request import Request, urlopen
-from urllib.error import HTTPError, URLError
-import json
-import os
+
 
 app = FastAPI(
     title="NOVA Cloud",
-    description="JARVIS & NOVA AI Command Center",
-    version="1.2.0"
+    description="JARVIS och NOVA – personlig AI-central",
+    version="1.3.0"
 )
 
+
+# ==========================================
+# INSTÄLLNINGAR
+# ==========================================
+
 BASE_DIR = Path(__file__).resolve().parent
-DASHBOARD = BASE_DIR / "index.html"
+INDEX_FILE = BASE_DIR / "index.html"
 
-GEMINI_MODEL = "gemini-3.8-flash"
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3.8-flash")
 
+
+# ==========================================
+# MODELLER
+# ==========================================
 
 class ChatRequest(BaseModel):
     message: str
 
 
+# ==========================================
+# HEMSIDA
+# ==========================================
+
 @app.get("/")
-def home():
-    if DASHBOARD.exists():
-        return FileResponse(DASHBOARD)
+async def home():
+    if not INDEX_FILE.exists():
+        raise HTTPException(
+            status_code=404,
+            detail="index.html kunde inte hittas."
+        )
 
-    return {"assistant": "NOVA", "status": "online"}
+    return FileResponse(INDEX_FILE)
 
+
+# ==========================================
+# HÄLSOKONTROLL
+# ==========================================
 
 @app.get("/health")
-def health():
+async def health():
     return {
-        "status": "healthy",
-        "time": datetime.now(timezone.utc).isoformat()
+        "status": "online",
+        "service": "NOVA Cloud",
+        "time": datetime.now().isoformat()
     }
 
+
+# ==========================================
+# SYSTEMSTATUS
+# ==========================================
 
 @app.get("/api/status")
-def status():
+async def status():
     return {
-        "name": "NOVA",
         "status": "online",
-        "modules": {
-            "trend_scanner": "planned",
-            "youtube_analyst": "planned",
-            "video_producer": "planned",
-            "ai_brain": "online",
-            "jarvis_assistant": "online",
-            "command_center": "online"
-        }
+        "assistant": "JARVIS",
+        "nova": "online",
+        "jarvis": "online",
+        "gemini_configured": bool(GEMINI_API_KEY),
+        "time": datetime.now().isoformat()
     }
 
 
+# ==========================================
+# IDÉER
+# ==========================================
+
 @app.get("/api/ideas")
-def ideas():
+async def ideas():
     return {
-        "message": "NOVA är redo för trendanalys.",
-        "categories": [
-            "Musik",
-            "Underhållning",
-            "Gaming",
-            "Mystik",
-            "Dokumentärer",
-            "Fakta",
-            "Humor",
-            "Berättelser"
+        "ideas": [
+            {
+                "title": "Skuggornas Arkiv",
+                "description": "Mystiska berättelser och oförklarliga händelser."
+            },
+            {
+                "title": "Mikael Posth",
+                "description": "Musik, underhållning och personliga videor."
+            },
+            {
+                "title": "NOVA Produktion",
+                "description": "Nya idéer, manus och videoprojekt."
+            }
         ]
     }
 
 
+# ==========================================
+# JARVIS AI – GEMINI
+# ==========================================
+
 @app.post("/api/chat")
-def chat(request: ChatRequest):
+async def chat(request: ChatRequest):
 
-    api_key = os.getenv("GEMINI_API_KEY")
-
-    if not api_key:
+    if not GEMINI_API_KEY:
         raise HTTPException(
             status_code=503,
             detail="JARVIS AI-nyckel saknas i servern."
@@ -90,57 +124,72 @@ def chat(request: ChatRequest):
     if not message:
         raise HTTPException(
             status_code=400,
-            detail="Skriv eller säg något först."
+            detail="Meddelandet får inte vara tomt."
         )
 
-    if len(message) > 4000:
-        raise HTTPException(
-            status_code=400,
-            detail="Meddelandet är för långt."
-        )
+    url = (
+        "https://generativelanguage.googleapis.com/"
+        f"v1beta/models/{GEMINI_MODEL}:generateContent"
+    )
+
+    system_instruction = """
+Du är JARVIS, en avancerad personlig AI-assistent.
+
+Du kommunicerar alltid på naturlig svenska om användaren
+inte ber om ett annat språk.
+
+Du är lugn, intelligent, professionell, vänlig,
+analytisk och lösningsorienterad.
+
+Du hjälper användaren med teknik, vardag, planering,
+research och personliga projekt.
+
+Du samarbetar med NOVA, som ansvarar för kreativ
+produktion och YouTube-projekt.
+
+Du ska ge tydliga och praktiska svar.
+Undvik onödigt långa förklaringar.
+Ta ett steg i taget när användaren behöver hjälp.
+"""
 
     payload = {
         "system_instruction": {
-            "parts": [{
-                "text": (
-                    "Du är JARVIS, en intelligent och personlig "
-                    "AI-assistent. Du kommunicerar naturligt på "
-                    "svenska med lugn, tydlig och professionell ton. "
-                    "Du är hjälpsam, analytisk och lösningsorienterad. "
-                    "Du hjälper användaren med teknik, vardag, "
-                    "planering och projekt. Kalla dig JARVIS. "
-                    "Hitta aldrig på att du har utfört handlingar "
-                    "som du inte faktiskt har utfört."
-                )
-            }]
+            "parts": [
+                {
+                    "text": system_instruction
+                }
+            ]
         },
-        "contents": [{
-            "role": "user",
-            "parts": [{"text": message}]
-        }],
+        "contents": [
+            {
+                "role": "user",
+                "parts": [
+                    {
+                        "text": message
+                    }
+                ]
+            }
+        ],
         "generationConfig": {
             "temperature": 0.7,
-            "maxOutputTokens": 800
+            "maxOutputTokens": 2048
         }
     }
 
-    url = (
-        "https://generativelanguage.googleapis.com/v1beta/"
-        f"models/{GEMINI_MODEL}:generateContent"
-    )
+    data = json.dumps(payload).encode("utf-8")
 
-    req = Request(
+    req = urllib.request.Request(
         url,
-        data=json.dumps(payload).encode("utf-8"),
+        data=data,
         headers={
             "Content-Type": "application/json",
-            "x-goog-api-key": api_key
+            "x-goog-api-key": GEMINI_API_KEY
         },
         method="POST"
     )
 
     try:
-        with urlopen(req, timeout=45) as response:
+        with urllib.request.urlopen(req, timeout=60) as response:
             result = json.loads(response.read().decode("utf-8"))
 
         candidates = result.get("candidates", [])
@@ -148,7 +197,7 @@ def chat(request: ChatRequest):
         if not candidates:
             raise HTTPException(
                 status_code=502,
-                detail="AI:n gav inget svar."
+                detail="Gemini skickade inget svar."
             )
 
         parts = candidates[0].get("content", {}).get("parts", [])
@@ -162,7 +211,7 @@ def chat(request: ChatRequest):
         if not answer:
             raise HTTPException(
                 status_code=502,
-                detail="AI:n returnerade ett tomt svar."
+                detail="JARVIS fick ett tomt svar från Gemini."
             )
 
         return {
@@ -171,14 +220,28 @@ def chat(request: ChatRequest):
             "reply": answer
         }
 
-    except HTTPError as error:
-        raise HTTPException(
-            status_code=502,
-            detail=f"Gemini API svarade med felkod {error.code}."
+    except urllib.error.HTTPError as error:
+        error_body = error.read().decode(
+            "utf-8",
+            errors="replace"
         )
 
-    except (URLError, TimeoutError):
+        raise HTTPException(
+            status_code=502,
+            detail=f"Gemini API fel {error.code}: {error_body}"
+        )
+
+    except urllib.error.URLError as error:
         raise HTTPException(
             status_code=503,
-            detail="Kunde inte nå JARVIS AI just nu."
+            detail=f"Kunde inte nå Gemini: {error.reason}"
+        )
+
+    except HTTPException:
+        raise
+
+    except Exception as error:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Internt JARVIS-fel: {str(error)}"
         )
