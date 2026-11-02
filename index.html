@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#050b19">
+<title>JARVIS & NOVA | AI Command Center</title>
+
+<style>
+*{box-sizing:border-box}
+body{
+ margin:0;
+ background:radial-gradient(ellipse at top,#102c50 0%,#071326 45%,#020610 100%);
+ color:#e8f5ff;
+ font-family:Arial,sans-serif;
+ min-height:100vh;
+}
+header{
+ padding:28px 18px 20px;
+ text-align:center;
+ border-bottom:1px solid #23517b;
+}
+.logo{
+ color:#66d7ff;
+ font-size:12px;
+ letter-spacing:5px;
+}
+h1{
+ font-size:29px;
+ letter-spacing:3px;
+ text-shadow:0 0 20px #21aaff;
+ margin:12px 0;
+}
+.subtitle{color:#86aeca;font-size:12px;letter-spacing:2px}
+.status{
+ display:inline-block;
+ margin-top:15px;
+ padding:8px 15px;
+ border:1px solid #1eac8b;
+ border-radius:30px;
+ color:#68f5c5;
+ font-size:11px;
+ letter-spacing:2px;
+}
+main{max-width:850px;margin:auto;padding:20px 15px}
+.section-title{
+ color:#78cfff;
+ letter-spacing:3px;
+ font-size:12px;
+ margin:18px 4px;
+}
+.office{
+ border:1px solid #2677a8;
+ border-radius:18px;
+ padding:22px 18px;
+ margin-bottom:20px;
+ background:linear-gradient(145deg,#102b49,#071426 75%);
+ box-shadow:0 0 24px #087ac522,inset 0 0 25px #087ac511;
+ position:relative;
+ overflow:hidden;
+}
+.office.nova{
+ border-color:#9060bd;
+ background:linear-gradient(145deg,#302047,#101021 75%);
+ box-shadow:0 0 24px #9d50d522,inset 0 0 25px #9d50d511;
+}
+.office:before{
+ content:"";
+ position:absolute;
+ width:150px;height:150px;
+ border:1px solid #4fcaff33;
+ border-radius:50%;
+ right:-65px;top:-70px;
+ box-shadow:0 0 35px #42caff22;
+}
+.nova:before{border-color:#d18aff44}
+.tag{
+ font-size:10px;
+ letter-spacing:3px;
+ color:#70d7ff;
+}
+.nova .tag{color:#d3a1ff}
+.office h2{
+ font-size:28px;
+ letter-spacing:4px;
+ margin:12px 0 5px;
+}
+.description{
+ color:#a9c5dc;
+ font-size:13px;
+ line-height:1.6;
+ max-width:400px;
+}
+.features{
+ display:flex;flex-wrap:wrap;gap:8px;
+ margin:18px 0;
+}
+.feature{
+ border:1px solid #39739b;
+ color:#b9e6ff;
+ border-radius:20px;
+ padding:7px 10px;
+ font-size:11px;
+}
+.nova .feature{border-color:#8b62a9;color:#e3c9ff}
+.launch{
+ display:block;
+ width:100%;
+ padding:15px;
+ margin-top:15px;
+ border:1px solid #54caff;
+ border-radius:10px;
+ background:linear-gradient(90deg,#075b92,#117fba);
+ color:white;
+ text-align:center;
+ text-decoration:none;
+ font-size:13px;
+ font-weight:bold;
+ letter-spacing:2px;
+}
+.nova .launch{
+ border-color:#c08bff;
+ background:linear-gradient(90deg,#56317f,#9453c6);
+}
+.panel{
+ border:1px solid #24496b;
+ border-radius:15px;
+ padding:18px;
+ background:#091629;
+ margin-top:24px;
+}
+.panel h3{
+ color:#75cfff;
+ font-size:12px;
+ letter-spacing:2px;
+}
+.panel p{color:#9db7cb;font-size:12px}
+.indicator{
+ color:#69f0c0;
+ font-size:12px;
+}
+footer{
+ text-align:center;
+ padding:25px 10px 35px;
+ color:#52738e;
+ font-size:10px;
+ letter-spacing:2px;
+}
+</style>
+</head>
+
+<body>
+<header>
+ <div class="logo">PERSONAL ARTIFICIAL INTELLIGENCE</div>
+ <h1>AI COMMAND CENTER</h1>
+ <div class="subtitle">YOUR PRIVATE AI HEADQUARTERS</div>
+ <div class="status">● COMMAND CENTER READY</div>
+</header>
+
+<main>
+ <div class="section-title">SELECT YOUR AI OFFICE</div>
+
+ <section class="office">
+  <div class="tag">01 / MAIN CONTROL ROOM</div>
+  <h2>JARVIS</h2>
+  <div class="description">
+   Din personliga AI-assistent. Planering, teknik,
+   problemlösning och kontroll över dina projekt.
+  </div>
+  <div class="features">
+   <span class="feature">RÖSTSTYRNING</span>
+   <span class="feature">PERSONLIG AI</span>
+   <span class="feature">KONTROLL</span>
+   <span class="feature">PLANERING</span>
+  </div>
+  <a class="launch" href="shortcuts://run-shortcut?name=JARVIS">
+   ÖPPNA JARVIS →
+  </a>
+ </section>
+
+ <section class="office nova">
+  <div class="tag">02 / CREATIVE PRODUCTION STUDIO</div>
+  <h2>NOVA</h2>
+  <div class="description">
+   Din kreativa AI-produktionsassistent.
+   Från första idé till färdig YouTube-video.
+  </div>
+  <div class="features">
+   <span class="feature">YOUTUBE</span>
+   <span class="feature">VIDEO</span>
+   <span class="feature">MANUS</span>
+   <span class="feature">RESEARCH</span>
+   <span class="feature">THUMBNAILS</span>
+  </div>
+  <a class="launch" href="shortcuts://run-shortcut?name=Nova">
+   ÖPPNA NOVA →
+  </a>
+ </section>
+
+ <section class="panel">
+  <h3>NOVA CLOUD / SYSTEM STATUS</h3>
+  <p>Serveranslutning:</p>
+  <div class="indicator" id="cloudStatus">● KONTROLLERAR ANSLUTNING...</div>
+  <p id="cloudInfo">Väntar på svar från NOVA Cloud.</p>
+ </section>
+</main>
+
+<footer>
+ JARVIS × NOVA<br><br>
+ PRIVATE AI COMMAND CENTER
+</footer>
+
+<script>
+async function checkCloud(){
+ const status=document.getElementById("cloudStatus");
+ const info=document.getElementById("cloudInfo");
+ try{
+  const response=await fetch("/api/status");
+  if(!response.ok) throw new Error("Serverfel");
+  const data=await response.json();
+  status.textContent="● NOVA CLOUD ONLINE";
+  info.textContent="Servern svarar. Systemanslutningen fungerar.";
+ }catch(error){
+  status.textContent="● ANSLUTNING EJ BEKRÄFTAD";
+  status.style.color="#ffbd70";
+  info.textContent="Kontrollera att NOVA Cloud är igång.";
+ }
+}
+checkCloud();
+</script>
+</body>
+</html>
