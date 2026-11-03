@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="sv">
 <head>
@@ -27,7 +26,8 @@ body:before{
  background-size:45px 45px;
  mask-image:linear-gradient(to bottom,black,transparent 85%)
 }
-button,input{font:inherit}button{touch-action:manipulation}
+button,input,select{font:inherit}
+button{touch-action:manipulation}
 header{
  position:relative;z-index:2;text-align:center;padding:23px 15px 18px;
  border-bottom:1px solid #315a7a88;background:#061020cc;
@@ -163,8 +163,6 @@ main{position:relative;z-index:1;max-width:1100px;margin:auto;padding:20px 15px 
  background-image:linear-gradient(#43caff44 1px,transparent 1px),linear-gradient(90deg,#43caff44 1px,transparent 1px);
  background-size:25px 25px;transform:perspective(180px) rotateX(55deg);transform-origin:bottom}
 .nova-view .holo-grid{background-image:linear-gradient(#bd80ff44 1px,transparent 1px),linear-gradient(90deg,#bd80ff44 1px,transparent 1px)}
-
-/* Holographic projection beam */
 .projection-beam{
  position:absolute;z-index:1;left:50%;top:30px;transform:translateX(-50%);
  width:180px;height:255px;opacity:.16;pointer-events:none;
@@ -265,6 +263,33 @@ main{position:relative;z-index:1;max-width:1100px;margin:auto;padding:20px 15px 
 .nova-view .tool-btn{background:#251733;color:#e3c9ff;border-color:#79569a}
 #trendResult{white-space:pre-wrap;font-size:11px;line-height:1.7;color:#d8eaff;margin-top:12px;overflow-wrap:anywhere}
 
+/* VOICE CONTROLS */
+.voice-panel{
+ margin-top:12px;padding:12px;border:1px solid #39739b;border-radius:10px;
+ background:#071a2b;color:#b9e6ff
+}
+.nova-view .voice-panel{border-color:#79569a;background:#1b1028;color:#e3c9ff}
+.voice-heading{font-size:9px;letter-spacing:2px;margin-bottom:9px}
+.voice-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.voice-select{
+ flex:1;min-width:150px;padding:10px;border-radius:8px;
+ color:#eaf6ff;background:#061323;border:1px solid #39739b;font-size:11px
+}
+.nova-view .voice-select{background:#150e20;border-color:#79569a}
+.voice-test,.speak-btn{
+ border:1px solid #42caff88;border-radius:8px;
+ background:#08243a;color:#a9eaff;padding:10px 12px;
+ font-size:9px;letter-spacing:1px;cursor:pointer
+}
+.nova-view .voice-test,.nova-view .speak-btn{
+ border-color:#bd80ff88;background:#261638;color:#e7caff
+}
+.voice-note{font-size:9px;line-height:1.5;color:#91a9c2;margin-top:8px}
+.speak-btn{display:block;margin-top:9px}
+.speak-btn:active,.voice-test:active{transform:scale(.97)}
+.speak-btn.speaking{border-color:#70f5c6;color:#70f5c6}
+.voice-status{font-size:9px;color:#70f5c6;margin-top:8px;min-height:12px}
+
 /* SYSTEM MONITOR */
 .panel{position:relative;z-index:1;border:1px solid #24496b;border-radius:16px;padding:17px;background:#091629;margin-top:22px;box-shadow:0 0 25px #008cff10}
 .panel h3{font-size:10px;letter-spacing:2px;color:#75cfff}
@@ -304,6 +329,7 @@ main{position:relative;z-index:1;max-width:1100px;margin:auto;padding:20px 15px 
  .monitor-content{height:58px}
  .ai-desk{bottom:30px}
  .ai-floor{width:240px}
+ .voice-select{width:100%}
 }
 @media(prefers-reduced-motion:reduce){
  *,*:before,*:after{animation:none!important;scroll-behavior:auto!important}
@@ -417,27 +443,22 @@ main{position:relative;z-index:1;max-width:1100px;margin:auto;padding:20px 15px 
   <div class="ai-figure">
    <svg viewBox="0 0 180 250" aria-label="JARVIS hologram">
     <ellipse cx="90" cy="239" rx="49" ry="7"/>
-    <!-- Head -->
     <path d="M62 36 Q62 8 90 8 Q118 8 118 36 L115 61 Q110 79 90 82 Q70 79 65 61 Z"/>
     <path d="M62 31 Q90 15 118 31 M64 43 L55 49 L65 57 M116 43 L125 49 L115 57"/>
     <path d="M70 47 L82 47 M98 47 L110 47"/>
     <circle class="ai-eyes" cx="76" cy="47" r="4"/><circle class="ai-eyes" cx="104" cy="47" r="4"/>
     <path d="M90 50 L86 61 L94 61 M80 69 Q90 74 100 69"/>
-    <!-- Neck and shoulders -->
     <path d="M78 78 L78 91 L102 91 L102 78"/>
     <path d="M78 89 Q57 91 43 103 L29 125 L38 165 L58 178 L122 178 L142 165 L151 125 L137 103 Q123 91 102 89 Z"/>
-    <!-- Arms -->
     <path d="M43 105 Q20 116 22 145 L34 181 L49 176 L47 143 L62 126"/>
     <path d="M137 105 Q160 116 158 145 L146 181 L131 176 L133 143 L118 126"/>
     <path d="M34 181 L30 203 L47 207 L53 180 M146 181 L150 203 L133 207 L127 180"/>
-    <!-- Chest panels -->
     <path d="M59 103 L90 121 L121 103 M59 103 L67 150 L90 164 L113 150 L121 103"/>
     <path d="M67 150 L90 137 L113 150 M90 121 L90 164"/>
     <circle class="ai-core" cx="90" cy="139" r="8"/>
     <path d="M43 124 L57 133 M137 124 L123 133"/>
     <path d="M58 178 L53 221 L72 229 L90 222 L108 229 L127 221 L122 178"/>
     <path d="M72 229 L69 239 M108 229 L111 239 M53 221 L127 221"/>
-    <!-- Hologram details -->
     <path d="M90 8 L90 0 M62 36 L49 29 M118 36 L131 29"/>
     <path d="M46 112 L38 118 M134 112 L142 118"/>
    </svg>
@@ -457,6 +478,19 @@ main{position:relative;z-index:1;max-width:1100px;margin:auto;padding:20px 15px 
   <div class="chatbox">
    <div class="chat-title">JARVIS / SECURE AI CONNECTION</div>
    <div class="messages" id="jarvisMessages"><div class="msg ai">God dag. JARVIS är redo. Vad kan jag hjälpa dig med?</div></div>
+
+   <div class="voice-panel">
+    <div class="voice-heading">JARVIS / RÖSTINSTÄLLNINGAR</div>
+    <div class="voice-row">
+     <select class="voice-select" id="jarvisVoiceSelect" aria-label="Välj JARVIS-röst">
+      <option value="">Laddar tillgängliga röster...</option>
+     </select>
+     <button class="voice-test" onclick="testVoice('jarvis')">TESTA RÖST</button>
+    </div>
+    <div class="voice-note">Välj en svensk röst om en sådan finns tillgänglig på din enhet.</div>
+    <div class="voice-status" id="jarvisVoiceStatus">Röstsystem redo.</div>
+   </div>
+
    <form class="input-row" onsubmit="sendMessage(event,'jarvis')">
     <input class="chat-input" id="jarvisInput" placeholder="Skriv till JARVIS..." autocomplete="off">
     <button class="send" id="jarvisSend">SKICKA</button>
@@ -517,6 +551,19 @@ main{position:relative;z-index:1;max-width:1100px;margin:auto;padding:20px 15px 
   <div class="chatbox">
    <div class="chat-title">NOVA / CREATIVE AI CONNECTION</div>
    <div class="messages" id="novaMessages"><div class="msg ai">Hej! NOVA är redo att utveckla dina YouTube-projekt. Vad ska vi skapa?</div></div>
+
+   <div class="voice-panel">
+    <div class="voice-heading">NOVA / RÖSTINSTÄLLNINGAR</div>
+    <div class="voice-row">
+     <select class="voice-select" id="novaVoiceSelect" aria-label="Välj NOVA-röst">
+      <option value="">Laddar tillgängliga röster...</option>
+     </select>
+     <button class="voice-test" onclick="testVoice('nova')">TESTA RÖST</button>
+    </div>
+    <div class="voice-note">Välj en svensk röst om en sådan finns tillgänglig på din enhet.</div>
+    <div class="voice-status" id="novaVoiceStatus">Röstsystem redo.</div>
+   </div>
+
    <form class="input-row" onsubmit="sendMessage(event,'nova')">
     <input class="chat-input" id="novaInput" placeholder="Skriv till NOVA..." autocomplete="off">
     <button class="send" id="novaSend">SKICKA</button>
@@ -538,6 +585,194 @@ main{position:relative;z-index:1;max-width:1100px;margin:auto;padding:20px 15px 
 const $ = id => document.getElementById(id);
 let activeRoom = null;
 
+/* VOICE SYSTEM */
+let availableVoices = [];
+let activeUtterance = null;
+let activeSpeechButton = null;
+let activeSpeechRoom = null;
+
+function loadVoices(){
+ if(!("speechSynthesis" in window))return;
+
+ availableVoices=window.speechSynthesis.getVoices();
+
+ ["jarvis","nova"].forEach(room=>{
+  const select=$(room+"VoiceSelect");
+  if(!select)return;
+
+  const previous=select.value;
+  select.innerHTML="";
+
+  if(!availableVoices.length){
+   const option=document.createElement("option");
+   option.value="";
+   option.textContent="Webbläsarens standardröst";
+   select.appendChild(option);
+   return;
+  }
+
+  const sorted=[...availableVoices].sort((a,b)=>{
+   const aSv=/sv/i.test(a.lang)?0:1;
+   const bSv=/sv/i.test(b.lang)?0:1;
+   return aSv-bSv;
+  });
+
+  sorted.forEach(voice=>{
+   const option=document.createElement("option");
+   option.value=voice.voiceURI;
+   option.textContent=voice.name+" ("+voice.lang+")";
+   select.appendChild(option);
+  });
+
+  if(previous && sorted.some(v=>v.voiceURI===previous)){
+   select.value=previous;
+  }else{
+   const swedish=sorted.find(v=>/^sv/i.test(v.lang));
+   if(swedish)select.value=swedish.voiceURI;
+  }
+
+  const status=$(room+"VoiceStatus");
+  if(status){
+   const hasSwedish=availableVoices.some(v=>/^sv/i.test(v.lang));
+   status.textContent=hasSwedish
+    ?"Svenska röster hittades."
+    :"Ingen svensk röst hittades. Standardröst används.";
+  }
+ });
+}
+
+function getSelectedVoice(room){
+ const select=$(room+"VoiceSelect");
+ if(!select || !select.value)return null;
+ return availableVoices.find(v=>v.voiceURI===select.value)||null;
+}
+
+function stopSpeech(){
+ if("speechSynthesis" in window){
+  window.speechSynthesis.cancel();
+ }
+ if(activeSpeechButton){
+  activeSpeechButton.textContent="▶ LÄS UPP SVARET";
+  activeSpeechButton.classList.remove("speaking");
+ }
+ if(activeSpeechRoom){
+  const status=$(activeSpeechRoom+"VoiceStatus");
+  if(status)status.textContent="Uppläsningen stoppad.";
+  setRoomState(activeSpeechRoom,"idle");
+ }
+ activeUtterance=null;
+ activeSpeechButton=null;
+ activeSpeechRoom=null;
+}
+
+function speakText(text,room,button=null){
+ if(!("speechSynthesis" in window)){
+  const status=$(room+"VoiceStatus");
+  if(status)status.textContent="Rösten stöds inte i den här webbläsaren.";
+  return;
+ }
+
+ if(!text || !text.trim())return;
+
+ stopSpeech();
+
+ const utterance=new SpeechSynthesisUtterance(text.trim());
+ const voice=getSelectedVoice(room);
+
+ utterance.lang=voice?voice.lang:"sv-SE";
+ utterance.rate=0.95;
+ utterance.pitch=0.92;
+ utterance.volume=1;
+
+ if(voice)utterance.voice=voice;
+
+ activeUtterance=utterance;
+ activeSpeechButton=button;
+ activeSpeechRoom=room;
+
+ const status=$(room+"VoiceStatus");
+
+ utterance.onstart=()=>{
+  if(button){
+   button.textContent="■ STOPPA UPPLÄSNING";
+   button.classList.add("speaking");
+  }
+  if(status)status.textContent="AI-rösten läser upp svaret...";
+  setRoomState(room,"responding");
+ };
+
+ utterance.onend=()=>{
+  if(button){
+   button.textContent="▶ LÄS UPP SVARET";
+   button.classList.remove("speaking");
+  }
+  if(status)status.textContent="Uppläsningen klar.";
+  setRoomState(room,"idle");
+  activeUtterance=null;
+  activeSpeechButton=null;
+  activeSpeechRoom=null;
+ };
+
+ utterance.onerror=()=>{
+  if(button){
+   button.textContent="▶ LÄS UPP SVARET";
+   button.classList.remove("speaking");
+  }
+  if(status)status.textContent="Kunde inte spela upp rösten.";
+  setRoomState(room,"idle");
+  activeUtterance=null;
+  activeSpeechButton=null;
+  activeSpeechRoom=null;
+ };
+
+ window.speechSynthesis.speak(utterance);
+}
+
+function addSpeechButton(messageElement,room){
+ const button=document.createElement("button");
+ button.className="speak-btn";
+ button.textContent="▶ LÄS UPP SVARET";
+
+ button.onclick=()=>{
+  if(activeSpeechButton===button && window.speechSynthesis.speaking){
+   stopSpeech();
+   return;
+  }
+
+  const text=messageElement.dataset.speechText||"";
+  speakText(text,room,button);
+ };
+
+ messageElement.appendChild(button);
+}
+
+function testVoice(room){
+ const select=$(room+"VoiceSelect");
+
+ if("speechSynthesis" in window){
+  loadVoices();
+ }
+
+ const voice=getSelectedVoice(room);
+ const name=voice?voice.name:"standardrösten";
+
+ const text=room==="jarvis"
+  ?"Hej. Jag är JARVIS. Röstsystemet fungerar och jag är redo att hjälpa dig."
+  :"Hej! Jag är NOVA. Nu är min svenska röst redo för kreativ produktion.";
+
+ const status=$(room+"VoiceStatus");
+ if(status)status.textContent="Testar "+name+"...";
+
+ speakText(text,room);
+}
+
+/* Keep voice list updated when the browser loads its voices */
+if("speechSynthesis" in window){
+ loadVoices();
+ window.speechSynthesis.onvoiceschanged=loadVoices;
+}
+
+/* ROOM STATES */
 function setRoomState(room,state){
  const view = $(room+"View");
  if(!view)return;
@@ -567,10 +802,12 @@ function enterRoom(room){
  $("novaView").classList.add("hidden");
  $(room+"View").classList.remove("hidden");
  window.scrollTo({top:0,behavior:"smooth"});
+ loadVoices();
  setTimeout(()=>$(room+"Input").focus(),450);
 }
 
 function goHome(){
+ stopSpeech();
  activeRoom=null;
  $("jarvisView").classList.add("hidden");
  $("novaView").classList.add("hidden");
@@ -588,14 +825,19 @@ function addMessage(target,text,type="ai"){
  return msg;
 }
 
+/* CHAT CONNECTION */
 async function sendMessage(event,assistant){
  event.preventDefault();
+
  const isNova=assistant==="nova";
  const input=$(isNova?"novaInput":"jarvisInput");
  const messages=isNova?"novaMessages":"jarvisMessages";
  const button=$(isNova?"novaSend":"jarvisSend");
  const message=input.value.trim();
+
  if(!message)return;
+
+ if("speechSynthesis" in window)stopSpeech();
 
  addMessage(messages,message,"user");
  input.value="";
@@ -612,15 +854,21 @@ async function sendMessage(event,assistant){
    headers:{"Content-Type":"application/json"},
    body:JSON.stringify({message})
   });
+
   const data=await response.json();
 
   if(!response.ok){
    throw new Error(typeof data.detail==="string"?data.detail:JSON.stringify(data.detail||data));
   }
 
-  setRoomState(assistant,"responding");
-  loading.textContent=(data.reply||"Inget svar mottogs.")+
+  const reply=(data.reply||"Inget svar mottogs.")+
    "\n\nAI-motor: "+(data.engine||"Okänd");
+
+  loading.textContent=reply;
+  loading.dataset.speechText=data.reply||"Inget svar mottogs.";
+  addSpeechButton(loading,assistant);
+
+  setRoomState(assistant,"responding");
 
  }catch(error){
   loading.className="msg error";
@@ -628,11 +876,14 @@ async function sendMessage(event,assistant){
  }finally{
   button.disabled=false;
   button.textContent="SKICKA";
-  setTimeout(()=>setRoomState(assistant,"idle"),1800);
+  if(!activeSpeechRoom || activeSpeechRoom!==assistant){
+   setTimeout(()=>setRoomState(assistant,"idle"),1800);
+  }
   input.focus();
  }
 }
 
+/* YOUTUBE TRENDS */
 async function runTrends(){
  const result=$("trendResult");
  result.textContent="NOVA hämtar trenddata och analyserar materialet...";
@@ -647,7 +898,9 @@ async function runTrends(){
   }
 
   setRoomState("nova","responding");
-  result.textContent=(data.analysis||"Ingen analys returnerades.")+
+
+  const analysis=data.analysis||"Ingen analys returnerades.";
+  result.textContent=analysis+
    "\n\nAI-motor: "+(data.engine||"Okänd")+
    "\nDatakällor: "+(data.sources||[]).join(", ")+
    "\nKontrollerade RSS-kanaler: "+(data.data_quality?.youtube_channels_checked??0);
@@ -659,10 +912,12 @@ async function runTrends(){
  }
 }
 
+/* CLOUD STATUS */
 async function checkCloud(){
  try{
   const response=await fetch("/api/status");
   if(!response.ok)throw new Error("Servern svarar inte");
+
   const data=await response.json();
 
   $("topStatus").textContent="● COMMAND CENTER ONLINE";
