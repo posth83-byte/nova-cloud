@@ -10,9 +10,7 @@
 <style>
 :root{
  --blue:#39c8ff;
- --blue2:#087db9;
  --purple:#bd80ff;
- --purple2:#7946a5;
  --bg:#030713;
  --muted:#91a9c2;
 }
@@ -60,7 +58,7 @@ main{position:relative;z-index:1;max-width:1100px;margin:auto;padding:20px 15px 
 }
 .hidden{display:none!important}
 
-/* MAIN HEADQUARTERS */
+/* CENTRAL COMMAND */
 #homeView{animation:appear .65s ease}
 .headquarters{
  position:relative;overflow:hidden;text-align:center;
@@ -205,7 +203,7 @@ main{position:relative;z-index:1;max-width:1100px;margin:auto;padding:20px 15px 
 .launch:active{transform:scale(.98)}
 .launch:hover{filter:brightness(1.25)}
 
-/* FULL ROOM EXPERIENCE */
+/* FULL ROOM */
 .room-view{
  position:relative;min-height:calc(100vh - 150px);
  border-radius:22px;overflow:hidden;padding:18px;
@@ -252,37 +250,120 @@ main{position:relative;z-index:1;max-width:1100px;margin:auto;padding:20px 15px 
 .room-heading h2{font-size:clamp(30px,8vw,48px);letter-spacing:8px;margin:10px 0;text-shadow:0 0 25px #27baff}
 .nova-view .room-heading h2{text-shadow:0 0 25px #b56cff}
 .room-heading p{font-size:11px;color:#a9c5dc;line-height:1.6;margin:0 auto;max-width:500px}
-.room-stage{
- position:relative;z-index:1;height:170px;display:grid;place-items:center;
- perspective:700px
+
+/* HOLOGRAPHIC WORKSTATIONS */
+.workstation-stage{
+ position:relative;z-index:1;height:340px;max-width:760px;
+ margin:0 auto;overflow:hidden;perspective:900px;border-radius:18px;
+ background:
+ radial-gradient(ellipse at 50% 70%,#087db955,transparent 55%),
+ linear-gradient(180deg,#06182a55,#02071399)
 }
-.stage-orbit{
- position:absolute;width:160px;height:160px;border:1px solid #45caff88;
- border-radius:50%;transform:rotateX(68deg);animation:spin 10s linear infinite;
- box-shadow:0 0 22px #25bfff22
+.nova-view .workstation-stage{
+ background:
+ radial-gradient(ellipse at 50% 70%,#9148bd55,transparent 55%),
+ linear-gradient(180deg,#21112f55,#08061199)
 }
-.stage-orbit.two{width:205px;height:205px;transform:rotateY(70deg);animation:spin 16s linear infinite reverse}
-.nova-view .stage-orbit{border-color:#c18aff99;box-shadow:0 0 22px #bd80ff22}
-.stage-core{
- width:85px;height:85px;border-radius:50%;display:grid;place-items:center;
- background:radial-gradient(circle,#f0fdff,#65d9ff 18%,#0878b8 45%,#06172c 78%);
- box-shadow:0 0 35px #37caff,0 0 90px #168cff77;
- animation:pulse 3s ease-in-out infinite;font-size:19px;font-weight:bold
+.holo-grid{
+ position:absolute;bottom:0;width:100%;height:120px;opacity:.35;
+ background-image:linear-gradient(#43caff44 1px,transparent 1px),
+ linear-gradient(90deg,#43caff44 1px,transparent 1px);
+ background-size:25px 25px;
+ transform:perspective(180px) rotateX(55deg);transform-origin:bottom
 }
-.nova-view .stage-core{
- background:radial-gradient(circle,#fff5ff,#d6a3ff 18%,#8042b5 45%,#1b0d2b 78%);
- box-shadow:0 0 35px #bd80ff,0 0 90px #a44dff77
+.nova-view .holo-grid{
+ background-image:linear-gradient(#bd80ff44 1px,transparent 1px),
+ linear-gradient(90deg,#bd80ff44 1px,transparent 1px)
 }
-.stage-floor{
- position:absolute;bottom:0;width:220px;height:42px;border:2px solid #39c8ff;
- border-radius:50%;transform:rotateX(68deg);box-shadow:0 0 25px #39c8ff66
+.ai-figure{
+ position:absolute;left:50%;top:17px;width:175px;height:220px;
+ transform:translateX(-50%);z-index:2;
+ animation:float 5s ease-in-out infinite;
+ filter:drop-shadow(0 0 12px #39c8ff)
 }
-.nova-view .stage-floor{border-color:#bd80ff;box-shadow:0 0 25px #bd80ff66}
-.room-content{
- position:relative;z-index:2;max-width:760px;margin:12px auto 0
+.nova-view .ai-figure{filter:drop-shadow(0 0 14px #bd80ff)}
+.ai-figure svg{width:100%;height:100%;overflow:visible}
+.ai-figure path,.ai-figure circle,.ai-figure ellipse{
+ fill:#39c8ff18;stroke:#70e5ff;stroke-width:1.6
 }
+.nova-view .ai-figure path,.nova-view .ai-figure circle,
+.nova-view .ai-figure ellipse{fill:#bd80ff18;stroke:#e0baff}
+.ai-eyes{
+ fill:#dfffff!important;stroke:none!important;
+ filter:drop-shadow(0 0 7px #6ceaff)
+}
+.nova-view .ai-eyes{
+ fill:#fff0ff!important;filter:drop-shadow(0 0 7px #d29aff)
+}
+.ai-monitor{
+ position:absolute;z-index:4;left:50%;bottom:62px;
+ transform:translateX(-50%);width:min(88%,490px);height:105px;
+ padding:7px;border:1px solid #51d9ff;border-radius:9px;
+ background:linear-gradient(145deg,#092b45ee,#03101fee);
+ box-shadow:0 0 15px #35caff88,inset 0 0 20px #35caff22
+}
+.nova-view .ai-monitor{
+ border-color:#d0a0ff;
+ background:linear-gradient(145deg,#38204fee,#130b20ee);
+ box-shadow:0 0 15px #bd80ff88,inset 0 0 20px #bd80ff22
+}
+.monitor-top{
+ display:flex;justify-content:space-between;font-size:7px;
+ letter-spacing:2px;color:#8ceaff;padding:3px 5px 7px;
+ border-bottom:1px solid #38bce955
+}
+.nova-view .monitor-top{color:#e2c4ff;border-color:#bd80ff55}
+.monitor-content{
+ display:grid;grid-template-columns:1fr 1.5fr 1fr;
+ gap:7px;height:67px;padding:7px 3px
+}
+.monitor-panel{
+ border:1px solid #36bfff55;border-radius:4px;padding:5px;overflow:hidden
+}
+.nova-view .monitor-panel{border-color:#bd80ff55}
+.monitor-line{
+ height:3px;margin:5px 0;border-radius:5px;
+ background:#4bcfff;opacity:.75;animation:monitorPulse 2s infinite alternate
+}
+.nova-view .monitor-line{background:#c58aff}
+.monitor-graph{height:43px;display:flex;align-items:end;gap:4px}
+.monitor-graph span{
+ flex:1;background:#45caff;box-shadow:0 0 6px #45caff;
+ animation:graphMove 2s ease-in-out infinite alternate
+}
+.nova-view .monitor-graph span{background:#c58aff;box-shadow:0 0 6px #c58aff}
+.monitor-graph span:nth-child(1){height:35%}
+.monitor-graph span:nth-child(2){height:75%}
+.monitor-graph span:nth-child(3){height:45%}
+.monitor-graph span:nth-child(4){height:90%}
+.monitor-graph span:nth-child(5){height:60%}
+.monitor-graph span:nth-child(6){height:80%}
+.ai-desk{
+ position:absolute;z-index:3;left:50%;bottom:35px;
+ transform:translateX(-50%) rotateX(8deg);
+ width:min(95%,550px);height:35px;border:1px solid #49cfff;
+ border-radius:50% 50% 10px 10px;
+ background:linear-gradient(180deg,#164b6b99,#061729);
+ box-shadow:0 0 20px #32bfff77
+}
+.nova-view .ai-desk{
+ border-color:#c28aff;background:linear-gradient(180deg,#603c7899,#1b1028);
+ box-shadow:0 0 20px #bd80ff77
+}
+.ai-desk:after{
+ content:"";position:absolute;left:15%;right:15%;bottom:-13px;
+ height:12px;background:#39c8ff33;filter:blur(8px)
+}
+.nova-view .ai-desk:after{background:#bd80ff44}
+.ai-floor{
+ position:absolute;bottom:7px;left:50%;transform:translateX(-50%) rotateX(68deg);
+ width:290px;height:50px;border:2px solid #39c8ff;
+ border-radius:50%;box-shadow:0 0 25px #39c8ff88
+}
+.nova-view .ai-floor{border-color:#bd80ff;box-shadow:0 0 25px #bd80ff88}
 
 /* CHAT */
+.room-content{position:relative;z-index:2;max-width:760px;margin:12px auto 0}
 .chatbox{
  display:block;padding:15px;border:1px solid #34749a;
  border-radius:16px;background:#061323cc;backdrop-filter:blur(12px)
@@ -343,11 +424,13 @@ main{position:relative;z-index:1;max-width:1100px;margin:auto;padding:20px 15px 
 .system-footer{text-align:center;margin-top:20px;padding:15px;color:#6687a3;font-size:9px;letter-spacing:2px;line-height:2}
 
 @keyframes spin{to{transform:rotate(360deg)}}
-@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
+@keyframes float{0%,100%{translate:0 0}50%{translate:0 -10px}}
 @keyframes pulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.08);opacity:.78}}
 @keyframes floor{50%{transform:scaleX(.8);opacity:.6}}
 @keyframes appear{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
 @keyframes roomEnter{from{opacity:0;transform:scale(.96) translateY(15px);filter:blur(5px)}to{opacity:1;transform:scale(1) translateY(0);filter:blur(0)}}
+@keyframes monitorPulse{from{opacity:.3}to{opacity:1}}
+@keyframes graphMove{from{transform:scaleY(.65)}to{transform:scaleY(1)}}
 
 @media(max-width:650px){
  main{padding:14px 10px 28px}
@@ -358,7 +441,12 @@ main{position:relative;z-index:1;max-width:1100px;margin:auto;padding:20px 15px 
  .room-view{padding:13px;min-height:calc(100vh - 135px)}
  .messages{height:230px}
  .room-heading{padding-top:18px}
- .stage-core{width:75px;height:75px}
+ .workstation-stage{height:300px}
+ .ai-figure{top:15px;width:150px;height:195px}
+ .ai-monitor{height:95px;bottom:55px;width:94%}
+ .monitor-content{height:58px}
+ .ai-desk{bottom:30px}
+ .ai-floor{width:240px}
 }
 @media(prefers-reduced-motion:reduce){
  *,*:before,*:after{animation:none!important;scroll-behavior:auto!important}
@@ -376,7 +464,6 @@ main{position:relative;z-index:1;max-width:1100px;margin:auto;padding:20px 15px 
 
 <main>
 
-<!-- MAIN COMMAND CENTER -->
 <div id="homeView">
  <div class="section-label">CENTRAL COMMAND / ÖVERSIKT</div>
 
@@ -408,9 +495,7 @@ main{position:relative;z-index:1;max-width:1100px;margin:auto;padding:20px 15px 
   <section class="room-card">
    <div class="room-code">01 / MAIN CONTROL ROOM</div>
    <h2>JARVIS</h2>
-   <div class="room-desc">
-    Din personliga AI-assistent. Teknik, planering, research och problemlösning.
-   </div>
+   <div class="room-desc">Din personliga AI-assistent. Teknik, planering, research och problemlösning.</div>
    <div class="room-visual">
     <div class="orbit"></div>
     <div class="avatar">
@@ -436,9 +521,7 @@ main{position:relative;z-index:1;max-width:1100px;margin:auto;padding:20px 15px 
   <section class="room-card nova">
    <div class="room-code">02 / CREATIVE PRODUCTION STUDIO</div>
    <h2>NOVA</h2>
-   <div class="room-desc">
-    Din kreativa AI-produktionsassistent. Från idé till färdig YouTube-video.
-   </div>
+   <div class="room-desc">Din kreativa AI-produktionsassistent. Från idé till färdig YouTube-video.</div>
    <div class="room-visual">
     <div class="orbit"></div>
     <div class="avatar">
@@ -483,17 +566,62 @@ main{position:relative;z-index:1;max-width:1100px;margin:auto;padding:20px 15px 
   <button class="back-btn" onclick="goHome()">← TILL HUVUDCENTRALEN</button>
   <div class="room-live">● JARVIS ONLINE</div>
  </div>
+
  <div class="room-heading">
   <div class="eyebrow">01 / MAIN CONTROL ROOM</div>
   <h2>JARVIS</h2>
   <p>Personlig AI-assistent. Redo att hjälpa dig med teknik, vardag, research och planering.</p>
  </div>
- <div class="room-stage">
-  <div class="stage-orbit"></div>
-  <div class="stage-orbit two"></div>
-  <div class="stage-core">J</div>
-  <div class="stage-floor"></div>
+
+ <div class="workstation-stage">
+  <div class="holo-grid"></div>
+
+  <div class="ai-figure">
+   <svg viewBox="0 0 180 220">
+    <ellipse cx="90" cy="205" rx="50" ry="8"/>
+    <path d="M58 70 Q45 83 43 115 L37 165 L65 178 L115 178 L143 165 L137 115 Q135 83 122 70 Z"/>
+    <path d="M58 82 Q20 90 25 132 L50 145 L67 119"/>
+    <path d="M122 82 Q160 90 155 132 L130 145 L113 119"/>
+    <path d="M70 70 L70 57 L110 57 L110 70"/>
+    <path d="M90 10 Q55 10 55 43 Q55 70 90 76 Q125 70 125 43 Q125 10 90 10 Z"/>
+    <path d="M55 38 Q90 23 125 38"/>
+    <path d="M62 43 L78 43 M102 43 L118 43"/>
+    <circle class="ai-eyes" cx="71" cy="43" r="3"/>
+    <circle class="ai-eyes" cx="109" cy="43" r="3"/>
+    <path d="M80 57 Q90 62 100 57"/>
+    <path d="M45 115 L70 130 L90 125 L110 130 L135 115"/>
+    <path d="M67 119 L90 140 L113 119"/>
+    <path d="M90 140 L90 177"/>
+    <path d="M37 165 L25 190 M143 165 L155 190"/>
+    <path d="M25 190 L70 190 M155 190 L110 190"/>
+    <path d="M90 10 L90 0 M55 43 L45 38 M125 43 L135 38"/>
+   </svg>
+  </div>
+
+  <div class="ai-monitor">
+   <div class="monitor-top">
+    <span>JARVIS / MAIN CONTROL</span>
+    <span>● SYSTEM ACTIVE</span>
+   </div>
+   <div class="monitor-content">
+    <div class="monitor-panel">
+     <div class="monitor-line"></div><div class="monitor-line"></div><div class="monitor-line"></div>
+    </div>
+    <div class="monitor-panel">
+     <div class="monitor-graph">
+      <span></span><span></span><span></span><span></span><span></span><span></span>
+     </div>
+    </div>
+    <div class="monitor-panel">
+     <div class="monitor-line"></div><div class="monitor-line"></div><div class="monitor-line"></div>
+    </div>
+   </div>
+  </div>
+
+  <div class="ai-desk"></div>
+  <div class="ai-floor"></div>
  </div>
+
  <div class="room-content">
   <div class="chatbox">
    <div class="chat-title">JARVIS / SECURE AI CONNECTION</div>
@@ -514,17 +642,62 @@ main{position:relative;z-index:1;max-width:1100px;margin:auto;padding:20px 15px 
   <button class="back-btn" onclick="goHome()">← TILL HUVUDCENTRALEN</button>
   <div class="room-live">● NOVA ONLINE</div>
  </div>
+
  <div class="room-heading">
   <div class="eyebrow">02 / CREATIVE PRODUCTION STUDIO</div>
   <h2>NOVA</h2>
   <p>Kreativ produktionsstudio. Från trendspaning och manus till färdigt YouTube-innehåll.</p>
  </div>
- <div class="room-stage">
-  <div class="stage-orbit"></div>
-  <div class="stage-orbit two"></div>
-  <div class="stage-core">N</div>
-  <div class="stage-floor"></div>
+
+ <div class="workstation-stage">
+  <div class="holo-grid"></div>
+
+  <div class="ai-figure">
+   <svg viewBox="0 0 180 220">
+    <ellipse cx="90" cy="205" rx="50" ry="8"/>
+    <path d="M58 70 Q45 83 43 115 L37 165 L65 178 L115 178 L143 165 L137 115 Q135 83 122 70 Z"/>
+    <path d="M58 82 Q20 90 25 132 L50 145 L67 119"/>
+    <path d="M122 82 Q160 90 155 132 L130 145 L113 119"/>
+    <path d="M70 70 L70 57 L110 57 L110 70"/>
+    <path d="M90 10 Q55 10 55 43 Q55 70 90 76 Q125 70 125 43 Q125 10 90 10 Z"/>
+    <path d="M55 38 Q90 23 125 38"/>
+    <path d="M62 43 L78 43 M102 43 L118 43"/>
+    <circle class="ai-eyes" cx="71" cy="43" r="3"/>
+    <circle class="ai-eyes" cx="109" cy="43" r="3"/>
+    <path d="M80 57 Q90 62 100 57"/>
+    <path d="M45 115 L70 130 L90 125 L110 130 L135 115"/>
+    <path d="M67 119 L90 140 L113 119"/>
+    <path d="M90 140 L90 177"/>
+    <path d="M37 165 L25 190 M143 165 L155 190"/>
+    <path d="M25 190 L70 190 M155 190 L110 190"/>
+    <path d="M90 10 L90 0 M55 43 L45 38 M125 43 L135 38"/>
+   </svg>
+  </div>
+
+  <div class="ai-monitor">
+   <div class="monitor-top">
+    <span>NOVA / CREATIVE STUDIO</span>
+    <span>● PRODUCTION ACTIVE</span>
+   </div>
+   <div class="monitor-content">
+    <div class="monitor-panel">
+     <div class="monitor-line"></div><div class="monitor-line"></div><div class="monitor-line"></div>
+    </div>
+    <div class="monitor-panel">
+     <div class="monitor-graph">
+      <span></span><span></span><span></span><span></span><span></span><span></span>
+     </div>
+    </div>
+    <div class="monitor-panel">
+     <div class="monitor-line"></div><div class="monitor-line"></div><div class="monitor-line"></div>
+    </div>
+   </div>
+  </div>
+
+  <div class="ai-desk"></div>
+  <div class="ai-floor"></div>
  </div>
+
  <div class="room-content">
   <div class="chatbox">
    <div class="chat-title">NOVA / CREATIVE AI CONNECTION</div>
