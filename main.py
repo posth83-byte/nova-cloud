@@ -2,11 +2,11 @@
 import os
 import json
 import urllib.request
-import urllib.error
 import xml.etree.ElementTree as ET
 
 from pathlib import Path
 from datetime import datetime, timezone
+from urllib.parse import quote
 
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
@@ -16,7 +16,7 @@ from pydantic import BaseModel
 app = FastAPI(
     title="NOVA Cloud",
     description="JARVIS och NOVA – personlig AI-central",
-    version="1.5.0"
+    version="2.0.0"
 )
 
 
@@ -40,6 +40,17 @@ OPENROUTER_MODEL = os.getenv(
 )
 
 YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY")
+
+# Lägg kanalernas UC-ID:n här via Render Environment.
+# Flera ID:n separeras med kommatecken.
+YOUTUBE_CHANNEL_IDS = [
+    item.strip()
+    for item in os.getenv("YOUTUBE_CHANNEL_IDS", "").replace(";", ",").split(",")
+    if item.strip()
+]
+
+MAX_RSS_CHANNELS = 15
+MAX_RSS_VIDEOS = 60
 
 
 # ==========================================
@@ -91,24 +102,29 @@ Du ansvarar för:
 - Analys av vad som fungerar på YouTube
 - Strategier för att utveckla kanalen.
 
-Du ska undersöka olika innehållsområden.
+Undersök olika innehållsområden.
 Lås dig inte vid en enda genre.
 
-Prioritera idéer som har potential att:
+Prioritera idéer som kan:
 - Fånga tittarens uppmärksamhet snabbt.
 - Skapa engagemang och kommentarer.
-- Fungera både som Shorts och längre videor.
-- Vara rimliga att producera med gratisverktyg.
+- Fungera som Shorts eller längre videor.
+- Produceras med gratisverktyg.
 
 När trenddata finns tillgänglig ska du använda den.
-Skilj mellan verifierade uppgifter och egna
-bedömningar. Hitta aldrig på statistik.
+
+VIKTIGA REGLER:
+- Skilj verifierade uppgifter från bedömningar.
+- Hitta aldrig på statistik eller visningar.
+- RSS-publicering betyder inte att en video är viral.
+- En populär video är inte automatiskt en växande trend.
+- Ange när data saknas.
+- Hitta inte på källor.
 
 Du kommunicerar på naturlig svenska.
 
 När användaren ber om en video ska du hjälpa till
-att utveckla hela produktionen från idé till
-färdigt publiceringsmaterial.
+med hela produktionen från idé till publiceringsmaterial.
 
 Påstå aldrig att du har producerat eller publicerat
 något som du inte faktiskt har gjort.
@@ -153,18 +169,14 @@ def ask_gemini(message, system_prompt):
     )
 
     with urllib.request.urlopen(req, timeout=60) as response:
-        result = json.loads(
-            response.read().decode("utf-8")
-        )
+        result = json.loads(response.read().decode("utf-8"))
 
     candidates = result.get("candidates", [])
 
     if not candidates:
         raise ValueError("Gemini skickade inget svar.")
 
-    parts = candidates[0].get(
-        "content", {}
-    ).get("parts", [])
+    parts = candidates[0].get("content", {}).get("parts", [])
 
     answer = " ".join(
         part.get("text", "")
@@ -213,20 +225,14 @@ def ask_openrouter(message, system_prompt):
     )
 
     with urllib.request.urlopen(req, timeout=60) as response:
-        result = json.loads(
-            response.read().decode("utf-8")
-        )
+        result = json.loads(response.read().decode("utf-8"))
 
     choices = result.get("choices", [])
 
     if not choices:
         raise ValueError("OpenRouter skickade inget svar.")
 
-    answer = (
-        choices[0]
-        .get("message", {})
-        .get("content", "")
-    )
+    answer = choices[0].get("message", {}).get("content", "")
 
     if isinstance(answer, list):
         answer = " ".join(
@@ -253,28 +259,21 @@ def generate_reply(message, system_prompt):
 
     if GEMINI_API_KEY:
         try:
-            answer = ask_gemini(message, system_prompt)
-
             return {
-                "reply": answer,
+                "reply": ask_gemini(message, system_prompt),
                 "engine": "Gemini"
             }
-
         except Exception as error:
             gemini_error = str(error)
-
     else:
         gemini_error = "Gemini API-nyckel saknas."
 
     if OPENROUTER_API_KEY:
         try:
-            answer = ask_openrouter(message, system_prompt)
-
             return {
-                "reply": answer,
+                "reply": ask_openrouter(message, system_prompt),
                 "engine": "OpenRouter"
             }
-
         except Exception as error:
             raise HTTPException(
                 status_code=502,
@@ -306,7 +305,7 @@ def get_google_trends():
     req = urllib.request.Request(
         url,
         headers={
-            "User-Agent": "Mozilla/5.0 NOVA-Cloud/1.5"
+            "User-Agent": "Mozilla/5.0 NOVA-Cloud/2.0"
         }
     )
 
@@ -335,10 +334,135 @@ def get_google_trends():
 
 
 # ==========================================
-# TRENDKÄLLA 2 – YOUTUBE POPULÄRA VIDEOR
+# TRENDKÄLLA 2 – YOUTUBE RSS
 # ==========================================
 
-def get_youtube_popular():
+def get_youtube_rss():
+
+    videos = []
+    errors = []
+    channels_checked = 0
+
+    # YouTube kräver kanal-ID för sina officiella RSS-flöden.
+    valid_ids = [
+        channel_id
+        for channel_id in YOUTUBE_CHANNEL_IDS
+        if channel_id.startswith("UC") and len(channel_id) == 24
+    ]
+
+    invalid_count = len(YOUTUBE_CHANNEL_IDS) - len(valid_ids)
+
+    if invalid_count:
+        errors.append(
+            f"{invalid_count} kanal-ID:n hade fel format."
+        )
+
+    for channel_id in valid_ids[:MAX_RSS_CHANNELS]:
+
+        url = (
+            "https://www.youtube.com/feeds/videos.xml"
+            f"?channel_id={quote(channel_id)}"
+        )
+
+        try:
+            req = urllib.request.Request(
+                url,
+                headers={
+                    "User-Agent": "Mozilla/5.0 NOVA-Cloud/2.0"
+                }
+            )
+
+            with urllib.request.urlopen(req, timeout=20) as response:
+                xml_data = response.read()
+
+            root = ET.fromstring(xml_data)
+
+            ns = {
+                "atom": "http://www.w3.org/2005/Atom",
+                "yt": "http://www.youtube.com/xml/schemas/2015"
+            }
+
+            feed_title = root.findtext(
+                "atom:title",
+                default="Okänd kanal",
+                namespaces=ns
+            )
+
+            channels_checked += 1
+
+            for entry in root.findall("atom:entry", ns):
+
+                video_id = entry.findtext("yt:videoId", namespaces=ns)
+                title = entry.findtext(
+                    "atom:title",
+                    default="",
+                    namespaces=ns
+                )
+                published = entry.findtext(
+                    "atom:published",
+                    default=None,
+                    namespaces=ns
+                )
+
+                author = entry.find(
+                    "atom:author/atom:name",
+                    ns
+                )
+
+                channel_name = (
+                    author.text if author is not None
+                    else feed_title
+                )
+
+                if not video_id or not title:
+                    continue
+
+                videos.append({
+                    "title": title,
+                    "channel": channel_name,
+                    "channel_id": channel_id,
+                    "published": published,
+                    "video_id": video_id,
+                    "url": (
+                        f"https://www.youtube.com/watch?v={video_id}"
+                    ),
+                    "source": "YouTube RSS",
+                    "statistics_available": False
+                })
+
+        except Exception as error:
+            errors.append(
+                f"YouTube RSS ({channel_id}): {str(error)}"
+            )
+
+    # Ta bort eventuella dubbletter.
+    unique_videos = []
+    seen = set()
+
+    for video in videos:
+        video_id = video["video_id"]
+
+        if video_id not in seen:
+            seen.add(video_id)
+            unique_videos.append(video)
+
+    unique_videos.sort(
+        key=lambda item: item.get("published") or "",
+        reverse=True
+    )
+
+    return {
+        "videos": unique_videos[:MAX_RSS_VIDEOS],
+        "channels_checked": channels_checked,
+        "errors": errors
+    }
+
+
+# ==========================================
+# TRENDKÄLLA 3 – YOUTUBE API (VALFRI)
+# ==========================================
+
+def get_youtube_api_popular():
 
     if not YOUTUBE_API_KEY:
         return []
@@ -355,14 +479,12 @@ def get_youtube_popular():
     req = urllib.request.Request(
         url,
         headers={
-            "User-Agent": "NOVA-Cloud/1.5"
+            "User-Agent": "NOVA-Cloud/2.0"
         }
     )
 
     with urllib.request.urlopen(req, timeout=20) as response:
-        result = json.loads(
-            response.read().decode("utf-8")
-        )
+        result = json.loads(response.read().decode("utf-8"))
 
     videos = []
 
@@ -370,7 +492,6 @@ def get_youtube_popular():
 
         snippet = video.get("snippet", {})
         statistics = video.get("statistics", {})
-
         video_id = video.get("id")
 
         videos.append({
@@ -383,7 +504,8 @@ def get_youtube_popular():
                 f"https://www.youtube.com/watch?v={video_id}"
                 if video_id else None
             ),
-            "source": "YouTube Data API"
+            "source": "YouTube Data API",
+            "statistics_available": True
         })
 
     return videos
@@ -398,34 +520,60 @@ def collect_trends():
     data = {
         "updated": datetime.now(timezone.utc).isoformat(),
         "google_trends": [],
+        "youtube_rss": [],
         "youtube_popular": [],
+        "youtube_channels_checked": 0,
         "sources": [],
-        "errors": []
+        "errors": [],
+        "limitations": [
+            "YouTube RSS visar nya videor från valda kanaler.",
+            "RSS innehåller inte visningsstatistik.",
+            "Google Trends visar sökintresse, inte YouTube-visningar."
+        ]
     }
 
+    # Google Trends
     try:
         data["google_trends"] = get_google_trends()
-        data["sources"].append("Google Trends Sverige")
+
+        if data["google_trends"]:
+            data["sources"].append("Google Trends Sverige")
 
     except Exception as error:
         data["errors"].append(
             "Google Trends: " + str(error)
         )
 
-    try:
-        data["youtube_popular"] = get_youtube_popular()
+    # YouTube RSS
+    rss_result = get_youtube_rss()
 
-        if YOUTUBE_API_KEY:
-            data["sources"].append("YouTube Data API")
-        else:
-            data["errors"].append(
-                "YouTube Data API är inte konfigurerat."
-            )
+    data["youtube_rss"] = rss_result["videos"]
+    data["youtube_channels_checked"] = (
+        rss_result["channels_checked"]
+    )
 
-    except Exception as error:
+    data["errors"].extend(rss_result["errors"])
+
+    if data["youtube_rss"]:
+        data["sources"].append("YouTube RSS")
+
+    elif not YOUTUBE_CHANNEL_IDS:
         data["errors"].append(
-            "YouTube: " + str(error)
+            "YouTube RSS väntar på kanal-ID:n i Render."
         )
+
+    # Valfri YouTube API
+    if YOUTUBE_API_KEY:
+        try:
+            data["youtube_popular"] = get_youtube_api_popular()
+
+            if data["youtube_popular"]:
+                data["sources"].append("YouTube Data API")
+
+        except Exception as error:
+            data["errors"].append(
+                "YouTube Data API: " + str(error)
+            )
 
     return data
 
@@ -456,7 +604,7 @@ async def health():
     return {
         "status": "online",
         "service": "NOVA Cloud",
-        "version": "1.5.0",
+        "version": "2.0.0",
         "time": datetime.now(timezone.utc).isoformat()
     }
 
@@ -468,6 +616,11 @@ async def health():
 @app.get("/api/status")
 async def status():
 
+    valid_channels = [
+        item for item in YOUTUBE_CHANNEL_IDS
+        if item.startswith("UC") and len(item) == 24
+    ]
+
     return {
         "status": "online",
         "assistant": "JARVIS",
@@ -476,7 +629,9 @@ async def status():
         "gemini_configured": bool(GEMINI_API_KEY),
         "openrouter_configured": bool(OPENROUTER_API_KEY),
         "youtube_api_configured": bool(YOUTUBE_API_KEY),
-        "version": "1.5.0",
+        "youtube_rss_configured": bool(valid_channels),
+        "youtube_channels_configured": len(valid_channels),
+        "version": "2.0.0",
         "time": datetime.now(timezone.utc).isoformat()
     }
 
@@ -516,9 +671,15 @@ async def trends():
 
     data = collect_trends()
 
+    has_data = (
+        bool(data["google_trends"])
+        or bool(data["youtube_rss"])
+        or bool(data["youtube_popular"])
+    )
+
     return {
         "assistant": "NOVA Trendmotor",
-        "status": "completed",
+        "status": "completed" if has_data else "partial",
         "channel": "Mikael Posth",
         **data
     }
@@ -535,6 +696,7 @@ async def trend_ideas():
 
     has_data = (
         bool(data["google_trends"])
+        or bool(data["youtube_rss"])
         or bool(data["youtube_popular"])
     )
 
@@ -554,33 +716,37 @@ async def trend_ideas():
     )
 
     message = f"""
-Analysera följande aktuella trendmaterial.
+Analysera följande insamlade trendmaterial.
 
 KANAL: Mikael Posth
 
 MATERIAL:
 {trend_context}
 
-Uppgift:
+UPPGIFT:
 
 1. Identifiera de mest intressanta ämnena.
 2. Bedöm vilka som passar Mikael Posth.
 3. Skapa tre konkreta videoidéer.
 4. Ge varje idé en stark videotitel.
-5. Föreslå thumbnail och kort text på bilden.
-6. Föreslå om videon bör vara en Short eller lång video.
+5. Föreslå thumbnail och text på bilden.
+6. Föreslå Short eller lång video.
 7. Förklara varför idén kan fungera.
 8. Rangordna idéerna efter potential.
-9. Föreslå vilken video som bör produceras först.
+9. Rekommendera vilken video som bör produceras först.
+10. Föreslå en konkret öppning som fångar tittaren.
 
-VIKTIGT:
+REGLER:
 
-- Hitta inte på visningssiffror eller statistik.
-- Skilj mellan faktiska trenddata och egna bedömningar.
-- Populära videor är inte automatiskt växande trender.
-- Anpassa idéerna till en svensk YouTube-publik.
-- Tänk kreativt och våga föreslå olika ämnen.
-- Prioritera idéer som går att producera med gratisverktyg.
+- Hitta inte på visningssiffror.
+- Skilj mellan fakta och egna bedömningar.
+- RSS-videor är publicerade videor, inte bevis på viralitet.
+- Google Trends är sökintresse, inte YouTube-statistik.
+- Ange tydligt om statistik saknas.
+- Använd faktiska videolänkar när de finns.
+- Anpassa för en svensk YouTube-publik.
+- Tänk kreativt och föreslå olika ämnen.
+- Prioritera gratisverktyg och rimlig produktionstid.
 """
 
     result = generate_reply(
@@ -590,11 +756,19 @@ VIKTIGT:
 
     return {
         "assistant": "NOVA Trendmotor",
+        "version": "2.0.0",
         "status": "completed",
         "channel": "Mikael Posth",
         "updated": data["updated"],
         "sources": data["sources"],
         "errors": data["errors"],
+        "data_quality": {
+            "google_trends_items": len(data["google_trends"]),
+            "youtube_rss_videos": len(data["youtube_rss"]),
+            "youtube_api_videos": len(data["youtube_popular"]),
+            "youtube_channels_checked": data["youtube_channels_checked"]
+        },
+        "limitations": data["limitations"],
         "engine": result["engine"],
         "analysis": result["reply"]
     }
