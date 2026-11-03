@@ -10,128 +10,105 @@
 <style>
 *{box-sizing:border-box}
 body{
- margin:0;
- background:radial-gradient(ellipse at 50% 0%,#15365c,#050c1b 55%,#02050d);
- color:#e8f5ff;
- font-family:Arial,sans-serif;
- min-height:100vh;
+ margin:0;background:radial-gradient(ellipse at 50% 0%,#15365c,#050c1b 55%,#02050d);
+ color:#e8f5ff;font-family:Arial,sans-serif;min-height:100vh
 }
-header{text-align:center;padding:30px 15px 20px;border-bottom:1px solid #285276}
-.logo{font-size:11px;letter-spacing:5px;color:#75d9ff}
-h1{font-size:27px;letter-spacing:3px;text-shadow:0 0 20px #29baff}
-.sub{font-size:11px;color:#8aabc8;letter-spacing:2px}
-.status{display:inline-block;margin-top:15px;padding:8px 15px;border:1px solid #19a985;border-radius:30px;color:#70f5c6;font-size:11px}
-main{max-width:850px;margin:auto;padding:20px 15px}
-.label{font-size:11px;letter-spacing:3px;color:#7ccfff;margin:15px 5px}
+header{text-align:center;padding:28px 15px 20px;border-bottom:1px solid #285276}
+.logo{font-size:10px;letter-spacing:5px;color:#75d9ff}
+h1{font-size:25px;letter-spacing:3px;text-shadow:0 0 20px #29baff}
+.sub{font-size:10px;color:#8aabc8;letter-spacing:2px}
+.status{display:inline-block;margin-top:12px;padding:8px 15px;border:1px solid #19a985;border-radius:30px;color:#70f5c6;font-size:11px}
+main{max-width:900px;margin:auto;padding:18px 14px}
+.label{font-size:10px;letter-spacing:3px;color:#7ccfff;margin:15px 5px}
 .office{
  background:linear-gradient(145deg,#102d4b,#071326);
  border:1px solid #2889bb;border-radius:20px;
- padding:20px;margin-bottom:22px;
- box-shadow:0 0 30px #008cff20;
- overflow:hidden;
+ padding:19px;margin-bottom:20px;box-shadow:0 0 30px #008cff20
 }
-.nova{
- background:linear-gradient(145deg,#302047,#101022);
- border-color:#9867c8;
- box-shadow:0 0 30px #a44dff20;
-}
+.nova{background:linear-gradient(145deg,#302047,#101022);border-color:#9867c8;box-shadow:0 0 30px #a44dff20}
 .tag{font-size:10px;letter-spacing:3px;color:#75d8ff}
 .nova .tag{color:#d2a0ff}
-.office h2{font-size:29px;letter-spacing:5px;margin:12px 0 5px}
+.office h2{font-size:28px;letter-spacing:5px;margin:12px 0 5px}
 .desc{font-size:13px;color:#a9c5dc;line-height:1.6}
-
-/* HOLOGRAM */
-.holo-stage{
- height:245px;
- position:relative;
- display:flex;
- justify-content:center;
- align-items:center;
- margin:12px 0;
- overflow:hidden;
-}
-.holo-floor{
- position:absolute;
- width:210px;height:42px;
- border:2px solid #35bfff;
- border-radius:50%;
- bottom:18px;
- box-shadow:0 0 15px #26bfff,0 0 40px #168dff;
- animation:floor 3s ease-in-out infinite;
-}
-.nova .holo-floor{
- border-color:#bd82ff;
- box-shadow:0 0 15px #bd82ff,0 0 40px #984cff;
-}
-.ring{
- position:absolute;
- width:175px;height:175px;
- border:1px solid #40c9ff66;
- border-radius:50%;
- animation:rotate 8s linear infinite;
-}
-.ring.two{
- width:205px;height:205px;
- border-style:dashed;
- animation:rotate 14s linear infinite reverse;
-}
+.holo-stage{height:205px;position:relative;display:flex;justify-content:center;align-items:center;margin:10px 0;overflow:hidden}
+.holo-floor{position:absolute;width:190px;height:38px;border:2px solid #35bfff;border-radius:50%;bottom:12px;box-shadow:0 0 15px #26bfff,0 0 40px #168dff;animation:floor 3s ease-in-out infinite}
+.nova .holo-floor{border-color:#bd82ff;box-shadow:0 0 15px #bd82ff,0 0 40px #984cff}
+.ring{position:absolute;width:150px;height:150px;border:1px solid #40c9ff66;border-radius:50%;animation:rotate 8s linear infinite}
+.ring.two{width:180px;height:180px;border-style:dashed;animation:rotate 14s linear infinite reverse}
 .nova .ring{border-color:#cb9aff66}
-.avatar{
- position:relative;
- width:145px;height:195px;
- animation:float 3s ease-in-out infinite;
- filter:drop-shadow(0 0 12px #25bfff);
-}
+.avatar{position:relative;width:115px;height:155px;animation:float 3s ease-in-out infinite;filter:drop-shadow(0 0 12px #25bfff)}
 .nova .avatar{filter:drop-shadow(0 0 13px #bb7aff)}
-.avatar svg{width:100%;height:100%;overflow:visible}
-.avatar path,.avatar circle{
- stroke:#65dfff;
- fill:#147dbb33;
- stroke-width:2;
-}
-.nova .avatar path,.nova .avatar circle{
- stroke:#d1a0ff;
- fill:#9755cb33;
-}
-.scan{
- position:absolute;left:15%;right:15%;
- height:2px;top:25%;
- background:#7deaff;
- box-shadow:0 0 12px #43d5ff;
- animation:scan 3s ease-in-out infinite;
- opacity:.7;
-}
+.avatar svg{width:100%;height:100%}
+.avatar path,.avatar circle{stroke:#65dfff;fill:#147dbb33;stroke-width:2}
+.nova .avatar path,.nova .avatar circle{stroke:#d1a0ff;fill:#9755cb33}
+.scan{position:absolute;left:15%;right:15%;height:2px;top:25%;background:#7deaff;box-shadow:0 0 12px #43d5ff;animation:scan 3s ease-in-out infinite;opacity:.7}
 .nova .scan{background:#d5a1ff;box-shadow:0 0 12px #c37cff}
-.holo-caption{
- position:absolute;bottom:0;
- font-size:9px;letter-spacing:3px;
- color:#77dfff;
- text-shadow:0 0 10px #32baff;
-}
+.holo-caption{position:absolute;bottom:0;font-size:9px;letter-spacing:3px;color:#77dfff}
 .nova .holo-caption{color:#d6a5ff}
-@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-12px)}}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
 @keyframes rotate{to{transform:rotate(360deg)}}
 @keyframes scan{0%{top:20%;opacity:0}50%{opacity:1}100%{top:85%;opacity:0}}
 @keyframes floor{50%{transform:scaleX(.8);opacity:.6}}
-.features{display:flex;flex-wrap:wrap;gap:8px;margin:17px 0}
-.feature{border:1px solid #39739b;border-radius:20px;padding:7px 10px;font-size:10px;color:#b9e6ff}
+.features{display:flex;flex-wrap:wrap;gap:7px;margin:15px 0}
+.feature{border:1px solid #39739b;border-radius:20px;padding:7px 10px;font-size:9px;color:#b9e6ff}
 .nova .feature{border-color:#8b62a9;color:#e3c9ff}
 .launch{
- display:block;text-align:center;text-decoration:none;
- padding:16px;margin-top:14px;border-radius:10px;
- background:linear-gradient(90deg,#075b92,#1686c5);
- border:1px solid #54caff;color:white;
- font-weight:bold;font-size:12px;letter-spacing:2px;
+ width:100%;display:block;text-align:center;padding:15px;margin-top:12px;
+ border-radius:10px;background:linear-gradient(90deg,#075b92,#1686c5);
+ border:1px solid #54caff;color:white;font-weight:bold;font-size:12px;
+ letter-spacing:2px;cursor:pointer
 }
 .nova .launch{background:linear-gradient(90deg,#56317f,#9453c6);border-color:#c08bff}
-.panel{border:1px solid #24496b;border-radius:15px;padding:18px;background:#091629;margin-top:24px}
-.panel h3{font-size:12px;letter-spacing:2px;color:#75cfff}
-.panel p{font-size:12px;color:#9db7cb}
-#cloudStatus{font-size:12px;color:#69f0c0}
-footer{text-align:center;padding:25px;color:#52738e;font-size:10px;letter-spacing:2px}
-@media(prefers-reduced-motion:reduce){
- *,*:before,*:after{animation:none!important}
+.launch:active{transform:scale(.99)}
+.chatbox{display:none;margin-top:17px;padding-top:15px;border-top:1px solid #34749a}
+.nova .chatbox{border-color:#79569a}
+.chatbox.open{display:block}
+.chat-title{font-size:11px;letter-spacing:2px;color:#8bdcff;margin-bottom:10px}
+.nova .chat-title{color:#d7a5ff}
+.messages{
+ height:240px;overflow-y:auto;background:#030b18;border:1px solid #234969;
+ border-radius:12px;padding:12px;margin-bottom:10px
 }
+.nova .messages{border-color:#62447d;background:#100b1b}
+.msg{font-size:13px;line-height:1.55;padding:10px 12px;border-radius:10px;margin-bottom:9px;white-space:pre-wrap;overflow-wrap:anywhere}
+.msg.user{background:#12395a;margin-left:12%;color:#e6f6ff}
+.msg.ai{background:#102337;margin-right:8%;color:#c7e9ff}
+.nova .msg.user{background:#42275c}
+.nova .msg.ai{background:#291b3a;color:#eedcff}
+.msg.error{background:#4b2027;color:#ffd5d5}
+.input-row{display:flex;gap:8px}
+.chat-input{
+ flex:1;min-width:0;background:#061323;color:white;border:1px solid #39739b;
+ border-radius:10px;padding:13px;font-size:14px;outline:none
+}
+.nova .chat-input{background:#150e20;border-color:#79569a}
+.send{
+ border:0;border-radius:10px;padding:0 17px;background:#087db9;
+ color:white;font-weight:bold;cursor:pointer
+}
+.nova .send{background:#7946a5}
+.send:disabled{opacity:.5}
+.tools{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.tool-btn{background:#10283e;color:#b9e6ff;border:1px solid #39739b;border-radius:8px;padding:10px;font-size:10px;cursor:pointer}
+.nova .tool-btn{background:#251733;color:#e3c9ff;border-color:#79569a}
+.panel{border:1px solid #24496b;border-radius:15px;padding:17px;background:#091629;margin-top:23px}
+.panel h3{font-size:11px;letter-spacing:2px;color:#75cfff}
+.panel p{font-size:12px;color:#9db7cb;line-height:1.5}
+#cloudStatus{font-size:12px;color:#69f0c0}
+.status-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:14px}
+.status-item{background:#0c2035;padding:12px;border-radius:9px;font-size:11px;color:#a8c9e2}
+.status-item strong{display:block;margin-top:7px;color:#70f5c6}
+#trendResult{white-space:pre-wrap;font-size:12px;line-height:1.6;color:#d8eaff;margin-top:12px;overflow-wrap:anywhere}
+footer{text-align:center;padding:25px;color:#52738e;font-size:10px;letter-spacing:2px}
+@media(max-width:480px){
+ h1{font-size:21px}
+ main{padding:13px 10px}
+ .office{padding:15px}
+ .holo-stage{height:190px}
+ .messages{height:220px}
+ .send{padding:0 13px}
+}
+@media(prefers-reduced-motion:reduce){*,*:before,*:after{animation:none!important}}
 </style>
 </head>
 
@@ -140,7 +117,7 @@ footer{text-align:center;padding:25px;color:#52738e;font-size:10px;letter-spacin
  <div class="logo">PERSONAL ARTIFICIAL INTELLIGENCE</div>
  <h1>AI COMMAND CENTER</h1>
  <div class="sub">YOUR PRIVATE AI HEADQUARTERS</div>
- <div class="status">● COMMAND CENTER READY</div>
+ <div class="status" id="topStatus">● ANSLUTER TILL CLOUD</div>
 </header>
 
 <main>
@@ -149,57 +126,61 @@ footer{text-align:center;padding:25px;color:#52738e;font-size:10px;letter-spacin
  <section class="office">
   <div class="tag">01 / MAIN CONTROL ROOM</div>
   <h2>JARVIS</h2>
-  <div class="desc">Din personliga AI-assistent. Alltid redo att hjälpa dig.</div>
+  <div class="desc">Din personliga AI-assistent. Teknik, planering, research och kontroll.</div>
 
   <div class="holo-stage">
-   <div class="ring"></div>
-   <div class="ring two"></div>
+   <div class="ring"></div><div class="ring two"></div>
    <div class="avatar">
     <svg viewBox="0 0 145 195">
      <circle cx="72" cy="39" r="24"/>
      <path d="M55 67 L48 83 L32 91 L20 123 L25 174 L120 174 L125 123 L112 91 L96 83 L89 67"/>
      <path d="M48 91 L72 108 L96 91 M72 108 L72 174"/>
-     <path d="M55 37 L64 37 M81 37 L90 37"/>
-     <path d="M63 53 Q72 59 81 53"/>
-     <path d="M48 91 L39 135 M96 91 L105 135"/>
-     <path d="M58 80 L72 88 L86 80"/>
+     <path d="M55 37 L64 37 M81 37 L90 37 M63 53 Q72 59 81 53"/>
+     <path d="M48 91 L39 135 M96 91 L105 135 M58 80 L72 88 L86 80"/>
     </svg>
    </div>
-   <div class="scan"></div>
-   <div class="holo-floor"></div>
+   <div class="scan"></div><div class="holo-floor"></div>
    <div class="holo-caption">JARVIS / HOLOGRAPHIC INTERFACE</div>
   </div>
 
   <div class="features">
-   <span class="feature">RÖSTSTYRNING</span>
    <span class="feature">PERSONLIG AI</span>
    <span class="feature">PLANERING</span>
+   <span class="feature">RESEARCH</span>
    <span class="feature">KONTROLL</span>
   </div>
-  <a class="launch" href="shortcuts://run-shortcut?name=JARVIS">ÖPPNA JARVIS →</a>
+
+  <button class="launch" onclick="toggleChat('jarvisChat')">ÖPPNA JARVIS CLOUD →</button>
+
+  <div class="chatbox" id="jarvisChat">
+   <div class="chat-title">JARVIS / SECURE AI CONNECTION</div>
+   <div class="messages" id="jarvisMessages">
+    <div class="msg ai">God dag. JARVIS är redo. Vad kan jag hjälpa dig med?</div>
+   </div>
+   <form class="input-row" onsubmit="sendMessage(event,'jarvis')">
+    <input class="chat-input" id="jarvisInput" placeholder="Skriv till JARVIS..." autocomplete="off">
+    <button class="send" id="jarvisSend">SKICKA</button>
+   </form>
+  </div>
  </section>
 
  <section class="office nova">
   <div class="tag">02 / CREATIVE PRODUCTION STUDIO</div>
   <h2>NOVA</h2>
-  <div class="desc">Din kreativa AI-produktionsassistent. Från idé till färdig video.</div>
+  <div class="desc">Din kreativa AI-produktionsassistent. Från idé till färdig YouTube-video.</div>
 
   <div class="holo-stage">
-   <div class="ring"></div>
-   <div class="ring two"></div>
+   <div class="ring"></div><div class="ring two"></div>
    <div class="avatar">
     <svg viewBox="0 0 145 195">
      <circle cx="72" cy="39" r="24"/>
      <path d="M55 67 L48 83 L32 91 L20 123 L25 174 L120 174 L125 123 L112 91 L96 83 L89 67"/>
      <path d="M48 91 L72 108 L96 91 M72 108 L72 174"/>
-     <path d="M55 37 L64 37 M81 37 L90 37"/>
-     <path d="M63 53 Q72 59 81 53"/>
-     <path d="M48 91 L39 135 M96 91 L105 135"/>
-     <path d="M58 80 L72 88 L86 80"/>
+     <path d="M55 37 L64 37 M81 37 L90 37 M63 53 Q72 59 81 53"/>
+     <path d="M48 91 L39 135 M96 91 L105 135 M58 80 L72 88 L86 80"/>
     </svg>
    </div>
-   <div class="scan"></div>
-   <div class="holo-floor"></div>
+   <div class="scan"></div><div class="holo-floor"></div>
    <div class="holo-caption">NOVA / CREATIVE AI INTERFACE</div>
   </div>
 
@@ -210,13 +191,35 @@ footer{text-align:center;padding:25px;color:#52738e;font-size:10px;letter-spacin
    <span class="feature">RESEARCH</span>
    <span class="feature">THUMBNAILS</span>
   </div>
-  <a class="launch" href="shortcuts://run-shortcut?name=Nova">ÖPPNA NOVA →</a>
+
+  <button class="launch" onclick="toggleChat('novaChat')">ÖPPNA NOVA STUDIO →</button>
+
+  <div class="chatbox" id="novaChat">
+   <div class="chat-title">NOVA / CREATIVE AI CONNECTION</div>
+   <div class="messages" id="novaMessages">
+    <div class="msg ai">Hej! NOVA är redo att utveckla dina YouTube-projekt. Vad ska vi skapa?</div>
+   </div>
+   <form class="input-row" onsubmit="sendMessage(event,'nova')">
+    <input class="chat-input" id="novaInput" placeholder="Skriv till NOVA..." autocomplete="off">
+    <button class="send" id="novaSend">SKICKA</button>
+   </form>
+   <div class="tools">
+    <button class="tool-btn" onclick="runTrends()">ANALYSERA YOUTUBE-TRENDER</button>
+   </div>
+   <div id="trendResult"></div>
+  </div>
  </section>
 
  <section class="panel">
   <h3>NOVA CLOUD / SYSTEM STATUS</h3>
-  <p>Serveranslutning</p>
+  <p>Serveranslutning och AI-motorer</p>
   <div id="cloudStatus">● KONTROLLERAR...</div>
+  <div class="status-grid">
+   <div class="status-item">GEMINI<strong id="geminiStatus">Kontrollerar...</strong></div>
+   <div class="status-item">OPENROUTER<strong id="routerStatus">Kontrollerar...</strong></div>
+   <div class="status-item">JARVIS<strong id="jarvisStatus">Kontrollerar...</strong></div>
+   <div class="status-item">NOVA<strong id="novaStatus">Kontrollerar...</strong></div>
+  </div>
   <p id="cloudInfo">Väntar på servern.</p>
  </section>
 </main>
@@ -224,21 +227,137 @@ footer{text-align:center;padding:25px;color:#52738e;font-size:10px;letter-spacin
 <footer>JARVIS × NOVA<br><br>PRIVATE AI COMMAND CENTER</footer>
 
 <script>
-async function checkCloud(){
- const status=document.getElementById("cloudStatus");
- const info=document.getElementById("cloudInfo");
- try{
-  const response=await fetch("/api/status");
-  if(!response.ok)throw new Error();
-  await response.json();
-  status.textContent="● NOVA CLOUD ONLINE";
-  info.textContent="Servern svarar. Systemanslutningen fungerar.";
- }catch(e){
-  status.textContent="● ANSLUTNING EJ BEKRÄFTAD";
-  status.style.color="#ffbd70";
-  info.textContent="Kontrollera NOVA Cloud.";
+const $ = id => document.getElementById(id);
+
+function toggleChat(id){
+ const box = $(id);
+ box.classList.toggle("open");
+ if(box.classList.contains("open")){
+  const input = box.querySelector("input");
+  setTimeout(()=>input.focus(),100);
+  box.scrollIntoView({behavior:"smooth",block:"nearest"});
  }
 }
+
+function addMessage(target,text,type="ai"){
+ const area = $(target);
+ const msg = document.createElement("div");
+ msg.className = "msg " + type;
+ msg.textContent = text;
+ area.appendChild(msg);
+ area.scrollTop = area.scrollHeight;
+ return msg;
+}
+
+async function sendMessage(event,assistant){
+ event.preventDefault();
+
+ const isNova = assistant === "nova";
+ const input = $(isNova ? "novaInput" : "jarvisInput");
+ const messages = isNova ? "novaMessages" : "jarvisMessages";
+ const button = $(isNova ? "novaSend" : "jarvisSend");
+ const message = input.value.trim();
+
+ if(!message) return;
+
+ addMessage(messages,message,"user");
+ input.value = "";
+ button.disabled = true;
+ button.textContent = "...";
+
+ const loading = addMessage(messages,
+  isNova ? "NOVA analyserar..." : "JARVIS tänker...","ai");
+
+ try{
+  const endpoint = isNova ? "/api/nova" : "/api/chat";
+
+  const response = await fetch(endpoint,{
+   method:"POST",
+   headers:{"Content-Type":"application/json"},
+   body:JSON.stringify({message})
+  });
+
+  const data = await response.json();
+
+  if(!response.ok){
+   throw new Error(
+    typeof data.detail === "string"
+     ? data.detail
+     : JSON.stringify(data.detail || data)
+   );
+  }
+
+  loading.textContent =
+   (data.reply || "Inget svar mottogs.") +
+   "\n\nAI-motor: " + (data.engine || "Okänd");
+
+ }catch(error){
+  loading.className = "msg error";
+  loading.textContent = "Anslutningsfel: " + error.message;
+ }finally{
+  button.disabled = false;
+  button.textContent = "SKICKA";
+  input.focus();
+ }
+}
+
+async function runTrends(){
+ const result = $("trendResult");
+ result.textContent = "NOVA hämtar trenddata och analyserar materialet. Detta kan ta en stund...";
+
+ try{
+  const response = await fetch("/api/trends/ideas",{method:"POST"});
+  const data = await response.json();
+
+  if(!response.ok){
+   throw new Error(
+    typeof data.detail === "string"
+     ? data.detail
+     : JSON.stringify(data.detail || data)
+   );
+  }
+
+  result.textContent =
+   data.analysis +
+   "\n\nAI-motor: " + (data.engine || "Okänd") +
+   "\nDatakällor: " + (data.sources || []).join(", ") +
+   "\nKontrollerade RSS-kanaler: " +
+   (data.data_quality?.youtube_channels_checked ?? 0);
+
+ }catch(error){
+  result.textContent = "Trendanalysen kunde inte genomföras: " + error.message;
+ }
+}
+
+async function checkCloud(){
+ try{
+  const response = await fetch("/api/status");
+  if(!response.ok) throw new Error("Servern svarar inte");
+
+  const data = await response.json();
+
+  $("topStatus").textContent = "● COMMAND CENTER ONLINE";
+  $("cloudStatus").textContent = "● NOVA CLOUD ONLINE";
+  $("cloudInfo").textContent =
+   "Version " + data.version + " – servern svarar.";
+
+  $("geminiStatus").textContent =
+   data.gemini_configured ? "ONLINE" : "EJ ANSLUTEN";
+  $("routerStatus").textContent =
+   data.openrouter_configured ? "ONLINE" : "EJ ANSLUTEN";
+  $("jarvisStatus").textContent =
+   data.jarvis === "online" ? "ONLINE" : "OKÄND";
+  $("novaStatus").textContent =
+   data.nova === "online" ? "ONLINE" : "OKÄND";
+
+ }catch(error){
+  $("topStatus").textContent = "● CLOUD EJ NÅBAR";
+  $("cloudStatus").textContent = "● ANSLUTNING MISSLYCKADES";
+  $("cloudStatus").style.color = "#ffbd70";
+  $("cloudInfo").textContent = "Kontrollera Render och internetanslutningen.";
+ }
+}
+
 checkCloud();
 </script>
 </body>
