@@ -8,13 +8,16 @@
 <title>JARVIS × NOVA | AI Headquarters</title>
 
 <style>
-*{box-sizing:border-box}
 :root{
  --blue:#39c8ff;
+ --blue2:#087db9;
  --purple:#bd80ff;
+ --purple2:#7946a5;
  --bg:#030713;
  --muted:#91a9c2;
 }
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
 body{
  margin:0;color:#eaf6ff;font-family:Arial,sans-serif;
  background:
@@ -24,18 +27,20 @@ body{
  min-height:100vh;overflow-x:hidden
 }
 body:before{
- content:"";position:fixed;inset:0;pointer-events:none;
+ content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
  opacity:.16;
  background-image:
  linear-gradient(#3477a322 1px,transparent 1px),
  linear-gradient(90deg,#3477a322 1px,transparent 1px);
  background-size:45px 45px;
- mask-image:linear-gradient(to bottom,black,transparent 85%);
+ mask-image:linear-gradient(to bottom,black,transparent 85%)
 }
+button,input{font:inherit}
+button{touch-action:manipulation}
 header{
- position:relative;text-align:center;padding:25px 15px 18px;
+ position:relative;z-index:2;text-align:center;padding:23px 15px 18px;
  border-bottom:1px solid #315a7a88;
- background:#061020aa;backdrop-filter:blur(12px)
+ background:#061020cc;backdrop-filter:blur(14px)
 }
 .logo{font-size:9px;letter-spacing:5px;color:#74dfff}
 h1{
@@ -48,210 +53,284 @@ h1{
  border:1px solid #19a985;border-radius:30px;
  color:#70f5c6;font-size:10px;letter-spacing:1px
 }
-main{max-width:1050px;margin:auto;padding:20px 15px}
+main{position:relative;z-index:1;max-width:1100px;margin:auto;padding:20px 15px 35px}
 .section-label{
  font-size:10px;letter-spacing:3px;color:#7bd5ff;
- margin:12px 3px
+ margin:15px 3px
 }
+.hidden{display:none!important}
 
-/* CENTRAL HEADQUARTERS */
+/* MAIN HEADQUARTERS */
+#homeView{animation:appear .65s ease}
 .headquarters{
  position:relative;overflow:hidden;text-align:center;
- min-height:330px;padding:24px 15px 30px;
- border:1px solid #367da7;border-radius:22px;
+ min-height:420px;padding:25px 15px 30px;
+ border:1px solid #367da7;border-radius:24px;
  background:
- radial-gradient(ellipse at 50% 45%,#16436b88,transparent 55%),
+ radial-gradient(ellipse at 50% 45%,#16436b99,transparent 55%),
  linear-gradient(145deg,#0c2039,#050d1d);
- box-shadow:0 0 35px #008cff22,inset 0 0 45px #168cff12;
+ box-shadow:0 0 45px #008cff25,inset 0 0 55px #168cff16;
+ perspective:900px
 }
 .headquarters:before,.headquarters:after{
- content:"";position:absolute;border:1px solid #4abaff22;
- border-radius:50%;pointer-events:none
+ content:"";position:absolute;border:1px solid #4abaff27;
+ border-radius:50%;pointer-events:none;left:50%;top:48%;
+ transform:translate(-50%,-50%) rotateX(68deg)
 }
-.headquarters:before{width:330px;height:330px;left:50%;top:50%;transform:translate(-50%,-50%)}
-.headquarters:after{width:430px;height:430px;left:50%;top:50%;transform:translate(-50%,-50%)}
+.headquarters:before{width:340px;height:340px;animation:spin 30s linear infinite}
+.headquarters:after{width:460px;height:460px;animation:spin 45s linear infinite reverse}
 .hq-caption{
  position:relative;z-index:2;font-size:9px;
  letter-spacing:4px;color:#8bdfff
 }
 .core{
- position:relative;width:170px;height:170px;
- margin:22px auto 12px;display:grid;place-items:center
+ position:relative;width:190px;height:190px;
+ margin:25px auto 8px;display:grid;place-items:center;
+ transform-style:preserve-3d
 }
 .core-ring{
- position:absolute;inset:8px;border:1px solid #4dcaff88;
+ position:absolute;inset:8px;border:1px solid #4dcaff99;
  border-radius:50%;box-shadow:0 0 25px #168cff55;
- animation:spin 16s linear infinite
+ animation:spin 14s linear infinite
 }
 .core-ring.r2{
- inset:-4px;border-style:dashed;
- border-color:#8ce8ff66;animation:spin 24s linear infinite reverse
+ inset:-5px;border-style:dashed;
+ border-color:#8ce8ff77;animation:spin 22s linear infinite reverse
 }
 .core-ring.r3{
- inset:23px;border-color:#9eeaff;
+ inset:28px;border-color:#9eeaff;
  animation:pulse 3s ease-in-out infinite
+}
+.core-ring.r4{
+ inset:18px;border-color:#3b9dff88;
+ transform:rotateX(65deg);animation:spin 10s linear infinite
 }
 .core-center{
- width:85px;height:85px;border-radius:50%;
- display:grid;place-items:center;
- background:radial-gradient(circle,#a7f4ff 0%,#268dca 25%,#071c3c 70%);
- box-shadow:0 0 25px #43caff,0 0 65px #138dff88;
+ width:90px;height:90px;border-radius:50%;
+ display:grid;place-items:center;position:relative;z-index:2;
+ background:radial-gradient(circle,#d4fbff 0%,#54c8ff 12%,#268dca 32%,#071c3c 75%);
+ box-shadow:0 0 30px #43caff,0 0 75px #138dff99;
  animation:pulse 3s ease-in-out infinite
 }
-.core-center span{
- font-size:24px;font-weight:bold;color:white;
- text-shadow:0 0 15px white
-}
+.core-center span{font-size:26px;font-weight:bold;color:white;text-shadow:0 0 15px white}
 .core-floor{
- width:210px;height:35px;margin:-4px auto 15px;
+ width:235px;height:48px;margin:-4px auto 17px;
  border:2px solid #37bfff;border-radius:50%;
+ transform:rotateX(65deg);
  box-shadow:0 0 16px #36bfff,0 0 40px #148bff;
  animation:floor 4s infinite
 }
-.hq-name{font-size:16px;letter-spacing:4px}
-.hq-desc{
- color:#91abc6;font-size:11px;line-height:1.6;
- max-width:420px;margin:9px auto
-}
+.hq-name{font-size:18px;letter-spacing:5px}
+.hq-desc{color:#91abc6;font-size:11px;line-height:1.7;max-width:440px;margin:10px auto}
 .hq-data{
- display:flex;justify-content:center;gap:20px;
- flex-wrap:wrap;margin-top:20px;
- font-size:9px;letter-spacing:1px;color:#79d9ff
+ display:flex;justify-content:center;gap:20px;flex-wrap:wrap;
+ margin-top:20px;font-size:9px;letter-spacing:1px;color:#79d9ff
 }
 .hq-data span:before{content:"● ";color:#65efc0}
 
-/* ROOM ENTRANCES */
-.rooms{
- display:grid;grid-template-columns:1fr 1fr;
- gap:15px;margin-top:20px
-}
-.room{
- position:relative;overflow:hidden;
- border:1px solid #299bd1;border-radius:18px;
- padding:18px 15px;background:
- radial-gradient(ellipse at 50% 35%,#12517a66,transparent 65%),
+/* ROOM CARDS */
+.rooms{display:grid;grid-template-columns:1fr 1fr;gap:17px;margin-top:20px}
+.room-card{
+ position:relative;overflow:hidden;border:1px solid #299bd1;
+ border-radius:20px;padding:20px 17px;
+ background:
+ radial-gradient(ellipse at 50% 35%,#12517a77,transparent 65%),
  linear-gradient(145deg,#102d4b,#061020);
  box-shadow:0 0 25px #078dce18;
+ transition:transform .3s,border-color .3s,box-shadow .3s
 }
-.room.nova{
+.room-card:after{
+ content:"";position:absolute;inset:0;pointer-events:none;
+ background:linear-gradient(120deg,transparent 35%,#ffffff08 50%,transparent 65%);
+ transform:translateX(-100%);transition:transform .7s
+}
+.room-card:hover{transform:translateY(-4px);box-shadow:0 0 35px #078dce35}
+.room-card:hover:after{transform:translateX(100%)}
+.room-card.nova{
  border-color:#9865ca;
  background:
- radial-gradient(ellipse at 50% 35%,#713ba455,transparent 65%),
+ radial-gradient(ellipse at 50% 35%,#713ba477,transparent 65%),
  linear-gradient(145deg,#302047,#100d20);
  box-shadow:0 0 25px #a44dff18
 }
 .room-code{font-size:9px;letter-spacing:3px;color:#71d9ff}
 .nova .room-code{color:#d2a0ff}
-.room h2{font-size:28px;letter-spacing:5px;margin:12px 0 5px}
+.room-card h2{font-size:30px;letter-spacing:6px;margin:12px 0 5px}
 .room-desc{font-size:11px;line-height:1.6;color:#a9c5dc;min-height:38px}
 .room-visual{
- height:155px;position:relative;
- display:flex;align-items:center;justify-content:center;
- margin:8px 0;overflow:hidden
+ height:170px;position:relative;display:flex;align-items:center;
+ justify-content:center;margin:8px 0;overflow:hidden;perspective:500px
 }
 .orbit{
- position:absolute;width:120px;height:120px;
- border:1px solid #4dcaff77;border-radius:50%;
- animation:spin 9s linear infinite
+ position:absolute;width:135px;height:135px;
+ border:1px solid #4dcaff88;border-radius:50%;
+ transform:rotateX(65deg);animation:spin 9s linear infinite
 }
 .orbit:after{
  content:"";position:absolute;width:9px;height:9px;
- background:#a5f1ff;border-radius:50%;
- top:10px;left:18px;box-shadow:0 0 15px #57dfff
+ background:#a5f1ff;border-radius:50%;top:10px;left:18px;
+ box-shadow:0 0 15px #57dfff
 }
-.nova .orbit{border-color:#ce9aff77}
+.nova .orbit{border-color:#ce9aff88}
 .nova .orbit:after{background:#e2bfff;box-shadow:0 0 15px #c27aff}
 .avatar{
- position:relative;width:85px;height:120px;
- filter:drop-shadow(0 0 12px #25bfff);
+ position:relative;width:90px;height:130px;
+ filter:drop-shadow(0 0 15px #25bfff);
  animation:float 4s ease-in-out infinite
 }
-.nova .avatar{filter:drop-shadow(0 0 12px #bb7aff)}
+.nova .avatar{filter:drop-shadow(0 0 15px #bb7aff)}
 .avatar svg{width:100%;height:100%}
-.avatar path,.avatar circle{
- stroke:#65dfff;fill:#147dbb33;stroke-width:2
-}
-.nova .avatar path,.nova .avatar circle{
- stroke:#d1a0ff;fill:#9755cb33
-}
+.avatar path,.avatar circle{stroke:#65dfff;fill:#147dbb33;stroke-width:2}
+.nova .avatar path,.nova .avatar circle{stroke:#d1a0ff;fill:#9755cb33}
 .room-floor{
- position:absolute;bottom:5px;width:145px;height:22px;
+ position:absolute;bottom:7px;width:165px;height:35px;
  border:2px solid #35bfff;border-radius:50%;
- box-shadow:0 0 18px #26bfff
+ transform:rotateX(65deg);box-shadow:0 0 18px #26bfff
 }
 .nova .room-floor{border-color:#bd82ff;box-shadow:0 0 18px #bd82ff}
 .room-features{display:flex;flex-wrap:wrap;gap:6px;margin:13px 0}
 .feature{
- padding:6px 8px;border:1px solid #39739b;
+ padding:7px 9px;border:1px solid #39739b;
  border-radius:20px;font-size:8px;color:#b9e6ff
 }
 .nova .feature{border-color:#8b62a9;color:#e3c9ff}
 .launch{
- width:100%;padding:14px;margin-top:8px;
- border-radius:9px;border:1px solid #54caff;
+ width:100%;padding:15px;margin-top:9px;border-radius:9px;
+ border:1px solid #54caff;
  background:linear-gradient(90deg,#075b92,#1686c5);
- color:white;font-weight:bold;font-size:10px;
- letter-spacing:2px;cursor:pointer
+ color:white;font-weight:bold;font-size:10px;letter-spacing:2px;cursor:pointer;
+ box-shadow:0 0 18px #168cff22;transition:filter .2s,transform .2s
 }
-.nova .launch{
- background:linear-gradient(90deg,#56317f,#9453c6);
- border-color:#c08bff
-}
+.nova .launch{background:linear-gradient(90deg,#56317f,#9453c6);border-color:#c08bff}
 .launch:active{transform:scale(.98)}
+.launch:hover{filter:brightness(1.25)}
+
+/* FULL ROOM EXPERIENCE */
+.room-view{
+ position:relative;min-height:calc(100vh - 150px);
+ border-radius:22px;overflow:hidden;padding:18px;
+ animation:roomEnter .65s cubic-bezier(.2,.8,.2,1);
+ border:1px solid #39bfff88;
+ background:
+ radial-gradient(ellipse at 50% 15%,#14517b88,transparent 55%),
+ radial-gradient(ellipse at 50% 90%,#0b326055,transparent 55%),
+ linear-gradient(145deg,#081b30,#020713 75%);
+ box-shadow:0 0 55px #168cff25,inset 0 0 65px #168cff12
+}
+.room-view.nova-view{
+ border-color:#bd80ff88;
+ background:
+ radial-gradient(ellipse at 50% 15%,#61358a88,transparent 55%),
+ radial-gradient(ellipse at 50% 90%,#43215c55,transparent 55%),
+ linear-gradient(145deg,#20132f,#080611 75%);
+ box-shadow:0 0 55px #a44dff25,inset 0 0 65px #a44dff12
+}
+.room-view:before{
+ content:"";position:absolute;inset:0;pointer-events:none;opacity:.18;
+ background-image:linear-gradient(#52caff22 1px,transparent 1px),
+ linear-gradient(90deg,#52caff22 1px,transparent 1px);
+ background-size:38px 38px;
+ mask-image:linear-gradient(to bottom,black,transparent)
+}
+.room-view.nova-view:before{
+ background-image:linear-gradient(#bd80ff22 1px,transparent 1px),
+ linear-gradient(90deg,#bd80ff22 1px,transparent 1px)
+}
+.room-topbar{
+ position:relative;z-index:2;display:flex;align-items:center;
+ justify-content:space-between;gap:10px;flex-wrap:wrap
+}
+.back-btn{
+ border:1px solid #4abfff88;background:#071b2dcc;color:#bdeeff;
+ border-radius:9px;padding:11px 14px;font-size:10px;letter-spacing:1px;cursor:pointer
+}
+.nova-view .back-btn{border-color:#bd80ff88;color:#ead8ff;background:#1b1028cc}
+.room-live{font-size:9px;letter-spacing:2px;color:#74f2c4}
+.room-heading{position:relative;z-index:2;text-align:center;padding:23px 5px 15px}
+.room-heading .eyebrow{font-size:9px;letter-spacing:4px;color:#7ddfff}
+.nova-view .room-heading .eyebrow{color:#d3a5ff}
+.room-heading h2{font-size:clamp(30px,8vw,48px);letter-spacing:8px;margin:10px 0;text-shadow:0 0 25px #27baff}
+.nova-view .room-heading h2{text-shadow:0 0 25px #b56cff}
+.room-heading p{font-size:11px;color:#a9c5dc;line-height:1.6;margin:0 auto;max-width:500px}
+.room-stage{
+ position:relative;z-index:1;height:170px;display:grid;place-items:center;
+ perspective:700px
+}
+.stage-orbit{
+ position:absolute;width:160px;height:160px;border:1px solid #45caff88;
+ border-radius:50%;transform:rotateX(68deg);animation:spin 10s linear infinite;
+ box-shadow:0 0 22px #25bfff22
+}
+.stage-orbit.two{width:205px;height:205px;transform:rotateY(70deg);animation:spin 16s linear infinite reverse}
+.nova-view .stage-orbit{border-color:#c18aff99;box-shadow:0 0 22px #bd80ff22}
+.stage-core{
+ width:85px;height:85px;border-radius:50%;display:grid;place-items:center;
+ background:radial-gradient(circle,#f0fdff,#65d9ff 18%,#0878b8 45%,#06172c 78%);
+ box-shadow:0 0 35px #37caff,0 0 90px #168cff77;
+ animation:pulse 3s ease-in-out infinite;font-size:19px;font-weight:bold
+}
+.nova-view .stage-core{
+ background:radial-gradient(circle,#fff5ff,#d6a3ff 18%,#8042b5 45%,#1b0d2b 78%);
+ box-shadow:0 0 35px #bd80ff,0 0 90px #a44dff77
+}
+.stage-floor{
+ position:absolute;bottom:0;width:220px;height:42px;border:2px solid #39c8ff;
+ border-radius:50%;transform:rotateX(68deg);box-shadow:0 0 25px #39c8ff66
+}
+.nova-view .stage-floor{border-color:#bd80ff;box-shadow:0 0 25px #bd80ff66}
+.room-content{
+ position:relative;z-index:2;max-width:760px;margin:12px auto 0
+}
 
 /* CHAT */
 .chatbox{
- display:none;margin-top:16px;padding-top:14px;
- border-top:1px solid #34749a
+ display:block;padding:15px;border:1px solid #34749a;
+ border-radius:16px;background:#061323cc;backdrop-filter:blur(12px)
 }
-.nova .chatbox{border-color:#79569a}
-.chatbox.open{display:block}
-.chat-title{font-size:10px;letter-spacing:2px;color:#8bdcff;margin-bottom:10px}
-.nova .chat-title{color:#d7a5ff}
+.nova-view .chatbox{border-color:#79569a;background:#150e20cc}
+.chat-title{font-size:10px;letter-spacing:2px;color:#8bdcff;margin-bottom:12px}
+.nova-view .chat-title{color:#d7a5ff}
 .messages{
- height:230px;overflow-y:auto;
- background:#030b18;border:1px solid #234969;
- border-radius:12px;padding:11px;margin-bottom:10px
+ height:250px;overflow-y:auto;background:#030b18;
+ border:1px solid #234969;border-radius:12px;padding:11px;margin-bottom:10px
 }
-.nova .messages{border-color:#62447d;background:#100b1b}
+.nova-view .messages{border-color:#62447d;background:#100b1b}
 .msg{
- font-size:12px;line-height:1.55;padding:10px 12px;
- border-radius:10px;margin-bottom:9px;
- white-space:pre-wrap;overflow-wrap:anywhere
+ font-size:12px;line-height:1.6;padding:10px 12px;
+ border-radius:10px;margin-bottom:9px;white-space:pre-wrap;overflow-wrap:anywhere
 }
 .msg.user{background:#12395a;margin-left:12%;color:#e6f6ff}
 .msg.ai{background:#102337;margin-right:8%;color:#c7e9ff}
-.nova .msg.user{background:#42275c}
-.nova .msg.ai{background:#291b3a;color:#eedcff}
+.nova-view .msg.user{background:#42275c}
+.nova-view .msg.ai{background:#291b3a;color:#eedcff}
 .msg.error{background:#4b2027;color:#ffd5d5}
 .input-row{display:flex;gap:8px}
 .chat-input{
  flex:1;min-width:0;background:#061323;color:white;
- border:1px solid #39739b;border-radius:10px;
- padding:13px;font-size:13px;outline:none
+ border:1px solid #39739b;border-radius:10px;padding:14px;
+ font-size:13px;outline:none
 }
-.nova .chat-input{background:#150e20;border-color:#79569a}
+.nova-view .chat-input{background:#150e20;border-color:#79569a}
 .send{
- border:0;border-radius:10px;padding:0 15px;
- background:#087db9;color:white;font-weight:bold;cursor:pointer
+ border:0;border-radius:10px;padding:0 17px;
+ background:#087db9;color:white;font-weight:bold;font-size:10px;cursor:pointer
 }
-.nova .send{background:#7946a5}
+.nova-view .send{background:#7946a5}
 .send:disabled{opacity:.5}
-.tools{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.tools{display:flex;gap:8px;flex-wrap:wrap;margin-top:11px}
 .tool-btn{
- background:#10283e;color:#b9e6ff;
- border:1px solid #39739b;border-radius:8px;
- padding:10px;font-size:9px;cursor:pointer
+ background:#10283e;color:#b9e6ff;border:1px solid #39739b;
+ border-radius:8px;padding:11px;font-size:9px;cursor:pointer
 }
-.nova .tool-btn{background:#251733;color:#e3c9ff;border-color:#79569a}
+.nova-view .tool-btn{background:#251733;color:#e3c9ff;border-color:#79569a}
 #trendResult{
- white-space:pre-wrap;font-size:11px;line-height:1.6;
+ white-space:pre-wrap;font-size:11px;line-height:1.7;
  color:#d8eaff;margin-top:12px;overflow-wrap:anywhere
 }
 
-/* SYSTEM STATUS */
+/* SYSTEM MONITOR */
 .panel{
- border:1px solid #24496b;border-radius:16px;
+ position:relative;z-index:1;border:1px solid #24496b;border-radius:16px;
  padding:17px;background:#091629;margin-top:22px;
  box-shadow:0 0 25px #008cff10
 }
@@ -259,26 +338,27 @@ main{max-width:1050px;margin:auto;padding:20px 15px}
 .panel p{font-size:11px;color:#9db7cb;line-height:1.5}
 #cloudStatus{font-size:11px;color:#69f0c0}
 .status-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:14px}
-.status-item{
- background:#0c2035;padding:12px;border-radius:9px;
- font-size:10px;color:#a8c9e2
-}
+.status-item{background:#0c2035;padding:12px;border-radius:9px;font-size:10px;color:#a8c9e2}
 .status-item strong{display:block;margin-top:7px;color:#70f5c6}
-.system-footer{
- text-align:center;margin-top:20px;padding:15px;
- color:#6687a3;font-size:9px;letter-spacing:2px;line-height:2
-}
-@keyframes spin{to{transform:rotate(360deg)}}
-@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-9px)}}
-@keyframes pulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.08);opacity:.75}}
-@keyframes floor{50%{transform:scaleX(.8);opacity:.6}}
+.system-footer{text-align:center;margin-top:20px;padding:15px;color:#6687a3;font-size:9px;letter-spacing:2px;line-height:2}
 
-@media(max-width:600px){
- main{padding:14px 10px}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
+@keyframes pulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.08);opacity:.78}}
+@keyframes floor{50%{transform:scaleX(.8);opacity:.6}}
+@keyframes appear{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+@keyframes roomEnter{from{opacity:0;transform:scale(.96) translateY(15px);filter:blur(5px)}to{opacity:1;transform:scale(1) translateY(0);filter:blur(0)}}
+
+@media(max-width:650px){
+ main{padding:14px 10px 28px}
  .rooms{grid-template-columns:1fr}
- .room{padding:16px}
- .headquarters{min-height:320px}
- .room-visual{height:145px}
+ .room-card{padding:17px}
+ .headquarters{min-height:390px}
+ .room-visual{height:150px}
+ .room-view{padding:13px;min-height:calc(100vh - 135px)}
+ .messages{height:230px}
+ .room-heading{padding-top:18px}
+ .stage-core{width:75px;height:75px}
 }
 @media(prefers-reduced-motion:reduce){
  *,*:before,*:after{animation:none!important;scroll-behavior:auto!important}
@@ -296,6 +376,8 @@ main{max-width:1050px;margin:auto;padding:20px 15px}
 
 <main>
 
+<!-- MAIN COMMAND CENTER -->
+<div id="homeView">
  <div class="section-label">CENTRAL COMMAND / ÖVERSIKT</div>
 
  <section class="headquarters">
@@ -304,13 +386,14 @@ main{max-width:1050px;margin:auto;padding:20px 15px}
    <div class="core-ring"></div>
    <div class="core-ring r2"></div>
    <div class="core-ring r3"></div>
+   <div class="core-ring r4"></div>
    <div class="core-center"><span>AI</span></div>
   </div>
   <div class="core-floor"></div>
   <div class="hq-name">AI HEADQUARTERS</div>
   <div class="hq-desc">
    Ett gemensamt högkvarter för två avancerade AI-system.
-   Välj ett rum för att starta ditt arbete.
+   Välj ett rum för att gå in i respektive AI-miljö.
   </div>
   <div class="hq-data">
    <span>JARVIS SYSTEM</span>
@@ -322,14 +405,12 @@ main{max-width:1050px;margin:auto;padding:20px 15px}
  <div class="section-label">VÄLJ DITT AI-RUM / SELECT DESTINATION</div>
 
  <div class="rooms">
-
-  <section class="room" id="jarvisRoom">
+  <section class="room-card">
    <div class="room-code">01 / MAIN CONTROL ROOM</div>
    <h2>JARVIS</h2>
    <div class="room-desc">
     Din personliga AI-assistent. Teknik, planering, research och problemlösning.
    </div>
-
    <div class="room-visual">
     <div class="orbit"></div>
     <div class="avatar">
@@ -343,38 +424,21 @@ main{max-width:1050px;margin:auto;padding:20px 15px}
     </div>
     <div class="room-floor"></div>
    </div>
-
    <div class="room-features">
     <span class="feature">PERSONLIG AI</span>
     <span class="feature">PLANERING</span>
     <span class="feature">RESEARCH</span>
     <span class="feature">TEKNIK</span>
    </div>
-
-   <button class="launch" onclick="toggleChat('jarvisChat')">
-    GÅ IN I JARVIS RUM →
-   </button>
-
-   <div class="chatbox" id="jarvisChat">
-    <div class="chat-title">JARVIS / SECURE AI CONNECTION</div>
-    <div class="messages" id="jarvisMessages">
-     <div class="msg ai">God dag. JARVIS är redo. Vad kan jag hjälpa dig med?</div>
-    </div>
-    <form class="input-row" onsubmit="sendMessage(event,'jarvis')">
-     <input class="chat-input" id="jarvisInput"
-      placeholder="Skriv till JARVIS..." autocomplete="off">
-     <button class="send" id="jarvisSend">SKICKA</button>
-    </form>
-   </div>
+   <button class="launch" onclick="enterRoom('jarvis')">GÅ IN I JARVIS RUM →</button>
   </section>
 
-  <section class="room nova" id="novaRoom">
+  <section class="room-card nova">
    <div class="room-code">02 / CREATIVE PRODUCTION STUDIO</div>
    <h2>NOVA</h2>
    <div class="room-desc">
     Din kreativa AI-produktionsassistent. Från idé till färdig YouTube-video.
    </div>
-
    <div class="room-visual">
     <div class="orbit"></div>
     <div class="avatar">
@@ -388,7 +452,6 @@ main{max-width:1050px;margin:auto;padding:20px 15px}
     </div>
     <div class="room-floor"></div>
    </div>
-
    <div class="room-features">
     <span class="feature">YOUTUBE</span>
     <span class="feature">VIDEO</span>
@@ -396,35 +459,14 @@ main{max-width:1050px;margin:auto;padding:20px 15px}
     <span class="feature">TRENDER</span>
     <span class="feature">THUMBNAILS</span>
    </div>
-
-   <button class="launch" onclick="toggleChat('novaChat')">
-    GÅ IN I NOVA STUDIO →
-   </button>
-
-   <div class="chatbox" id="novaChat">
-    <div class="chat-title">NOVA / CREATIVE AI CONNECTION</div>
-    <div class="messages" id="novaMessages">
-     <div class="msg ai">Hej! NOVA är redo att utveckla dina YouTube-projekt. Vad ska vi skapa?</div>
-    </div>
-    <form class="input-row" onsubmit="sendMessage(event,'nova')">
-     <input class="chat-input" id="novaInput"
-      placeholder="Skriv till NOVA..." autocomplete="off">
-     <button class="send" id="novaSend">SKICKA</button>
-    </form>
-    <div class="tools">
-     <button class="tool-btn" onclick="runTrends()">ANALYSERA YOUTUBE-TRENDER</button>
-    </div>
-    <div id="trendResult"></div>
-   </div>
+   <button class="launch" onclick="enterRoom('nova')">GÅ IN I NOVA STUDIO →</button>
   </section>
-
  </div>
 
  <section class="panel">
   <h3>HOLOGRAPHIC SYSTEM MONITOR</h3>
   <p>Övervakning av NOVA Cloud och AI-motorerna.</p>
   <div id="cloudStatus">● KONTROLLERAR ANSLUTNING...</div>
-
   <div class="status-grid">
    <div class="status-item">GEMINI<strong id="geminiStatus">Kontrollerar...</strong></div>
    <div class="status-item">OPENROUTER<strong id="routerStatus">Kontrollerar...</strong></div>
@@ -433,27 +475,105 @@ main{max-width:1050px;margin:auto;padding:20px 15px}
   </div>
   <p id="cloudInfo">Väntar på servern.</p>
  </section>
+</div>
 
- <div class="system-footer">
-  JARVIS × NOVA<br>
-  PRIVATE ARTIFICIAL INTELLIGENCE NETWORK<br>
-  ALL SYSTEMS CONNECTED THROUGH NOVA CLOUD
+<!-- JARVIS ROOM -->
+<section class="room-view hidden" id="jarvisView">
+ <div class="room-topbar">
+  <button class="back-btn" onclick="goHome()">← TILL HUVUDCENTRALEN</button>
+  <div class="room-live">● JARVIS ONLINE</div>
  </div>
+ <div class="room-heading">
+  <div class="eyebrow">01 / MAIN CONTROL ROOM</div>
+  <h2>JARVIS</h2>
+  <p>Personlig AI-assistent. Redo att hjälpa dig med teknik, vardag, research och planering.</p>
+ </div>
+ <div class="room-stage">
+  <div class="stage-orbit"></div>
+  <div class="stage-orbit two"></div>
+  <div class="stage-core">J</div>
+  <div class="stage-floor"></div>
+ </div>
+ <div class="room-content">
+  <div class="chatbox">
+   <div class="chat-title">JARVIS / SECURE AI CONNECTION</div>
+   <div class="messages" id="jarvisMessages">
+    <div class="msg ai">God dag. JARVIS är redo. Vad kan jag hjälpa dig med?</div>
+   </div>
+   <form class="input-row" onsubmit="sendMessage(event,'jarvis')">
+    <input class="chat-input" id="jarvisInput" placeholder="Skriv till JARVIS..." autocomplete="off">
+    <button class="send" id="jarvisSend">SKICKA</button>
+   </form>
+  </div>
+ </div>
+</section>
 
+<!-- NOVA ROOM -->
+<section class="room-view nova-view hidden" id="novaView">
+ <div class="room-topbar">
+  <button class="back-btn" onclick="goHome()">← TILL HUVUDCENTRALEN</button>
+  <div class="room-live">● NOVA ONLINE</div>
+ </div>
+ <div class="room-heading">
+  <div class="eyebrow">02 / CREATIVE PRODUCTION STUDIO</div>
+  <h2>NOVA</h2>
+  <p>Kreativ produktionsstudio. Från trendspaning och manus till färdigt YouTube-innehåll.</p>
+ </div>
+ <div class="room-stage">
+  <div class="stage-orbit"></div>
+  <div class="stage-orbit two"></div>
+  <div class="stage-core">N</div>
+  <div class="stage-floor"></div>
+ </div>
+ <div class="room-content">
+  <div class="chatbox">
+   <div class="chat-title">NOVA / CREATIVE AI CONNECTION</div>
+   <div class="messages" id="novaMessages">
+    <div class="msg ai">Hej! NOVA är redo att utveckla dina YouTube-projekt. Vad ska vi skapa?</div>
+   </div>
+   <form class="input-row" onsubmit="sendMessage(event,'nova')">
+    <input class="chat-input" id="novaInput" placeholder="Skriv till NOVA..." autocomplete="off">
+    <button class="send" id="novaSend">SKICKA</button>
+   </form>
+   <div class="tools">
+    <button class="tool-btn" onclick="runTrends()">ANALYSERA YOUTUBE-TRENDER</button>
+   </div>
+   <div id="trendResult"></div>
+  </div>
+ </div>
+</section>
+
+<div class="system-footer">
+ JARVIS × NOVA<br>
+ PRIVATE ARTIFICIAL INTELLIGENCE NETWORK<br>
+ ALL SYSTEMS CONNECTED THROUGH NOVA CLOUD
+</div>
 </main>
 
 <script>
 const $ = id => document.getElementById(id);
+let activeRoom = null;
 
-function toggleChat(id){
- const box = $(id);
- box.classList.toggle("open");
+function enterRoom(room){
+ activeRoom = room;
+ $("homeView").classList.add("hidden");
+ $("jarvisView").classList.add("hidden");
+ $("novaView").classList.add("hidden");
 
- if(box.classList.contains("open")){
-  const input = box.querySelector("input");
-  setTimeout(()=>input.focus(),100);
-  box.scrollIntoView({behavior:"smooth",block:"nearest"});
- }
+ const view = $(room + "View");
+ view.classList.remove("hidden");
+ window.scrollTo({top:0,behavior:"smooth"});
+
+ const input = $(room + "Input");
+ setTimeout(()=>input.focus(),450);
+}
+
+function goHome(){
+ activeRoom = null;
+ $("jarvisView").classList.add("hidden");
+ $("novaView").classList.add("hidden");
+ $("homeView").classList.remove("hidden");
+ window.scrollTo({top:0,behavior:"smooth"});
 }
 
 function addMessage(target,text,type="ai"){
@@ -490,7 +610,6 @@ async function sendMessage(event,assistant){
 
  try{
   const endpoint = isNova ? "/api/nova" : "/api/chat";
-
   const response = await fetch(endpoint,{
    method:"POST",
    headers:{"Content-Type":"application/json"},
@@ -555,7 +674,6 @@ async function checkCloud(){
  try{
   const response = await fetch("/api/status");
   if(!response.ok) throw new Error("Servern svarar inte");
-
   const data = await response.json();
 
   $("topStatus").textContent = "● COMMAND CENTER ONLINE";
@@ -565,13 +683,10 @@ async function checkCloud(){
 
   $("geminiStatus").textContent =
    data.gemini_configured ? "ONLINE" : "EJ ANSLUTEN";
-
   $("routerStatus").textContent =
    data.openrouter_configured ? "ONLINE" : "EJ ANSLUTEN";
-
   $("jarvisStatus").textContent =
    data.jarvis === "online" ? "ONLINE" : "OKÄND";
-
   $("novaStatus").textContent =
    data.nova === "online" ? "ONLINE" : "OKÄND";
 
