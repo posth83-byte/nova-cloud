@@ -1,10 +1,12 @@
+
 import os
 import json
 import urllib.request
 import urllib.error
+import xml.etree.ElementTree as ET
 
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, timezone
 
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
@@ -14,7 +16,7 @@ from pydantic import BaseModel
 app = FastAPI(
     title="NOVA Cloud",
     description="JARVIS och NOVA – personlig AI-central",
-    version="1.4.0"
+    version="1.5.0"
 )
 
 
@@ -36,6 +38,8 @@ OPENROUTER_MODEL = os.getenv(
     "OPENROUTER_MODEL",
     "openai/gpt-4o-mini"
 )
+
+YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY")
 
 
 # ==========================================
@@ -73,11 +77,10 @@ Ta ett steg i taget när användaren behöver hjälp.
 NOVA_PROMPT = """
 Du är NOVA, en avancerad kreativ AI-producent.
 
-Du arbetar med YouTube-kanalerna:
-- Skuggornas Arkiv
-- Mikael Posth
+Ditt huvudsakliga uppdrag är att utveckla
+YouTube-kanalen Mikael Posth.
 
-Ditt uppdrag är att hjälpa till med:
+Du ansvarar för:
 - Trendanalys och videoidéer
 - Research och faktakontroll
 - Professionella videomanus
@@ -85,19 +88,30 @@ Ditt uppdrag är att hjälpa till med:
 - Berättarröster och undertexter
 - Videoproduktion
 - Titlar, thumbnails och SEO
-- Strategier för att utveckla YouTube-kanaler.
+- Analys av vad som fungerar på YouTube
+- Strategier för att utveckla kanalen.
+
+Du ska undersöka olika innehållsområden.
+Lås dig inte vid en enda genre.
+
+Prioritera idéer som har potential att:
+- Fånga tittarens uppmärksamhet snabbt.
+- Skapa engagemang och kommentarer.
+- Fungera både som Shorts och längre videor.
+- Vara rimliga att producera med gratisverktyg.
+
+När trenddata finns tillgänglig ska du använda den.
+Skilj mellan verifierade uppgifter och egna
+bedömningar. Hitta aldrig på statistik.
 
 Du kommunicerar på naturlig svenska.
 
-Du tänker kreativt, strategiskt och professionellt.
-Du ger konkreta lösningar och arbetar stegvis.
-
 När användaren ber om en video ska du hjälpa till
-att utveckla hela produktionen från idé till färdigt
-publiceringsmaterial.
+att utveckla hela produktionen från idé till
+färdigt publiceringsmaterial.
 
-Hitta aldrig på fakta eller påstå att du har
-producerat eller publicerat något som du inte gjort.
+Påstå aldrig att du har producerat eller publicerat
+något som du inte faktiskt har gjort.
 """
 
 
@@ -238,7 +252,6 @@ def generate_reply(message, system_prompt):
     gemini_error = None
 
     if GEMINI_API_KEY:
-
         try:
             answer = ask_gemini(message, system_prompt)
 
@@ -254,7 +267,6 @@ def generate_reply(message, system_prompt):
         gemini_error = "Gemini API-nyckel saknas."
 
     if OPENROUTER_API_KEY:
-
         try:
             answer = ask_openrouter(message, system_prompt)
 
@@ -284,6 +296,141 @@ def generate_reply(message, system_prompt):
 
 
 # ==========================================
+# TRENDKÄLLA 1 – GOOGLE TRENDS
+# ==========================================
+
+def get_google_trends():
+
+    url = "https://trends.google.com/trending/rss?geo=SE"
+
+    req = urllib.request.Request(
+        url,
+        headers={
+            "User-Agent": "Mozilla/5.0 NOVA-Cloud/1.5"
+        }
+    )
+
+    with urllib.request.urlopen(req, timeout=20) as response:
+        xml_data = response.read()
+
+    root = ET.fromstring(xml_data)
+
+    results = []
+
+    for item in root.findall(".//item")[:20]:
+
+        title = item.findtext("title")
+        link = item.findtext("link")
+        pub_date = item.findtext("pubDate")
+
+        if title:
+            results.append({
+                "title": title,
+                "url": link,
+                "published": pub_date,
+                "source": "Google Trends Sverige"
+            })
+
+    return results
+
+
+# ==========================================
+# TRENDKÄLLA 2 – YOUTUBE POPULÄRA VIDEOR
+# ==========================================
+
+def get_youtube_popular():
+
+    if not YOUTUBE_API_KEY:
+        return []
+
+    url = (
+        "https://www.googleapis.com/youtube/v3/videos"
+        "?part=snippet,statistics"
+        "&chart=mostPopular"
+        "&regionCode=SE"
+        "&maxResults=20"
+        f"&key={YOUTUBE_API_KEY}"
+    )
+
+    req = urllib.request.Request(
+        url,
+        headers={
+            "User-Agent": "NOVA-Cloud/1.5"
+        }
+    )
+
+    with urllib.request.urlopen(req, timeout=20) as response:
+        result = json.loads(
+            response.read().decode("utf-8")
+        )
+
+    videos = []
+
+    for video in result.get("items", []):
+
+        snippet = video.get("snippet", {})
+        statistics = video.get("statistics", {})
+
+        video_id = video.get("id")
+
+        videos.append({
+            "title": snippet.get("title"),
+            "channel": snippet.get("channelTitle"),
+            "published": snippet.get("publishedAt"),
+            "views": statistics.get("viewCount"),
+            "likes": statistics.get("likeCount"),
+            "url": (
+                f"https://www.youtube.com/watch?v={video_id}"
+                if video_id else None
+            ),
+            "source": "YouTube Data API"
+        })
+
+    return videos
+
+
+# ==========================================
+# SAMLAD TRENDMOTOR
+# ==========================================
+
+def collect_trends():
+
+    data = {
+        "updated": datetime.now(timezone.utc).isoformat(),
+        "google_trends": [],
+        "youtube_popular": [],
+        "sources": [],
+        "errors": []
+    }
+
+    try:
+        data["google_trends"] = get_google_trends()
+        data["sources"].append("Google Trends Sverige")
+
+    except Exception as error:
+        data["errors"].append(
+            "Google Trends: " + str(error)
+        )
+
+    try:
+        data["youtube_popular"] = get_youtube_popular()
+
+        if YOUTUBE_API_KEY:
+            data["sources"].append("YouTube Data API")
+        else:
+            data["errors"].append(
+                "YouTube Data API är inte konfigurerat."
+            )
+
+    except Exception as error:
+        data["errors"].append(
+            "YouTube: " + str(error)
+        )
+
+    return data
+
+
+# ==========================================
 # HEMSIDA
 # ==========================================
 
@@ -309,8 +456,8 @@ async def health():
     return {
         "status": "online",
         "service": "NOVA Cloud",
-        "version": "1.4.0",
-        "time": datetime.now().isoformat()
+        "version": "1.5.0",
+        "time": datetime.now(timezone.utc).isoformat()
     }
 
 
@@ -328,33 +475,128 @@ async def status():
         "jarvis": "online",
         "gemini_configured": bool(GEMINI_API_KEY),
         "openrouter_configured": bool(OPENROUTER_API_KEY),
-        "version": "1.4.0",
-        "time": datetime.now().isoformat()
+        "youtube_api_configured": bool(YOUTUBE_API_KEY),
+        "version": "1.5.0",
+        "time": datetime.now(timezone.utc).isoformat()
     }
 
 
 # ==========================================
-# IDÉER
+# IDÉER – MIKAEL POSTH
 # ==========================================
 
 @app.get("/api/ideas")
 async def ideas():
 
     return {
+        "channel": "Mikael Posth",
         "ideas": [
             {
-                "title": "Skuggornas Arkiv",
-                "description": "Mystiska berättelser och oförklarliga händelser."
+                "title": "Det här händer just nu",
+                "description": "Aktuella ämnen och händelser med en personlig vinkel."
             },
             {
-                "title": "Mikael Posth",
-                "description": "Musik, underhållning och personliga videor."
+                "title": "Testar något nytt",
+                "description": "Underhållning, tester och personliga utmaningar."
             },
             {
-                "title": "NOVA Produktion",
-                "description": "Nya idéer, manus och videoprojekt."
+                "title": "En berättelse värd att dela",
+                "description": "Intressanta historier och oväntade händelser."
             }
         ]
+    }
+
+
+# ==========================================
+# TRENDMOTOR – HÄMTA DATA
+# ==========================================
+
+@app.get("/api/trends")
+async def trends():
+
+    data = collect_trends()
+
+    return {
+        "assistant": "NOVA Trendmotor",
+        "status": "completed",
+        "channel": "Mikael Posth",
+        **data
+    }
+
+
+# ==========================================
+# TRENDMOTOR – ANALYSERA OCH SKAPA IDÉER
+# ==========================================
+
+@app.post("/api/trends/ideas")
+async def trend_ideas():
+
+    data = collect_trends()
+
+    has_data = (
+        bool(data["google_trends"])
+        or bool(data["youtube_popular"])
+    )
+
+    if not has_data:
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "message": "Trendkällorna kunde inte hämtas.",
+                "errors": data["errors"]
+            }
+        )
+
+    trend_context = json.dumps(
+        data,
+        ensure_ascii=False,
+        indent=2
+    )
+
+    message = f"""
+Analysera följande aktuella trendmaterial.
+
+KANAL: Mikael Posth
+
+MATERIAL:
+{trend_context}
+
+Uppgift:
+
+1. Identifiera de mest intressanta ämnena.
+2. Bedöm vilka som passar Mikael Posth.
+3. Skapa tre konkreta videoidéer.
+4. Ge varje idé en stark videotitel.
+5. Föreslå thumbnail och kort text på bilden.
+6. Föreslå om videon bör vara en Short eller lång video.
+7. Förklara varför idén kan fungera.
+8. Rangordna idéerna efter potential.
+9. Föreslå vilken video som bör produceras först.
+
+VIKTIGT:
+
+- Hitta inte på visningssiffror eller statistik.
+- Skilj mellan faktiska trenddata och egna bedömningar.
+- Populära videor är inte automatiskt växande trender.
+- Anpassa idéerna till en svensk YouTube-publik.
+- Tänk kreativt och våga föreslå olika ämnen.
+- Prioritera idéer som går att producera med gratisverktyg.
+"""
+
+    result = generate_reply(
+        message,
+        NOVA_PROMPT
+    )
+
+    return {
+        "assistant": "NOVA Trendmotor",
+        "status": "completed",
+        "channel": "Mikael Posth",
+        "updated": data["updated"],
+        "sources": data["sources"],
+        "errors": data["errors"],
+        "engine": result["engine"],
+        "analysis": result["reply"]
     }
 
 
