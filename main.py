@@ -126,6 +126,8 @@ class VideoPlanRequest(BaseModel):
     duration_minutes: int = Field(default=5, ge=1, le=30)
     style: str = "Engagerande och professionell"
     audience: str = "Svensk YouTube-publik"
+    reference_url: str = Field(default="", max_length=2000)
+    reference_image_data: str = Field(default="", max_length=6000000)
 
 
 # ==========================================
@@ -294,7 +296,8 @@ def ask_gemini(
     message,
     system_prompt,
     max_tokens=2048,
-    json_mode=False
+    json_mode=False,
+    image_data=""
 ):
 
     url = (
@@ -310,16 +313,22 @@ def ask_gemini(
     if json_mode:
         generation_config["responseMimeType"] = "application/json"
 
+    user_parts = [{"text": message}]
+    if image_data:
+        try:
+            header, encoded_image = image_data.split(",", 1)
+            mime_type = header.split(";", 1)[0].replace("data:", "")
+            if mime_type not in ("image/jpeg", "image/png", "image/webp"):
+                raise ValueError("Referensbilden måste vara JPG, PNG eller WebP.")
+            user_parts.append({"inline_data": {"mime_type": mime_type, "data": encoded_image}})
+        except ValueError:
+            raise
+        except Exception as error:
+            raise ValueError(f"Kunde inte läsa referensbilden: {error}")
+
     payload = {
-        "system_instruction": {
-            "parts": [{"text": system_prompt}]
-        },
-        "contents": [
-            {
-                "role": "user",
-                "parts": [{"text": message}]
-            }
-        ],
+        "system_instruction": {"parts": [{"text": system_prompt}]},
+        "contents": [{"role": "user", "parts": user_parts}],
         "generationConfig": generation_config
     }
 
@@ -383,16 +392,24 @@ def ask_openrouter(
     message,
     system_prompt,
     max_tokens=2048,
-    json_mode=False
+    json_mode=False,
+    image_data=""
 ):
 
     url = "https://openrouter.ai/api/v1/chat/completions"
+
+    user_content = message
+    if image_data:
+        user_content = [
+            {"type": "text", "text": message},
+            {"type": "image_url", "image_url": {"url": image_data}}
+        ]
 
     payload = {
         "model": OPENROUTER_MODEL,
         "messages": [
             {"role": "system", "content": system_prompt},
-            {"role": "user", "content": message}
+            {"role": "user", "content": user_content}
         ],
         "temperature": 0.4 if json_mode else 0.7,
         "max_tokens": max_tokens
@@ -462,7 +479,8 @@ def generate_reply(
     message,
     system_prompt,
     max_tokens=2048,
-    json_mode=False
+    json_mode=False,
+    image_data=""
 ):
 
     gemini_error = None
@@ -474,7 +492,8 @@ def generate_reply(
                     message,
                     system_prompt,
                     max_tokens,
-                    json_mode
+                    json_mode,
+                    image_data
                 )
             except ValueError as error:
                 # Retry once with a larger output budget when Gemini truncates.
@@ -485,7 +504,8 @@ def generate_reply(
                     message,
                     system_prompt,
                     retry_tokens,
-                    json_mode
+                    json_mode,
+                    image_data
                 )
 
             return {
@@ -506,7 +526,8 @@ def generate_reply(
                     message,
                     system_prompt,
                     max_tokens,
-                    json_mode
+                    json_mode,
+                    image_data
                 ),
                 "engine": "OpenRouter"
             }
@@ -1466,6 +1487,16 @@ MÅLGRUPP: {request.audience}
 ANVÄNDARENS IDÉ:
 {request.prompt}
 
+REFERENSLÄNK:
+{request.reference_url or "Ingen länk bifogad."}
+
+REFERENSANALYS:
+- Analysera bifogad referensbild visuellt: motiv, miljö, färger, ljus, komposition, stil och detaljer.
+- Använd bilden som kreativ referens, inte som något som måste kopieras exakt.
+- En videolänk är en referenslänk. Påstå inte att du har sett videoinnehållet om du inte faktiskt kan komma åt det.
+- Om videoinnehållet inte är åtkomligt ska du utgå från användarens beskrivning och inte hitta på detaljer.
+- Skapa en egen produktion för Mikael Posth och kopiera inte skyddat material bildruta för bildruta.
+
 PRODUKTIONSKRAV:
 
 - Skapa ett genomarbetat svenskt manus.
@@ -1494,11 +1525,18 @@ Avsluta samtliga strängar, listor och objekt.
 Lämna inte JSON ofärdig.
 """
 
+    reference_image_data = request.reference_image_data.strip()
+    if reference_image_data and not reference_image_data.startswith("data:image/"):
+        raise HTTPException(status_code=400, detail="Referensbilden har ett ogiltigt format.")
+    if reference_image_data and len(reference_image_data) > 5600000:
+        raise HTTPException(status_code=413, detail="Referensbilden är för stor. Max 4 MB.")
+
     result = generate_reply(
         user_prompt,
         VIDEO_PRODUCER_PROMPT,
         max_tokens=8192,
-        json_mode=True
+        json_mode=True,
+        image_data=reference_image_data
     )
 
     try:
