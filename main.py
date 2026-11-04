@@ -20,7 +20,7 @@ from video_engine import router as video_router
 # NOVA CLOUD – VERSION 2.2.0
 # ==========================================
 
-APP_VERSION = "2.2.0"
+APP_VERSION = "2.3.0"
 
 app = FastAPI(
     title="NOVA Cloud",
@@ -687,7 +687,7 @@ def get_google_trends():
     req = urllib.request.Request(
         url,
         headers={
-            "User-Agent": "Mozilla/5.0 NOVA-Cloud/2.2"
+            "User-Agent": "Mozilla/5.0 NOVA-Cloud/2.3"
         }
     )
 
