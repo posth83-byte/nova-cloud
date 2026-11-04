@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="sv">
 <head>
@@ -300,6 +301,44 @@ main{position:relative;z-index:1;max-width:1100px;margin:auto;padding:20px 15px 
 .status-item strong{display:block;margin-top:7px;color:#70f5c6}
 .system-footer{text-align:center;margin-top:20px;padding:15px;color:#6687a3;font-size:9px;letter-spacing:2px;line-height:2}
 
+/* ACTIVITY CENTER */
+.activity-panel{
+ position:relative;z-index:1;margin-top:22px;padding:17px;
+ border:1px solid #287da5;border-radius:16px;
+ background:linear-gradient(145deg,#091b30,#071020);
+ box-shadow:0 0 25px #008cff13
+}
+.activity-heading{
+ display:flex;justify-content:space-between;align-items:center;
+ gap:10px;flex-wrap:wrap
+}
+.activity-heading h3{
+ margin:0;font-size:11px;letter-spacing:2px;color:#75dfff
+}
+.activity-subtitle{
+ margin:8px 0 15px;color:#91a9c2;font-size:10px;line-height:1.6
+}
+.activity-actions{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+.activity-btn{
+ padding:10px 12px;border:1px solid #3999c2;border-radius:8px;
+ background:#0b2941;color:#bdeeff;font-size:9px;letter-spacing:1px;
+ cursor:pointer
+}
+.activity-btn.nova-action{border-color:#9465bd;background:#29183d;color:#e4caff}
+.activity-btn.clear-action{border-color:#8b505b;background:#301820;color:#ffc6ce}
+.activity-list{display:flex;flex-direction:column;gap:8px}
+.activity-entry{
+ display:flex;justify-content:space-between;align-items:flex-start;
+ gap:12px;padding:11px 12px;border-radius:8px;
+ border-left:3px solid #39c8ff;background:#0c2035
+}
+.activity-entry.nova-entry{border-left-color:#bd80ff}
+.activity-entry.system-entry{border-left-color:#70f5c6}
+.activity-message{font-size:11px;line-height:1.5;color:#d7edff;overflow-wrap:anywhere}
+.activity-time{font-size:9px;color:#83a8c1;white-space:nowrap}
+.activity-empty{padding:15px;color:#91a9c2;font-size:11px;text-align:center}
+.activity-count{font-size:9px;color:#70f5c6;letter-spacing:1px}
+
 @keyframes spin{to{transform:rotate(360deg)}}
 @keyframes float{0%,100%{translate:0 0}50%{translate:0 -10px}}
 @keyframes activeFloat{0%,100%{translate:0 0}50%{translate:0 -15px}}
@@ -330,6 +369,7 @@ main{position:relative;z-index:1;max-width:1100px;margin:auto;padding:20px 15px 
  .ai-desk{bottom:30px}
  .ai-floor{width:240px}
  .voice-select{width:100%}
+ .activity-entry{flex-direction:column;gap:5px}
 }
 @media(prefers-reduced-motion:reduce){
  *,*:before,*:after{animation:none!important;scroll-behavior:auto!important}
@@ -423,6 +463,25 @@ main{position:relative;z-index:1;max-width:1100px;margin:auto;padding:20px 15px 
    <div class="status-item">NOVA<strong id="novaStatus">Kontrollerar...</strong></div>
   </div>
   <p id="cloudInfo">Väntar på servern.</p>
+ </section>
+
+ <!-- NEW ACTIVITY CENTER -->
+ <section class="activity-panel" id="activityCenter">
+  <div class="activity-heading">
+   <h3>AI ACTIVITY CENTER</h3>
+   <div class="activity-count" id="activityCount">0 HÄNDELSER</div>
+  </div>
+  <div class="activity-subtitle">
+   Gemensam aktivitetslogg för JARVIS och NOVA. Här ser du vad systemen arbetar med och när det händer.
+  </div>
+  <div class="activity-actions">
+   <button class="activity-btn" onclick="enterRoom('jarvis')">🔵 ÖPPNA JARVIS</button>
+   <button class="activity-btn nova-action" onclick="enterRoom('nova')">🟣 ÖPPNA NOVA</button>
+   <button class="activity-btn clear-action" onclick="clearActivity()">RENSA HISTORIK</button>
+  </div>
+  <div class="activity-list" id="activityList">
+   <div class="activity-empty">Laddar aktivitetsloggen...</div>
+  </div>
  </section>
 </div>
 
@@ -584,6 +643,91 @@ main{position:relative;z-index:1;max-width:1100px;margin:auto;padding:20px 15px 
 <script>
 const $ = id => document.getElementById(id);
 let activeRoom = null;
+
+/* ACTIVITY CENTER */
+const ACTIVITY_STORAGE_KEY = "nova_hq_activity_v1";
+const MAX_ACTIVITY_ITEMS = 20;
+let previousCloudState = null;
+
+function getActivityItems(){
+ try{
+  const stored=JSON.parse(localStorage.getItem(ACTIVITY_STORAGE_KEY)||"[]");
+  return Array.isArray(stored)?stored:[];
+ }catch(error){
+  return [];
+ }
+}
+
+function saveActivityItems(items){
+ try{
+  localStorage.setItem(ACTIVITY_STORAGE_KEY,JSON.stringify(items));
+ }catch(error){
+  console.warn("Kunde inte spara aktivitetsloggen.",error);
+ }
+}
+
+function renderActivity(){
+ const list=$("activityList");
+ const count=$("activityCount");
+ if(!list)return;
+
+ const items=getActivityItems();
+ list.replaceChildren();
+
+ if(count){
+  count.textContent=items.length+" HÄNDELSER";
+ }
+
+ if(items.length===0){
+  const empty=document.createElement("div");
+  empty.className="activity-empty";
+  empty.textContent="Inga händelser ännu.";
+  list.appendChild(empty);
+  return;
+ }
+
+ items.forEach(item=>{
+  const entry=document.createElement("div");
+  entry.className="activity-entry";
+
+  if(item.type==="nova")entry.classList.add("nova-entry");
+  if(item.type==="system")entry.classList.add("system-entry");
+
+  const message=document.createElement("div");
+  message.className="activity-message";
+  message.textContent=item.message;
+
+  const time=document.createElement("div");
+  time.className="activity-time";
+  time.textContent=item.time;
+
+  entry.append(message,time);
+  list.appendChild(entry);
+ });
+}
+
+function logActivity(message,type="system"){
+ const items=getActivityItems();
+
+ items.unshift({
+  message:String(message),
+  type:type,
+  time:new Date().toLocaleString("sv-SE",{
+   day:"2-digit",
+   month:"2-digit",
+   hour:"2-digit",
+   minute:"2-digit"
+  })
+ });
+
+ saveActivityItems(items.slice(0,MAX_ACTIVITY_ITEMS));
+ renderActivity();
+}
+
+function clearActivity(){
+ saveActivityItems([]);
+ logActivity("Aktivitetshistoriken rensades.","system");
+}
 
 /* VOICE SYSTEM */
 let availableVoices = [];
@@ -797,6 +941,8 @@ function setRoomState(room,state){
 
 function enterRoom(room){
  activeRoom=room;
+ logActivity(room.toUpperCase()+"-rummet öppnades.",room==="nova"?"nova":"jarvis");
+
  $("homeView").classList.add("hidden");
  $("jarvisView").classList.add("hidden");
  $("novaView").classList.add("hidden");
@@ -839,6 +985,8 @@ async function sendMessage(event,assistant){
 
  if("speechSynthesis" in window)stopSpeech();
 
+ logActivity(assistant.toUpperCase()+": nytt meddelande skickat.",assistant);
+
  addMessage(messages,message,"user");
  input.value="";
  button.disabled=true;
@@ -868,11 +1016,13 @@ async function sendMessage(event,assistant){
   loading.dataset.speechText=data.reply||"Inget svar mottogs.";
   addSpeechButton(loading,assistant);
 
+  logActivity(assistant.toUpperCase()+": svar mottaget från AI-motorn.",assistant);
   setRoomState(assistant,"responding");
 
  }catch(error){
   loading.className="msg error";
   loading.textContent="Anslutningsfel: "+error.message;
+  logActivity(assistant.toUpperCase()+": fel vid kommunikation – "+error.message,"system");
  }finally{
   button.disabled=false;
   button.textContent="SKICKA";
@@ -887,6 +1037,7 @@ async function sendMessage(event,assistant){
 async function runTrends(){
  const result=$("trendResult");
  result.textContent="NOVA hämtar trenddata och analyserar materialet...";
+ logActivity("NOVA startade en YouTube-trendanalys.","nova");
  setRoomState("nova","working");
 
  try{
@@ -905,8 +1056,11 @@ async function runTrends(){
    "\nDatakällor: "+(data.sources||[]).join(", ")+
    "\nKontrollerade RSS-kanaler: "+(data.data_quality?.youtube_channels_checked??0);
 
+  logActivity("NOVA slutförde trendanalysen.","nova");
+
  }catch(error){
   result.textContent="Trendanalysen kunde inte genomföras: "+error.message;
+  logActivity("NOVA:s trendanalys misslyckades: "+error.message,"system");
  }finally{
   setTimeout(()=>setRoomState("nova","idle"),1800);
  }
@@ -922,19 +1076,34 @@ async function checkCloud(){
 
   $("topStatus").textContent="● COMMAND CENTER ONLINE";
   $("cloudStatus").textContent="● NOVA CLOUD ONLINE";
+  $("cloudStatus").style.color="#69f0c0";
   $("cloudInfo").textContent="Version "+data.version+" – servern svarar.";
   $("geminiStatus").textContent=data.gemini_configured?"ONLINE":"EJ ANSLUTEN";
   $("routerStatus").textContent=data.openrouter_configured?"ONLINE":"EJ ANSLUTEN";
   $("jarvisStatus").textContent=data.jarvis==="online"?"ONLINE":"OKÄND";
   $("novaStatus").textContent=data.nova==="online"?"ONLINE":"OKÄND";
 
+  if(previousCloudState!=="online"){
+   logActivity("NOVA Cloud är online. Systemanslutningen fungerar.","system");
+   previousCloudState="online";
+  }
+
  }catch(error){
   $("topStatus").textContent="● CLOUD EJ NÅBAR";
   $("cloudStatus").textContent="● ANSLUTNING MISSLYCKADES";
   $("cloudStatus").style.color="#ffbd70";
   $("cloudInfo").textContent="Kontrollera Render och internetanslutningen.";
+
+  if(previousCloudState!=="offline"){
+   logActivity("NOVA Cloud kunde inte nås. Kontrollera anslutningen.","system");
+   previousCloudState="offline";
+  }
  }
 }
+
+/* STARTUP */
+renderActivity();
+logActivity("AI Headquarters startades.","system");
 
 checkCloud();
 setInterval(checkCloud,30000);
