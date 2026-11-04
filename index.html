@@ -637,8 +637,14 @@ main{position:relative;z-index:1;max-width:1100px;margin:auto;padding:20px 15px 
  <div class="room-content"><div class="chatbox">
   <div class="chat-title">WEBMASTER / WEBSITE CREATION LAB</div>
   <div class="messages" id="webMessages"><div class="msg ai">Hej! Jag är WEBMASTER. Berätta vilken hemsida du vill skapa – exempelvis en företagssida, portfolio, landningssida eller webbutik.</div></div>
+  <div class="web-tools">
+   <label class="web-image-picker" for="webImageInput">＋ LÄGG TILL EGEN BILD <span id="webImageName">Valfritt – JPG, PNG eller WebP</span></label>
+   <input type="file" id="webImageInput" accept="image/png,image/jpeg,image/webp,image/gif" hidden onchange="webImageSelected(this)">
+   <button type="button" class="web-clear-image" onclick="clearWebImage()">TA BORT BILD</button>
+  </div>
   <form class="input-row" onsubmit="sendMessage(event,'web')"><input class="chat-input" id="webInput" placeholder="Beskriv hemsidan du vill skapa..." autocomplete="off"><button class="send" id="webSend">SKICKA</button></form>
-  <div class="voice-note">WEBMASTER fokuserar på webbdesign, kod och webbprojekt. När koden är klar kan vi koppla den till GitHub och publicering.</div>
+  <div id="webPreviewArea" class="web-preview-area" hidden></div>
+  <div class="voice-note">WEBMASTER skapar en komplett HTML-sida och ger dig en klickbar förhandsvisningslänk. Du kan lägga till en egen bild ovan.</div>
  </div></div>
 </section>
 <div class="system-footer">JARVIS × NOVA × WEBMASTER<br>PRIVATE ARTIFICIAL INTELLIGENCE NETWORK<br>ALL SYSTEMS CONNECTED THROUGH NOVA CLOUD</div>JARVIS × NOVA<br>PRIVATE ARTIFICIAL INTELLIGENCE NETWORK<br>ALL SYSTEMS CONNECTED THROUGH NOVA CLOUD</div>
@@ -689,6 +695,13 @@ function openVideoStudio(){
  logActivity("NOVA Video Studio öppnades","🎬","Produktionscentralen aktiverad");
 }
 
+.web-tools{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:12px 0}
+.web-image-picker{display:flex;flex-direction:column;gap:4px;padding:12px 14px;border:1px dashed #55d9b6;border-radius:12px;color:#a6ffe5;background:#08241f;cursor:pointer;font-size:12px;font-weight:700}
+.web-image-picker span{font-size:10px;font-weight:400;color:#a8c9bf}
+.web-clear-image{border:1px solid #438f80;background:#071b18;color:#c7fff0;border-radius:10px;padding:10px 12px;font-size:10px;cursor:pointer}
+.web-preview-area{margin-top:14px;padding:14px;border:1px solid #55d9b6;border-radius:12px;background:#08241f;color:#d1fff1}
+.web-preview-link{display:inline-block;margin-top:8px;padding:11px 16px;border-radius:9px;background:#147d68;color:#fff;text-decoration:none;font-weight:700}
+.web-preview-note{font-size:11px;color:#a8c9bf;margin-top:8px}
 /* VOICE SYSTEM */
 function loadVoices(){
  if(!("speechSynthesis" in window))return;
@@ -852,6 +865,35 @@ function addMessage(target,text,type="ai"){
 }
 restoreChatHistory();
 
+let webmasterImageData="";
+function webImageSelected(input){
+ const file=input.files&&input.files[0];if(!file)return;
+ if(file.size>4*1024*1024){alert("Bilden får vara högst 4 MB.");input.value="";return}
+ const reader=new FileReader();
+ reader.onload=()=>{webmasterImageData=String(reader.result||"");$("webImageName").textContent=file.name+" vald";};
+ reader.onerror=()=>alert("Kunde inte läsa bilden.");
+ reader.readAsDataURL(file);
+}
+function clearWebImage(){
+ webmasterImageData="";const input=$("webImageInput");if(input)input.value="";
+ const name=$("webImageName");if(name)name.textContent="Valfritt – JPG, PNG eller WebP";
+}
+async function createWebPreview(reply){
+ const tick=String.fromCharCode(96);
+ const marker=tick+tick+tick;
+ const match=reply.match(new RegExp(marker+"html\\s*([\\s\\S]*?)"+marker,"i"));
+ if(!match)return false;
+ let page=match[1].trim();
+ if(webmasterImageData)page=page.split("{{WEBMASTER_IMAGE}}").join(webmasterImageData);
+ const response=await fetch("/api/webmaster/preview",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({html:page})});
+ const data=await response.json();if(!response.ok)throw new Error(data.detail||"Kunde inte skapa förhandsvisningen.");
+ const area=$("webPreviewArea");area.hidden=false;area.replaceChildren();
+ const title=document.createElement("strong");title.textContent="DIN HEMSIDA ÄR REDO ATT FÖRHANDSVISA";
+ const link=document.createElement("a");link.className="web-preview-link";link.href=data.preview_url;link.target="_blank";link.rel="noopener";link.textContent="ÖPPNA HEMSIDAN ↗";
+ const note=document.createElement("div");note.className="web-preview-note";note.textContent="Länken är tillfällig och kan försvinna när NOVA Cloud startas om.";
+ area.append(title,document.createElement("br"),link,note);return true;
+}
+
 /* CHAT CONNECTION */
 async function sendMessage(event,assistant){
  event.preventDefault();
@@ -866,7 +908,7 @@ async function sendMessage(event,assistant){
   const data=await response.json();
   if(!response.ok)throw new Error(typeof data.detail==="string"?data.detail:JSON.stringify(data.detail||data));
   const reply=(data.reply||"Inget svar mottogs.")+"\n\nAI-motor: "+(data.engine||"Okänd");
-  loading.textContent=reply;loading.dataset.speechText=data.reply||"Inget svar mottogs.";saveChatHistory(assistant);addSpeechButton(loading,assistant);if(voiceConversationRoom===assistant)speakText(data.reply||"Inget svar mottogs.",assistant);
+  loading.textContent=reply;loading.dataset.speechText=data.reply||"Inget svar mottogs.";saveChatHistory(assistant);addSpeechButton(loading,assistant);if(isWeb){try{const made=await createWebPreview(data.reply||"");if(!made){const hint=document.createElement("div");hint.className="web-preview-note";hint.textContent="Be WEBMASTER skapa en komplett hemsida i ett enda HTML-kodblock."; $("webPreviewArea").hidden=false;$("webPreviewArea").replaceChildren(hint);}}catch(previewError){addMessage("webMessages","Kunde inte skapa förhandsvisning: "+previewError.message,"error")}}if(voiceConversationRoom===assistant)speakText(data.reply||"Inget svar mottogs.",assistant);
   setRoomState(assistant,"responding");logActivity(assistant.toUpperCase()+" svarade","✓","AI-motor: "+(data.engine||"Okänd"));
  }catch(error){loading.className="msg error";loading.textContent="Anslutningsfel: "+error.message;saveChatHistory(assistant);logActivity(assistant.toUpperCase()+" – anslutningsfel","⚠",error.message)}
  finally{button.disabled=false;button.textContent="SKICKA";if(!activeSpeechRoom||activeSpeechRoom!==assistant)setTimeout(()=>setRoomState(assistant,"idle"),1800);input.focus()}
