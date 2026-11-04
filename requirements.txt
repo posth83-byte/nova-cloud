@@ -1,2 +1,7 @@
+
 fastapi
 uvicorn
+python-multipart
+edge-tts
+imageio-ffmpeg
+Pillow
