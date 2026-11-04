@@ -1,7 +1,9 @@
+
 import os
 import json
 import re
 import urllib.request
+import urllib.error
 import xml.etree.ElementTree as ET
 
 from pathlib import Path
@@ -13,10 +15,16 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
 
+# ==========================================
+# NOVA CLOUD – VERSION 2.2.0
+# ==========================================
+
+APP_VERSION = "2.2.0"
+
 app = FastAPI(
     title="NOVA Cloud",
     description="JARVIS och NOVA – personlig AI-central",
-    version="2.1.0"
+    version=APP_VERSION
 )
 
 
@@ -233,12 +241,25 @@ TREND_PROMPT = NOVA_PROMPT
 # GEMINI MOTOR
 # ==========================================
 
-def ask_gemini(message, system_prompt, max_tokens=2048):
+def ask_gemini(
+    message,
+    system_prompt,
+    max_tokens=2048,
+    json_mode=False
+):
 
     url = (
         "https://generativelanguage.googleapis.com/"
         f"v1beta/models/{GEMINI_MODEL}:generateContent"
     )
+
+    generation_config = {
+        "temperature": 0.4 if json_mode else 0.7,
+        "maxOutputTokens": max_tokens
+    }
+
+    if json_mode:
+        generation_config["responseMimeType"] = "application/json"
 
     payload = {
         "system_instruction": {
@@ -250,10 +271,7 @@ def ask_gemini(message, system_prompt, max_tokens=2048):
                 "parts": [{"text": message}]
             }
         ],
-        "generationConfig": {
-            "temperature": 0.7,
-            "maxOutputTokens": max_tokens
-        }
+        "generationConfig": generation_config
     }
 
     req = urllib.request.Request(
@@ -266,15 +284,33 @@ def ask_gemini(message, system_prompt, max_tokens=2048):
         method="POST"
     )
 
-    with urllib.request.urlopen(req, timeout=120) as response:
-        result = json.loads(response.read().decode("utf-8"))
+    try:
+        with urllib.request.urlopen(req, timeout=180) as response:
+            result = json.loads(
+                response.read().decode("utf-8")
+            )
+
+    except urllib.error.HTTPError as error:
+        details = error.read().decode("utf-8", errors="replace")
+        raise ValueError(
+            f"Gemini API-fel {error.code}: {details[:1500]}"
+        )
 
     candidates = result.get("candidates", [])
 
     if not candidates:
         raise ValueError("Gemini skickade inget svar.")
 
-    parts = candidates[0].get("content", {}).get("parts", [])
+    candidate = candidates[0]
+
+    finish_reason = candidate.get("finishReason", "")
+
+    if finish_reason == "MAX_TOKENS":
+        raise ValueError(
+            "Gemini avbröt svaret eftersom token-gränsen nåddes."
+        )
+
+    parts = candidate.get("content", {}).get("parts", [])
 
     answer = " ".join(
         part.get("text", "")
@@ -283,7 +319,9 @@ def ask_gemini(message, system_prompt, max_tokens=2048):
     ).strip()
 
     if not answer:
-        raise ValueError("Gemini skickade ett tomt svar.")
+        raise ValueError(
+            f"Gemini skickade ett tomt svar. Orsak: {finish_reason}"
+        )
 
     return answer
 
@@ -292,7 +330,12 @@ def ask_gemini(message, system_prompt, max_tokens=2048):
 # OPENROUTER RESERVMOTOR
 # ==========================================
 
-def ask_openrouter(message, system_prompt, max_tokens=2048):
+def ask_openrouter(
+    message,
+    system_prompt,
+    max_tokens=2048,
+    json_mode=False
+):
 
     url = "https://openrouter.ai/api/v1/chat/completions"
 
@@ -302,9 +345,14 @@ def ask_openrouter(message, system_prompt, max_tokens=2048):
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": message}
         ],
-        "temperature": 0.7,
+        "temperature": 0.4 if json_mode else 0.7,
         "max_tokens": max_tokens
     }
+
+    if json_mode:
+        payload["response_format"] = {
+            "type": "json_object"
+        }
 
     req = urllib.request.Request(
         url,
@@ -316,15 +364,31 @@ def ask_openrouter(message, system_prompt, max_tokens=2048):
         method="POST"
     )
 
-    with urllib.request.urlopen(req, timeout=120) as response:
-        result = json.loads(response.read().decode("utf-8"))
+    try:
+        with urllib.request.urlopen(req, timeout=180) as response:
+            result = json.loads(
+                response.read().decode("utf-8")
+            )
+
+    except urllib.error.HTTPError as error:
+        details = error.read().decode("utf-8", errors="replace")
+        raise ValueError(
+            f"OpenRouter API-fel {error.code}: {details[:1500]}"
+        )
 
     choices = result.get("choices", [])
 
     if not choices:
         raise ValueError("OpenRouter skickade inget svar.")
 
-    answer = choices[0].get("message", {}).get("content", "")
+    choice = choices[0]
+
+    if choice.get("finish_reason") == "length":
+        raise ValueError(
+            "OpenRouter avbröt svaret på grund av token-gränsen."
+        )
+
+    answer = choice.get("message", {}).get("content", "")
 
     if isinstance(answer, list):
         answer = " ".join(
@@ -345,7 +409,12 @@ def ask_openrouter(message, system_prompt, max_tokens=2048):
 # GEMENSAM AI-FUNKTION
 # ==========================================
 
-def generate_reply(message, system_prompt, max_tokens=2048):
+def generate_reply(
+    message,
+    system_prompt,
+    max_tokens=2048,
+    json_mode=False
+):
 
     gemini_error = None
 
@@ -355,10 +424,12 @@ def generate_reply(message, system_prompt, max_tokens=2048):
                 "reply": ask_gemini(
                     message,
                     system_prompt,
-                    max_tokens
+                    max_tokens,
+                    json_mode
                 ),
                 "engine": "Gemini"
             }
+
         except Exception as error:
             gemini_error = str(error)
 
@@ -371,10 +442,12 @@ def generate_reply(message, system_prompt, max_tokens=2048):
                 "reply": ask_openrouter(
                     message,
                     system_prompt,
-                    max_tokens
+                    max_tokens,
+                    json_mode
                 ),
                 "engine": "OpenRouter"
             }
+
         except Exception as error:
             raise HTTPException(
                 status_code=502,
@@ -401,7 +474,7 @@ def generate_reply(message, system_prompt, max_tokens=2048):
 
 def extract_json(text):
 
-    cleaned = text.strip()
+    cleaned = str(text).strip()
 
     cleaned = re.sub(
         r"^```(?:json)?\s*",
@@ -410,16 +483,85 @@ def extract_json(text):
         flags=re.IGNORECASE
     )
 
-    cleaned = re.sub(r"\s*```$", "", cleaned)
+    cleaned = re.sub(
+        r"\s*```$",
+        "",
+        cleaned
+    )
 
     start = cleaned.find("{")
-    end = cleaned.rfind("}")
 
-    if start == -1 or end == -1:
-        raise ValueError("AI-svaret innehöll ingen giltig JSON.")
+    if start == -1:
+        raise ValueError(
+            "AI-svaret innehöll ingen JSON."
+        )
 
-    return json.loads(cleaned[start:end + 1])
+    decoder = json.JSONDecoder()
 
+    try:
+        result, _ = decoder.raw_decode(cleaned[start:])
+
+        if not isinstance(result, dict):
+            raise ValueError(
+                "Videopaketet måste vara ett JSON-objekt."
+            )
+
+        return result
+
+    except json.JSONDecodeError as error:
+
+        position = start + error.pos
+
+        snippet = cleaned[
+            max(0, position - 100):
+            min(len(cleaned), position + 100)
+        ]
+
+        raise ValueError(
+            f"JSON-fel på rad {error.lineno}, "
+            f"kolumn {error.colno}. "
+            f"Text runt felet: {snippet}"
+        )
+
+
+def repair_video_json(broken_text):
+
+    repair_prompt = """
+Du är en JSON-reparatör.
+
+Din uppgift är att reparera JSON-texten nedan.
+
+REGLER:
+- Returnera endast giltig JSON.
+- Behåll allt innehåll som går att rädda.
+- Hitta inte på nya fakta.
+- Ta bort kommentarer och Markdown.
+- Rätta felaktiga kommatecken och citationstecken.
+- Säkerställ att alla strängar är korrekt avslutade.
+- Säkerställ att alla objekt och listor stängs.
+- Ändra inte JSON-strukturens fältnamn.
+
+Returnera endast det kompletta JSON-objektet.
+"""
+
+    repair_message = (
+        "Reparera följande JSON:\n\n"
+        + str(broken_text)[:30000]
+    )
+
+    result = generate_reply(
+        repair_message,
+        repair_prompt,
+        max_tokens=8192,
+        json_mode=True
+    )
+
+    return extract_json(result["reply"])
+
+
+# ==========================================
+# VIDEO – VALIDERING
+# ==========================================
 
 def seconds_to_srt(seconds):
 
@@ -472,6 +614,9 @@ def validate_video_plan(plan):
         "youtube"
     ]
 
+    if not isinstance(plan, dict):
+        raise ValueError("Videoplanen har fel format.")
+
     for key in required:
         if key not in plan:
             raise ValueError(
@@ -484,7 +629,16 @@ def validate_video_plan(plan):
     if not isinstance(plan["subtitles"], list):
         raise ValueError("Undertexterna har fel format.")
 
+    if not isinstance(plan["thumbnail"], dict):
+        raise ValueError("Thumbnail har fel format.")
+
+    if not isinstance(plan["youtube"], dict):
+        raise ValueError("YouTube-informationen har fel format.")
+
     for scene in plan["scenes"]:
+
+        if not isinstance(scene, dict):
+            raise ValueError("En scen har fel format.")
 
         for key in [
             "scene_number",
@@ -501,6 +655,21 @@ def validate_video_plan(plan):
                     f"En scen saknar fältet: {key}"
                 )
 
+    for subtitle in plan["subtitles"]:
+
+        if not isinstance(subtitle, dict):
+            raise ValueError("En undertext har fel format.")
+
+        for key in [
+            "start_seconds",
+            "end_seconds",
+            "text"
+        ]:
+            if key not in subtitle:
+                raise ValueError(
+                    f"En undertext saknar fältet: {key}"
+                )
+
     return plan
 
 
@@ -515,7 +684,7 @@ def get_google_trends():
     req = urllib.request.Request(
         url,
         headers={
-            "User-Agent": "Mozilla/5.0 NOVA-Cloud/2.1"
+            "User-Agent": "Mozilla/5.0 NOVA-Cloud/2.2"
         }
     )
 
@@ -577,7 +746,7 @@ def get_youtube_rss():
             req = urllib.request.Request(
                 url,
                 headers={
-                    "User-Agent": "Mozilla/5.0 NOVA-Cloud/2.1"
+                    "User-Agent": "Mozilla/5.0 NOVA-Cloud/2.2"
                 }
             )
 
@@ -692,11 +861,13 @@ def get_youtube_api_popular():
 
     req = urllib.request.Request(
         url,
-        headers={"User-Agent": "NOVA-Cloud/2.1"}
+        headers={"User-Agent": "NOVA-Cloud/2.2"}
     )
 
     with urllib.request.urlopen(req, timeout=20) as response:
-        result = json.loads(response.read().decode("utf-8"))
+        result = json.loads(
+            response.read().decode("utf-8")
+        )
 
     videos = []
 
@@ -813,7 +984,7 @@ async def health():
     return {
         "status": "online",
         "service": "NOVA Cloud",
-        "version": "2.1.0",
+        "version": APP_VERSION,
         "time": datetime.now(timezone.utc).isoformat()
     }
 
@@ -842,7 +1013,7 @@ async def status():
         "youtube_channels_configured": len(valid_channels),
         "video_planner": "online",
         "video_renderer": "not_configured",
-        "version": "2.1.0",
+        "version": APP_VERSION,
         "time": datetime.now(timezone.utc).isoformat()
     }
 
@@ -963,7 +1134,7 @@ REGLER:
 
     return {
         "assistant": "NOVA Trendmotor",
-        "version": "2.1.0",
+        "version": APP_VERSION,
         "status": "completed",
         "channel": "Mikael Posth",
         "updated": data["updated"],
@@ -982,7 +1153,7 @@ REGLER:
 
 
 # ==========================================
-# NYHET: NOVA VIDEO PRODUCER
+# NOVA VIDEO PRODUCER
 # ==========================================
 
 @app.post("/api/video/plan")
@@ -1021,33 +1192,54 @@ med tydlig början, mitt och avslutning.
 
 Returnera ett komplett produktionspaket
 enligt JSON-strukturen i dina instruktioner.
+
+VIKTIGT:
+Returnera ett komplett JSON-objekt.
+Avsluta samtliga strängar, listor och objekt.
+Lämna inte JSON ofärdig.
 """
 
     result = generate_reply(
         user_prompt,
         VIDEO_PRODUCER_PROMPT,
-        max_tokens=8192
+        max_tokens=8192,
+        json_mode=True
     )
 
     try:
-        plan = extract_json(result["reply"])
+        try:
+            plan = extract_json(result["reply"])
+
+        except (ValueError, json.JSONDecodeError):
+            plan = repair_video_json(result["reply"])
+
         plan = validate_video_plan(plan)
 
     except Exception as error:
         raise HTTPException(
             status_code=502,
             detail=(
-                "NOVA kunde inte skapa ett giltigt "
-                f"videopaket: {str(error)}"
+                "NOVA kunde inte skapa ett giltigt videopaket: "
+                f"{str(error)}"
             )
         )
 
-    subtitles_srt = create_srt(plan["subtitles"])
+    try:
+        subtitles_srt = create_srt(plan["subtitles"])
+
+    except Exception as error:
+        raise HTTPException(
+            status_code=502,
+            detail=(
+                "Videoplanen skapades men undertexterna "
+                f"kunde inte byggas: {str(error)}"
+            )
+        )
 
     return {
         "assistant": "NOVA VIDEO PRODUCER",
         "status": "completed",
-        "version": "2.1.0",
+        "version": APP_VERSION,
         "created": datetime.now(timezone.utc).isoformat(),
         "channel": request.channel,
         "engine": result["engine"],
