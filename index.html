@@ -545,12 +545,26 @@ main{position:relative;z-index:1;max-width:1100px;margin:auto;padding:20px 15px 
  </div>
 
  <div class="room-content">
+  <section class="video-studio" id="youtubeCommandCenter" style="margin-bottom:18px;border-color:#bd80ff88;background:linear-gradient(145deg,#1b1230,#071020)">
+   <h3>◈ MIKAEL POSTH / YOUTUBE COMMAND CENTER</h3>
+   <p>NOVA:s huvuduppdrag är nu din kanal <strong>Mikael Posth</strong>. Här samlas kanalstatistik, trendspaning och innehållsstrategi.</p>
+   <div class="video-status" id="youtubeCenterStatus">Kontrollerar kanalanslutningen...</div>
+   <div class="export-actions" style="margin:12px 0">
+    <a class="export-btn" href="https://www.youtube.com/@mikaelposth" target="_blank" rel="noopener noreferrer">ÖPPNA MIKAEL POSTH PÅ YOUTUBE ↗</a>
+    <button class="export-btn" type="button" onclick="runChannelAnalytics()">HÄMTA MIN KANALSTATISTIK</button>
+    <button class="export-btn" type="button" onclick="runTrends()">ANALYSERA TRENDER & VIDEOIDÉER</button>
+    <button class="export-btn" type="button" onclick="refreshYouTubeCenter()">UPPDATERA ANSLUTNING</button>
+   </div>
+   <div id="channelAnalyticsResult"></div>
+   <div id="trendResult"></div>
+   <div class="studio-note">Statistik från YouTube kräver en YouTube Data API-nyckel och kanal-ID i Render. Trendanalys kan använda de källor som är tillgängliga även när kanalstatistiken inte är ansluten.</div>
+  </section>
   <section class="video-studio" id="videoStudio">
    <h3>✧ NOVA VIDEO STUDIO / PRODUKTIONSCENTRAL</h3>
    <p>Skapa ett komplett videounderlag och rendera sedan en MP4 med svensk berättarröst, uppladdade scenbilder och undertexter.</p>
    <form id="videoForm">
     <div class="video-form">
-     <div class="field full"><label for="videoPrompt">VAD SKA VIDEON HANDLA OM?</label><textarea id="videoPrompt" required minlength="5" maxlength="5000" placeholder="Beskriv berättelsen, ämnet eller idén...">En mystisk berättelse om en man som hör knackningar från en tom lägenhet.</textarea></div>
+     <div class="field full"><label for="videoPrompt">VAD SKA VIDEON HANDLA OM?</label><textarea id="videoPrompt" required minlength="5" maxlength="5000" placeholder="Beskriv videon, ämnet, din idé eller vad du vill att NOVA ska undersöka..."></textarea></div>
      <div class="field"><label for="videoChannel">YOUTUBE-KANAL</label><select id="videoChannel"><option>Mikael Posth</option></select></div>
      <div class="field"><label for="videoFormat">VIDEOFORMAT</label><select id="videoFormat"><option value="long">Lång video</option><option value="short">YouTube Short</option></select></div>
      <div class="field"><label for="videoDuration">LÄNGD I MINUTER</label><select id="videoDuration"><option value="1">1 minut</option><option value="3">3 minuter</option><option value="5" selected>5 minuter</option><option value="8">8 minuter</option><option value="10">10 minuter</option><option value="15">15 minuter</option><option value="20">20 minuter</option><option value="30">30 minuter</option></select></div>
@@ -569,7 +583,7 @@ main{position:relative;z-index:1;max-width:1100px;margin:auto;padding:20px 15px 
    <div class="messages" id="novaMessages"><div class="msg ai">Hej! NOVA är redo att utveckla dina YouTube-projekt. Vad ska vi skapa?</div></div>
    <div class="voice-panel"><div class="voice-heading">NOVA / RÖSTINSTÄLLNINGAR</div><div class="voice-row"><select class="voice-select" id="novaVoiceSelect" aria-label="Välj NOVA-röst"><option value="">Laddar tillgängliga röster...</option></select><button class="voice-test" onclick="testVoice('nova')">TESTA RÖST</button></div><div class="voice-note">Välj en svensk röst om en sådan finns tillgänglig på din enhet.</div><div class="voice-status" id="novaVoiceStatus">Röstsystem redo.</div></div>
    <form class="input-row" onsubmit="sendMessage(event,'nova')"><input class="chat-input" id="novaInput" placeholder="Skriv till NOVA..." autocomplete="off"><button class="send" id="novaSend">SKICKA</button></form>
-   <div class="tools"><button class="tool-btn" onclick="runTrends()">ANALYSERA YOUTUBE-TRENDER</button><button class="tool-btn" onclick="runChannelAnalytics()">ANALYSERA MINA KANALER</button></div><div id="trendResult"></div><div id="channelAnalyticsResult"></div>
+
   </div>
  </div>
 </section>
@@ -741,6 +755,7 @@ function setRoomState(room,state){
 function enterRoom(room){
  activeRoom=room;$("homeView").classList.add("hidden");$("jarvisView").classList.add("hidden");$("novaView").classList.add("hidden");
  $(room+"View").classList.remove("hidden");window.scrollTo({top:0,behavior:"smooth"});loadVoices();
+ if(room==="nova")refreshYouTubeCenter();
  logActivity(room.toUpperCase()+"-rummet öppnades",room==="nova"?"✧":"✦","AI-rum aktiverat");
  if(room==="nova")setTimeout(()=>{if($("novaView").classList.contains("hidden"))return;window.scrollTo({top:0,behavior:"smooth"})},100);
  setTimeout(()=>$(room+"Input").focus(),450);
@@ -803,6 +818,18 @@ async function sendMessage(event,assistant){
 }
 
 /* EGNA YOUTUBE-KANALER */
+async function refreshYouTubeCenter(){
+ const status=$("youtubeCenterStatus");if(!status)return;
+ status.textContent="Kontrollerar NOVA:s YouTube-anslutning...";
+ try{
+  const response=await fetch("/api/status");const data=await response.json();
+  if(!response.ok)throw new Error("Servern kunde inte bekräfta status.");
+  const api=data.youtube_api_configured?"YouTube API: ANSLUTEN":"YouTube API: SAKNAR API-NYCKEL";
+  const channel=data.youtube_channels_configured>0?"Kanal-ID: KONFIGURERAT":"Kanal-ID: SAKNAS";
+  status.textContent="KANAL: MIKAEL POSTH (@mikaelposth) · "+api+" · "+channel+" · NOVA CLOUD v"+data.version;
+  status.className="video-status "+(data.youtube_analytics_ready?"success":"");
+ }catch(error){status.textContent="Kunde inte kontrollera YouTube-anslutningen: "+error.message;status.className="video-status error"}
+}
 async function runChannelAnalytics(){
  const result=$("channelAnalyticsResult");
  if(!result)return;
