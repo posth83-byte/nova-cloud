@@ -884,7 +884,7 @@ async function createWebPreview(reply){
  const match=reply.match(new RegExp(marker+"html\\s*([\\s\\S]*?)"+marker,"i"));
  if(!match)return false;
  let page=match[1].trim();
- if(webmasterImageData)page=page.split("{{WEBMASTER_IMAGE}}").join(webmasterImageData);
+ if(webmasterImageData)page=page.split("{{WEBMASTER_IMAGE}}").join(webmasterImageData);else page=page.split("{{WEBMASTER_IMAGE}}").join("data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%27800%27 height=%27450%27 viewBox=%270 0 800 450%27%3E%3Crect width=%27800%27 height=%27450%27 fill=%27%23102233%27/%3E%3Ctext x=%27400%27 y=%27225%27 fill=%27%23ffffff%27 font-size=%2728%27 text-anchor=%27middle%27%3ELagg till en egen bild%3C/text%3E%3C/svg%3E");
  const response=await fetch("/api/webmaster/preview",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({html:page})});
  const data=await response.json();if(!response.ok)throw new Error(data.detail||"Kunde inte skapa förhandsvisningen.");
  const area=$("webPreviewArea");area.hidden=false;area.replaceChildren();
