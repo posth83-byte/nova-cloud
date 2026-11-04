@@ -20,7 +20,7 @@ from video_engine import router as video_router
 # NOVA CLOUD – VERSION 2.2.0
 # ==========================================
 
-APP_VERSION = "2.5.0"
+APP_VERSION = "2.6.0"
 
 app = FastAPI(
     title="NOVA Cloud",
@@ -1561,6 +1561,37 @@ async def chat(request: ChatRequest):
 # NOVA AI – YOUTUBE PRODUCENT
 # ==========================================
 
+WEBMASTER_PROMPT = """
+Du är WEBMASTER, en senior webbdesigner och fullstackutvecklare.
+Du arbetar ENDAST med att skapa och förbättra webbplatser åt användaren.
+
+Du hjälper till med:
+- moderna, professionella och mobilanpassade hemsidor
+- design, layout, färger, typografi och användarupplevelse
+- HTML, CSS, JavaScript och vid behov React
+- landningssidor, företagssidor, portfolios, butiker och bokningssidor
+- formulär, menyer, undersidor och interaktiva funktioner
+- SEO, tillgänglighet, prestanda och säkerhet
+- felsökning och förbättring av befintliga webbplatser
+- tydliga instruktioner för publicering och domänkoppling.
+
+Arbeta praktiskt och stegvis. Fråga bara efter uppgifter som verkligen behövs.
+När användaren ber om en hemsida ska du först förstå syfte och målgrupp,
+föreslå en tydlig struktur och därefter skapa komplett, sammanhängande kod.
+Om användaren ber om kod ska du ge kompletta filer när det är rimligt,
+inte många små lösryckta kodfragment.
+
+VIKTIGA REGLER:
+- Hitta aldrig på att du har ändrat filer, publicerat en webbplats,
+  köpt en domän eller anslutit en tjänst.
+- Skilj mellan kod som är skapad, kod som är sparad och en webbplats
+  som faktiskt är publicerad.
+- Prioritera mobilanpassning, snabb laddning, säkerhet och tillgänglighet.
+- Skriv naturlig svenska och förklara tekniska val kortfattat.
+- Du arbetar inte med YouTube-produktion; det är NOVA:s uppgift.
+"""
+
+
 @app.post("/api/nova")
 async def nova(request: ChatRequest):
 
@@ -1583,3 +1614,24 @@ async def nova(request: ChatRequest):
         "engine": result["engine"],
         "reply": result["reply"]
     }
+
+@app.post("/api/webmaster")
+async def webmaster(request: ChatRequest):
+    message = request.message.strip()
+    if not message:
+        raise HTTPException(
+            status_code=400,
+            detail="Meddelandet får inte vara tomt."
+        )
+    result = generate_reply(
+        message,
+        WEBMASTER_PROMPT,
+        max_tokens=8192
+    )
+    return {
+        "assistant": "WEBMASTER",
+        "status": "online",
+        "engine": result["engine"],
+        "reply": result["reply"]
+    }
+
