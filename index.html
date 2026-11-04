@@ -1111,7 +1111,7 @@ async function sendMessage(event,assistant){
  input.value="";button.disabled=true;button.textContent="...";setRoomState(assistant,"working");
  const loading=addMessage(messages,isWeb?"WEBMASTER bygger en lösning...":isNova?"NOVA analyserar...":"JARVIS tänker...","ai");
  try{
-  let response,data,videoRequest=false;
+   videoRequest=/\b(skapa|gör(?:a)?|bygg|producera|framställ|ta fram)\b.{0,55}\b(video|short|film|klipp|avsnitt)\b|\b(video|short|film|klipp|avsnitt)\b.{0,55}\b(skapa|gör(?:a)?|bygg|producera)\b/i.test(message);
   if(isNova){
    const urlMatch=message.match(/https?:\/\/[^\s<>"']+/i);
    const referenceUrl=urlMatch?urlMatch[0].replace(/[),.]+$/,""):"";
@@ -1123,14 +1123,16 @@ async function sendMessage(event,assistant){
    }else{
     response=await fetch("/api/nova",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({message,reference_url:referenceUrl,reference_image_data:imageData})});
    }
-   window.novaChatImageData="";
-   const picker=$("novaImageInput");if(picker)picker.value="";
-   const label=$("novaAttachmentName");if(label)label.textContent="Klistra in en länk direkt i chatten eller bifoga en referensbild.";
   }else{
    response=await fetch(isWeb?"/api/webmaster":"/api/chat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({message})});
   }
   data=await response.json();
   if(!response.ok)throw new Error(typeof data.detail==="string"?data.detail:JSON.stringify(data.detail||data));
+  if(isNova){
+   window.novaChatImageData="";
+   const picker=$("novaImageInput");if(picker)picker.value="";
+   const label=$("novaAttachmentName");if(label)label.textContent="Klistra in en länk direkt i chatten eller bifoga en referensbild.";
+  }
   if(isNova&&videoRequest){
    renderVideoPlan(data);
    loading.textContent="✓ NOVA har skapat ett komplett produktionsunderlag för din video. Manus, scener, bild- och videoprompter samt undertexter finns samlade nedanför chatten.\n\nAI-motor: "+(data.engine||"Okänd");
