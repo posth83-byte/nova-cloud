@@ -451,6 +451,62 @@ main{position:relative;z-index:1;max-width:1100px;margin:auto;padding:20px 15px 
 .web-preview-area{margin-top:14px;padding:14px;border:1px solid #55d9b6;border-radius:12px;background:#08241f;color:#d1fff1}
 .web-preview-link{display:inline-block;margin-top:8px;padding:11px 16px;border-radius:9px;background:#147d68;color:#fff;text-decoration:none;font-weight:700}
 .web-preview-note{font-size:11px;color:#a8c9bf;margin-top:8px}
+
+/* ANIMATED AI OFFICE — all three workers in one shared scene */
+.headquarters{padding:14px 12px 18px;min-height:0;background:linear-gradient(145deg,#0b1d31,#030813 80%);border-color:#367ca788}
+.hq-caption{margin:2px 0 10px}
+.crew-scene{height:clamp(390px,65vw,540px);max-height:540px;position:relative;overflow:hidden;border-radius:18px;isolation:isolate;background:radial-gradient(ellipse at 50% 35%,#28516a 0%,#142f45 42%,#071526 78%,#030914 100%);border:1px solid #4b9ac477;box-shadow:inset 0 0 80px #36bfff22,0 18px 35px #0008}
+.crew-scene:before{content:"";position:absolute;inset:0;background:repeating-linear-gradient(0deg,transparent 0 38px,#a5eaff0b 39px 40px),repeating-linear-gradient(90deg,transparent 0 38px,#a5eaff0b 39px 40px);transform:perspective(520px) rotateX(22deg) scale(1.2);transform-origin:bottom;z-index:-1}
+.crew-window{position:absolute;top:4%;left:15%;width:70%;height:15%;border:4px solid #315e7a;border-bottom-width:8px;border-radius:9px;background:linear-gradient(180deg,#071426,#1b5274 55%,#071426);box-shadow:0 0 35px #39bfff55,inset 0 0 25px #50cfff22}
+.crew-window span{position:absolute;left:10px;top:8px;font-size:clamp(6px,.9vw,9px);letter-spacing:2px;color:#b2eaff}
+.crew-window i{position:relative;display:inline-block;top:48%;left:15%;width:5px;height:5px;border-radius:50%;background:#a6f6ff;box-shadow:0 0 12px #7ceaff}
+.crew-light{position:absolute;top:20%;width:22%;height:40%;filter:blur(25px);opacity:.25;pointer-events:none}.light-blue{left:4%;background:#29bfff}.light-purple{right:4%;background:#c27aff}
+.crew-floor{position:absolute;left:-10%;right:-10%;bottom:-17%;height:53%;background:linear-gradient(180deg,#102d43,#071321 75%);border-top:2px solid #5dcfff55;transform:perspective(350px) rotateX(48deg);box-shadow:0 -8px 35px #36bfff22}
+.crew-station{position:absolute;top:27%;width:29%;height:57%;padding:0;border:1px solid #65d9ff88;border-radius:15px;background:linear-gradient(145deg,#244e67dd,#091827f5 78%);box-shadow:0 18px 30px #000b,0 0 24px #24baff33;cursor:pointer;transform:perspective(700px) rotateX(9deg) rotateZ(-3deg);transition:transform .25s;z-index:2;color:#eaf8ff}
+.crew-station:active{filter:brightness(1.2);transform:perspective(700px) rotateX(5deg) scale(.97)}
+.jarvis-crew{left:3%}.nova-crew{left:35.5%;top:25%;border-color:#d0a0ff99;background:linear-gradient(145deg,#4b3261ee,#160e24f5 78%);transform:perspective(700px) rotateX(9deg)}
+.web-crew{right:3%;border-color:#83e7c499;background:linear-gradient(145deg,#28594fef,#0a201df5 78%);transform:perspective(700px) rotateX(9deg) rotateZ(3deg)}
+.crew-tag{position:absolute;top:9px;left:0;right:0;text-align:center;font-size:clamp(7px,1.1vw,10px);font-weight:800;letter-spacing:1.5px;color:#a8eaff}
+.nova-crew .crew-tag{color:#e6caff}.web-crew .crew-tag{color:#b8ffe8}
+.crew-character{position:absolute;top:17%;left:50%;width:54%;height:43%;transform:translateX(-50%);display:block;filter:drop-shadow(0 8px 10px #0008);animation:crewBob 3.4s ease-in-out infinite}
+.crew-character .char-face{position:absolute;z-index:2;left:18%;top:0;width:64%;height:61%;border-radius:44% 44% 42% 42%;background:linear-gradient(145deg,#ffe0bd,#d79a77);box-shadow:inset -7px -6px 0 #a85e4933,0 0 0 4px #d9efff33}
+.crew-character .char-hair{position:absolute;z-index:3;left:15%;top:-4%;width:70%;height:28%;border-radius:60% 55% 25% 25%;background:linear-gradient(145deg,#d9f5ff,#4d91b7 70%);transform:rotate(-4deg)}
+.purple-character .char-hair{background:linear-gradient(145deg,#f5dfff,#9c62ca 75%)}.green-character .char-hair{background:linear-gradient(145deg,#d4ffed,#4a9e83 75%)}
+.crew-character .char-face b{position:absolute;top:42%;width:8%;height:10%;border-radius:50%;background:#25364a;box-shadow:0 0 0 2px #fff8}
+.crew-character .char-face b:first-child{left:28%}.crew-character .char-face b:nth-child(2){right:28%}
+.crew-character .char-face em{position:absolute;left:40%;top:62%;width:20%;height:9%;border-bottom:2px solid #a64e52;border-radius:50%}
+.crew-character .char-body{position:absolute;left:8%;bottom:0;width:84%;height:48%;border-radius:48% 48% 15% 15%;background:linear-gradient(120deg,#a8eaff,#246c9b 65%,#12314c);border:2px solid #9ceaff88;box-shadow:inset -10px -5px 0 #001b3533}
+.purple-character .char-body{background:linear-gradient(120deg,#edceff,#8752b5 65%,#3c235b);border-color:#e3c2ff88}.green-character .char-body{background:linear-gradient(120deg,#c8ffeb,#438d78 65%,#1e5146);border-color:#c2ffeb88}
+.crew-character .char-body b{position:absolute;left:43%;top:28%;width:14%;aspect-ratio:1;border-radius:50%;background:#eaffff;box-shadow:0 0 12px #7beaff}
+.purple-character .char-body b{background:#fff0ff;box-shadow:0 0 12px #d6a5ff}.green-character .char-body b{background:#effff7;box-shadow:0 0 12px #8cf0ca}
+.crew-desk{position:absolute;left:5%;right:5%;bottom:14%;height:31%;display:block}
+.desk-screen{position:absolute;left:19%;right:19%;top:0;height:68%;border:3px solid #5bd8ff;border-radius:6px;background:linear-gradient(145deg,#061a2d,#020812);box-shadow:0 0 17px #36bfff88;display:flex;align-items:end;justify-content:space-around;padding:7%}
+.desk-screen b{width:13%;height:50%;background:linear-gradient(0deg,#1876b7,#9beeff);box-shadow:0 0 7px #42caff}.desk-screen b:nth-child(2){height:85%}.desk-screen b:nth-child(3){height:65%}
+.nova-crew .desk-screen{border-color:#d2a3ff;box-shadow:0 0 17px #bd80ff88}.nova-crew .desk-screen b{background:linear-gradient(0deg,#7845a8,#e7c5ff)}
+.web-crew .desk-screen{border-color:#83e7c4;box-shadow:0 0 17px #55d9b688}.web-crew .desk-screen b{background:linear-gradient(0deg,#267d68,#b7ffe7)}
+.desk-top{position:absolute;left:0;right:0;bottom:0;height:25%;border-radius:5px;background:linear-gradient(180deg,#47738b,#10283b);box-shadow:0 7px 10px #0009}
+.nova-crew .desk-top{background:linear-gradient(180deg,#80639a,#291a3c)}.web-crew .desk-top{background:linear-gradient(180deg,#659b8c,#1b3c35)}
+.desk-leg{position:absolute;left:47%;bottom:-16%;width:6%;height:22%;background:#607d91}
+.crew-task{position:absolute;bottom:5%;left:0;right:0;text-align:center;font-size:clamp(5px,.8vw,8px);letter-spacing:1px;color:#9edfff}
+.nova-crew .crew-task{color:#e0c1ff}.web-crew .crew-task{color:#b9ffe7}
+.crew-center{position:absolute;z-index:4;left:50%;bottom:5%;transform:translateX(-50%);width:19%;aspect-ratio:1.6;border:1px solid #8ddfff;border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;background:radial-gradient(ellipse,#1c5674,#071726 75%);box-shadow:0 0 25px #39c8ff77;text-align:center;pointer-events:none}
+.crew-center strong{font-size:clamp(9px,1.5vw,16px);line-height:1.05;letter-spacing:2px;color:#c4f4ff}.crew-center span{font-size:clamp(4px,.55vw,6px);margin-top:3px;color:#9edfff;letter-spacing:.5px}
+.crew-floor-glow{position:absolute;z-index:1;bottom:1%;left:8%;right:8%;height:2px;background:linear-gradient(90deg,transparent,#39c8ff,#bd80ff,#55d9b6,transparent);box-shadow:0 0 20px #39c8ff}
+#homeView>.section-label:nth-of-type(2),.rooms{display:none!important}
+.hq-name{margin:12px 0 5px}
+.hq-desc{max-width:620px}
+@keyframes crewBob{0%,100%{transform:translate(-50%,0)}50%{transform:translate(-50%,-5px)}}
+@media(max-width:650px){
+ .headquarters{padding:10px 7px 14px}.crew-scene{height:clamp(370px,112vw,455px)}
+ .crew-window{left:8%;width:84%;height:13%}.crew-station{top:25%;height:58%;width:30%;border-radius:10px}
+ .jarvis-crew{left:2%}.nova-crew{left:35%;top:24%}.web-crew{right:2%}
+ .crew-tag{top:7px;letter-spacing:.4px;font-size:7px}.crew-character{top:19%;width:64%;height:39%}
+ .crew-desk{bottom:16%;left:3%;right:3%;height:29%}.crew-task{font-size:5px;letter-spacing:.1px}
+ .crew-center{width:25%;bottom:4%}.crew-center span{font-size:4px}
+ .hq-name{font-size:15px;letter-spacing:2px}.hq-desc{font-size:10px}
+}
+@media(prefers-reduced-motion:reduce){.crew-character{animation:none}}
+
 </style>
 </head>
 <body>
@@ -465,12 +521,22 @@ main{position:relative;z-index:1;max-width:1100px;margin:auto;padding:20px 15px 
  <div class="section-label">CENTRAL COMMAND / ÖVERSIKT</div>
  <section class="headquarters">
   <div class="hq-caption">NOVA CLOUD / CENTRAL AI HEADQUARTERS</div>
-  <div class="hq-room-scene">
-   <div class="hq-window"><span>GLOBAL NETWORK · CLOUD OPERATIONS</span></div>
-   <div class="hq-station jarvis-station"><div class="hq-screen"><div class="hq-screen-head">JARVIS <i>● ONLINE</i></div><div class="hq-screen-map"></div><div class="hq-screen-bars"><b></b><b></b><b></b><b></b><b></b><b></b></div><div class="hq-screen-foot">SYSTEM CONTROL · ANALYSIS · SECURITY</div></div><div class="hq-console"><span></span><span></span><span></span></div><div class="hq-chair"></div><div class="hq-station-label">01 / JARVIS CONTROL</div></div>
-   <div class="hq-station nova-station"><div class="hq-screen"><div class="hq-screen-head">NOVA <i>● CREATING</i></div><div class="hq-screen-edit"><b></b><b></b><b></b><b></b><b></b><b></b></div><div class="hq-screen-foot">VIDEO STUDIO · YOUTUBE · CREATIVE AI</div></div><div class="hq-console"><span></span><span></span><span></span></div><div class="hq-chair"></div><div class="hq-station-label">02 / NOVA CREATIVE STUDIO</div></div>
-   <div class="hq-center-mark"><strong>NOVA<br>CLOUD</strong><small>DUAL AI SYSTEM</small></div>
-   <div class="hq-room-lights"></div>
+  <div class="hq-room-scene crew-scene">
+   <div class="crew-window"><span>AI HEADQUARTERS · LIVE OPERATIONS</span><i></i><i></i><i></i></div>
+   <div class="crew-light light-blue"></div><div class="crew-light light-purple"></div><div class="crew-floor"></div>
+   <button class="crew-station jarvis-crew" onclick="enterRoom('jarvis')" aria-label="Öppna JARVIS">
+    <span class="crew-tag">01 · JARVIS</span><span class="crew-character blue-character"><i class="char-hair"></i><i class="char-face"><b></b><b></b><em></em></i><i class="char-body"><b></b></i></span>
+    <span class="crew-desk"><i class="desk-screen"><b></b><b></b><b></b></i><i class="desk-top"></i><i class="desk-leg"></i></span><span class="crew-task">SYSTEM &amp; RESEARCH</span>
+   </button>
+   <button class="crew-station nova-crew" onclick="enterRoom('nova')" aria-label="Öppna NOVA">
+    <span class="crew-tag">02 · NOVA</span><span class="crew-character purple-character"><i class="char-hair"></i><i class="char-face"><b></b><b></b><em></em></i><i class="char-body"><b></b></i></span>
+    <span class="crew-desk"><i class="desk-screen"><b></b><b></b><b></b></i><i class="desk-top"></i><i class="desk-leg"></i></span><span class="crew-task">YOUTUBE &amp; VIDEO</span>
+   </button>
+   <button class="crew-station web-crew" onclick="enterRoom('web')" aria-label="Öppna WEBMASTER">
+    <span class="crew-tag">03 · WEBMASTER</span><span class="crew-character green-character"><i class="char-hair"></i><i class="char-face"><b></b><b></b><em></em></i><i class="char-body"><b></b></i></span>
+    <span class="crew-desk"><i class="desk-screen"><b></b><b></b><b></b></i><i class="desk-top"></i><i class="desk-leg"></i></span><span class="crew-task">WEBB &amp; DESIGN</span>
+   </button>
+   <div class="crew-center"><strong>AI<br>CORE</strong><span>ALL SYSTEMS CONNECTED</span></div><div class="crew-floor-glow"></div>
   </div>
   <div class="hq-name">TWO SYSTEMS. ONE HEADQUARTERS.</div>
   <div class="hq-desc">Ett gemensamt AI-högkvarter där JARVIS sköter kontrollcentralen och NOVA driver den kreativa produktionen.</div>
