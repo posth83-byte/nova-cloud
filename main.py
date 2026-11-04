@@ -1,6 +1,6 @@
-
 import os
 import json
+import re
 import urllib.request
 import xml.etree.ElementTree as ET
 
@@ -10,13 +10,13 @@ from urllib.parse import quote
 
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 app = FastAPI(
     title="NOVA Cloud",
     description="JARVIS och NOVA – personlig AI-central",
-    version="2.0.0"
+    version="2.1.0"
 )
 
 
@@ -41,11 +41,11 @@ OPENROUTER_MODEL = os.getenv(
 
 YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY")
 
-# Lägg kanalernas UC-ID:n här via Render Environment.
-# Flera ID:n separeras med kommatecken.
 YOUTUBE_CHANNEL_IDS = [
     item.strip()
-    for item in os.getenv("YOUTUBE_CHANNEL_IDS", "").replace(";", ",").split(",")
+    for item in os.getenv(
+        "YOUTUBE_CHANNEL_IDS", ""
+    ).replace(";", ",").split(",")
     if item.strip()
 ]
 
@@ -58,7 +58,16 @@ MAX_RSS_VIDEOS = 60
 # ==========================================
 
 class ChatRequest(BaseModel):
-    message: str
+    message: str = Field(min_length=1, max_length=10000)
+
+
+class VideoPlanRequest(BaseModel):
+    prompt: str = Field(min_length=5, max_length=5000)
+    channel: str = "Mikael Posth"
+    format: str = "long"
+    duration_minutes: int = Field(default=5, ge=1, le=30)
+    style: str = "Engagerande och professionell"
+    audience: str = "Svensk YouTube-publik"
 
 
 # ==========================================
@@ -68,11 +77,9 @@ class ChatRequest(BaseModel):
 JARVIS_PROMPT = """
 Du är JARVIS, en avancerad personlig AI-assistent.
 
-Du kommunicerar alltid på naturlig svenska om
-användaren inte ber om ett annat språk.
-
-Du är lugn, intelligent, professionell, vänlig,
-analytisk och lösningsorienterad.
+Du kommunicerar på naturlig svenska.
+Du är lugn, intelligent, professionell,
+vänlig, analytisk och lösningsorienterad.
 
 Du hjälper användaren med teknik, vardag,
 planering, research och personliga projekt.
@@ -80,16 +87,17 @@ planering, research och personliga projekt.
 Du samarbetar med NOVA, som ansvarar för
 kreativ produktion och YouTube-projekt.
 
-Du ska ge tydliga och praktiska svar.
+Ge tydliga och praktiska svar.
 Undvik onödigt långa förklaringar.
-Ta ett steg i taget när användaren behöver hjälp.
+Ta ett steg i taget när det behövs.
 """
 
 NOVA_PROMPT = """
 Du är NOVA, en avancerad kreativ AI-producent.
 
-Ditt huvudsakliga uppdrag är att utveckla
-YouTube-kanalen Mikael Posth.
+Du utvecklar YouTube-kanalerna:
+- Mikael Posth
+- Skuggornas Arkiv
 
 Du ansvarar för:
 - Trendanalys och videoidéer
@@ -99,43 +107,133 @@ Du ansvarar för:
 - Berättarröster och undertexter
 - Videoproduktion
 - Titlar, thumbnails och SEO
-- Analys av vad som fungerar på YouTube
-- Strategier för att utveckla kanalen.
+- Analys av YouTube-innehåll
+- Strategier för kanalutveckling.
 
-Undersök olika innehållsområden.
-Lås dig inte vid en enda genre.
-
-Prioritera idéer som kan:
-- Fånga tittarens uppmärksamhet snabbt.
-- Skapa engagemang och kommentarer.
-- Fungera som Shorts eller längre videor.
-- Produceras med gratisverktyg.
-
-När trenddata finns tillgänglig ska du använda den.
+Prioritera idéer som fångar tittaren snabbt,
+skapar engagemang och kan produceras effektivt.
 
 VIKTIGA REGLER:
-- Skilj verifierade uppgifter från bedömningar.
-- Hitta aldrig på statistik eller visningar.
-- RSS-publicering betyder inte att en video är viral.
-- En populär video är inte automatiskt en växande trend.
+- Hitta aldrig på statistik.
+- Skilj fakta från bedömningar.
+- Hitta aldrig på källor.
 - Ange när data saknas.
-- Hitta inte på källor.
+- Påstå aldrig att du har producerat eller
+  publicerat något som du inte faktiskt gjort.
 
 Du kommunicerar på naturlig svenska.
-
-När användaren ber om en video ska du hjälpa till
-med hela produktionen från idé till publiceringsmaterial.
-
-Påstå aldrig att du har producerat eller publicerat
-något som du inte faktiskt har gjort.
 """
+
+VIDEO_PRODUCER_PROMPT = """
+Du är NOVA VIDEO PRODUCER, en professionell
+AI-regissör, manusförfattare och videoproducent.
+
+Ditt uppdrag är att skapa ett komplett
+produktionsunderlag för en YouTube-video.
+
+Du ska skapa:
+1. En stark och engagerande idé.
+2. En öppning som fångar tittaren direkt.
+3. Ett komplett berättarmanus på svenska.
+4. En tydlig scenindelning.
+5. Bildprompter för varje scen.
+6. Videoprompter för varje scen.
+7. Kameravinklar och rörelseförslag.
+8. Förslag på musik och ljudeffekter.
+9. Undertexter med tidsangivelser.
+10. YouTube-titel och beskrivning.
+11. Thumbnail-idé och bildprompt.
+12. Relevanta sökord och hashtags.
+
+BERÄTTARSTIL:
+Skriv naturlig, levande svenska.
+Undvik robotliknande formuleringar.
+Manuset ska vara lätt att läsa upp.
+Variera tempo och meningslängd.
+Skapa nyfikenhet och behåll tittarens intresse.
+
+SCENER:
+Varje scen ska ha:
+- scene_number
+- title
+- start_seconds
+- end_seconds
+- narration
+- visual_description
+- image_prompt
+- video_prompt
+- camera
+- sound_effects
+- music
+
+UNDERtexter:
+Skapa undertexter som följer berättarrösten.
+Använd start_seconds, end_seconds och text.
+
+FORMAT:
+Returnera ENDAST giltig JSON.
+Ingen Markdown.
+Inga kodstaket.
+Inga kommentarer före eller efter JSON.
+
+Använd exakt följande struktur:
+
+{
+  "title": "Videotitel",
+  "concept": "Beskrivning av videon",
+  "hook": "Öppning",
+  "target_audience": "Målgrupp",
+  "estimated_duration_seconds": 300,
+  "narration_style": "Beskriv rösten",
+  "full_narration": "Hela berättarmanuset",
+  "scenes": [
+    {
+      "scene_number": 1,
+      "title": "Scenens namn",
+      "start_seconds": 0,
+      "end_seconds": 30,
+      "narration": "Berättarröst",
+      "visual_description": "Vad tittaren ser",
+      "image_prompt": "Detaljerad bildprompt",
+      "video_prompt": "Detaljerad videoprompt",
+      "camera": "Kamerarörelse",
+      "sound_effects": "Ljudeffekter",
+      "music": "Musikförslag"
+    }
+  ],
+  "subtitles": [
+    {
+      "start_seconds": 0,
+      "end_seconds": 5,
+      "text": "Undertext"
+    }
+  ],
+  "thumbnail": {
+    "concept": "Thumbnail-idé",
+    "image_prompt": "Bildprompt",
+    "text": "Text på bilden"
+  },
+  "youtube": {
+    "title": "YouTube-titel",
+    "description": "Beskrivning",
+    "tags": ["ord1", "ord2"],
+    "hashtags": ["#exempel"]
+  }
+}
+
+Skapa tillräckligt många scener för videons längd.
+Håll tidsangivelserna sammanhängande.
+Anpassa manusets längd till önskad speltid.
+"""
+
+TREND_PROMPT = NOVA_PROMPT
 
 
 # ==========================================
 # GEMINI MOTOR
 # ==========================================
 
-def ask_gemini(message, system_prompt):
+def ask_gemini(message, system_prompt, max_tokens=2048):
 
     url = (
         "https://generativelanguage.googleapis.com/"
@@ -154,7 +252,7 @@ def ask_gemini(message, system_prompt):
         ],
         "generationConfig": {
             "temperature": 0.7,
-            "maxOutputTokens": 2048
+            "maxOutputTokens": max_tokens
         }
     }
 
@@ -168,7 +266,7 @@ def ask_gemini(message, system_prompt):
         method="POST"
     )
 
-    with urllib.request.urlopen(req, timeout=60) as response:
+    with urllib.request.urlopen(req, timeout=120) as response:
         result = json.loads(response.read().decode("utf-8"))
 
     candidates = result.get("candidates", [])
@@ -194,24 +292,18 @@ def ask_gemini(message, system_prompt):
 # OPENROUTER RESERVMOTOR
 # ==========================================
 
-def ask_openrouter(message, system_prompt):
+def ask_openrouter(message, system_prompt, max_tokens=2048):
 
     url = "https://openrouter.ai/api/v1/chat/completions"
 
     payload = {
         "model": OPENROUTER_MODEL,
         "messages": [
-            {
-                "role": "system",
-                "content": system_prompt
-            },
-            {
-                "role": "user",
-                "content": message
-            }
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": message}
         ],
         "temperature": 0.7,
-        "max_tokens": 2048
+        "max_tokens": max_tokens
     }
 
     req = urllib.request.Request(
@@ -224,7 +316,7 @@ def ask_openrouter(message, system_prompt):
         method="POST"
     )
 
-    with urllib.request.urlopen(req, timeout=60) as response:
+    with urllib.request.urlopen(req, timeout=120) as response:
         result = json.loads(response.read().decode("utf-8"))
 
     choices = result.get("choices", [])
@@ -253,25 +345,34 @@ def ask_openrouter(message, system_prompt):
 # GEMENSAM AI-FUNKTION
 # ==========================================
 
-def generate_reply(message, system_prompt):
+def generate_reply(message, system_prompt, max_tokens=2048):
 
     gemini_error = None
 
     if GEMINI_API_KEY:
         try:
             return {
-                "reply": ask_gemini(message, system_prompt),
+                "reply": ask_gemini(
+                    message,
+                    system_prompt,
+                    max_tokens
+                ),
                 "engine": "Gemini"
             }
         except Exception as error:
             gemini_error = str(error)
+
     else:
         gemini_error = "Gemini API-nyckel saknas."
 
     if OPENROUTER_API_KEY:
         try:
             return {
-                "reply": ask_openrouter(message, system_prompt),
+                "reply": ask_openrouter(
+                    message,
+                    system_prompt,
+                    max_tokens
+                ),
                 "engine": "OpenRouter"
             }
         except Exception as error:
@@ -295,6 +396,115 @@ def generate_reply(message, system_prompt):
 
 
 # ==========================================
+# VIDEO – JSON HANTERING
+# ==========================================
+
+def extract_json(text):
+
+    cleaned = text.strip()
+
+    cleaned = re.sub(
+        r"^```(?:json)?\s*",
+        "",
+        cleaned,
+        flags=re.IGNORECASE
+    )
+
+    cleaned = re.sub(r"\s*```$", "", cleaned)
+
+    start = cleaned.find("{")
+    end = cleaned.rfind("}")
+
+    if start == -1 or end == -1:
+        raise ValueError("AI-svaret innehöll ingen giltig JSON.")
+
+    return json.loads(cleaned[start:end + 1])
+
+
+def seconds_to_srt(seconds):
+
+    milliseconds = int(float(seconds) * 1000)
+
+    hours = milliseconds // 3600000
+    milliseconds %= 3600000
+
+    minutes = milliseconds // 60000
+    milliseconds %= 60000
+
+    secs = milliseconds // 1000
+    millis = milliseconds % 1000
+
+    return (
+        f"{hours:02d}:{minutes:02d}:"
+        f"{secs:02d},{millis:03d}"
+    )
+
+
+def create_srt(subtitles):
+
+    lines = []
+
+    for index, item in enumerate(subtitles, start=1):
+
+        start = seconds_to_srt(item["start_seconds"])
+        end = seconds_to_srt(item["end_seconds"])
+        text = str(item.get("text", "")).strip()
+
+        lines.extend([
+            str(index),
+            f"{start} --> {end}",
+            text,
+            ""
+        ])
+
+    return "\n".join(lines)
+
+
+def validate_video_plan(plan):
+
+    required = [
+        "title",
+        "concept",
+        "full_narration",
+        "scenes",
+        "subtitles",
+        "thumbnail",
+        "youtube"
+    ]
+
+    for key in required:
+        if key not in plan:
+            raise ValueError(
+                f"Videoplanen saknar fältet: {key}"
+            )
+
+    if not isinstance(plan["scenes"], list) or not plan["scenes"]:
+        raise ValueError("Videoplanen saknar scener.")
+
+    if not isinstance(plan["subtitles"], list):
+        raise ValueError("Undertexterna har fel format.")
+
+    for scene in plan["scenes"]:
+
+        for key in [
+            "scene_number",
+            "title",
+            "start_seconds",
+            "end_seconds",
+            "narration",
+            "visual_description",
+            "image_prompt",
+            "video_prompt"
+        ]:
+            if key not in scene:
+                raise ValueError(
+                    f"En scen saknar fältet: {key}"
+                )
+
+    return plan
+
+
+# ==========================================
 # TRENDKÄLLA 1 – GOOGLE TRENDS
 # ==========================================
 
@@ -305,7 +515,7 @@ def get_google_trends():
     req = urllib.request.Request(
         url,
         headers={
-            "User-Agent": "Mozilla/5.0 NOVA-Cloud/2.0"
+            "User-Agent": "Mozilla/5.0 NOVA-Cloud/2.1"
         }
     )
 
@@ -343,7 +553,6 @@ def get_youtube_rss():
     errors = []
     channels_checked = 0
 
-    # YouTube kräver kanal-ID för sina officiella RSS-flöden.
     valid_ids = [
         channel_id
         for channel_id in YOUTUBE_CHANNEL_IDS
@@ -368,7 +577,7 @@ def get_youtube_rss():
             req = urllib.request.Request(
                 url,
                 headers={
-                    "User-Agent": "Mozilla/5.0 NOVA-Cloud/2.0"
+                    "User-Agent": "Mozilla/5.0 NOVA-Cloud/2.1"
                 }
             )
 
@@ -392,12 +601,17 @@ def get_youtube_rss():
 
             for entry in root.findall("atom:entry", ns):
 
-                video_id = entry.findtext("yt:videoId", namespaces=ns)
+                video_id = entry.findtext(
+                    "yt:videoId",
+                    namespaces=ns
+                )
+
                 title = entry.findtext(
                     "atom:title",
                     default="",
                     namespaces=ns
                 )
+
                 published = entry.findtext(
                     "atom:published",
                     default=None,
@@ -435,11 +649,11 @@ def get_youtube_rss():
                 f"YouTube RSS ({channel_id}): {str(error)}"
             )
 
-    # Ta bort eventuella dubbletter.
     unique_videos = []
     seen = set()
 
     for video in videos:
+
         video_id = video["video_id"]
 
         if video_id not in seen:
@@ -459,7 +673,7 @@ def get_youtube_rss():
 
 
 # ==========================================
-# TRENDKÄLLA 3 – YOUTUBE API (VALFRI)
+# TRENDKÄLLA 3 – YOUTUBE API
 # ==========================================
 
 def get_youtube_api_popular():
@@ -478,9 +692,7 @@ def get_youtube_api_popular():
 
     req = urllib.request.Request(
         url,
-        headers={
-            "User-Agent": "NOVA-Cloud/2.0"
-        }
+        headers={"User-Agent": "NOVA-Cloud/2.1"}
     )
 
     with urllib.request.urlopen(req, timeout=20) as response:
@@ -532,7 +744,6 @@ def collect_trends():
         ]
     }
 
-    # Google Trends
     try:
         data["google_trends"] = get_google_trends()
 
@@ -544,7 +755,6 @@ def collect_trends():
             "Google Trends: " + str(error)
         )
 
-    # YouTube RSS
     rss_result = get_youtube_rss()
 
     data["youtube_rss"] = rss_result["videos"]
@@ -562,7 +772,6 @@ def collect_trends():
             "YouTube RSS väntar på kanal-ID:n i Render."
         )
 
-    # Valfri YouTube API
     if YOUTUBE_API_KEY:
         try:
             data["youtube_popular"] = get_youtube_api_popular()
@@ -604,7 +813,7 @@ async def health():
     return {
         "status": "online",
         "service": "NOVA Cloud",
-        "version": "2.0.0",
+        "version": "2.1.0",
         "time": datetime.now(timezone.utc).isoformat()
     }
 
@@ -631,7 +840,9 @@ async def status():
         "youtube_api_configured": bool(YOUTUBE_API_KEY),
         "youtube_rss_configured": bool(valid_channels),
         "youtube_channels_configured": len(valid_channels),
-        "version": "2.0.0",
+        "video_planner": "online",
+        "video_renderer": "not_configured",
+        "version": "2.1.0",
         "time": datetime.now(timezone.utc).isoformat()
     }
 
@@ -724,9 +935,8 @@ MATERIAL:
 {trend_context}
 
 UPPGIFT:
-
-1. Identifiera de mest intressanta ämnena.
-2. Bedöm vilka som passar Mikael Posth.
+1. Identifiera intressanta ämnen.
+2. Bedöm vilka som passar kanalen.
 3. Skapa tre konkreta videoidéer.
 4. Ge varje idé en stark videotitel.
 5. Föreslå thumbnail och text på bilden.
@@ -734,29 +944,26 @@ UPPGIFT:
 7. Förklara varför idén kan fungera.
 8. Rangordna idéerna efter potential.
 9. Rekommendera vilken video som bör produceras först.
-10. Föreslå en konkret öppning som fångar tittaren.
+10. Föreslå en konkret öppning.
 
 REGLER:
-
 - Hitta inte på visningssiffror.
-- Skilj mellan fakta och egna bedömningar.
-- RSS-videor är publicerade videor, inte bevis på viralitet.
+- Skilj fakta från bedömningar.
+- RSS-videor är inte bevis på viralitet.
 - Google Trends är sökintresse, inte YouTube-statistik.
 - Ange tydligt om statistik saknas.
 - Använd faktiska videolänkar när de finns.
-- Anpassa för en svensk YouTube-publik.
-- Tänk kreativt och föreslå olika ämnen.
-- Prioritera gratisverktyg och rimlig produktionstid.
+- Anpassa för svensk YouTube-publik.
 """
 
     result = generate_reply(
         message,
-        NOVA_PROMPT
+        TREND_PROMPT
     )
 
     return {
         "assistant": "NOVA Trendmotor",
-        "version": "2.0.0",
+        "version": "2.1.0",
         "status": "completed",
         "channel": "Mikael Posth",
         "updated": data["updated"],
@@ -771,6 +978,89 @@ REGLER:
         "limitations": data["limitations"],
         "engine": result["engine"],
         "analysis": result["reply"]
+    }
+
+
+# ==========================================
+# NYHET: NOVA VIDEO PRODUCER
+# ==========================================
+
+@app.post("/api/video/plan")
+async def create_video_plan(request: VideoPlanRequest):
+
+    user_prompt = f"""
+SKAPA ETT KOMPLETT VIDEOPRODUKTIONSUNDERLAG.
+
+KANAL: {request.channel}
+VIDEOFORMAT: {request.format}
+ÖNSKAD LÄNGD: {request.duration_minutes} minuter
+STIL: {request.style}
+MÅLGRUPP: {request.audience}
+
+ANVÄNDARENS IDÉ:
+{request.prompt}
+
+PRODUKTIONSKRAV:
+
+- Skapa ett genomarbetat svenskt manus.
+- Anpassa antalet scener till videons längd.
+- Ge varje scen en tydlig bildprompt.
+- Ge varje scen en separat videoprompt.
+- Beskriv kamerarörelser.
+- Föreslå ljud och musik.
+- Skapa undertexter med tidsangivelser.
+- Skapa en stark thumbnail-idé.
+- Skapa YouTube-titel, beskrivning och sökord.
+- Undvik upprepningar.
+- Håll berättelsen sammanhängande.
+- Gör materialet praktiskt att producera.
+
+För en Short ska tempot vara högt.
+För en lång video ska berättelsen utvecklas
+med tydlig början, mitt och avslutning.
+
+Returnera ett komplett produktionspaket
+enligt JSON-strukturen i dina instruktioner.
+"""
+
+    result = generate_reply(
+        user_prompt,
+        VIDEO_PRODUCER_PROMPT,
+        max_tokens=8192
+    )
+
+    try:
+        plan = extract_json(result["reply"])
+        plan = validate_video_plan(plan)
+
+    except Exception as error:
+        raise HTTPException(
+            status_code=502,
+            detail=(
+                "NOVA kunde inte skapa ett giltigt "
+                f"videopaket: {str(error)}"
+            )
+        )
+
+    subtitles_srt = create_srt(plan["subtitles"])
+
+    return {
+        "assistant": "NOVA VIDEO PRODUCER",
+        "status": "completed",
+        "version": "2.1.0",
+        "created": datetime.now(timezone.utc).isoformat(),
+        "channel": request.channel,
+        "engine": result["engine"],
+        "production_status": "script_ready",
+        "render_status": "not_started",
+        "video": plan,
+        "subtitles_srt": subtitles_srt,
+        "next_step": (
+            "Produktionsunderlaget är klart. "
+            "Videoklipp, berättarröst och slutlig "
+            "MP4-rendering kräver en ansluten "
+            "videoproduktionsmotor."
+        )
     }
 
 
