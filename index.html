@@ -291,6 +291,66 @@ main{position:relative;z-index:1;max-width:1100px;margin:auto;padding:20px 15px 
  .room-visual .orbit{width:200px;height:112px}
 }
 
+
+/* CINEMATIC OVERHEAD HQ — twin AI workstations */
+.headquarters{position:relative;overflow:hidden;min-height:0;padding:20px 16px 24px;border:1px solid #2d8ecb88;border-radius:22px;background:linear-gradient(145deg,#08192c,#020712 78%);box-shadow:0 0 45px #087cc533,inset 0 0 50px #138bd522}
+.hq-caption{position:relative;z-index:3;color:#8bdfff;letter-spacing:3px;font-size:9px;text-align:center;margin:2px 0 14px}
+.core,.core-floor{display:none!important}
+.hq-room-scene{height:clamp(340px,54vw,590px);position:relative;overflow:hidden;border-radius:15px;isolation:isolate;background:radial-gradient(ellipse at 50% 45%,#153b5a 0%,#081b2d 48%,#030914 100%);border:1px solid #2b9bd755;box-shadow:inset 0 0 70px #1b8cc533}
+.hq-room-scene:before{content:"";position:absolute;inset:0;z-index:-1;background:repeating-linear-gradient(0deg,transparent 0 44px,#45bfff0c 45px 46px),repeating-linear-gradient(90deg,transparent 0 44px,#45bfff0c 45px 46px);transform:perspective(600px) rotateX(18deg) scale(1.2);transform-origin:center}
+.hq-window{position:absolute;top:3%;left:14%;width:72%;height:17%;border:3px solid #225b81;border-bottom:7px solid #163d5d;border-radius:7px;background:linear-gradient(180deg,#07172b,#12446b 55%,#07182b);box-shadow:0 0 28px #168de955,inset 0 0 25px #41baff22}
+.hq-window:before{content:"";position:absolute;inset:0;background:radial-gradient(circle at 12% 50%,#c4f4ff 0 1px,transparent 2px),radial-gradient(circle at 29% 30%,#73cfff 0 1px,transparent 2px),radial-gradient(circle at 48% 64%,#d5f8ff 0 1px,transparent 2px),radial-gradient(circle at 69% 28%,#8bdfff 0 1px,transparent 2px),radial-gradient(circle at 88% 55%,#b6eaff 0 1px,transparent 2px);background-size:100% 100%}
+.hq-window span{position:absolute;top:7px;left:10px;font-size:7px;letter-spacing:2px;color:#8bdfff}
+.hq-station{position:absolute;top:25%;width:39%;height:57%;border-radius:12px;background:linear-gradient(145deg,#183a53,#061322 75%);border:1px solid #3dbfff88;box-shadow:0 18px 35px #000b,0 0 25px #168cff33;transform:perspective(700px) rotateX(9deg) rotateZ(-8deg);padding:10px}
+.jarvis-station{left:4%;border-color:#35baffaa;box-shadow:0 18px 35px #000b,0 0 26px #159eff44}
+.nova-station{right:4%;transform:perspective(700px) rotateX(9deg) rotateZ(8deg);border-color:#c184ffbb;background:linear-gradient(145deg,#39224e,#100b1d 75%);box-shadow:0 18px 35px #000b,0 0 26px #a64bff44}
+.hq-screen{position:relative;height:62%;padding:9px;border:3px solid #39bfff;border-radius:7px;background:linear-gradient(145deg,#041b30,#020914);box-shadow:0 0 20px #28bfff66,inset 0 0 22px #159bff22;overflow:hidden}
+.nova-station .hq-screen{border-color:#bd80ff;background:linear-gradient(145deg,#1c1030,#090612);box-shadow:0 0 20px #bd80ff66,inset 0 0 22px #a64bff22}
+.hq-screen-head{display:flex;justify-content:space-between;font-weight:bold;font-size:clamp(10px,1.7vw,17px);letter-spacing:2px;color:#8ceaff;border-bottom:1px solid #38bfff66;padding-bottom:6px}
+.hq-screen-head i{font-size:7px;font-style:normal;color:#75f4c7;letter-spacing:1px}
+.nova-station .hq-screen-head{color:#e0bdff;border-color:#bd80ff66}
+.hq-screen-map{height:42%;margin:8px 0;background:radial-gradient(circle at 50% 50%,#2bceff55,transparent 38%),repeating-radial-gradient(ellipse at 50% 50%,transparent 0 12px,#39c8ff55 13px 14px);animation:monitorPulse 2s infinite alternate}
+.hq-screen-bars{height:22%;display:flex;align-items:end;gap:5px}
+.hq-screen-bars b{flex:1;height:var(--h,60%);background:linear-gradient(0deg,#1479bb,#7beaff);box-shadow:0 0 8px #36caff;animation:graphMove 1.7s ease-in-out infinite alternate}
+.hq-screen-bars b:nth-child(2){height:80%}.hq-screen-bars b:nth-child(3){height:45%}.hq-screen-bars b:nth-child(4){height:92%}.hq-screen-bars b:nth-child(5){height:58%}.hq-screen-bars b:nth-child(6){height:75%}
+.nova-station .hq-screen-bars b{background:linear-gradient(0deg,#7941aa,#e2baff);box-shadow:0 0 8px #bd80ff}
+.hq-screen-edit{height:68%;margin-top:8px;display:flex;align-items:center;gap:4px;background:repeating-linear-gradient(0deg,transparent 0 12px,#bd80ff12 13px 14px)}
+.hq-screen-edit b{height:65%;flex:1;border-radius:2px;background:linear-gradient(180deg,#c58aff,#603b92);box-shadow:0 0 8px #bd80ff66}
+.hq-screen-edit b:nth-child(2n){height:40%}.hq-screen-edit b:nth-child(3n){height:85%}
+.hq-screen-foot{font-size:clamp(5px,.8vw,8px);letter-spacing:1px;color:#7fcff0;margin-top:6px;white-space:nowrap}
+.nova-station .hq-screen-foot{color:#d5aaff}
+.hq-console{height:19%;margin-top:8px;border-radius:5px;background:linear-gradient(180deg,#174767,#06101d);border:1px solid #3bbdff66;display:flex;align-items:center;justify-content:center;gap:5px;box-shadow:0 7px 12px #0009}
+.nova-station .hq-console{background:linear-gradient(180deg,#633b82,#170e22);border-color:#bd80ff66}
+.hq-console span{width:22%;height:4px;border-radius:4px;background:#70dfff;box-shadow:0 0 7px #39c8ff}
+.nova-station .hq-console span{background:#dfbaff;box-shadow:0 0 7px #bd80ff}
+.hq-chair{position:absolute;bottom:-8%;left:50%;width:28%;height:20%;transform:translateX(-50%);border-radius:45% 45% 20% 20%;background:linear-gradient(90deg,#101e30,#31445a,#101e30);border:1px solid #6aa5c477;box-shadow:0 10px 15px #000a}
+.nova-station .hq-chair{background:linear-gradient(90deg,#21152d,#59416d,#21152d);border-color:#c18bff77}
+.hq-station-label{position:absolute;bottom:-17%;left:0;right:0;text-align:center;font-size:clamp(6px,1vw,9px);letter-spacing:2px;color:#86ddff}
+.nova-station .hq-station-label{color:#d9b2ff}
+.hq-center-mark{position:absolute;left:50%;top:57%;transform:translate(-50%,-50%) rotateX(15deg);width:19%;aspect-ratio:1.4;border:2px solid #42caff;border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;background:radial-gradient(ellipse,#0e4970,#03101e 72%);box-shadow:0 0 30px #28bfff99,inset 0 0 22px #28bfff44;z-index:2}
+.hq-center-mark strong{font-size:clamp(10px,2.1vw,22px);line-height:1.05;letter-spacing:3px;color:#8beaff;text-shadow:0 0 12px #29bfff}
+.hq-center-mark small{font-size:clamp(5px,.8vw,8px);letter-spacing:1.5px;color:#a9dfff;margin-top:5px}
+.hq-room-lights{position:absolute;bottom:3%;left:10%;right:10%;height:2px;background:linear-gradient(90deg,transparent,#28bfff,#bd80ff,transparent);box-shadow:0 0 22px #36caff}
+.hq-name{font-size:clamp(15px,3vw,25px);letter-spacing:3px;margin:17px 0 7px;text-shadow:0 0 18px #2bbfff}
+.hq-desc{max-width:620px;margin:auto;line-height:1.6;color:#a9c5dc;font-size:11px}
+.hq-data{margin-top:14px}
+@media(max-width:650px){
+ .headquarters{padding:13px 9px 18px}
+ .hq-room-scene{height:370px}
+ .hq-window{left:7%;width:86%;height:15%}
+ .hq-station{top:24%;width:43%;height:55%;padding:6px}
+ .jarvis-station{left:2%}.nova-station{right:2%}
+ .hq-screen{height:57%;padding:5px;border-width:2px}
+ .hq-screen-head{font-size:10px;letter-spacing:1px}
+ .hq-screen-head i{font-size:5px}
+ .hq-screen-map{margin:5px 0}
+ .hq-screen-foot{font-size:5px;letter-spacing:.3px}
+ .hq-console{height:18%;margin-top:6px}
+ .hq-center-mark{top:83%;width:30%;aspect-ratio:2.2}
+ .hq-center-mark strong{font-size:11px}
+ .hq-station-label{bottom:-18%;font-size:6px;letter-spacing:1px}
+}
+
 </style>
 </head>
 <body>
@@ -304,12 +364,17 @@ main{position:relative;z-index:1;max-width:1100px;margin:auto;padding:20px 15px 
 <div id="homeView">
  <div class="section-label">CENTRAL COMMAND / ÖVERSIKT</div>
  <section class="headquarters">
-  <div class="hq-caption">CENTRAL AI CORE / SYSTEM 01</div>
-  <div class="core"><div class="core-ring"></div><div class="core-ring r2"></div><div class="core-ring r3"></div><div class="core-ring r4"></div><div class="core-center"><span>AI</span></div></div>
-  <div class="core-floor"></div>
-  <div class="hq-name">AI HEADQUARTERS</div>
-  <div class="hq-desc">Ett gemensamt högkvarter för två avancerade AI-system. Välj ett rum för att gå in i respektive AI-miljö.</div>
-  <div class="hq-data"><span>JARVIS SYSTEM</span><span>NOVA SYSTEM</span><span>CLOUD LINK</span></div>
+  <div class="hq-caption">NOVA CLOUD / CENTRAL AI HEADQUARTERS</div>
+  <div class="hq-room-scene">
+   <div class="hq-window"><span>GLOBAL NETWORK · CLOUD OPERATIONS</span></div>
+   <div class="hq-station jarvis-station"><div class="hq-screen"><div class="hq-screen-head">JARVIS <i>● ONLINE</i></div><div class="hq-screen-map"></div><div class="hq-screen-bars"><b></b><b></b><b></b><b></b><b></b><b></b></div><div class="hq-screen-foot">SYSTEM CONTROL · ANALYSIS · SECURITY</div></div><div class="hq-console"><span></span><span></span><span></span></div><div class="hq-chair"></div><div class="hq-station-label">01 / JARVIS CONTROL</div></div>
+   <div class="hq-station nova-station"><div class="hq-screen"><div class="hq-screen-head">NOVA <i>● CREATING</i></div><div class="hq-screen-edit"><b></b><b></b><b></b><b></b><b></b><b></b></div><div class="hq-screen-foot">VIDEO STUDIO · YOUTUBE · CREATIVE AI</div></div><div class="hq-console"><span></span><span></span><span></span></div><div class="hq-chair"></div><div class="hq-station-label">02 / NOVA CREATIVE STUDIO</div></div>
+   <div class="hq-center-mark"><strong>NOVA<br>CLOUD</strong><small>DUAL AI SYSTEM</small></div>
+   <div class="hq-room-lights"></div>
+  </div>
+  <div class="hq-name">TWO SYSTEMS. ONE HEADQUARTERS.</div>
+  <div class="hq-desc">Ett gemensamt AI-högkvarter där JARVIS sköter kontrollcentralen och NOVA driver den kreativa produktionen.</div>
+  <div class="hq-data"><span>JARVIS / ONLINE</span><span>NOVA / ONLINE</span><span>CLOUD LINK / ACTIVE</span></div>
  </section>
  <div class="section-label">VÄLJ DITT AI-RUM / SELECT DESTINATION</div>
  <div class="rooms">
