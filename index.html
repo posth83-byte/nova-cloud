@@ -443,13 +443,14 @@ main{position:relative;z-index:1;max-width:1100px;margin:auto;padding:20px 15px 
 .wake-hint{max-width:620px;margin:9px auto 0;color:#7894ad;font-size:9px;line-height:1.5}
 @media(max-width:650px){.wake-panel{padding:16px 11px}.wake-start{width:100%}.wake-stop{width:100%}}
 
+@media(min-width:850px){.rooms{grid-template-columns:repeat(3,minmax(0,1fr))}}
 </style>
 </head>
 <body>
 <header>
  <div class="logo">PERSONAL ARTIFICIAL INTELLIGENCE</div>
  <h1>AI HEADQUARTERS</h1>
- <div class="sub">JARVIS × NOVA / PRIVATE COMMAND CENTER</div>
+ <div class="sub">JARVIS × NOVA × WEBMASTER / PRIVATE COMMAND CENTER</div>
  <div class="top-status" id="topStatus">● ANSLUTER TILL CLOUD</div>
 </header>
 <main>
@@ -827,7 +828,7 @@ function saveChatHistory(room){
  try{localStorage.setItem(CHAT_HISTORY_KEY+"_"+room,JSON.stringify(items))}catch(e){}
 }
 function restoreChatHistory(){
- ["jarvis","nova"].forEach(room=>{
+ ["jarvis","nova","web"].forEach(room=>{
   try{
    const saved=JSON.parse(localStorage.getItem(CHAT_HISTORY_KEY+"_"+room)||"[]");
    if(!Array.isArray(saved)||!saved.length)return;
