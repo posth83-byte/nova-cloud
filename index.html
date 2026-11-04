@@ -217,6 +217,8 @@ main{position:relative;z-index:1;max-width:1100px;margin:auto;padding:20px 15px 
 .field label{font-size:9px;letter-spacing:1px;color:#d7b6f5}
 .field input,.field select,.field textarea{width:100%;padding:12px;border-radius:9px;border:1px solid #76558f;background:#100b1b;color:#f5eaff;font-size:12px;outline:none}
 .field textarea{min-height:85px;resize:vertical}
+.reference-field input[type="file"]{padding:10px;font-size:10px}
+.reference-help{font-size:9px;line-height:1.5;color:#a991bd}
 .field input:focus,.field select:focus,.field textarea:focus{border-color:#d2a0ff;box-shadow:0 0 0 2px #bd80ff22}
 .video-create{width:100%;margin-top:14px;padding:15px;border:1px solid #e0baff;border-radius:10px;background:linear-gradient(90deg,#63358c,#9a5acb);color:white;font-size:11px;font-weight:bold;letter-spacing:2px;box-shadow:0 0 20px #a44dff33}
 .video-create:disabled{opacity:.55;cursor:wait}
@@ -800,6 +802,8 @@ main{position:relative;z-index:1;max-width:1100px;margin:auto;padding:20px 15px 
      <div class="field"><label for="videoDuration">LÄNGD I MINUTER</label><select id="videoDuration"><option value="1">1 minut</option><option value="3">3 minuter</option><option value="5" selected>5 minuter</option><option value="8">8 minuter</option><option value="10">10 minuter</option><option value="15">15 minuter</option><option value="20">20 minuter</option><option value="30">30 minuter</option></select></div>
      <div class="field"><label for="videoStyle">BERÄTTARSTIL</label><select id="videoStyle"><option value="Mörk, filmisk och spännande">Mörk och filmisk</option><option value="Mystisk, realistisk och suggestiv">Mystisk och realistisk</option><option value="Dokumentär och engagerande">Dokumentär</option><option value="Humoristisk och underhållande">Humoristisk</option><option value="Dramatisk och känslosam">Dramatisk</option><option value="Energisk och snabb">Energisk</option></select></div>
      <div class="field"><label for="videoAudience">MÅLGRUPP</label><input id="videoAudience" value="Svensk publik" placeholder="Exempel: Svensk publik"></div>
+     <div class="field full reference-field"><label for="videoReferenceUrl">REFERENSLÄNK – VIDEO ELLER BILD</label><input id="videoReferenceUrl" type="url" maxlength="2000" placeholder="Klistra in en YouTube-, TikTok- eller bildlänk (valfritt)"><div class="reference-help">NOVA får länken som referens. Om innehållet inte går att läsa automatiskt kan du beskriva vad den ska inspireras av i videobeskrivningen.</div></div>
+     <div class="field full reference-field"><label for="videoReferenceImage">LADDA UPP EN REFERENSBILD</label><input id="videoReferenceImage" type="file" accept="image/png,image/jpeg,image/webp"><div class="reference-help" id="videoReferenceImageName">Valfritt – JPG, PNG eller WebP, max 4 MB. Bilden analyseras av NOVA.</div></div>
     </div>
     <button class="video-create" id="createVideoButton" type="submit">✧ SKAPA VIDEOUNDERLAG MED NOVA</button>
    </form>
@@ -1300,12 +1304,25 @@ function makeSrt(subtitles){
  }).join("\n");
 }
 
+/* NOVA VIDEO REFERENCES */
+let novaReferenceImageData="";
+$("videoReferenceImage").addEventListener("change",event=>{
+ const file=event.target.files&&event.target.files[0];
+ if(!file){novaReferenceImageData="";return}
+ if(!["image/jpeg","image/png","image/webp"].includes(file.type)){alert("Välj en JPG-, PNG- eller WebP-bild.");event.target.value="";return}
+ if(file.size>4*1024*1024){alert("Referensbilden får vara högst 4 MB.");event.target.value="";return}
+ const reader=new FileReader();
+ reader.onload=()=>{novaReferenceImageData=String(reader.result||"");$("videoReferenceImageName").textContent=file.name+" vald – NOVA analyserar bilden när du skapar videon.";};
+ reader.onerror=()=>{novaReferenceImageData="";alert("Kunde inte läsa referensbilden.");};
+ reader.readAsDataURL(file);
+});
+
 /* CREATE VIDEO PLAN */
 $("videoForm").addEventListener("submit",async event=>{
  event.preventDefault();
  const button=$("createVideoButton"),status=$("videoStatus"),results=$("videoResults"),prompt=$("videoPrompt").value.trim();
  if(prompt.length<5){status.textContent="Beskriv videon lite mer innan du startar.";status.className="video-status error";return}
- const payload={prompt,channel:$("videoChannel").value,format:$("videoFormat").value,duration_minutes:Number($("videoDuration").value),style:$("videoStyle").value,audience:$("videoAudience").value.trim()||"Svensk publik"};
+ const payload={prompt,channel:$("videoChannel").value,format:$("videoFormat").value,duration_minutes:Number($("videoDuration").value),style:$("videoStyle").value,audience:$("videoAudience").value.trim()||"Svensk publik",reference_url:$("videoReferenceUrl").value.trim(),reference_image_data:novaReferenceImageData};
  button.disabled=true;button.textContent="NOVA SKAPAR PRODUKTIONSUNDERLAG...";
  status.className="video-status";status.textContent="NOVA arbetar med idé, manus, scener och undertexter. Det kan ta en liten stund...";
  results.classList.add("hidden");setRoomState("nova","working");
