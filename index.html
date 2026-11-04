@@ -444,6 +444,13 @@ main{position:relative;z-index:1;max-width:1100px;margin:auto;padding:20px 15px 
 @media(max-width:650px){.wake-panel{padding:16px 11px}.wake-start{width:100%}.wake-stop{width:100%}}
 
 @media(min-width:850px){.rooms{grid-template-columns:repeat(3,minmax(0,1fr))}}
+.web-tools{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:12px 0}
+.web-image-picker{display:flex;flex-direction:column;gap:4px;padding:12px 14px;border:1px dashed #55d9b6;border-radius:12px;color:#a6ffe5;background:#08241f;cursor:pointer;font-size:12px;font-weight:700}
+.web-image-picker span{font-size:10px;font-weight:400;color:#a8c9bf}
+.web-clear-image{border:1px solid #438f80;background:#071b18;color:#c7fff0;border-radius:10px;padding:10px 12px;font-size:10px;cursor:pointer}
+.web-preview-area{margin-top:14px;padding:14px;border:1px solid #55d9b6;border-radius:12px;background:#08241f;color:#d1fff1}
+.web-preview-link{display:inline-block;margin-top:8px;padding:11px 16px;border-radius:9px;background:#147d68;color:#fff;text-decoration:none;font-weight:700}
+.web-preview-note{font-size:11px;color:#a8c9bf;margin-top:8px}
 </style>
 </head>
 <body>
@@ -695,13 +702,6 @@ function openVideoStudio(){
  logActivity("NOVA Video Studio öppnades","🎬","Produktionscentralen aktiverad");
 }
 
-.web-tools{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:12px 0}
-.web-image-picker{display:flex;flex-direction:column;gap:4px;padding:12px 14px;border:1px dashed #55d9b6;border-radius:12px;color:#a6ffe5;background:#08241f;cursor:pointer;font-size:12px;font-weight:700}
-.web-image-picker span{font-size:10px;font-weight:400;color:#a8c9bf}
-.web-clear-image{border:1px solid #438f80;background:#071b18;color:#c7fff0;border-radius:10px;padding:10px 12px;font-size:10px;cursor:pointer}
-.web-preview-area{margin-top:14px;padding:14px;border:1px solid #55d9b6;border-radius:12px;background:#08241f;color:#d1fff1}
-.web-preview-link{display:inline-block;margin-top:8px;padding:11px 16px;border-radius:9px;background:#147d68;color:#fff;text-decoration:none;font-weight:700}
-.web-preview-note{font-size:11px;color:#a8c9bf;margin-top:8px}
 /* VOICE SYSTEM */
 function loadVoices(){
  if(!("speechSynthesis" in window))return;
