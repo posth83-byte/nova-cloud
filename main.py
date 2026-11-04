@@ -2,6 +2,7 @@
 import os
 import json
 import re
+import uuid
 import urllib.request
 import urllib.error
 import xml.etree.ElementTree as ET
@@ -11,7 +12,7 @@ from datetime import datetime, timezone
 from urllib.parse import quote
 
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, HTMLResponse
 from pydantic import BaseModel, Field
 from video_engine import router as video_router
 
@@ -20,7 +21,7 @@ from video_engine import router as video_router
 # NOVA CLOUD – VERSION 2.2.0
 # ==========================================
 
-APP_VERSION = "2.6.0"
+APP_VERSION = "2.7.0"
 
 app = FastAPI(
     title="NOVA Cloud",
@@ -29,6 +30,9 @@ app = FastAPI(
 )
 
 app.include_router(video_router)
+
+# Temporary previews are cleared when the service restarts.
+preview_pages = {}
 
 
 # ==========================================
@@ -109,6 +113,10 @@ def resolve_youtube_channel_ids():
 
 class ChatRequest(BaseModel):
     message: str = Field(min_length=1, max_length=10000)
+
+
+class WebPreviewRequest(BaseModel):
+    html: str = Field(min_length=20, max_length=2000000)
 
 
 class VideoPlanRequest(BaseModel):
@@ -1565,6 +1573,13 @@ WEBMASTER_PROMPT = """
 Du är WEBMASTER, en senior webbdesigner och fullstackutvecklare.
 Du arbetar ENDAST med att skapa och förbättra webbplatser åt användaren.
 
+När användaren ber dig skapa en hemsida ska du leverera en komplett,
+självständig HTML-sida i ETT enda kodblock märkt ```html.
+Sidan ska innehålla all CSS och JavaScript inline och fungera direkt.
+Skriv en kort sammanfattning före kodblocket. Använd en tydlig bildyta
+med exakt token {{WEBMASTER_IMAGE}} som bildens src. Om ingen egen bild
+finns ska sidan visa en neutral snygg platshållare.
+
 Du hjälper till med:
 - moderna, professionella och mobilanpassade hemsidor
 - design, layout, färger, typografi och användarupplevelse
@@ -1614,6 +1629,32 @@ async def nova(request: ChatRequest):
         "engine": result["engine"],
         "reply": result["reply"]
     }
+
+@app.post("/api/webmaster/preview")
+async def create_webmaster_preview(request: WebPreviewRequest):
+    page_id = uuid.uuid4().hex[:12]
+    preview_pages[page_id] = request.html
+    return {
+        "status": "ready",
+        "preview_url": f"/preview/{page_id}",
+        "note": "Tillfälliga förhandsvisningar rensas när Render startas om."
+    }
+
+
+@app.get("/preview/{page_id}", response_class=HTMLResponse)
+async def view_webmaster_preview(page_id: str):
+    page = preview_pages.get(page_id)
+    if page is None:
+        raise HTTPException(status_code=404, detail="Förhandsvisningen finns inte längre. Skapa en ny.")
+    return HTMLResponse(
+        content=page,
+        headers={
+            "Content-Security-Policy": "sandbox allow-scripts allow-forms allow-popups allow-modals; default-src https: data: blob: 'unsafe-inline' 'unsafe-eval'",
+            "X-Content-Type-Options": "nosniff",
+            "Referrer-Policy": "no-referrer"
+        }
+    )
+
 
 @app.post("/api/webmaster")
 async def webmaster(request: ChatRequest):
