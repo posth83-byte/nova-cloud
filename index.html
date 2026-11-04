@@ -648,12 +648,12 @@ function stopSpeech(){
 function speakText(text,room,button=null){
  if(!("speechSynthesis" in window)){const status=$(room+"VoiceStatus");if(status)status.textContent="Rösten stöds inte i den här webbläsaren.";return}
  if(!text||!text.trim())return;
- stopSpeech();const utterance=new SpeechSynthesisUtterance(text.trim());const voice=getSelectedVoice(room);
+ stopSpeech();if(wakeListening&&wakeRecognition){wakePausedForSpeech=true;try{wakeRecognition.stop()}catch(e){}}const utterance=new SpeechSynthesisUtterance(text.trim());const voice=getSelectedVoice(room);
  utterance.lang=voice?voice.lang:"sv-SE";utterance.rate=.95;utterance.pitch=.92;utterance.volume=1;if(voice)utterance.voice=voice;
  activeUtterance=utterance;activeSpeechButton=button;activeSpeechRoom=room;const status=$(room+"VoiceStatus");
  utterance.onstart=()=>{if(button){button.textContent="■ STOPPA UPPLÄSNING";button.classList.add("speaking")}if(status)status.textContent="AI-rösten läser upp svaret...";setRoomState(room,"responding")};
- utterance.onend=()=>{if(button){button.textContent="▶ LÄS UPP SVARET";button.classList.remove("speaking")}if(status)status.textContent="Uppläsningen klar.";setRoomState(room,"idle");activeUtterance=null;activeSpeechButton=null;activeSpeechRoom=null};
- utterance.onerror=()=>{if(button){button.textContent="▶ LÄS UPP SVARET";button.classList.remove("speaking")}if(status)status.textContent="Kunde inte spela upp rösten.";setRoomState(room,"idle");activeUtterance=null;activeSpeechButton=null;activeSpeechRoom=null};
+ utterance.onend=()=>{if(button){button.textContent="▶ LÄS UPP SVARET";button.classList.remove("speaking")}if(status)status.textContent="Uppläsningen klar.";setRoomState(room,"idle");activeUtterance=null;activeSpeechButton=null;activeSpeechRoom=null;if(wakeListening&&wakeRecognition&&wakePausedForSpeech){wakePausedForSpeech=false;try{wakeRecognition.start()}catch(e){wakeStatus("Tryck på aktivera igen för att fortsätta lyssna.")}}};
+ utterance.onerror=()=>{if(button){button.textContent="▶ LÄS UPP SVARET";button.classList.remove("speaking")}if(status)status.textContent="Kunde inte spela upp rösten.";setRoomState(room,"idle");activeUtterance=null;activeSpeechButton=null;activeSpeechRoom=null;if(wakeListening&&wakeRecognition&&wakePausedForSpeech){wakePausedForSpeech=false;try{wakeRecognition.start()}catch(e){wakeStatus("Tryck på aktivera igen för att fortsätta lyssna.")}}};
  window.speechSynthesis.speak(utterance);
 }
 function addSpeechButton(messageElement,room){
@@ -672,7 +672,7 @@ if("speechSynthesis" in window){loadVoices();window.speechSynthesis.onvoiceschan
 
 
 /* HANDS-FREE WAKE PHRASES — requires an explicit microphone tap */
-let wakeRecognition=null,wakeListening=false,voiceConversationRoom=null,lastVoiceCommandAt=0;
+let wakeRecognition=null,wakeListening=false,wakePausedForSpeech=false,voiceConversationRoom=null,lastVoiceCommandAt=0;
 function wakeStatus(message){const el=$("wakeStatus");if(el)el.textContent=message}
 function startWakeListening(){
  const SpeechRecognition=window.SpeechRecognition||window.webkitSpeechRecognition;
@@ -705,7 +705,7 @@ function startWakeListening(){
   }
  };
  wakeRecognition.onerror=(event)=>{if(event.error==="not-allowed"||event.error==="service-not-allowed"){wakeStatus("Mikrofonåtkomst nekades. Tillåt mikrofon i webbläsarens inställningar.");stopWakeListening()}else if(event.error!=="no-speech"){wakeStatus("Taligenkänningen pausades ("+event.error+"). Tryck på aktivera för att försöka igen.");stopWakeListening()}};
- wakeRecognition.onend=()=>{if(wakeListening){try{wakeRecognition.start()}catch(e){wakeStatus("Lyssningen pausades av webbläsaren. Tryck på aktivera igen.");stopWakeListening()}}};
+ wakeRecognition.onend=()=>{if(wakeListening&&!wakePausedForSpeech){try{wakeRecognition.start()}catch(e){wakeStatus("Lyssningen pausades av webbläsaren. Tryck på aktivera igen.");stopWakeListening()}}};
  try{wakeRecognition.start()}catch(e){wakeStatus("Kunde inte starta mikrofonen. Kontrollera mikrofontillståndet.");stopWakeListening()}
 }
 function stopWakeListening(){
@@ -753,7 +753,7 @@ async function sendMessage(event,assistant){
   const data=await response.json();
   if(!response.ok)throw new Error(typeof data.detail==="string"?data.detail:JSON.stringify(data.detail||data));
   const reply=(data.reply||"Inget svar mottogs.")+"\n\nAI-motor: "+(data.engine||"Okänd");
-  loading.textContent=reply;loading.dataset.speechText=data.reply||"Inget svar mottogs.";addSpeechButton(loading,assistant);
+  loading.textContent=reply;loading.dataset.speechText=data.reply||"Inget svar mottogs.";addSpeechButton(loading,assistant);if(voiceConversationRoom===assistant)speakText(data.reply||"Inget svar mottogs.",assistant);
   setRoomState(assistant,"responding");logActivity(assistant.toUpperCase()+" svarade","✓","AI-motor: "+(data.engine||"Okänd"));
  }catch(error){loading.className="msg error";loading.textContent="Anslutningsfel: "+error.message;logActivity(assistant.toUpperCase()+" – anslutningsfel","⚠",error.message)}
  finally{button.disabled=false;button.textContent="SKICKA";if(!activeSpeechRoom||activeSpeechRoom!==assistant)setTimeout(()=>setRoomState(assistant,"idle"),1800);input.focus()}
