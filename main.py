@@ -1680,9 +1680,9 @@ async def nova(request: NovaChatRequest):
 
     if reference_url:
         message += (
-            "\\n\\nREFERENSLÄNK FRÅN ANVÄNDAREN:\\n"
+            "\n\nREFERENSLÄNK FRÅN ANVÄNDAREN:\n"
             + reference_url
-            + "\\nBehandla länken som referens. Påstå inte att du har sett "
+            + "\nBehandla länken som referens. Påstå inte att du har sett "
             "innehållet om det inte faktiskt är åtkomligt."
         )
 
