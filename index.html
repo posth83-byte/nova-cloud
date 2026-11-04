@@ -400,6 +400,20 @@ main{position:relative;z-index:1;max-width:1100px;margin:auto;padding:20px 15px 
  .hq-data span{font-size:7px;padding:6px}
 }
 
+
+/* VOICE WAKE PANEL */
+.wake-panel{position:relative;margin:18px 0 24px;padding:20px;border:1px solid #3aaee988;border-radius:18px;background:radial-gradient(ellipse at 50% 0%,#10395a88,transparent 70%),linear-gradient(145deg,#081b30,#030914);box-shadow:0 0 35px #159eff20,inset 0 0 35px #168cff12;text-align:center}
+.wake-kicker{font-size:9px;letter-spacing:3px;color:#8bdfff}
+.wake-panel h2{font-size:clamp(19px,4vw,27px);letter-spacing:1px;color:#eaf8ff;margin:10px 0}
+.wake-panel p{max-width:560px;margin:0 auto 15px;color:#a9c5dc;font-size:12px;line-height:1.6}
+.wake-actions{display:flex;justify-content:center;gap:9px;flex-wrap:wrap}
+.wake-start,.wake-stop{border:1px solid #42caffaa;border-radius:10px;padding:13px 17px;background:linear-gradient(135deg,#0b4163,#07182b);color:#b9edff;font-size:10px;font-weight:700;letter-spacing:1px;box-shadow:0 0 18px #28bfff22}
+.wake-stop{border-color:#9c718e;background:#251426;color:#f0c9df}
+.wake-start:disabled,.wake-stop:disabled{opacity:.4}
+.wake-status{min-height:18px;margin-top:13px;color:#79f0c6;font-size:11px}
+.wake-hint{max-width:620px;margin:9px auto 0;color:#7894ad;font-size:9px;line-height:1.5}
+@media(max-width:650px){.wake-panel{padding:16px 11px}.wake-start{width:100%}.wake-stop{width:100%}}
+
 </style>
 </head>
 <body>
@@ -425,6 +439,19 @@ main{position:relative;z-index:1;max-width:1100px;margin:auto;padding:20px 15px 
   <div class="hq-desc">Ett gemensamt AI-högkvarter där JARVIS sköter kontrollcentralen och NOVA driver den kreativa produktionen.</div>
   <div class="hq-data"><span>JARVIS / ONLINE</span><span>NOVA / ONLINE</span><span>CLOUD LINK / ACTIVE</span></div>
  </section>
+
+ <section class="wake-panel" id="wakePanel">
+  <div class="wake-kicker">VOICE COMMAND / RÖSTSTYRNING</div>
+  <h2>Vem vill du prata med?</h2>
+  <p>Tryck på mikrofonen och säg ”Hej JARVIS” eller ”Hej NOVA”. Du kan sedan prata med vald assistent.</p>
+  <div class="wake-actions">
+   <button class="wake-start" id="wakeStart" onclick="startWakeListening()">🎙 AKTIVERA RÖSTSTYRNING</button>
+   <button class="wake-stop" id="wakeStop" onclick="stopWakeListening()" disabled>STOPPA</button>
+  </div>
+  <div class="wake-status" id="wakeStatus" aria-live="polite">Mikrofonen är avstängd tills du aktiverar den.</div>
+  <div class="wake-hint">På iPhone måste du själv trycka för att aktivera mikrofonen. Om webbläsaren inte stöder taligenkänning kan du öppna rummen med knapparna nedan.</div>
+ </section>
+
  <div class="section-label">VÄLJ DITT AI-RUM / SELECT DESTINATION</div>
  <div class="rooms">
   <section class="room-card">
@@ -642,6 +669,51 @@ function testVoice(room){
  logActivity(room.toUpperCase()+" – rösttest startat","🔊",name);speakText(text,room);
 }
 if("speechSynthesis" in window){loadVoices();window.speechSynthesis.onvoiceschanged=loadVoices}
+
+
+/* HANDS-FREE WAKE PHRASES — requires an explicit microphone tap */
+let wakeRecognition=null,wakeListening=false,voiceConversationRoom=null,lastVoiceCommandAt=0;
+function wakeStatus(message){const el=$("wakeStatus");if(el)el.textContent=message}
+function startWakeListening(){
+ const SpeechRecognition=window.SpeechRecognition||window.webkitSpeechRecognition;
+ if(!SpeechRecognition){wakeStatus("Taligenkänning stöds inte här. Öppna JARVIS eller NOVA med rums-knapparna.");return}
+ if(wakeRecognition){try{wakeRecognition.abort()}catch(e){}}
+ wakeRecognition=new SpeechRecognition();wakeRecognition.lang="sv-SE";wakeRecognition.continuous=true;wakeRecognition.interimResults=false;
+ wakeListening=true;voiceConversationRoom=null;
+ $("wakeStart").disabled=true;$("wakeStop").disabled=false;
+ wakeStatus("Lyssnar efter ”Hej JARVIS” eller ”Hej NOVA” …");
+ wakeRecognition.onresult=(event)=>{
+  for(let i=event.resultIndex;i<event.results.length;i++){
+   if(!event.results[i].isFinal)continue;
+   const spoken=event.results[i][0].transcript.trim(),normalized=spoken.toLowerCase().replace(/[.,!?]/g,"");
+   const jarvis=normalized.includes("hej jarvis")||normalized.includes("hey jarvis");
+   const nova=normalized.includes("hej nova")||normalized.includes("hey nova");
+   if(!voiceConversationRoom&&(jarvis||nova)){
+    const room=jarvis?"jarvis":"nova";voiceConversationRoom=room;enterRoom(room);
+    wakeStatus((room==="jarvis"?"JARVIS":"NOVA")+" aktiverad. Säg vad du vill ha hjälp med.");
+    const remainder=normalized.replace(/.*?hej\s+(jarvis|nova)/,"").trim();
+    if(remainder){const input=$(room+"Input");input.value=remainder;sendMessage({preventDefault(){}},room)}
+    else speakText(room==="jarvis"?"Hej. JARVIS lyssnar. Vad kan jag hjälpa dig med?":"Hej! NOVA lyssnar. Vad ska vi skapa?",room);
+    continue;
+   }
+   if(voiceConversationRoom){
+    const room=voiceConversationRoom;
+    if(normalized.includes("avsluta röst")||normalized.includes("stäng av mikrofon")){stopWakeListening();return}
+    const input=$(room+"Input");input.value=spoken;
+    if(Date.now()-lastVoiceCommandAt>1200){lastVoiceCommandAt=Date.now();sendMessage({preventDefault(){}},room)}
+   }
+  }
+ };
+ wakeRecognition.onerror=(event)=>{if(event.error==="not-allowed"||event.error==="service-not-allowed"){wakeStatus("Mikrofonåtkomst nekades. Tillåt mikrofon i webbläsarens inställningar.");stopWakeListening()}else if(event.error!=="no-speech"){wakeStatus("Taligenkänningen pausades ("+event.error+"). Tryck på aktivera för att försöka igen.");stopWakeListening()}};
+ wakeRecognition.onend=()=>{if(wakeListening){try{wakeRecognition.start()}catch(e){wakeStatus("Lyssningen pausades av webbläsaren. Tryck på aktivera igen.");stopWakeListening()}}};
+ try{wakeRecognition.start()}catch(e){wakeStatus("Kunde inte starta mikrofonen. Kontrollera mikrofontillståndet.");stopWakeListening()}
+}
+function stopWakeListening(){
+ wakeListening=false;voiceConversationRoom=null;
+ if(wakeRecognition){try{wakeRecognition.onend=null;wakeRecognition.stop()}catch(e){}wakeRecognition=null}
+ const start=$("wakeStart"),stop=$("wakeStop");if(start)start.disabled=false;if(stop)stop.disabled=true;
+ wakeStatus("Mikrofonen är avstängd.");
+}
 
 /* ROOM STATES */
 function setRoomState(room,state){
