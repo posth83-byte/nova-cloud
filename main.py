@@ -13,6 +13,7 @@ from urllib.parse import quote
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
+from video_engine import router as video_router
 
 
 # ==========================================
@@ -26,6 +27,8 @@ app = FastAPI(
     description="JARVIS och NOVA – personlig AI-central",
     version=APP_VERSION
 )
+
+app.include_router(video_router)
 
 
 # ==========================================
@@ -1012,7 +1015,7 @@ async def status():
         "youtube_rss_configured": bool(valid_channels),
         "youtube_channels_configured": len(valid_channels),
         "video_planner": "online",
-        "video_renderer": "not_configured",
+        "video_renderer": "online",
         "version": APP_VERSION,
         "time": datetime.now(timezone.utc).isoformat()
     }
@@ -1249,9 +1252,9 @@ Lämna inte JSON ofärdig.
         "subtitles_srt": subtitles_srt,
         "next_step": (
             "Produktionsunderlaget är klart. "
-            "Videoklipp, berättarröst och slutlig "
-            "MP4-rendering kräver en ansluten "
-            "videoproduktionsmotor."
+            "Videomotorn är ansluten. MP4-rendering finns via "
+            "POST /api/video/render och kräver manus samt "
+            "1–12 uppladdade scenbilder."
         )
     }
 
