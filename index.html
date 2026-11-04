@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="sv">
 <head>
@@ -11,7 +12,8 @@
 html{scroll-behavior:smooth}
 body{margin:0;color:#eaf6ff;font-family:Arial,sans-serif;background:radial-gradient(ellipse at 50% 0%,#173c60 0%,transparent 48%),radial-gradient(ellipse at 90% 55%,#29133d55,transparent 40%),#030713;min-height:100vh;overflow-x:hidden}
 body:before{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;opacity:.16;background-image:linear-gradient(#3477a322 1px,transparent 1px),linear-gradient(90deg,#3477a322 1px,transparent 1px);background-size:45px 45px;mask-image:linear-gradient(to bottom,black,transparent 85%)}
-button,input,select{font:inherit}button{touch-action:manipulation;cursor:pointer}
+button,input,select,textarea{font:inherit}
+button{touch-action:manipulation;cursor:pointer}
 header{position:relative;z-index:2;text-align:center;padding:23px 15px 18px;border-bottom:1px solid #315a7a88;background:#061020cc;backdrop-filter:blur(14px)}
 .logo{font-size:9px;letter-spacing:5px;color:#74dfff}
 h1{margin:12px 0 7px;font-size:clamp(22px,5vw,34px);letter-spacing:4px;text-shadow:0 0 25px #29baff}
@@ -178,6 +180,46 @@ main{position:relative;z-index:1;max-width:1100px;margin:auto;padding:20px 15px 
 .activity-time{font-size:9px;color:#7898b2;margin-top:4px}
 .activity-empty{padding:20px;text-align:center;color:#7898b2;font-size:11px;border:1px dashed #31516b;border-radius:9px}
 .activity-count{font-size:9px;color:#7ea4c2;letter-spacing:1px}
+
+/* NOVA VIDEO STUDIO */
+.video-studio{margin-top:18px;border:1px solid #9a66c7;border-radius:16px;padding:16px;background:linear-gradient(145deg,#21152fef,#100b1b);box-shadow:0 0 25px #a44dff17}
+.video-studio h3{color:#e0baff;font-size:11px;letter-spacing:2px;margin:0 0 8px}
+.video-studio p{font-size:11px;line-height:1.6;color:#bca8ce}
+.video-form{display:grid;grid-template-columns:1fr 1fr;gap:11px;margin-top:14px}
+.field{display:flex;flex-direction:column;gap:6px;min-width:0}
+.field.full{grid-column:1/-1}
+.field label{font-size:9px;letter-spacing:1px;color:#d7b6f5}
+.field input,.field select,.field textarea{width:100%;padding:12px;border-radius:9px;border:1px solid #76558f;background:#100b1b;color:#f5eaff;font-size:12px;outline:none}
+.field textarea{min-height:85px;resize:vertical}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:#d2a0ff;box-shadow:0 0 0 2px #bd80ff22}
+.video-create{width:100%;margin-top:14px;padding:15px;border:1px solid #e0baff;border-radius:10px;background:linear-gradient(90deg,#63358c,#9a5acb);color:white;font-size:11px;font-weight:bold;letter-spacing:2px;box-shadow:0 0 20px #a44dff33}
+.video-create:disabled{opacity:.55;cursor:wait}
+.video-status{margin-top:12px;padding:11px;border:1px solid #76558f;border-radius:9px;background:#120d1e;color:#d9c4ed;font-size:10px;line-height:1.6;white-space:pre-wrap}
+.video-status.success{border-color:#397e69;color:#8ff4c8}
+.video-status.error{border-color:#9c5050;color:#ffc0c0}
+.video-results{margin-top:15px}
+.video-results h4{color:#e0baff;font-size:10px;letter-spacing:2px;margin:18px 0 9px}
+.video-title{font-size:21px;color:#fff;margin:10px 0;text-shadow:0 0 15px #bd80ff66}
+.video-summary{font-size:11px;line-height:1.7;color:#d4c4e5;white-space:pre-wrap}
+.video-result-card{margin-top:10px;padding:13px;border:1px solid #62477b;border-radius:10px;background:#160f22;overflow-wrap:anywhere}
+.video-result-card strong{display:block;font-size:10px;color:#e5caff;margin-bottom:7px}
+.video-result-card p{margin:0;color:#d7c8e5;font-size:11px;line-height:1.7;white-space:pre-wrap}
+.scene-list{display:grid;gap:9px}
+.scene-card{padding:13px;border:1px solid #694b83;border-radius:11px;background:#180f24}
+.scene-head{display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:9px}
+.scene-number{font-size:10px;color:#e5caff;font-weight:bold}
+.scene-time{font-size:9px;color:#bda3d4}
+.scene-card p{font-size:11px;line-height:1.65;color:#d9c9e8;white-space:pre-wrap;margin:7px 0}
+.scene-card .scene-label{font-size:9px;color:#c99df2;letter-spacing:1px;margin-top:10px}
+.scene-card button,.export-btn{border:1px solid #8861a8;border-radius:8px;background:#2b1b3c;color:#e7d4f7;padding:9px 11px;font-size:9px;margin:5px 5px 0 0}
+.export-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:13px}
+.export-btn{flex:1;min-width:140px;padding:12px}
+.subtitle-list{max-height:260px;overflow:auto;padding:10px;background:#100b1b;border:1px solid #62477b;border-radius:9px}
+.subtitle-line{padding:7px 0;border-bottom:1px solid #382847;font-size:10px;color:#d9c9e8;line-height:1.6}
+.production-steps{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
+.production-step{padding:10px;border-radius:8px;background:#160f22;border:1px solid #49365a;font-size:9px;color:#bba8cb}
+.production-step.done{border-color:#397e69;color:#8ff4c8}
+.studio-note{font-size:9px;color:#a995ba;line-height:1.6;margin-top:12px}
 @keyframes spin{to{transform:rotate(360deg)}}
 @keyframes float{0%,100%{translate:0 0}50%{translate:0 -10px}}
 @keyframes activeFloat{0%,100%{translate:0 0}50%{translate:0 -15px}}
@@ -199,6 +241,8 @@ main{position:relative;z-index:1;max-width:1100px;margin:auto;padding:20px 15px 
  .workstation-stage{height:310px}.ai-figure{top:12px;width:165px;height:220px}
  .ai-monitor{height:95px;bottom:55px;width:94%}.monitor-content{height:58px}
  .ai-desk{bottom:30px}.ai-floor{width:240px}.voice-select{width:100%}
+ .video-form{grid-template-columns:1fr}.field.full{grid-column:auto}
+ .production-steps{grid-template-columns:1fr}
 }
 @media(prefers-reduced-motion:reduce){*,*:before,*:after{animation:none!important;scroll-behavior:auto!important}}
 </style>
@@ -254,7 +298,6 @@ main{position:relative;z-index:1;max-width:1100px;margin:auto;padding:20px 15px 
   <p id="cloudInfo">Väntar på servern.</p>
  </section>
 
- <!-- NEW ACTIVITY CENTER -->
  <section class="panel" id="activityPanel">
   <h3>AI ACTIVITY CENTER / AKTIVITETSCENTRAL</h3>
   <p>En samlad översikt över vad som händer i JARVIS och NOVA.</p>
@@ -316,13 +359,77 @@ main{position:relative;z-index:1;max-width:1100px;margin:auto;padding:20px 15px 
   <div class="ai-monitor"><div class="monitor-top"><span>NOVA / CREATIVE STUDIO</span><span id="novaMonitorStatus">● PRODUCTION ACTIVE</span></div><div class="monitor-content"><div class="monitor-panel"><div class="monitor-line"></div><div class="monitor-line"></div><div class="monitor-line"></div></div><div class="monitor-panel"><div class="monitor-graph"><span></span><span></span><span></span><span></span><span></span><span></span></div></div><div class="monitor-panel"><div class="monitor-line"></div><div class="monitor-line"></div><div class="monitor-line"></div></div></div></div>
   <div class="ai-desk"></div><div class="ai-floor"></div>
  </div>
- <div class="room-content"><div class="chatbox">
+
+ <div class="room-content">
+  <!-- VIDEO STUDIO -->
+  <section class="video-studio" id="videoStudio">
+   <h3>✧ NOVA VIDEO STUDIO / PRODUKTIONSCENTRAL</h3>
+   <p>Skapa ett komplett videounderlag med manus, scener, undertexter och YouTube-material. NOVA skickar din beställning till Gemini via NOVA Cloud.</p>
+   <form id="videoForm">
+    <div class="video-form">
+     <div class="field full">
+      <label for="videoPrompt">VAD SKA VIDEON HANDLA OM?</label>
+      <textarea id="videoPrompt" required minlength="5" maxlength="5000" placeholder="Beskriv berättelsen, ämnet eller idén...">En mystisk berättelse om en man som hör knackningar från en tom lägenhet.</textarea>
+     </div>
+     <div class="field">
+      <label for="videoChannel">YOUTUBE-KANAL</label>
+      <select id="videoChannel">
+       <option>Skuggornas Arkiv</option>
+       <option>Mikael Posth</option>
+      </select>
+     </div>
+     <div class="field">
+      <label for="videoFormat">VIDEOFORMAT</label>
+      <select id="videoFormat">
+       <option value="long">Lång video</option>
+       <option value="short">YouTube Short</option>
+      </select>
+     </div>
+     <div class="field">
+      <label for="videoDuration">LÄNGD I MINUTER</label>
+      <select id="videoDuration">
+       <option value="1">1 minut</option>
+       <option value="3">3 minuter</option>
+       <option value="5" selected>5 minuter</option>
+       <option value="8">8 minuter</option>
+       <option value="10">10 minuter</option>
+       <option value="15">15 minuter</option>
+       <option value="20">20 minuter</option>
+       <option value="30">30 minuter</option>
+      </select>
+     </div>
+     <div class="field">
+      <label for="videoStyle">BERÄTTARSTIL</label>
+      <select id="videoStyle">
+       <option value="Mörk, filmisk och spännande">Mörk och filmisk</option>
+       <option value="Mystisk, realistisk och suggestiv">Mystisk och realistisk</option>
+       <option value="Dokumentär och engagerande">Dokumentär</option>
+       <option value="Humoristisk och underhållande">Humoristisk</option>
+       <option value="Dramatisk och känslosam">Dramatisk</option>
+       <option value="Energisk och snabb">Energisk</option>
+      </select>
+     </div>
+     <div class="field">
+      <label for="videoAudience">MÅLGRUPP</label>
+      <input id="videoAudience" value="Svensk publik" placeholder="Exempel: Svensk publik">
+     </div>
+    </div>
+    <button class="video-create" id="createVideoButton" type="submit">✧ SKAPA VIDEOUNDERLAG MED NOVA</button>
+   </form>
+   <div class="video-status" id="videoStatus" aria-live="polite">SYSTEM REDO · Väntar på din videobeställning.</div>
+   <div id="videoResults" class="video-results hidden"></div>
+   <div class="studio-note">OBS: Den här funktionen skapar videoplan, manus och produktionsmaterial. Själva MP4-renderingen startar inte ännu – den kräver en separat videomotor.</div>
+  </section>
+
+  <!-- NOVA CHAT -->
+  <div class="chatbox" style="margin-top:16px">
   <div class="chat-title">NOVA / CREATIVE AI CONNECTION</div>
   <div class="messages" id="novaMessages"><div class="msg ai">Hej! NOVA är redo att utveckla dina YouTube-projekt. Vad ska vi skapa?</div></div>
   <div class="voice-panel"><div class="voice-heading">NOVA / RÖSTINSTÄLLNINGAR</div><div class="voice-row"><select class="voice-select" id="novaVoiceSelect" aria-label="Välj NOVA-röst"><option value="">Laddar tillgängliga röster...</option></select><button class="voice-test" onclick="testVoice('nova')">TESTA RÖST</button></div><div class="voice-note">Välj en svensk röst om en sådan finns tillgänglig på din enhet.</div><div class="voice-status" id="novaVoiceStatus">Röstsystem redo.</div></div>
   <form class="input-row" onsubmit="sendMessage(event,'nova')"><input class="chat-input" id="novaInput" placeholder="Skriv till NOVA..." autocomplete="off"><button class="send" id="novaSend">SKICKA</button></form>
   <div class="tools"><button class="tool-btn" onclick="runTrends()">ANALYSERA YOUTUBE-TRENDER</button></div><div id="trendResult"></div>
- </div></div>
+ </div>
+ </div>
 </section>
 
 <div class="system-footer">JARVIS × NOVA<br>PRIVATE ARTIFICIAL INTELLIGENCE NETWORK<br>ALL SYSTEMS CONNECTED THROUGH NOVA CLOUD</div>
@@ -335,6 +442,7 @@ let availableVoices=[];
 let activeUtterance=null;
 let activeSpeechButton=null;
 let activeSpeechRoom=null;
+let latestVideoPlan=null;
 
 /* ACTIVITY CENTER */
 const ACTIVITY_KEY="jarvis_nova_activity_v1";
@@ -349,62 +457,38 @@ function loadActivity(){
  }catch(e){activityLog=[]}
  renderActivity();
 }
-
 function logActivity(title,icon="✦",detail=""){
- const entry={
-  id:Date.now()+"-"+Math.random().toString(36).slice(2,7),
-  title:String(title),
-  icon:String(icon),
-  detail:String(detail),
-  time:new Date().toISOString()
- };
+ const entry={id:Date.now()+"-"+Math.random().toString(36).slice(2,7),title:String(title),icon:String(icon),detail:String(detail),time:new Date().toISOString()};
  activityLog.unshift(entry);
  activityLog=activityLog.slice(0,20);
  try{localStorage.setItem(ACTIVITY_KEY,JSON.stringify(activityLog))}catch(e){}
  renderActivity();
 }
-
 function renderActivity(){
- const list=$("activityList");
- const count=$("activityCount");
+ const list=$("activityList"),count=$("activityCount");
  if(!list||!count)return;
  count.textContent=activityLog.length+" REGISTRERADE HÄNDELSER";
  list.replaceChildren();
  if(!activityLog.length){
-  const empty=document.createElement("div");
-  empty.className="activity-empty";
-  empty.textContent="Aktiviteter visas här när du börjar använda systemen.";
-  list.appendChild(empty);
-  return;
+  const empty=document.createElement("div");empty.className="activity-empty";
+  empty.textContent="Aktiviteter visas här när du börjar använda systemen.";list.appendChild(empty);return;
  }
  activityLog.forEach(item=>{
-  const row=document.createElement("div");
-  row.className="activity-entry";
-  const icon=document.createElement("div");
-  icon.className="activity-icon";
-  icon.textContent=item.icon||"✦";
-  const content=document.createElement("div");
-  content.className="activity-detail";
-  const name=document.createElement("div");
-  name.className="activity-name";
-  name.textContent=item.title;
-  const time=document.createElement("div");
-  time.className="activity-time";
+  const row=document.createElement("div");row.className="activity-entry";
+  const icon=document.createElement("div");icon.className="activity-icon";icon.textContent=item.icon||"✦";
+  const content=document.createElement("div");content.className="activity-detail";
+  const name=document.createElement("div");name.className="activity-name";name.textContent=item.title;
+  const time=document.createElement("div");time.className="activity-time";
   const date=new Date(item.time);
   time.textContent=(Number.isNaN(date.getTime())?"":date.toLocaleDateString("sv-SE")+" "+date.toLocaleTimeString("sv-SE",{hour:"2-digit",minute:"2-digit"}))+(item.detail?" · "+item.detail:"");
-  content.append(name,time);
-  row.append(icon,content);
-  list.appendChild(row);
+  content.append(name,time);row.append(icon,content);list.appendChild(row);
  });
 }
-
 function clearActivity(){
  if(!confirm("Vill du rensa hela aktivitetsloggen?"))return;
- activityLog=[];
- try{localStorage.removeItem(ACTIVITY_KEY)}catch(e){}
+ activityLog=[];try{localStorage.removeItem(ACTIVITY_KEY)}catch(e){}
  renderActivity();
 }
-
 loadActivity();
 
 /* VOICE SYSTEM */
@@ -412,220 +496,104 @@ function loadVoices(){
  if(!("speechSynthesis" in window))return;
  availableVoices=window.speechSynthesis.getVoices();
  ["jarvis","nova"].forEach(room=>{
-  const select=$(room+"VoiceSelect");
-  if(!select)return;
-  const previous=select.value;
-  select.innerHTML="";
+  const select=$(room+"VoiceSelect");if(!select)return;
+  const previous=select.value;select.innerHTML="";
   if(!availableVoices.length){
-   const option=document.createElement("option");
-   option.value="";
-   option.textContent="Webbläsarens standardröst";
-   select.appendChild(option);
-   return;
+   const option=document.createElement("option");option.value="";option.textContent="Webbläsarens standardröst";select.appendChild(option);return;
   }
-  const sorted=[...availableVoices].sort((a,b)=>{
-   const aSv=/sv/i.test(a.lang)?0:1;
-   const bSv=/sv/i.test(b.lang)?0:1;
-   return aSv-bSv;
-  });
+  const sorted=[...availableVoices].sort((a,b)=>(/^sv/i.test(a.lang)?0:1)-(/^sv/i.test(b.lang)?0:1));
   sorted.forEach(voice=>{
-   const option=document.createElement("option");
-   option.value=voice.voiceURI;
-   option.textContent=voice.name+" ("+voice.lang+")";
-   select.appendChild(option);
+   const option=document.createElement("option");option.value=voice.voiceURI;option.textContent=voice.name+" ("+voice.lang+")";select.appendChild(option);
   });
   if(previous&&sorted.some(v=>v.voiceURI===previous))select.value=previous;
-  else{
-   const swedish=sorted.find(v=>/^sv/i.test(v.lang));
-   if(swedish)select.value=swedish.voiceURI;
-  }
+  else{const swedish=sorted.find(v=>/^sv/i.test(v.lang));if(swedish)select.value=swedish.voiceURI}
   const status=$(room+"VoiceStatus");
-  if(status){
-   const hasSwedish=availableVoices.some(v=>/^sv/i.test(v.lang));
-   status.textContent=hasSwedish?"Svenska röster hittades.":"Ingen svensk röst hittades. Standardröst används.";
-  }
+  if(status)status.textContent=availableVoices.some(v=>/^sv/i.test(v.lang))?"Svenska röster hittades.":"Ingen svensk röst hittades. Standardröst används.";
  });
 }
-
 function getSelectedVoice(room){
- const select=$(room+"VoiceSelect");
- if(!select||!select.value)return null;
+ const select=$(room+"VoiceSelect");if(!select||!select.value)return null;
  return availableVoices.find(v=>v.voiceURI===select.value)||null;
 }
-
 function stopSpeech(){
  if("speechSynthesis" in window)window.speechSynthesis.cancel();
- if(activeSpeechButton){
-  activeSpeechButton.textContent="▶ LÄS UPP SVARET";
-  activeSpeechButton.classList.remove("speaking");
- }
- if(activeSpeechRoom){
-  const status=$(activeSpeechRoom+"VoiceStatus");
-  if(status)status.textContent="Uppläsningen stoppad.";
-  setRoomState(activeSpeechRoom,"idle");
- }
- activeUtterance=null;
- activeSpeechButton=null;
- activeSpeechRoom=null;
+ if(activeSpeechButton){activeSpeechButton.textContent="▶ LÄS UPP SVARET";activeSpeechButton.classList.remove("speaking")}
+ if(activeSpeechRoom){const status=$(activeSpeechRoom+"VoiceStatus");if(status)status.textContent="Uppläsningen stoppad.";setRoomState(activeSpeechRoom,"idle")}
+ activeUtterance=null;activeSpeechButton=null;activeSpeechRoom=null;
 }
-
 function speakText(text,room,button=null){
- if(!("speechSynthesis" in window)){
-  const status=$(room+"VoiceStatus");
-  if(status)status.textContent="Rösten stöds inte i den här webbläsaren.";
-  return;
- }
+ if(!("speechSynthesis" in window)){const status=$(room+"VoiceStatus");if(status)status.textContent="Rösten stöds inte i den här webbläsaren.";return}
  if(!text||!text.trim())return;
  stopSpeech();
  const utterance=new SpeechSynthesisUtterance(text.trim());
  const voice=getSelectedVoice(room);
- utterance.lang=voice?voice.lang:"sv-SE";
- utterance.rate=.95;
- utterance.pitch=.92;
- utterance.volume=1;
+ utterance.lang=voice?voice.lang:"sv-SE";utterance.rate=.95;utterance.pitch=.92;utterance.volume=1;
  if(voice)utterance.voice=voice;
- activeUtterance=utterance;
- activeSpeechButton=button;
- activeSpeechRoom=room;
+ activeUtterance=utterance;activeSpeechButton=button;activeSpeechRoom=room;
  const status=$(room+"VoiceStatus");
- utterance.onstart=()=>{
-  if(button){button.textContent="■ STOPPA UPPLÄSNING";button.classList.add("speaking")}
-  if(status)status.textContent="AI-rösten läser upp svaret...";
-  setRoomState(room,"responding");
- };
- utterance.onend=()=>{
-  if(button){button.textContent="▶ LÄS UPP SVARET";button.classList.remove("speaking")}
-  if(status)status.textContent="Uppläsningen klar.";
-  setRoomState(room,"idle");
-  activeUtterance=null;activeSpeechButton=null;activeSpeechRoom=null;
- };
- utterance.onerror=()=>{
-  if(button){button.textContent="▶ LÄS UPP SVARET";button.classList.remove("speaking")}
-  if(status)status.textContent="Kunde inte spela upp rösten.";
-  setRoomState(room,"idle");
-  activeUtterance=null;activeSpeechButton=null;activeSpeechRoom=null;
- };
+ utterance.onstart=()=>{if(button){button.textContent="■ STOPPA UPPLÄSNING";button.classList.add("speaking")}if(status)status.textContent="AI-rösten läser upp svaret...";setRoomState(room,"responding")};
+ utterance.onend=()=>{if(button){button.textContent="▶ LÄS UPP SVARET";button.classList.remove("speaking")}if(status)status.textContent="Uppläsningen klar.";setRoomState(room,"idle");activeUtterance=null;activeSpeechButton=null;activeSpeechRoom=null};
+ utterance.onerror=()=>{if(button){button.textContent="▶ LÄS UPP SVARET";button.classList.remove("speaking")}if(status)status.textContent="Kunde inte spela upp rösten.";setRoomState(room,"idle");activeUtterance=null;activeSpeechButton=null;activeSpeechRoom=null};
  window.speechSynthesis.speak(utterance);
 }
-
 function addSpeechButton(messageElement,room){
- const button=document.createElement("button");
- button.className="speak-btn";
- button.textContent="▶ LÄS UPP SVARET";
- button.onclick=()=>{
-  if(activeSpeechButton===button&&window.speechSynthesis.speaking){stopSpeech();return}
-  speakText(messageElement.dataset.speechText||"",room,button);
- };
+ const button=document.createElement("button");button.className="speak-btn";button.textContent="▶ LÄS UPP SVARET";
+ button.onclick=()=>{if(activeSpeechButton===button&&window.speechSynthesis.speaking){stopSpeech();return} speakText(messageElement.dataset.speechText||"",room,button)};
  messageElement.appendChild(button);
 }
-
 function testVoice(room){
  if("speechSynthesis" in window)loadVoices();
- const voice=getSelectedVoice(room);
- const name=voice?voice.name:"standardrösten";
+ const voice=getSelectedVoice(room),name=voice?voice.name:"standardrösten";
  const text=room==="jarvis"?"Hej. Jag är JARVIS. Röstsystemet fungerar och jag är redo att hjälpa dig.":"Hej! Jag är NOVA. Nu är min svenska röst redo för kreativ produktion.";
- const status=$(room+"VoiceStatus");
- if(status)status.textContent="Testar "+name+"...";
- logActivity(room.toUpperCase()+" – rösttest startat","🔊",name);
- speakText(text,room);
+ const status=$(room+"VoiceStatus");if(status)status.textContent="Testar "+name+"...";
+ logActivity(room.toUpperCase()+" – rösttest startat","🔊",name);speakText(text,room);
 }
-
-if("speechSynthesis" in window){
- loadVoices();
- window.speechSynthesis.onvoiceschanged=loadVoices;
-}
+if("speechSynthesis" in window){loadVoices();window.speechSynthesis.onvoiceschanged=loadVoices}
 
 /* ROOM STATES */
 function setRoomState(room,state){
- const view=$(room+"View");
- if(!view)return;
+ const view=$(room+"View");if(!view)return;
  view.classList.remove("working","responding");
- const live=$(room+"Live");
- const monitor=$(room+"MonitorStatus");
- if(state==="working"){
-  view.classList.add("working");
-  if(live)live.textContent="● "+room.toUpperCase()+" ARBETAR";
-  if(monitor)monitor.textContent="● PROCESSING";
- }else if(state==="responding"){
-  view.classList.add("responding");
-  if(live)live.textContent="● "+room.toUpperCase()+" SVARAR";
-  if(monitor)monitor.textContent="● RESPONSE";
- }else{
-  if(live)live.textContent="● "+room.toUpperCase()+" ONLINE";
-  if(monitor)monitor.textContent=room==="nova"?"● PRODUCTION ACTIVE":"● SYSTEM ACTIVE";
- }
+ const live=$(room+"Live"),monitor=$(room+"MonitorStatus");
+ if(state==="working"){view.classList.add("working");if(live)live.textContent="● "+room.toUpperCase()+" ARBETAR";if(monitor)monitor.textContent="● PROCESSING"}
+ else if(state==="responding"){view.classList.add("responding");if(live)live.textContent="● "+room.toUpperCase()+" SVARAR";if(monitor)monitor.textContent="● RESPONSE"}
+ else{if(live)live.textContent="● "+room.toUpperCase()+" ONLINE";if(monitor)monitor.textContent=room==="nova"?"● PRODUCTION ACTIVE":"● SYSTEM ACTIVE"}
 }
-
 function enterRoom(room){
- activeRoom=room;
- $("homeView").classList.add("hidden");
- $("jarvisView").classList.add("hidden");
- $("novaView").classList.add("hidden");
- $(room+"View").classList.remove("hidden");
- window.scrollTo({top:0,behavior:"smooth"});
- loadVoices();
+ activeRoom=room;$("homeView").classList.add("hidden");$("jarvisView").classList.add("hidden");$("novaView").classList.add("hidden");
+ $(room+"View").classList.remove("hidden");window.scrollTo({top:0,behavior:"smooth"});loadVoices();
  logActivity(room.toUpperCase()+"-rummet öppnades",room==="nova"?"✧":"✦","AI-rum aktiverat");
  setTimeout(()=>$(room+"Input").focus(),450);
 }
-
 function goHome(){
- stopSpeech();
- activeRoom=null;
- $("jarvisView").classList.add("hidden");
- $("novaView").classList.add("hidden");
- $("homeView").classList.remove("hidden");
+ stopSpeech();activeRoom=null;$("jarvisView").classList.add("hidden");$("novaView").classList.add("hidden");$("homeView").classList.remove("hidden");
  window.scrollTo({top:0,behavior:"smooth"});
 }
-
 function addMessage(target,text,type="ai"){
- const area=$(target);
- const msg=document.createElement("div");
- msg.className="msg "+type;
- msg.textContent=text;
- area.appendChild(msg);
- area.scrollTop=area.scrollHeight;
- return msg;
+ const area=$(target),msg=document.createElement("div");msg.className="msg "+type;msg.textContent=text;area.appendChild(msg);area.scrollTop=area.scrollHeight;return msg;
 }
 
 /* CHAT CONNECTION */
 async function sendMessage(event,assistant){
  event.preventDefault();
- const isNova=assistant==="nova";
- const input=$(isNova?"novaInput":"jarvisInput");
- const messages=isNova?"novaMessages":"jarvisMessages";
- const button=$(isNova?"novaSend":"jarvisSend");
- const message=input.value.trim();
- if(!message)return;
+ const isNova=assistant==="nova",input=$(isNova?"novaInput":"jarvisInput"),messages=isNova?"novaMessages":"jarvisMessages",button=$(isNova?"novaSend":"jarvisSend");
+ const message=input.value.trim();if(!message)return;
  if("speechSynthesis" in window)stopSpeech();
  addMessage(messages,message,"user");
  logActivity(assistant.toUpperCase()+" fick ett nytt meddelande",isNova?"✧":"✦",message.length>65?message.slice(0,65)+"…":message);
- input.value="";
- button.disabled=true;
- button.textContent="...";
- setRoomState(assistant,"working");
+ input.value="";button.disabled=true;button.textContent="...";setRoomState(assistant,"working");
  const loading=addMessage(messages,isNova?"NOVA analyserar...":"JARVIS tänker...","ai");
  try{
-  const endpoint=isNova?"/api/nova":"/api/chat";
-  const response=await fetch(endpoint,{
-   method:"POST",
-   headers:{"Content-Type":"application/json"},
-   body:JSON.stringify({message})
-  });
+  const response=await fetch(isNova?"/api/nova":"/api/chat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({message})});
   const data=await response.json();
   if(!response.ok)throw new Error(typeof data.detail==="string"?data.detail:JSON.stringify(data.detail||data));
   const reply=(data.reply||"Inget svar mottogs.")+"\n\nAI-motor: "+(data.engine||"Okänd");
-  loading.textContent=reply;
-  loading.dataset.speechText=data.reply||"Inget svar mottogs.";
-  addSpeechButton(loading,assistant);
-  setRoomState(assistant,"responding");
-  logActivity(assistant.toUpperCase()+" svarade","✓","AI-motor: "+(data.engine||"Okänd"));
+  loading.textContent=reply;loading.dataset.speechText=data.reply||"Inget svar mottogs.";addSpeechButton(loading,assistant);
+  setRoomState(assistant,"responding");logActivity(assistant.toUpperCase()+" svarade","✓","AI-motor: "+(data.engine||"Okänd"));
  }catch(error){
-  loading.className="msg error";
-  loading.textContent="Anslutningsfel: "+error.message;
-  logActivity(assistant.toUpperCase()+" – anslutningsfel","⚠",error.message);
+  loading.className="msg error";loading.textContent="Anslutningsfel: "+error.message;logActivity(assistant.toUpperCase()+" – anslutningsfel","⚠",error.message);
  }finally{
-  button.disabled=false;
-  button.textContent="SKICKA";
+  button.disabled=false;button.textContent="SKICKA";
   if(!activeSpeechRoom||activeSpeechRoom!==assistant)setTimeout(()=>setRoomState(assistant,"idle"),1800);
   input.focus();
  }
@@ -633,25 +601,210 @@ async function sendMessage(event,assistant){
 
 /* YOUTUBE TRENDS */
 async function runTrends(){
- const result=$("trendResult");
- result.textContent="NOVA hämtar trenddata och analyserar materialet...";
- setRoomState("nova","working");
- logActivity("NOVA startade YouTube-trendanalys","📊","Trendanalys begärd");
+ const result=$("trendResult");result.textContent="NOVA hämtar trenddata och analyserar materialet...";
+ setRoomState("nova","working");logActivity("NOVA startade YouTube-trendanalys","📊","Trendanalys begärd");
  try{
-  const response=await fetch("/api/trends/ideas",{method:"POST"});
-  const data=await response.json();
+  const response=await fetch("/api/trends/ideas",{method:"POST"});const data=await response.json();
   if(!response.ok)throw new Error(typeof data.detail==="string"?data.detail:JSON.stringify(data.detail||data));
   setRoomState("nova","responding");
-  const analysis=data.analysis||"Ingen analys returnerades.";
-  result.textContent=analysis+"\n\nAI-motor: "+(data.engine||"Okänd")+"\nDatakällor: "+(data.sources||[]).join(", ")+"\nKontrollerade RSS-kanaler: "+(data.data_quality?.youtube_channels_checked??0);
+  result.textContent=(data.analysis||"Ingen analys returnerades.")+"\n\nAI-motor: "+(data.engine||"Okänd")+"\nDatakällor: "+(data.sources||[]).join(", ")+"\nKontrollerade RSS-kanaler: "+(data.data_quality?.youtube_channels_checked??0);
   logActivity("NOVA slutförde trendanalysen","📈","AI-motor: "+(data.engine||"Okänd"));
- }catch(error){
-  result.textContent="Trendanalysen kunde inte genomföras: "+error.message;
-  logActivity("NOVA – trendanalysen misslyckades","⚠",error.message);
- }finally{
-  setTimeout(()=>setRoomState("nova","idle"),1800);
- }
+ }catch(error){result.textContent="Trendanalysen kunde inte genomföras: "+error.message;logActivity("NOVA – trendanalysen misslyckades","⚠",error.message)}
+ finally{setTimeout(()=>setRoomState("nova","idle"),1800)}
 }
+
+/* VIDEO STUDIO HELPERS */
+function textValue(value){
+ if(value===null||value===undefined)return "";
+ if(typeof value==="string")return value;
+ if(typeof value==="number")return String(value);
+ if(Array.isArray(value))return value.map(textValue).filter(Boolean).join("\n");
+ if(typeof value==="object")return Object.entries(value).map(([k,v])=>k+": "+textValue(v)).join("\n");
+ return String(value);
+}
+function pick(obj,keys){
+ if(!obj||typeof obj!=="object")return "";
+ for(const key of keys){if(obj[key]!==undefined&&obj[key]!==null&&obj[key]!=="")return obj[key]}
+ return "";
+}
+function makeCard(title,content){
+ const card=document.createElement("div");card.className="video-result-card";
+ const heading=document.createElement("strong");heading.textContent=title;
+ const body=document.createElement("p");body.textContent=textValue(content)||"Inget material returnerades för den här delen.";
+ card.append(heading,body);return card;
+}
+function addCopyButton(parent,text,label="KOPIERA"){
+ const button=document.createElement("button");button.className="export-btn";button.type="button";button.textContent=label;
+ button.onclick=async()=>{try{await navigator.clipboard.writeText(text);button.textContent="KOPIERAT ✓"}catch(e){downloadText(text,"text.txt","text/plain");button.textContent="LADDA NER I STÄLLET"}};
+ parent.appendChild(button);return button;
+}
+function downloadText(content,filename,mime){
+ const blob=new Blob([content],{type:mime+";charset=utf-8"}),url=URL.createObjectURL(blob);
+ const a=document.createElement("a");a.href=url;a.download=filename;document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);
+}
+function formatSceneTime(scene){
+ const start=pick(scene,["start","start_time","timestamp","timecode"]);
+ const end=pick(scene,["end","end_time"]);
+ if(start||end)return [textValue(start),textValue(end)].filter(Boolean).join(" – ");
+ const startSeconds=pick(scene,["start_seconds","startSeconds"]);
+ const endSeconds=pick(scene,["end_seconds","endSeconds"]);
+ if(startSeconds!==""||endSeconds!=="")return [startSeconds,endSeconds].filter(v=>v!=="").map(v=>Math.floor(Number(v)/60)+":"+String(Math.floor(Number(v)%60)).padStart(2,"0")).join(" – ");
+ return "Tidsangivelse saknas";
+}
+function renderVideoPlan(data){
+ const root=$("videoResults");root.replaceChildren();root.classList.remove("hidden");
+ const plan=data.video||data.plan||data;
+ latestVideoPlan=plan;
+ const title=pick(plan,["title","video_title","youtube_title"])||"Din nya video";
+ const heading=document.createElement("div");heading.className="video-title";heading.textContent=title;root.appendChild(heading);
+ const intro=document.createElement("div");intro.className="video-summary";
+ intro.textContent=textValue(pick(plan,["concept","hook","summary","description"]));root.appendChild(intro);
+
+ const steps=document.createElement("div");steps.className="production-steps";
+ const stepData=[
+  ["MANUS",pick(plan,["narration","script","voiceover","full_narration"])],
+  ["SCENER",pick(plan,["scenes","shots"])],
+  ["UNDERtexter",pick(plan,["subtitles","captions"])],
+  ["YOUTUBE-MATERIAL",pick(plan,["youtube","seo","metadata","youtube_description"])]
+ ];
+ stepData.forEach(([label,value])=>{
+  const item=document.createElement("div");item.className="production-step"+(value?" done":"");item.textContent=(value?"✓ ":"○ ")+label+(value?" – finns":" – saknas");steps.appendChild(item);
+ });
+ root.appendChild(steps);
+
+ root.appendChild(makeCard("FULLSTÄNDIGT MANUS / BERÄTTARRÖST",pick(plan,["narration","script","voiceover","full_narration","full_script"])));
+ const scenes=pick(plan,["scenes","shots","storyboard"]);
+ const sceneHeading=document.createElement("h4");sceneHeading.textContent="FILMSCENER / STORYBOARD";root.appendChild(sceneHeading);
+ if(Array.isArray(scenes)&&scenes.length){
+  const sceneList=document.createElement("div");sceneList.className="scene-list";
+  scenes.forEach((scene,index)=>{
+   const card=document.createElement("div");card.className="scene-card";
+   const head=document.createElement("div");head.className="scene-head";
+   const number=document.createElement("span");number.className="scene-number";number.textContent="SCEN "+(scene.number||scene.scene_number||index+1);
+   const time=document.createElement("span");time.className="scene-time";time.textContent=formatSceneTime(scene);
+   head.append(number,time);card.appendChild(head);
+   const sceneTitle=pick(scene,["title","name"]);if(sceneTitle){const t=document.createElement("p");t.textContent=textValue(sceneTitle);card.appendChild(t)}
+   const narration=pick(scene,["narration","voiceover","script","dialogue"]);
+   const visual=pick(scene,["visual_description","visual","description","action"]);
+   const imagePrompt=pick(scene,["image_prompt","imagePrompt","visual_prompt"]);
+   const videoPrompt=pick(scene,["video_prompt","videoPrompt","motion_prompt"]);
+   const camera=pick(scene,["camera","camera_direction","shot"]);
+   const sound=pick(scene,["sound_effects","sound","sfx"]);
+   [[ "BERÄTTARRÖST",narration],["BILD / VAD SOM SYNS",visual],["BILDPROMPT",imagePrompt],["VIDEOPROMPT / RÖRELSE",videoPrompt],["KAMERA",camera],["LJUD",sound]].forEach(([label,value])=>{
+    if(!value)return;
+    const l=document.createElement("div");l.className="scene-label";l.textContent=label;
+    const p=document.createElement("p");p.textContent=textValue(value);card.append(l,p);
+   });
+   const copy=document.createElement("button");copy.type="button";copy.textContent="KOPIERA SCEN";
+   copy.onclick=()=>navigator.clipboard?.writeText(JSON.stringify(scene,null,2)).then(()=>copy.textContent="KOPIERAD ✓").catch(()=>downloadText(JSON.stringify(scene,null,2),"scen-"+(index+1)+".json","application/json"));
+   card.appendChild(copy);sceneList.appendChild(card);
+  });
+  root.appendChild(sceneList);
+ }else root.appendChild(makeCard("SCENPLAN",scenes||"Inga scener returnerades."));
+
+ const thumbnail=pick(plan,["thumbnail","thumbnail_concept","thumbnail_idea"]);
+ root.appendChild(makeCard("THUMBNAIL / OMSLAGSBILD",thumbnail));
+ const youtube=pick(plan,["youtube","seo","metadata"]);
+ if(youtube&&typeof youtube==="object"){
+  root.appendChild(makeCard("YOUTUBE-TITEL",pick(youtube,["title","youtube_title"])||pick(plan,["youtube_title"])));
+  root.appendChild(makeCard("YOUTUBE-BESKRIVNING",pick(youtube,["description","youtube_description"])||pick(plan,["youtube_description"])));
+  root.appendChild(makeCard("TAGGAR & HASHTAGS",pick(youtube,["tags","hashtags"])||pick(plan,["tags","hashtags"])));
+ }else{
+  root.appendChild(makeCard("YOUTUBE-TITEL",pick(plan,["youtube_title","seo_title"])));
+  root.appendChild(makeCard("YOUTUBE-BESKRIVNING",pick(plan,["youtube_description","description"])));
+  root.appendChild(makeCard("TAGGAR & HASHTAGS",pick(plan,["tags","hashtags"])));
+ }
+
+ const subtitles=pick(plan,["subtitles","captions"]);
+ const subHeading=document.createElement("h4");subHeading.textContent="UNDERtexter";root.appendChild(subHeading);
+ if(Array.isArray(subtitles)&&subtitles.length){
+  const subList=document.createElement("div");subList.className="subtitle-list";
+  subtitles.forEach((sub,index)=>{
+   const line=document.createElement("div");line.className="subtitle-line";
+   const start=pick(sub,["start","start_time","start_seconds","startSeconds"]);
+   const end=pick(sub,["end","end_time","end_seconds","endSeconds"]);
+   const content=pick(sub,["text","content","caption"]);
+   line.textContent=(start!==""?textValue(start):"")+(end!==""?" – "+textValue(end):"")+"  "+(textValue(content)||textValue(sub));
+   subList.appendChild(line);
+  });
+  root.appendChild(subList);
+ }else root.appendChild(makeCard("UNDERtexter",subtitles||"Inga undertexter returnerades."));
+
+ const actions=document.createElement("div");actions.className="export-actions";
+ const jsonButton=document.createElement("button");jsonButton.className="export-btn";jsonButton.textContent="LADDA NER HELA PRODUKTIONSPLANEN";
+ jsonButton.onclick=()=>downloadText(JSON.stringify(data,null,2),"nova-produktionsplan.json","application/json");
+ actions.appendChild(jsonButton);
+ const srt=typeof data.subtitles_srt==="string"?data.subtitles_srt:makeSrt(subtitles);
+ const srtButton=document.createElement("button");srtButton.className="export-btn";srtButton.textContent="LADDA NER UNDERtexter (.SRT)";
+ srtButton.onclick=()=>{if(!srt){alert("Det finns inga undertexter att exportera.");return}downloadText(srt,"nova-undertexter.srt","text/plain")};
+ actions.appendChild(srtButton);
+ const scriptText=textValue(pick(plan,["narration","script","voiceover","full_narration","full_script"]));
+ const scriptButton=document.createElement("button");scriptButton.className="export-btn";scriptButton.textContent="LADDA NER MANUS (.TXT)";
+ scriptButton.onclick=()=>downloadText(scriptText||"Inget manus returnerades.","nova-manus.txt","text/plain");
+ actions.appendChild(scriptButton);
+ root.appendChild(actions);
+
+ const renderState=document.createElement("div");renderState.className="video-status";
+ renderState.textContent="MANUS OCH PRODUKTIONSUNDERLAG KLART · Renderstatus: "+(data.render_status||"not_started")+". Ingen färdig MP4 har skapats ännu.";
+ root.appendChild(renderState);
+}
+function toSrtTime(seconds){
+ const value=Math.max(0,Number(seconds)||0),hours=Math.floor(value/3600),minutes=Math.floor(value%3600/60),secs=Math.floor(value%60),ms=Math.floor((value-Math.floor(value))*1000);
+ return String(hours).padStart(2,"0")+":"+String(minutes).padStart(2,"0")+":"+String(secs).padStart(2,"0")+","+String(ms).padStart(3,"0");
+}
+function makeSrt(subtitles){
+ if(!Array.isArray(subtitles)||!subtitles.length)return "";
+ return subtitles.map((s,i)=>{
+  const start=pick(s,["start_seconds","startSeconds","start"]),end=pick(s,["end_seconds","endSeconds","end"]),text=pick(s,["text","content","caption"]);
+  const startTime=typeof start==="number"?toSrtTime(start):String(start||"00:00:00,000");
+  const endTime=typeof end==="number"?toSrtTime(end):String(end||"00:00:03,000");
+  return (i+1)+"\n"+startTime.replace(".",",")+" --> "+endTime.replace(".",",")+"\n"+textValue(text)+"\n";
+ }).join("\n");
+}
+
+/* CREATE VIDEO PLAN */
+$("videoForm").addEventListener("submit",async event=>{
+ event.preventDefault();
+ const button=$("createVideoButton"),status=$("videoStatus"),results=$("videoResults");
+ const prompt=$("videoPrompt").value.trim();
+ if(prompt.length<5){status.textContent="Beskriv videon lite mer innan du startar.";status.className="video-status error";return}
+ const payload={
+  prompt,
+  channel:$("videoChannel").value,
+  format:$("videoFormat").value,
+  duration_minutes:Number($("videoDuration").value),
+  style:$("videoStyle").value,
+  audience:$("videoAudience").value.trim()||"Svensk publik"
+ };
+ button.disabled=true;button.textContent="NOVA SKAPAR PRODUKTIONSUNDERLAG...";
+ status.className="video-status";status.textContent="NOVA arbetar med idé, manus, scener och undertexter. Det kan ta en liten stund...";
+ results.classList.add("hidden");setRoomState("nova","working");
+ logActivity("NOVA startade en videoproduktion","🎬",payload.channel+" · "+payload.format+" · "+payload.duration_minutes+" min");
+ try{
+  const response=await fetch("/api/video/plan",{
+   method:"POST",
+   headers:{"Content-Type":"application/json"},
+   body:JSON.stringify(payload)
+  });
+  const data=await response.json();
+  if(!response.ok)throw new Error(typeof data.detail==="string"?data.detail:JSON.stringify(data.detail||data));
+  if(data.status&&data.status!=="completed")throw new Error("Servern returnerade status: "+data.status);
+  renderVideoPlan(data);
+  status.className="video-status success";
+  status.textContent="✓ NOVA HAR SKAPAT PRODUKTIONSUNDERLAGET\nAI-motor: "+(data.engine||"Gemini")+"\nKanal: "+payload.channel+"\nStatus: "+(data.production_status||"script_ready");
+  setRoomState("nova","responding");
+  logActivity("NOVA skapade videoproduktionsunderlag","✓",payload.channel+" · "+(data.engine||"Gemini"));
+  results.scrollIntoView({behavior:"smooth",block:"start"});
+ }catch(error){
+  status.className="video-status error";
+  status.textContent="VIDEOPRODUKTIONEN MISSLYCKADES\n"+error.message;
+  logActivity("NOVA – videoproduktion misslyckades","⚠",error.message);
+  setRoomState("nova","idle");
+ }finally{
+  button.disabled=false;button.textContent="✧ SKAPA VIDEOUNDERLAG MED NOVA";
+  setTimeout(()=>setRoomState("nova","idle"),2500);
+ }
+});
 
 /* CLOUD STATUS */
 async function checkCloud(){
@@ -659,30 +812,21 @@ async function checkCloud(){
   const response=await fetch("/api/status");
   if(!response.ok)throw new Error("Servern svarar inte");
   const data=await response.json();
-  $("topStatus").textContent="● COMMAND CENTER ONLINE";
-  $("cloudStatus").textContent="● NOVA CLOUD ONLINE";
-  $("cloudStatus").style.color="#69f0c0";
+  $("topStatus").textContent="● COMMAND CENTER ONLINE";$("cloudStatus").textContent="● NOVA CLOUD ONLINE";$("cloudStatus").style.color="#69f0c0";
   $("cloudInfo").textContent="Version "+data.version+" – servern svarar.";
   $("geminiStatus").textContent=data.gemini_configured?"ONLINE":"EJ ANSLUTEN";
   $("routerStatus").textContent=data.openrouter_configured?"ONLINE":"EJ ANSLUTEN";
   $("jarvisStatus").textContent=data.jarvis==="online"?"ONLINE":"OKÄND";
   $("novaStatus").textContent=data.nova==="online"?"ONLINE":"OKÄND";
-  if(previousCloudState!=="online"){
-   logActivity("NOVA Cloud är online","☁","Serverversion "+(data.version||"okänd"));
-  }
+  if(previousCloudState!=="online")logActivity("NOVA Cloud är online","☁","Serverversion "+(data.version||"okänd"));
   previousCloudState="online";
  }catch(error){
-  $("topStatus").textContent="● CLOUD EJ NÅBAR";
-  $("cloudStatus").textContent="● ANSLUTNING MISSLYCKADES";
-  $("cloudStatus").style.color="#ffbd70";
+  $("topStatus").textContent="● CLOUD EJ NÅBAR";$("cloudStatus").textContent="● ANSLUTNING MISSLYCKADES";$("cloudStatus").style.color="#ffbd70";
   $("cloudInfo").textContent="Kontrollera Render och internetanslutningen.";
-  if(previousCloudState!=="offline"){
-   logActivity("NOVA Cloud kunde inte nås","⚠","Kontrollera server och internet");
-  }
+  if(previousCloudState!=="offline")logActivity("NOVA Cloud kunde inte nås","⚠","Kontrollera server och internet");
   previousCloudState="offline";
  }
 }
-
 checkCloud();
 setInterval(checkCloud,30000);
 </script>
