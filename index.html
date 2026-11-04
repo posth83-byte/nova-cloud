@@ -363,7 +363,7 @@ main{position:relative;z-index:1;max-width:1100px;margin:auto;padding:20px 15px 
  <div class="room-content">
   <section class="video-studio" id="videoStudio">
    <h3>✧ NOVA VIDEO STUDIO / PRODUKTIONSCENTRAL</h3>
-   <p>Skapa ett komplett videounderlag med manus, scener, undertexter och YouTube-material. NOVA skickar din beställning till Gemini via NOVA Cloud.</p>
+   <p>Skapa ett komplett videounderlag och rendera sedan en MP4 med svensk berättarröst, uppladdade scenbilder och undertexter.</p>
    <form id="videoForm">
     <div class="video-form">
      <div class="field full"><label for="videoPrompt">VAD SKA VIDEON HANDLA OM?</label><textarea id="videoPrompt" required minlength="5" maxlength="5000" placeholder="Beskriv berättelsen, ämnet eller idén...">En mystisk berättelse om en man som hör knackningar från en tom lägenhet.</textarea></div>
@@ -377,7 +377,7 @@ main{position:relative;z-index:1;max-width:1100px;margin:auto;padding:20px 15px 
    </form>
    <div class="video-status" id="videoStatus" aria-live="polite">SYSTEM REDO · Väntar på din videobeställning.</div>
    <div id="videoResults" class="video-results hidden"></div>
-   <div class="studio-note">OBS: Den här funktionen skapar videoplan, manus och produktionsmaterial. Själva MP4-renderingen startar inte ännu – den kräver en separat videomotor.</div>
+   <div class="studio-note">MP4-rendering använder uppladdade bilder i scenordning. Välj 1–12 bilder när produktionsunderlaget är klart. Renderingen kan ta flera minuter.</div>
   </section>
 
   <div class="chatbox" style="margin-top:16px">
@@ -629,9 +629,45 @@ function renderVideoPlan(data){
  const jsonButton=document.createElement("button");jsonButton.className="export-btn";jsonButton.textContent="LADDA NER HELA PRODUKTIONSPLANEN";jsonButton.onclick=()=>downloadText(JSON.stringify(data,null,2),"nova-produktionsplan.json","application/json");actions.appendChild(jsonButton);
  const srt=typeof data.subtitles_srt==="string"?data.subtitles_srt:makeSrt(subtitles);
  const srtButton=document.createElement("button");srtButton.className="export-btn";srtButton.textContent="LADDA NER UNDERtexter (.SRT)";srtButton.onclick=()=>{if(!srt){alert("Det finns inga undertexter att exportera.");return}downloadText(srt,"nova-undertexter.srt","text/plain")};actions.appendChild(srtButton);
- const scriptText=textValue(pick(plan,["narration","script","voiceover","full_narration","full_script"]));
+ const scenesForRender=pick(plan,["scenes","shots","storyboard"]);
+ const scriptText=textValue(pick(plan,["full_narration","full_script","narration","script","voiceover"])) || (Array.isArray(scenesForRender)?scenesForRender.map(s=>textValue(pick(s,["narration","voiceover","script","dialogue"]))).filter(Boolean).join("\n\n"):"");
  const scriptButton=document.createElement("button");scriptButton.className="export-btn";scriptButton.textContent="LADDA NER MANUS (.TXT)";scriptButton.onclick=()=>downloadText(scriptText||"Inget manus returnerades.","nova-manus.txt","text/plain");actions.appendChild(scriptButton);root.appendChild(actions);
- const renderState=document.createElement("div");renderState.className="video-status";renderState.textContent="MANUS OCH PRODUKTIONSUNDERLAG KLART · Renderstatus: "+(data.render_status||"not_started")+". Ingen färdig MP4 har skapats ännu.";root.appendChild(renderState);
+
+ const renderPanel=document.createElement("section");renderPanel.className="video-card";renderPanel.style.marginTop="18px";
+ const renderHeading=document.createElement("h4");renderHeading.textContent="SKAPA FÄRDIG MP4-VIDEO";renderPanel.appendChild(renderHeading);
+ const renderHelp=document.createElement("p");renderHelp.textContent="Ladda upp 1–12 bilder i scenordning. NOVA skapar svensk berättarröst, rörliga bildscener, musik om du vill och undertexter. Detta är bildbaserad videoproduktion – inte AI-genererade filmklipp.";renderPanel.appendChild(renderHelp);
+ const narrationLabel=document.createElement("label");narrationLabel.textContent="BERÄTTARMANUS (du kan redigera texten)";narrationLabel.style.display="block";renderPanel.appendChild(narrationLabel);
+ const narrationInput=document.createElement("textarea");narrationInput.rows=8;narrationInput.maxLength=6000;narrationInput.value=scriptText;narrationInput.placeholder="NOVA:s berättarmanus visas här...";narrationInput.style.width="100%";narrationInput.style.margin="8px 0 12px";narrationInput.style.padding="12px";narrationInput.style.borderRadius="10px";narrationInput.style.background="#071426";narrationInput.style.color="#eaf6ff";narrationInput.style.border="1px solid #315a7a";renderPanel.appendChild(narrationInput);
+ const imageLabel=document.createElement("label");imageLabel.textContent="SCENBILDER – 1 TILL 12 BILDER";imageLabel.style.display="block";renderPanel.appendChild(imageLabel);
+ const imageInput=document.createElement("input");imageInput.type="file";imageInput.accept="image/jpeg,image/png,image/webp";imageInput.multiple=true;imageInput.style.display="block";imageInput.style.margin="8px 0 14px";renderPanel.appendChild(imageInput);
+ const aspectLabel=document.createElement("label");aspectLabel.textContent="VIDEOFORMAT";aspectLabel.style.display="block";renderPanel.appendChild(aspectLabel);
+ const aspectSelect=document.createElement("select");aspectSelect.style.margin="8px 0 14px";aspectSelect.style.padding="9px";aspectSelect.style.borderRadius="8px";aspectSelect.style.background="#071426";aspectSelect.style.color="#eaf6ff";
+ [["16:9","16:9 – YouTube-video"],["9:16","9:16 – YouTube Short"]].forEach(([value,label])=>{const option=document.createElement("option");option.value=value;option.textContent=label;aspectSelect.appendChild(option)});
+ aspectSelect.value=pick(plan,["format"])==="short"?"9:16":"16:9";renderPanel.appendChild(aspectSelect);
+ const musicLabel=document.createElement("label");musicLabel.textContent="BAKGRUNDSMUSIK (VALFRITT)";musicLabel.style.display="block";renderPanel.appendChild(musicLabel);
+ const musicInput=document.createElement("input");musicInput.type="file";musicInput.accept="audio/*";musicInput.style.display="block";musicInput.style.margin="8px 0 14px";renderPanel.appendChild(musicInput);
+ const renderButton=document.createElement("button");renderButton.type="button";renderButton.className="export-btn";renderButton.textContent="🎬 RENDERA MP4 MED NOVA";renderPanel.appendChild(renderButton);
+ const renderStatus=document.createElement("div");renderStatus.className="video-status";renderStatus.setAttribute("aria-live","polite");renderStatus.textContent="Redo för rendering. Välj scenbilder för att skapa videon.";renderPanel.appendChild(renderStatus);
+ renderButton.addEventListener("click",async()=>{
+  const narration=narrationInput.value.trim(),images=Array.from(imageInput.files||[]);
+  if(narration.length<20){renderStatus.className="video-status error";renderStatus.textContent="Manuset måste innehålla minst 20 tecken.";return}
+  if(narration.length>6000){renderStatus.className="video-status error";renderStatus.textContent="Manuset får vara högst 6 000 tecken.";return}
+  if(images.length<1||images.length>12){renderStatus.className="video-status error";renderStatus.textContent="Välj mellan 1 och 12 scenbilder.";return}
+  const formData=new FormData();formData.append("narration",narration);formData.append("aspect",aspectSelect.value);images.forEach(file=>formData.append("images",file));if(musicInput.files&&musicInput.files[0])formData.append("music",musicInput.files[0]);
+  renderButton.disabled=true;renderButton.textContent="NOVA RENDERAR VIDEO...";renderStatus.className="video-status";renderStatus.textContent="Berättarröst och videobilder skapas nu. Det kan ta flera minuter – lämna sidan öppen.";
+  try{
+   const response=await fetch("/api/video/render",{method:"POST",body:formData});const result=await response.json();
+   if(!response.ok)throw new Error(typeof result.detail==="string"?result.detail:JSON.stringify(result.detail||result));
+   renderStatus.className="video-status success";renderStatus.textContent="✓ MP4-VIDEON ÄR KLAR · "+(result.duration_seconds||"")+" sekunder · Röst: "+(result.voice||"svenska");
+   const links=document.createElement("div");links.className="export-actions";
+   const videoLink=document.createElement("a");videoLink.className="export-btn";videoLink.href=result.video_url;videoLink.textContent="LADDA NER FÄRDIG MP4";videoLink.setAttribute("download","nova_video.mp4");links.appendChild(videoLink);
+   const subtitleLink=document.createElement("a");subtitleLink.className="export-btn";subtitleLink.href=result.subtitles_url;subtitleLink.textContent="LADDA NER UNDERtexter (.SRT)";subtitleLink.setAttribute("download","nova-undertexter.srt");links.appendChild(subtitleLink);renderPanel.appendChild(links);
+   logActivity("NOVA renderade en färdig MP4-video","🎬",result.job_id||"Video klar");
+  }catch(error){renderStatus.className="video-status error";renderStatus.textContent="RENDERINGEN MISSLYCKADES\n"+error.message;logActivity("NOVA – MP4-rendering misslyckades","⚠",error.message)}
+  finally{renderButton.disabled=false;renderButton.textContent="🎬 RENDERA MP4 MED NOVA"}
+ });
+ root.appendChild(renderPanel);
+ const renderState=document.createElement("div");renderState.className="video-status";renderState.textContent="PRODUKTIONSUNDERLAG KLART · Videomotorn är ansluten. Ladda upp scenbilder ovan för att rendera en MP4.";root.appendChild(renderState);
 }
 function toSrtTime(seconds){
  const value=Math.max(0,Number(seconds)||0),hours=Math.floor(value/3600),minutes=Math.floor(value%3600/60),secs=Math.floor(value%60),ms=Math.floor((value-Math.floor(value))*1000);
