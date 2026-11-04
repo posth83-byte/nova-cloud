@@ -13,6 +13,14 @@ html{scroll-behavior:smooth;scroll-padding-top:20px}
 body{margin:0;color:#eaf6ff;font-family:Arial,sans-serif;background:radial-gradient(ellipse at 50% 0%,#173c60 0%,transparent 48%),radial-gradient(ellipse at 90% 55%,#29133d55,transparent 40%),#030713;min-height:100vh;overflow-x:hidden}
 body:before{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;opacity:.16;background-image:linear-gradient(#3477a322 1px,transparent 1px),linear-gradient(90deg,#3477a322 1px,transparent 1px);background-size:45px 45px;mask-image:linear-gradient(to bottom,black,transparent 85%)}
 button,input,select,textarea{font:inherit}
+/* NOVA: samla arbetsflödet i en enda chatt */
+#youtubeCommandCenter,#videoStudio,.video-launch-wrap{display:none!important}
+.nova-composer{display:flex;gap:8px;align-items:center;margin-top:9px;flex-wrap:wrap}
+.nova-composer .input-row{flex:1;min-width:220px;margin:0}
+.nova-attach{border:1px solid #bd80ff88;border-radius:10px;padding:12px;background:#261638;color:#e7caff;font-size:10px;white-space:nowrap}
+.nova-attachment-name{width:100%;font-size:10px;color:#d7b8f5;overflow-wrap:anywhere}
+#novaVideoResults{margin-top:14px}
+
 button{touch-action:manipulation;cursor:pointer}
 header{position:relative;z-index:2;text-align:center;padding:23px 15px 18px;border-bottom:1px solid #315a7a88;background:#061020cc;backdrop-filter:blur(14px)}
 .logo{font-size:9px;letter-spacing:5px;color:#74dfff}
@@ -816,7 +824,13 @@ main{position:relative;z-index:1;max-width:1100px;margin:auto;padding:20px 15px 
    <div class="chat-title">NOVA / CREATIVE AI CONNECTION</div>
    <div class="messages" id="novaMessages"><div class="msg ai">Hej! NOVA är redo att utveckla dina YouTube-projekt. Vad ska vi skapa?</div></div>
    <div class="voice-panel"><div class="voice-heading">NOVA / RÖSTINSTÄLLNINGAR</div><div class="voice-row"><select class="voice-select" id="novaVoiceSelect" aria-label="Välj NOVA-röst"><option value="">Laddar tillgängliga röster...</option></select><button class="voice-test" onclick="testVoice('nova')">TESTA RÖST</button></div><div class="voice-note">Välj en svensk röst om en sådan finns tillgänglig på din enhet.</div><div class="voice-status" id="novaVoiceStatus">Röstsystem redo.</div></div>
-   <form class="input-row" onsubmit="sendMessage(event,'nova')"><input class="chat-input" id="novaInput" placeholder="Skriv till NOVA..." autocomplete="off"><button class="send" id="novaSend">SKICKA</button></form>
+   <div class="nova-composer">
+    <button type="button" class="nova-attach" onclick="document.getElementById('novaImageInput').click()">＋ BIFOGA BILD</button>
+    <input type="file" id="novaImageInput" accept="image/png,image/jpeg,image/webp" hidden>
+    <form class="input-row" onsubmit="sendMessage(event,'nova')"><input class="chat-input" id="novaInput" placeholder="Skriv till NOVA eller klistra in en video-/bildlänk..." autocomplete="off"><button class="send" id="novaSend">SKICKA</button></form>
+    <div class="nova-attachment-name" id="novaAttachmentName">Klistra in en länk direkt i chatten eller bifoga en referensbild.</div>
+   </div>
+   <div id="novaVideoResults" class="video-results hidden"></div>
 
   </div>
  </div>
@@ -1084,21 +1098,50 @@ async function createWebPreview(reply){
  area.append(title,document.createElement("br"),link,note);return true;
 }
 
-/* CHAT CONNECTION */
+/* CHAT CONNECTION – ALL NOVA WORK STARTS HERE */
 async function sendMessage(event,assistant){
  event.preventDefault();
  const isNova=assistant==="nova",isWeb=assistant==="web",input=$(assistant+"Input"),messages=assistant+"Messages",button=$(assistant+"Send");
- const message=input.value.trim();if(!message)return;
+ const imageData=isNova?(window.novaChatImageData||""):"";
+ const message=input.value.trim()||((isNova&&imageData)?"Analysera den bifogade bilden och föreslå hur den kan användas i en YouTube-video.":"");
+ if(!message)return;
  if("speechSynthesis" in window)stopSpeech();
- addMessage(messages,message,"user");logActivity(assistant.toUpperCase()+" fick ett nytt meddelande",isWeb?"⌘":isNova?"✧":"✦",message.length>65?message.slice(0,65)+"…":message);
+ const shownMessage=message+(isNova&&imageData?"\n📎 Referensbild bifogad":"");
+ addMessage(messages,shownMessage,"user");logActivity(assistant.toUpperCase()+" fick ett nytt meddelande",isWeb?"⌘":isNova?"✧":"✦",message.length>65?message.slice(0,65)+"…":message);
  input.value="";button.disabled=true;button.textContent="...";setRoomState(assistant,"working");
  const loading=addMessage(messages,isWeb?"WEBMASTER bygger en lösning...":isNova?"NOVA analyserar...":"JARVIS tänker...","ai");
  try{
-  const response=await fetch(isWeb?"/api/webmaster":isNova?"/api/nova":"/api/chat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({message})});
-  const data=await response.json();
+  let response,data,videoRequest=false;
+  if(isNova){
+   const urlMatch=message.match(/https?:\/\/[^\s<>"']+/i);
+   const referenceUrl=urlMatch?urlMatch[0].replace(/[),.]+$/,""):"";
+   videoRequest=/\b(skapa|gör|bygg|producera|framställ)\b.{0,55}\b(video|short|film|klipp)\b|\b(video|short|film|klipp)\b.{0,55}\b(skapa|gör|bygg|producera)\b/i.test(message);
+   if(videoRequest){
+    const isShort=/\bshort\b/i.test(message);
+    const payload={prompt:message,channel:"Mikael Posth",format:isShort?"short":"long",duration_minutes:isShort?1:5,style:"Anpassad efter användarens idé och referensmaterial",audience:"Svensk publik",reference_url:referenceUrl,reference_image_data:imageData};
+    response=await fetch("/api/video/plan",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});
+   }else{
+    response=await fetch("/api/nova",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({message,reference_url:referenceUrl,reference_image_data:imageData})});
+   }
+   window.novaChatImageData="";
+   const picker=$("novaImageInput");if(picker)picker.value="";
+   const label=$("novaAttachmentName");if(label)label.textContent="Klistra in en länk direkt i chatten eller bifoga en referensbild.";
+  }else{
+   response=await fetch(isWeb?"/api/webmaster":"/api/chat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({message})});
+  }
+  data=await response.json();
   if(!response.ok)throw new Error(typeof data.detail==="string"?data.detail:JSON.stringify(data.detail||data));
-  const reply=(data.reply||"Inget svar mottogs.")+"\n\nAI-motor: "+(data.engine||"Okänd");
-  loading.textContent=reply;loading.dataset.speechText=data.reply||"Inget svar mottogs.";saveChatHistory(assistant);addSpeechButton(loading,assistant);if(isWeb){try{const made=await createWebPreview(data.reply||"");if(!made){const hint=document.createElement("div");hint.className="web-preview-note";hint.textContent="Be WEBMASTER skapa en komplett hemsida i ett enda HTML-kodblock."; $("webPreviewArea").hidden=false;$("webPreviewArea").replaceChildren(hint);}}catch(previewError){addMessage("webMessages","Kunde inte skapa förhandsvisning: "+previewError.message,"error")}}if(voiceConversationRoom===assistant)speakText(data.reply||"Inget svar mottogs.",assistant);
+  if(isNova&&videoRequest){
+   renderVideoPlan(data);
+   loading.textContent="✓ NOVA har skapat ett komplett produktionsunderlag för din video. Manus, scener, bild- och videoprompter samt undertexter finns samlade nedanför chatten.\n\nAI-motor: "+(data.engine||"Okänd");
+   loading.dataset.speechText="NOVA har skapat ett produktionsunderlag för din video.";
+  }else{
+   const reply=(data.reply||"Inget svar mottogs.")+"\n\nAI-motor: "+(data.engine||"Okänd)";
+   loading.textContent=reply;loading.dataset.speechText=data.reply||"Inget svar mottogs.";
+  }
+  saveChatHistory(assistant);addSpeechButton(loading,assistant);
+  if(isWeb){try{const made=await createWebPreview(data.reply||"");if(!made){const hint=document.createElement("div");hint.className="web-preview-note";hint.textContent="Be WEBMASTER skapa en komplett hemsida i ett enda HTML-kodblock."; $("webPreviewArea").hidden=false;$("webPreviewArea").replaceChildren(hint);}}catch(previewError){addMessage("webMessages","Kunde inte skapa förhandsvisning: "+previewError.message,"error")}}
+  if(voiceConversationRoom===assistant)speakText(data.reply||"NOVA har skapat ett produktionsunderlag.",assistant);
   setRoomState(assistant,"responding");logActivity(assistant.toUpperCase()+" svarade","✓","AI-motor: "+(data.engine||"Okänd"));
  }catch(error){loading.className="msg error";loading.textContent="Anslutningsfel: "+error.message;saveChatHistory(assistant);logActivity(assistant.toUpperCase()+" – anslutningsfel","⚠",error.message)}
  finally{button.disabled=false;button.textContent="SKICKA";if(!activeSpeechRoom||activeSpeechRoom!==assistant)setTimeout(()=>setRoomState(assistant,"idle"),1800);input.focus()}
@@ -1203,7 +1246,7 @@ function formatSceneTime(scene){
  return "Tidsangivelse saknas";
 }
 function renderVideoPlan(data){
- const root=$("videoResults");root.replaceChildren();root.classList.remove("hidden");
+ const root=$("novaVideoResults");root.replaceChildren();root.classList.remove("hidden");
  const plan=data.video||data.plan||data;latestVideoPlan=plan;
  const title=pick(plan,["title","video_title","youtube_title"])||"Din nya video";
  const heading=document.createElement("div");heading.className="video-title";heading.textContent=title;root.appendChild(heading);
@@ -1306,6 +1349,16 @@ function makeSrt(subtitles){
 
 /* NOVA VIDEO REFERENCES */
 let novaReferenceImageData="";
+window.novaChatImageData="";
+$("novaImageInput").addEventListener("change",event=>{
+ const file=event.target.files&&event.target.files[0];if(!file)return;
+ if(!["image/jpeg","image/png","image/webp"].includes(file.type)){alert("Välj en JPG-, PNG- eller WebP-bild.");event.target.value="";return}
+ if(file.size>4*1024*1024){alert("Bilden får vara högst 4 MB.");event.target.value="";return}
+ const reader=new FileReader();
+ reader.onload=()=>{window.novaChatImageData=String(reader.result||"");$("novaAttachmentName").textContent="📎 "+file.name+" bifogad – skickas med nästa chattmeddelande."};
+ reader.onerror=()=>{window.novaChatImageData="";alert("Kunde inte läsa bilden.")};
+ reader.readAsDataURL(file);
+});
 $("videoReferenceImage").addEventListener("change",event=>{
  const file=event.target.files&&event.target.files[0];
  if(!file){novaReferenceImageData="";return}
