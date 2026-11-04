@@ -898,6 +898,146 @@ def get_youtube_api_popular():
 
 
 # ==========================================
+# YOUTUBE – EGNA KANALERS ANALYS
+# ==========================================
+
+def get_youtube_channel_analytics():
+    if not YOUTUBE_API_KEY:
+        raise HTTPException(
+            status_code=503,
+            detail="YOUTUBE_API_KEY saknas i Render Environment."
+        )
+
+    if not YOUTUBE_CHANNEL_IDS:
+        raise HTTPException(
+            status_code=503,
+            detail="YOUTUBE_CHANNEL_IDS saknas i Render Environment."
+        )
+
+    channel_ids = [
+        channel_id for channel_id in YOUTUBE_CHANNEL_IDS
+        if channel_id.startswith("UC") and len(channel_id) == 24
+    ][:MAX_RSS_CHANNELS]
+
+    if not channel_ids:
+        raise HTTPException(
+            status_code=400,
+            detail="Inga giltiga YouTube-kanal-ID:n är konfigurerade."
+        )
+
+    def youtube_get(endpoint, params):
+        query = "&".join(
+            f"{quote(str(key))}={quote(str(value))}"
+            for key, value in params.items()
+        )
+        url = f"https://www.googleapis.com/youtube/v3/{endpoint}?{query}"
+        req = urllib.request.Request(
+            url,
+            headers={"User-Agent": f"NOVA-Cloud/{APP_VERSION}"}
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=25) as response:
+                return json.loads(response.read().decode("utf-8"))
+        except urllib.error.HTTPError as error:
+            details = error.read().decode("utf-8", errors="replace")
+            raise ValueError(
+                f"YouTube API {error.code}: {details[:900]}"
+            )
+
+    channel_result = youtube_get("channels", {
+        "part": "snippet,statistics,contentDetails",
+        "id": ",".join(channel_ids),
+        "key": YOUTUBE_API_KEY
+    })
+
+    channels = []
+    for item in channel_result.get("items", []):
+        snippet = item.get("snippet", {})
+        statistics = item.get("statistics", {})
+        content = item.get("contentDetails", {})
+        uploads_id = (
+            content.get("relatedPlaylists", {}).get("uploads")
+        )
+        recent_videos = []
+
+        if uploads_id:
+            playlist = youtube_get("playlistItems", {
+                "part": "snippet,contentDetails",
+                "playlistId": uploads_id,
+                "maxResults": 10,
+                "key": YOUTUBE_API_KEY
+            })
+            video_ids = [
+                entry.get("contentDetails", {}).get("videoId")
+                for entry in playlist.get("items", [])
+                if entry.get("contentDetails", {}).get("videoId")
+            ]
+            if video_ids:
+                video_result = youtube_get("videos", {
+                    "part": "snippet,statistics",
+                    "id": ",".join(video_ids),
+                    "key": YOUTUBE_API_KEY
+                })
+                for video in video_result.get("items", []):
+                    video_snippet = video.get("snippet", {})
+                    video_stats = video.get("statistics", {})
+                    video_id = video.get("id")
+                    recent_videos.append({
+                        "title": video_snippet.get("title", ""),
+                        "published": video_snippet.get("publishedAt"),
+                        "views": int(video_stats.get("viewCount", 0)),
+                        "likes": int(video_stats.get("likeCount", 0)),
+                        "comments": int(video_stats.get("commentCount", 0)),
+                        "url": f"https://www.youtube.com/watch?v={video_id}"
+                    })
+
+        recent_videos.sort(
+            key=lambda video: video.get("published") or "",
+            reverse=True
+        )
+        channels.append({
+            "channel_id": item.get("id"),
+            "title": snippet.get("title", "Okänd kanal"),
+            "description": snippet.get("description", ""),
+            "published_at": snippet.get("publishedAt"),
+            "subscribers": (
+                int(statistics.get("subscriberCount", 0))
+                if not statistics.get("hiddenSubscriberCount")
+                else None
+            ),
+            "total_views": int(statistics.get("viewCount", 0)),
+            "video_count": int(statistics.get("videoCount", 0)),
+            "recent_videos": recent_videos
+        })
+
+    if not channels:
+        raise HTTPException(
+            status_code=404,
+            detail="YouTube hittade inga kanaler. Kontrollera kanal-ID:n."
+        )
+
+    return {
+        "status": "completed",
+        "updated": datetime.now(timezone.utc).isoformat(),
+        "source": "YouTube Data API v3",
+        "channels": channels
+    }
+
+
+@app.get("/api/youtube/analytics")
+async def youtube_analytics():
+    try:
+        return get_youtube_channel_analytics()
+    except HTTPException:
+        raise
+    except Exception as error:
+        raise HTTPException(
+            status_code=502,
+            detail=f"Kunde inte hämta YouTube-statistik: {str(error)[:1200]}"
+        )
+
+
+# ==========================================
 # SAMLAD TRENDMOTOR
 # ==========================================
 
@@ -1014,6 +1154,8 @@ async def status():
         "youtube_api_configured": bool(YOUTUBE_API_KEY),
         "youtube_rss_configured": bool(valid_channels),
         "youtube_channels_configured": len(valid_channels),
+        "youtube_analytics_ready": bool(YOUTUBE_API_KEY and valid_channels),
+        "youtube_publish_ready": False,
         "video_planner": "online",
         "video_renderer": "online",
         "version": APP_VERSION,
