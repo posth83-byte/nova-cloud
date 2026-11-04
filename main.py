@@ -51,6 +51,10 @@ OPENROUTER_MODEL = os.getenv(
 )
 
 YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY")
+YOUTUBE_CHANNEL_HANDLE = os.getenv(
+    "YOUTUBE_CHANNEL_HANDLE",
+    "mikaelposth"
+).strip().lstrip("@")
 
 YOUTUBE_CHANNEL_IDS = [
     item.strip()
@@ -62,6 +66,41 @@ YOUTUBE_CHANNEL_IDS = [
 
 MAX_RSS_CHANNELS = 15
 MAX_RSS_VIDEOS = 60
+
+
+def resolve_youtube_channel_ids():
+    """Resolve the configured channel handle to a YouTube channel ID."""
+    ids = [
+        item for item in YOUTUBE_CHANNEL_IDS
+        if item.startswith("UC") and len(item) == 24
+    ]
+
+    if not YOUTUBE_API_KEY or not YOUTUBE_CHANNEL_HANDLE:
+        return ids
+
+    url = (
+        "https://www.googleapis.com/youtube/v3/channels"
+        "?part=id"
+        f"&forHandle={quote(YOUTUBE_CHANNEL_HANDLE)}"
+        f"&key={quote(YOUTUBE_API_KEY)}"
+    )
+    req = urllib.request.Request(
+        url,
+        headers={"User-Agent": f"NOVA-Cloud/{APP_VERSION}"}
+    )
+
+    try:
+        with urllib.request.urlopen(req, timeout=20) as response:
+            result = json.loads(response.read().decode("utf-8"))
+        for item in result.get("items", []):
+            channel_id = item.get("id")
+            if channel_id and channel_id not in ids:
+                ids.append(channel_id)
+    except Exception:
+        # Keep manually configured IDs available if handle lookup fails.
+        pass
+
+    return ids[:MAX_RSS_CHANNELS]
 
 
 # ==========================================
@@ -724,11 +763,7 @@ def get_youtube_rss():
     errors = []
     channels_checked = 0
 
-    valid_ids = [
-        channel_id
-        for channel_id in YOUTUBE_CHANNEL_IDS
-        if channel_id.startswith("UC") and len(channel_id) == 24
-    ]
+    valid_ids = resolve_youtube_channel_ids()
 
     invalid_count = len(YOUTUBE_CHANNEL_IDS) - len(valid_ids)
 
@@ -907,16 +942,23 @@ def get_youtube_channel_analytics():
             detail="YOUTUBE_API_KEY saknas i Render Environment."
         )
 
-    if not YOUTUBE_CHANNEL_IDS:
+    if not YOUTUBE_CHANNEL_IDS and not YOUTUBE_CHANNEL_HANDLE:
         raise HTTPException(
             status_code=503,
-            detail="YOUTUBE_CHANNEL_IDS saknas i Render Environment."
+            detail="YOUTUBE_CHANNEL_HANDLE saknas i Render Environment."
         )
 
-    channel_ids = [
-        channel_id for channel_id in YOUTUBE_CHANNEL_IDS
-        if channel_id.startswith("UC") and len(channel_id) == 24
-    ][:MAX_RSS_CHANNELS]
+    channel_ids = resolve_youtube_channel_ids()
+
+    if not channel_ids:
+        raise HTTPException(
+            status_code=404,
+            detail=(
+                "Kunde inte hitta YouTube-kanalen via handle "
+                f"@{YOUTUBE_CHANNEL_HANDLE}. Kontrollera kanalnamnet "
+                "och att YouTube Data API-nyckeln fungerar."
+            )
+        )
 
     if not channel_ids:
         raise HTTPException(
@@ -1142,6 +1184,7 @@ async def status():
         item for item in YOUTUBE_CHANNEL_IDS
         if item.startswith("UC") and len(item) == 24
     ]
+    channel_configured = bool(valid_channels or YOUTUBE_CHANNEL_HANDLE)
 
     return {
         "status": "online",
@@ -1151,9 +1194,16 @@ async def status():
         "gemini_configured": bool(GEMINI_API_KEY),
         "openrouter_configured": bool(OPENROUTER_API_KEY),
         "youtube_api_configured": bool(YOUTUBE_API_KEY),
-        "youtube_rss_configured": bool(valid_channels),
-        "youtube_channels_configured": len(valid_channels),
-        "youtube_analytics_ready": bool(YOUTUBE_API_KEY and valid_channels),
+        "youtube_rss_configured": bool(
+            valid_channels or (YOUTUBE_API_KEY and YOUTUBE_CHANNEL_HANDLE)
+        ),
+        "youtube_channels_configured": (
+            len(valid_channels) if valid_channels else
+            (1 if channel_configured and YOUTUBE_API_KEY else 0)
+        ),
+        "youtube_analytics_ready": bool(
+            YOUTUBE_API_KEY and channel_configured
+        ),
         "youtube_publish_ready": False,
         "youtube_channel_handle": "@mikaelposth",
         "youtube_channel_url": "https://www.youtube.com/@mikaelposth",
