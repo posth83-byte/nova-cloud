@@ -507,6 +507,30 @@ main{position:relative;z-index:1;max-width:1100px;margin:auto;padding:20px 15px 
 }
 @media(prefers-reduced-motion:reduce){.crew-character{animation:none}}
 
+
+/* PREMIUM CARTOON AI CAMPUS */
+.premium-office{height:auto!important;min-height:0!important;aspect-ratio:1200/820;max-height:none!important;overflow:hidden;background:radial-gradient(ellipse at 50% 15%,#375b83,#101b35 58%,#080f20)!important;border:1px solid #79cfff66!important;border-radius:24px!important;box-shadow:0 24px 65px #0009,inset 0 0 60px #65cfff18!important;padding:0!important}
+.office-topline{position:absolute;z-index:3;top:0;left:0;right:0;display:flex;justify-content:space-between;align-items:center;padding:13px 18px;background:linear-gradient(180deg,#091629d9,transparent);font-size:clamp(8px,1vw,12px);font-weight:800;letter-spacing:2px;color:#c5edff}
+.office-live{color:#a7f7d9;letter-spacing:1px}.office-live i{display:inline-block;width:7px;height:7px;border-radius:50%;background:#5df0ae;box-shadow:0 0 12px #5df0ae;margin-right:7px;animation:livePulse 1.8s infinite}
+.office-art{display:block;width:100%;height:100%;filter:saturate(1.08)}
+.office-art g[onclick]{cursor:pointer}
+.office-hint{position:absolute;bottom:9%;left:0;right:0;text-align:center;font-size:clamp(6px,.8vw,10px);letter-spacing:2px;color:#c4eaff;opacity:.82;pointer-events:none}
+.office-hotspots{position:absolute;inset:0;display:grid;grid-template-columns:repeat(3,1fr);gap:1%;padding:0 7%;align-items:end;pointer-events:none}
+.office-hotspots button{pointer-events:auto;margin-bottom:15%;border:1px solid #8bdfff77;border-radius:12px;padding:9px 6px;background:#0b1b30b8;color:#e8f8ff;font-size:clamp(8px,1vw,12px);font-weight:800;letter-spacing:1px;backdrop-filter:blur(8px);cursor:pointer;box-shadow:0 5px 18px #0005}
+.office-hotspots button:nth-child(2){border-color:#d2a4ff88}.office-hotspots button:nth-child(3){border-color:#91edca88}
+.office-hotspots button span{display:block;margin-top:4px;font-size:9px;font-weight:500;letter-spacing:.4px;color:#a9c7dc}
+.office-hotspots button:active{transform:translateY(2px);filter:brightness(1.3)}
+@keyframes livePulse{50%{opacity:.35;box-shadow:0 0 3px #5df0ae}}
+@media(max-width:650px){
+ .premium-office{aspect-ratio:1/1.05;border-radius:16px!important}
+ .office-topline{padding:10px 10px;font-size:7px;letter-spacing:1px}
+ .office-hint{bottom:12%;font-size:6px;letter-spacing:1px}
+ .office-hotspots{padding:0 3%;gap:5px}
+ .office-hotspots button{margin-bottom:14%;padding:7px 3px;border-radius:9px;font-size:8px;letter-spacing:.3px}
+ .office-hotspots button span{font-size:7px}
+}
+@media(prefers-reduced-motion:reduce){.office-live i{animation:none}}
+
 </style>
 </head>
 <body>
@@ -521,22 +545,118 @@ main{position:relative;z-index:1;max-width:1100px;margin:auto;padding:20px 15px 
  <div class="section-label">CENTRAL COMMAND / ÖVERSIKT</div>
  <section class="headquarters">
   <div class="hq-caption">NOVA CLOUD / CENTRAL AI HEADQUARTERS</div>
-  <div class="hq-room-scene crew-scene">
-   <div class="crew-window"><span>AI HEADQUARTERS · LIVE OPERATIONS</span><i></i><i></i><i></i></div>
-   <div class="crew-light light-blue"></div><div class="crew-light light-purple"></div><div class="crew-floor"></div>
-   <button class="crew-station jarvis-crew" onclick="enterRoom('jarvis')" aria-label="Öppna JARVIS">
-    <span class="crew-tag">01 · JARVIS</span><span class="crew-character blue-character"><i class="char-hair"></i><i class="char-face"><b></b><b></b><em></em></i><i class="char-body"><b></b></i></span>
-    <span class="crew-desk"><i class="desk-screen"><b></b><b></b><b></b></i><i class="desk-top"></i><i class="desk-leg"></i></span><span class="crew-task">SYSTEM &amp; RESEARCH</span>
-   </button>
-   <button class="crew-station nova-crew" onclick="enterRoom('nova')" aria-label="Öppna NOVA">
-    <span class="crew-tag">02 · NOVA</span><span class="crew-character purple-character"><i class="char-hair"></i><i class="char-face"><b></b><b></b><em></em></i><i class="char-body"><b></b></i></span>
-    <span class="crew-desk"><i class="desk-screen"><b></b><b></b><b></b></i><i class="desk-top"></i><i class="desk-leg"></i></span><span class="crew-task">YOUTUBE &amp; VIDEO</span>
-   </button>
-   <button class="crew-station web-crew" onclick="enterRoom('web')" aria-label="Öppna WEBMASTER">
-    <span class="crew-tag">03 · WEBMASTER</span><span class="crew-character green-character"><i class="char-hair"></i><i class="char-face"><b></b><b></b><em></em></i><i class="char-body"><b></b></i></span>
-    <span class="crew-desk"><i class="desk-screen"><b></b><b></b><b></b></i><i class="desk-top"></i><i class="desk-leg"></i></span><span class="crew-task">WEBB &amp; DESIGN</span>
-   </button>
-   <div class="crew-center"><strong>AI<br>CORE</strong><span>ALL SYSTEMS CONNECTED</span></div><div class="crew-floor-glow"></div>
+  <div class="hq-room-scene crew-scene premium-office" aria-label="AI-högkvarter med tre arbetsstationer">
+   <div class="office-topline"><span>✦ NOVA CLOUD CAMPUS</span><span class="office-live"><i></i> LIVE · 3 AGENTER</span></div>
+   <svg class="office-art" viewBox="0 0 1200 820" role="img" aria-label="Ett stort tecknat futuristiskt kontor med JARVIS, NOVA och WEBMASTER vid sina arbetsstationer">
+    <defs>
+     <linearGradient id="wallBack" x2="0" y2="1"><stop stop-color="#263e62"/><stop offset="1" stop-color="#101d36"/></linearGradient>
+     <linearGradient id="floorMain" x2="0" y2="1"><stop stop-color="#344e70"/><stop offset="1" stop-color="#101c33"/></linearGradient>
+     <linearGradient id="blueDesk" x2="1" y2="1"><stop stop-color="#53d8ff"/><stop offset=".5" stop-color="#17618f"/><stop offset="1" stop-color="#102d50"/></linearGradient>
+     <linearGradient id="purpleDesk" x2="1" y2="1"><stop stop-color="#e0b5ff"/><stop offset=".5" stop-color="#8552b9"/><stop offset="1" stop-color="#382451"/></linearGradient>
+     <linearGradient id="greenDesk" x2="1" y2="1"><stop stop-color="#a7ffe0"/><stop offset=".5" stop-color="#398e78"/><stop offset="1" stop-color="#1d4c4b"/></linearGradient>
+     <linearGradient id="skin" x2=".8" y2="1"><stop stop-color="#ffe5c9"/><stop offset="1" stop-color="#c98569"/></linearGradient>
+     <linearGradient id="glass" x2="0" y2="1"><stop stop-color="#8edfff" stop-opacity=".55"/><stop offset="1" stop-color="#1d527c" stop-opacity=".12"/></linearGradient>
+     <radialGradient id="ceilingGlow"><stop stop-color="#80dfff" stop-opacity=".4"/><stop offset="1" stop-color="#80dfff" stop-opacity="0"/></radialGradient>
+     <filter id="shadow" x="-30%" y="-30%" width="160%" height="170%"><feGaussianBlur in="SourceAlpha" stdDeviation="12"/><feOffset dy="12"/><feComponentTransfer><feFuncA type="linear" slope=".45"/></feComponentTransfer><feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+     <filter id="glow"><feGaussianBlur stdDeviation="7" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+     <pattern id="floorGrid" width="54" height="42" patternUnits="userSpaceOnUse"><path d="M54 0H0V42" fill="none" stroke="#9adfff" stroke-opacity=".12" stroke-width="1"/></pattern>
+    </defs>
+    <rect width="1200" height="820" fill="#0a1529"/>
+    <path d="M0 0H1200V430L600 590 0 430Z" fill="url(#wallBack)"/>
+    <path d="M0 0L160 85V470L0 430Z" fill="#172a49"/><path d="M1200 0L1040 85V470L1200 430Z" fill="#172a49"/>
+    <ellipse cx="600" cy="185" rx="470" ry="245" fill="url(#ceilingGlow)"/>
+    <path d="M190 55H1010V330H190Z" rx="16" fill="#07172b" stroke="#6486ad" stroke-width="12"/>
+    <path d="M205 70H995V312H205Z" fill="url(#glass)"/>
+    <path d="M405 70V312M600 70V312M795 70V312" stroke="#8bdfff" stroke-opacity=".38" stroke-width="8"/>
+    <path d="M205 190H995" stroke="#8bdfff" stroke-opacity=".24" stroke-width="5"/>
+    <g fill="#b8eaff" opacity=".8"><circle cx="270" cy="130" r="3"/><circle cx="350" cy="245" r="2"/><circle cx="525" cy="115" r="3"/><circle cx="710" cy="250" r="2"/><circle cx="880" cy="145" r="3"/><circle cx="940" cy="275" r="2"/></g>
+    <path d="M0 430L600 590 1200 430V820H0Z" fill="url(#floorMain)"/>
+    <path d="M0 430L600 590 1200 430V820H0Z" fill="url(#floorGrid)"/>
+    <path d="M0 430L600 590 1200 430" fill="none" stroke="#7adfff" stroke-opacity=".5" stroke-width="5"/>
+    <path d="M600 590V820M340 520L170 820M860 520L1030 820" stroke="#80cfff" stroke-opacity=".15" stroke-width="3"/>
+    <g opacity=".9"><path d="M70 350L150 372V465L70 445Z" fill="#183d5d" stroke="#4bbfff"/><path d="M1050 372L1130 350V445L1050 465Z" fill="#183d5d" stroke="#4bbfff"/><path d="M82 370L138 386V430L82 416Z" fill="#0b2038"/><path d="M1062 386L1118 370V416L1062 430Z" fill="#0b2038"/></g>
+    <g fill="none" stroke="#63d9ff" stroke-width="3" opacity=".7"><path d="M90 400l15-8 12 5 12-16"/><path d="M1075 404l13-17 12 5 11-13"/></g>
+    <g filter="url(#shadow)">
+     <g transform="translate(70 340)">
+      <path d="M0 80L180 30 345 83 165 140Z" fill="#1b3552" stroke="#5acfff" stroke-width="3"/>
+      <path d="M165 140L345 83V105L165 166Z" fill="#10243e"/><path d="M0 80V103L165 166V140Z" fill="#254967"/>
+      <path d="M52 58L164 27 271 62 158 96Z" fill="#071a30" stroke="#55cfff" stroke-width="5"/>
+      <path d="M64 57L164 31 257 62 157 89Z" fill="#0c2b49"/>
+      <g stroke="#69dcff" stroke-width="4" fill="none"><path d="M83 65l24-8 20 6 20-16"/><path d="M180 68l17-15 22 8 19-12"/></g>
+      <g fill="#a6f0ff"><circle cx="100" cy="55" r="4"/><circle cx="225" cy="52" r="4"/></g>
+      <path d="M75 115L90 111 90 173 75 179Z" fill="#17344e"/><path d="M260 109L275 104V157L260 162Z" fill="#17344e"/>
+     </g>
+     <g transform="translate(430 305)">
+      <path d="M0 100L175 47 345 100 170 157Z" fill="#2b2850" stroke="#d4a0ff" stroke-width="3"/>
+      <path d="M170 157L345 100V124L170 183Z" fill="#211b3d"/><path d="M0 100V123L170 183V157Z" fill="#51406c"/>
+      <path d="M52 76L164 41 273 77 160 113Z" fill="#130f28" stroke="#d4a0ff" stroke-width="5"/>
+      <path d="M64 75L164 46 258 78 158 106Z" fill="#25143f"/>
+      <g fill="none" stroke="#e1b9ff" stroke-width="4"><path d="M82 85l20-15 19 8 19-18"/><path d="M180 85l20-18 22 7 16-13"/></g>
+      <g fill="#e7caff"><circle cx="100" cy="70" r="4"/><circle cx="225" cy="68" r="4"/></g>
+      <path d="M76 135L91 139 91 196 76 191Z" fill="#32234c"/><path d="M260 126L275 121V177L260 182Z" fill="#32234c"/>
+     </g>
+     <g transform="translate(785 340)">
+      <path d="M0 80L180 30 345 83 165 140Z" fill="#1a4145" stroke="#8af0c8" stroke-width="3"/>
+      <path d="M165 140L345 83V105L165 166Z" fill="#102f34"/><path d="M0 80V103L165 166V140Z" fill="#285b58"/>
+      <path d="M52 58L164 27 271 62 158 96Z" fill="#071f28" stroke="#8af0c8" stroke-width="5"/>
+      <path d="M64 57L164 31 257 62 157 89Z" fill="#0b3539"/>
+      <g fill="none" stroke="#9bffdb" stroke-width="4"><path d="M83 65l24-8 20 6 20-16"/><path d="M180 68l17-15 22 8 19-12"/></g>
+      <g fill="#baffdf"><circle cx="100" cy="55" r="4"/><circle cx="225" cy="52" r="4"/></g>
+      <path d="M75 115L90 111 90 173 75 179Z" fill="#1b4243"/><path d="M260 109L275 104V157L260 162Z" fill="#1b4243"/>
+     </g>
+    </g>
+    <g filter="url(#shadow)">
+     <g transform="translate(150 235)">
+      <ellipse cx="115" cy="105" rx="70" ry="20" fill="#071526" opacity=".55"/>
+      <path d="M50 95Q45 30 115 28Q185 30 180 95L165 125H65Z" fill="#1a3652" stroke="#64d7ff" stroke-width="4"/>
+      <path d="M72 47Q115 5 158 47L166 85Q115 120 64 85Z" fill="url(#skin)"/>
+      <path d="M68 52Q70 5 120 12Q160 10 165 55L148 45 138 32 120 43 90 36Z" fill="#d7f4ff"/>
+      <path d="M89 65Q97 57 105 65M126 65Q134 57 142 65" fill="none" stroke="#35445d" stroke-width="5" stroke-linecap="round"/>
+      <ellipse cx="100" cy="66" rx="4" ry="6" fill="#172a40"/><ellipse cx="132" cy="66" rx="4" ry="6" fill="#172a40"/>
+      <path d="M108 84Q118 93 129 83" fill="none" stroke="#9c4f59" stroke-width="4" stroke-linecap="round"/>
+      <path d="M78 95Q115 75 152 95L173 133H57Z" fill="url(#blueDesk)" stroke="#9beaff" stroke-width="3"/>
+      <circle cx="115" cy="111" r="9" fill="#d5f8ff" filter="url(#glow)"/>
+     </g>
+     <g transform="translate(515 205)">
+      <ellipse cx="115" cy="125" rx="70" ry="20" fill="#071526" opacity=".55"/>
+      <path d="M50 105Q45 38 115 35Q185 38 180 105L165 135H65Z" fill="#3c2854" stroke="#d5aaff" stroke-width="4"/>
+      <path d="M72 55Q115 15 158 55L166 93Q115 128 64 93Z" fill="url(#skin)"/>
+      <path d="M65 65Q57 15 110 12Q169 7 169 66L151 50 140 32 121 44 91 37Z" fill="#d8aaff"/>
+      <path d="M89 75Q97 67 105 75M126 75Q134 67 142 75" fill="none" stroke="#35445d" stroke-width="5" stroke-linecap="round"/>
+      <ellipse cx="100" cy="76" rx="4" ry="6" fill="#172a40"/><ellipse cx="132" cy="76" rx="4" ry="6" fill="#172a40"/>
+      <path d="M108 94Q118 103 129 93" fill="none" stroke="#9c4f59" stroke-width="4" stroke-linecap="round"/>
+      <path d="M78 105Q115 85 152 105L173 143H57Z" fill="url(#purpleDesk)" stroke="#edcaff" stroke-width="3"/>
+      <circle cx="115" cy="121" r="9" fill="#f1dcff" filter="url(#glow)"/>
+     </g>
+     <g transform="translate(880 235)">
+      <ellipse cx="115" cy="105" rx="70" ry="20" fill="#071526" opacity=".55"/>
+      <path d="M50 95Q45 30 115 28Q185 30 180 95L165 125H65Z" fill="#1c4945" stroke="#8cf0ca" stroke-width="4"/>
+      <path d="M72 47Q115 5 158 47L166 85Q115 120 64 85Z" fill="url(#skin)"/>
+      <path d="M68 52Q70 5 120 12Q160 10 165 55L148 45 138 32 120 43 90 36Z" fill="#a8ffe0"/>
+      <path d="M89 65Q97 57 105 65M126 65Q134 57 142 65" fill="none" stroke="#35445d" stroke-width="5" stroke-linecap="round"/>
+      <ellipse cx="100" cy="66" rx="4" ry="6" fill="#172a40"/><ellipse cx="132" cy="66" rx="4" ry="6" fill="#172a40"/>
+      <path d="M108 84Q118 93 129 83" fill="none" stroke="#9c4f59" stroke-width="4" stroke-linecap="round"/>
+      <path d="M78 95Q115 75 152 95L173 133H57Z" fill="url(#greenDesk)" stroke="#baffdf" stroke-width="3"/>
+      <circle cx="115" cy="111" r="9" fill="#d8ffef" filter="url(#glow)"/>
+     </g>
+    </g>
+    <g font-family="Arial,sans-serif" font-weight="800" text-anchor="middle">
+     <g><rect x="110" y="485" width="245" height="48" rx="24" fill="#102e4b" stroke="#5bd4ff" stroke-width="2"/><text x="232" y="516" fill="#c6f4ff" font-size="23" letter-spacing="3">JARVIS</text><circle cx="135" cy="509" r="5" fill="#64dcff"/></g>
+     <g><rect x="477" y="485" width="245" height="48" rx="24" fill="#302044" stroke="#d2a4ff" stroke-width="2"/><text x="599" y="516" fill="#f0ddff" font-size="23" letter-spacing="3">NOVA</text><circle cx="502" cy="509" r="5" fill="#d2a4ff"/></g>
+     <g><rect x="845" y="485" width="245" height="48" rx="24" fill="#153a38" stroke="#91edca" stroke-width="2"/><text x="967" y="516" fill="#d6ffed" font-size="23" letter-spacing="2">WEBMASTER</text><circle cx="870" cy="509" r="5" fill="#91edca"/></g>
+    </g>
+    <g opacity=".9" font-family="Arial,sans-serif" font-size="13" letter-spacing="2" fill="#a9d7ee" text-anchor="middle"><text x="232" y="557">SYSTEM · RESEARCH</text><text x="599" y="557">YOUTUBE · CREATION</text><text x="967" y="557">WEB · DESIGN</text></g>
+    <g transform="translate(500 650)" filter="url(#glow)"><ellipse cx="100" cy="25" rx="115" ry="27" fill="#123c5b" stroke="#76ddff" stroke-width="3"/><ellipse cx="100" cy="20" rx="70" ry="15" fill="#2d7194"/><path d="M100 -5V-48" stroke="#91e9ff" stroke-width="5"/><circle cx="100" cy="-58" r="18" fill="#d6faff" stroke="#6bdcff" stroke-width="5"/><text x="100" y="30" text-anchor="middle" font-family="Arial" font-size="12" font-weight="bold" fill="#effbff" letter-spacing="2">AI CORE</text></g>
+    <g fill="none" stroke="#72dfff" stroke-opacity=".55" stroke-width="3"><path d="M40 600H220l30 20h170"/><path d="M1160 600H980l-30 20H780"/></g>
+    <g fill="#a7eaff"><circle cx="40" cy="600" r="5"/><circle cx="1160" cy="600" r="5"/></g>
+    <g font-family="Arial,sans-serif" font-size="13" fill="#bdeaff" letter-spacing="2"><text x="44" y="785">CREATIVE OPERATIONS FLOOR</text><text x="1155" y="785" text-anchor="end">NOVA CLOUD · EST. 2026</text></g>
+   </svg>
+   <div class="office-hint">TRYCK PÅ EN ARBETSSTATION FÖR ATT ÖPPNA RUMMET</div>
+   <div class="office-hotspots">
+    <button onclick="enterRoom('jarvis')" aria-label="Öppna JARVIS">JARVIS <span>Öppna rum ↗</span></button>
+    <button onclick="enterRoom('nova')" aria-label="Öppna NOVA">NOVA <span>Öppna rum ↗</span></button>
+    <button onclick="enterRoom('web')" aria-label="Öppna WEBMASTER">WEBMASTER <span>Öppna rum ↗</span></button>
+   </div>
   </div>
   <div class="hq-name">TWO SYSTEMS. ONE HEADQUARTERS.</div>
   <div class="hq-desc">Ett gemensamt AI-högkvarter där JARVIS sköter kontrollcentralen och NOVA driver den kreativa produktionen.</div>
