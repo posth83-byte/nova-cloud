@@ -55,7 +55,7 @@ YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY")
 YOUTUBE_CHANNEL_IDS = [
     item.strip()
     for item in os.getenv(
-        "YOUTUBE_CHANNEL_IDS", ""
+        "YOUTUBE_CHANNEL_IDS", "UCIfcnFeBoXK1SKmRFBgO1ug"
     ).replace(";", ",").split(",")
     if item.strip()
 ]
