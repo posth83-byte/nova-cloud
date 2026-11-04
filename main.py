@@ -115,6 +115,12 @@ class ChatRequest(BaseModel):
     message: str = Field(min_length=1, max_length=10000)
 
 
+class NovaChatRequest(BaseModel):
+    message: str = Field(min_length=1, max_length=10000)
+    reference_url: str = Field(default="", max_length=2000)
+    reference_image_data: str = Field(default="", max_length=5600000)
+
+
 class WebPreviewRequest(BaseModel):
     html: str = Field(min_length=20, max_length=2000000)
 
@@ -1660,9 +1666,11 @@ VIKTIGA REGLER:
 
 
 @app.post("/api/nova")
-async def nova(request: ChatRequest):
+async def nova(request: NovaChatRequest):
 
     message = request.message.strip()
+    reference_url = request.reference_url.strip()
+    reference_image_data = request.reference_image_data.strip()
 
     if not message:
         raise HTTPException(
@@ -1670,16 +1678,44 @@ async def nova(request: ChatRequest):
             detail="Meddelandet får inte vara tomt."
         )
 
-    result = generate_reply(
-        message,
-        NOVA_PROMPT
-    )
+    if reference_url:
+        message += (
+            "\\n\\nREFERENSLÄNK FRÅN ANVÄNDAREN:\\n"
+            + reference_url
+            + "\\nBehandla länken som referens. Påstå inte att du har sett "
+            "innehållet om det inte faktiskt är åtkomligt."
+        )
+
+    if reference_image_data:
+        if not reference_image_data.startswith("data:image/"):
+            raise HTTPException(
+                status_code=400,
+                detail="Referensbilden har ett ogiltigt format."
+            )
+        if len(reference_image_data) > 5600000:
+            raise HTTPException(
+                status_code=413,
+                detail="Referensbilden är för stor. Max 4 MB."
+            )
+
+    try:
+        result = generate_reply(
+            message,
+            NOVA_PROMPT,
+            image_data=reference_image_data
+        )
+    except Exception as error:
+        raise HTTPException(
+            status_code=502,
+            detail=f"NOVA kunde inte behandla meddelandet: {str(error)[:1200]}"
+        )
 
     return {
         "assistant": "NOVA",
         "status": "online",
         "engine": result["engine"],
-        "reply": result["reply"]
+        "reply": result["reply"],
+        "reference_received": bool(reference_url or reference_image_data)
     }
 
 @app.post("/api/webmaster/preview")
