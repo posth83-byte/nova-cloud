@@ -643,7 +643,7 @@ function renderVideoPlan(data){
  const aspectLabel=document.createElement("label");aspectLabel.textContent="VIDEOFORMAT";aspectLabel.style.display="block";renderPanel.appendChild(aspectLabel);
  const aspectSelect=document.createElement("select");aspectSelect.style.margin="8px 0 14px";aspectSelect.style.padding="9px";aspectSelect.style.borderRadius="8px";aspectSelect.style.background="#071426";aspectSelect.style.color="#eaf6ff";
  [["16:9","16:9 – YouTube-video"],["9:16","9:16 – YouTube Short"]].forEach(([value,label])=>{const option=document.createElement("option");option.value=value;option.textContent=label;aspectSelect.appendChild(option)});
- aspectSelect.value=pick(plan,["format"])==="short"?"9:16":"16:9";renderPanel.appendChild(aspectSelect);
+ aspectSelect.value=$("videoFormat")&&$("videoFormat").value==="short"?"9:16":"16:9";renderPanel.appendChild(aspectSelect);
  const musicLabel=document.createElement("label");musicLabel.textContent="BAKGRUNDSMUSIK (VALFRITT)";musicLabel.style.display="block";renderPanel.appendChild(musicLabel);
  const musicInput=document.createElement("input");musicInput.type="file";musicInput.accept="audio/*";musicInput.style.display="block";musicInput.style.margin="8px 0 14px";renderPanel.appendChild(musicInput);
  const renderButton=document.createElement("button");renderButton.type="button";renderButton.className="export-btn";renderButton.textContent="🎬 RENDERA MP4 MED NOVA";renderPanel.appendChild(renderButton);
