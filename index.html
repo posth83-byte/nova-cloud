@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="sv">
 <head>
@@ -6,105 +5,50 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#030817">
 <title>JARVIS × NOVA | AI Headquarters</title>
-
 <style>
-:root{
- --blue:#39c8ff;--purple:#bd80ff;--bg:#030713;
- --muted:#91a9c2;--green:#70f5c6;
-}
+:root{--blue:#39c8ff;--purple:#bd80ff;--bg:#030713;--muted:#91a9c2;--green:#70f5c6}
 *{box-sizing:border-box}
 html{scroll-behavior:smooth}
-body{
- margin:0;color:#eaf6ff;font-family:Arial,sans-serif;
- background:radial-gradient(ellipse at 50% 0%,#173c60 0%,transparent 48%),
- radial-gradient(ellipse at 90% 55%,#29133d55,transparent 40%),#030713;
- min-height:100vh;overflow-x:hidden
-}
-body:before{
- content:"";position:fixed;inset:0;pointer-events:none;z-index:0;opacity:.16;
- background-image:linear-gradient(#3477a322 1px,transparent 1px),
- linear-gradient(90deg,#3477a322 1px,transparent 1px);
- background-size:45px 45px;
- mask-image:linear-gradient(to bottom,black,transparent 85%)
-}
-button,input,select{font:inherit}
-button{touch-action:manipulation}
-header{
- position:relative;z-index:2;text-align:center;padding:23px 15px 18px;
- border-bottom:1px solid #315a7a88;background:#061020cc;
- backdrop-filter:blur(14px)
-}
+body{margin:0;color:#eaf6ff;font-family:Arial,sans-serif;background:radial-gradient(ellipse at 50% 0%,#173c60 0%,transparent 48%),radial-gradient(ellipse at 90% 55%,#29133d55,transparent 40%),#030713;min-height:100vh;overflow-x:hidden}
+body:before{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;opacity:.16;background-image:linear-gradient(#3477a322 1px,transparent 1px),linear-gradient(90deg,#3477a322 1px,transparent 1px);background-size:45px 45px;mask-image:linear-gradient(to bottom,black,transparent 85%)}
+button,input,select{font:inherit}button{touch-action:manipulation;cursor:pointer}
+header{position:relative;z-index:2;text-align:center;padding:23px 15px 18px;border-bottom:1px solid #315a7a88;background:#061020cc;backdrop-filter:blur(14px)}
 .logo{font-size:9px;letter-spacing:5px;color:#74dfff}
-h1{margin:12px 0 7px;font-size:clamp(22px,5vw,34px);
- letter-spacing:4px;text-shadow:0 0 25px #29baff}
+h1{margin:12px 0 7px;font-size:clamp(22px,5vw,34px);letter-spacing:4px;text-shadow:0 0 25px #29baff}
 .sub{font-size:9px;color:#8da9c4;letter-spacing:3px}
-.top-status{
- display:inline-block;margin-top:13px;padding:8px 15px;
- border:1px solid #19a985;border-radius:30px;color:#70f5c6;
- font-size:10px;letter-spacing:1px
-}
+.top-status{display:inline-block;margin-top:13px;padding:8px 15px;border:1px solid #19a985;border-radius:30px;color:#70f5c6;font-size:10px;letter-spacing:1px}
 main{position:relative;z-index:1;max-width:1100px;margin:auto;padding:20px 15px 35px}
 .section-label{font-size:10px;letter-spacing:3px;color:#7bd5ff;margin:15px 3px}
 .hidden{display:none!important}
-
-/* CENTRAL COMMAND */
 #homeView{animation:appear .65s ease}
-.headquarters{
- position:relative;overflow:hidden;text-align:center;min-height:420px;padding:25px 15px 30px;
- border:1px solid #367da7;border-radius:24px;
- background:radial-gradient(ellipse at 50% 45%,#16436b99,transparent 55%),
- linear-gradient(145deg,#0c2039,#050d1d);
- box-shadow:0 0 45px #008cff25,inset 0 0 55px #168cff16;
- perspective:900px
-}
-.headquarters:before,.headquarters:after{
- content:"";position:absolute;border:1px solid #4abaff27;border-radius:50%;
- pointer-events:none;left:50%;top:48%;transform:translate(-50%,-50%) rotateX(68deg)
-}
+.headquarters{position:relative;overflow:hidden;text-align:center;min-height:420px;padding:25px 15px 30px;border:1px solid #367da7;border-radius:24px;background:radial-gradient(ellipse at 50% 45%,#16436b99,transparent 55%),linear-gradient(145deg,#0c2039,#050d1d);box-shadow:0 0 45px #008cff25,inset 0 0 55px #168cff16;perspective:900px}
+.headquarters:before,.headquarters:after{content:"";position:absolute;border:1px solid #4abaff27;border-radius:50%;pointer-events:none;left:50%;top:48%;transform:translate(-50%,-50%) rotateX(68deg)}
 .headquarters:before{width:340px;height:340px;animation:spin 30s linear infinite}
 .headquarters:after{width:460px;height:460px;animation:spin 45s linear infinite reverse}
 .hq-caption{position:relative;z-index:2;font-size:9px;letter-spacing:4px;color:#8bdfff}
 .core{position:relative;width:190px;height:190px;margin:25px auto 8px;display:grid;place-items:center}
-.core-ring{position:absolute;inset:8px;border:1px solid #4dcaff99;border-radius:50%;
- box-shadow:0 0 25px #168cff55;animation:spin 14s linear infinite}
+.core-ring{position:absolute;inset:8px;border:1px solid #4dcaff99;border-radius:50%;box-shadow:0 0 25px #168cff55;animation:spin 14s linear infinite}
 .core-ring.r2{inset:-5px;border-style:dashed;border-color:#8ce8ff77;animation:spin 22s linear infinite reverse}
 .core-ring.r3{inset:28px;border-color:#9eeaff;animation:pulse 3s ease-in-out infinite}
 .core-ring.r4{inset:18px;border-color:#3b9dff88;transform:rotateX(65deg);animation:spin 10s linear infinite}
-.core-center{
- width:90px;height:90px;border-radius:50%;display:grid;place-items:center;
- position:relative;z-index:2;background:radial-gradient(circle,#d4fbff,#54c8ff 12%,#268dca 32%,#071c3c 75%);
- box-shadow:0 0 30px #43caff,0 0 75px #138dff99;animation:pulse 3s ease-in-out infinite
-}
+.core-center{width:90px;height:90px;border-radius:50%;display:grid;place-items:center;position:relative;z-index:2;background:radial-gradient(circle,#d4fbff,#54c8ff 12%,#268dca 32%,#071c3c 75%);box-shadow:0 0 30px #43caff,0 0 75px #138dff99;animation:pulse 3s ease-in-out infinite}
 .core-center span{font-size:26px;font-weight:bold;text-shadow:0 0 15px white}
-.core-floor{width:235px;height:48px;margin:-4px auto 17px;border:2px solid #37bfff;
- border-radius:50%;transform:rotateX(65deg);box-shadow:0 0 16px #36bfff,0 0 40px #148bff;animation:floor 4s infinite}
+.core-floor{width:235px;height:48px;margin:-4px auto 17px;border:2px solid #37bfff;border-radius:50%;transform:rotateX(65deg);box-shadow:0 0 16px #36bfff,0 0 40px #148bff;animation:floor 4s infinite}
 .hq-name{font-size:18px;letter-spacing:5px}
 .hq-desc{color:#91abc6;font-size:11px;line-height:1.7;max-width:440px;margin:10px auto}
 .hq-data{display:flex;justify-content:center;gap:20px;flex-wrap:wrap;margin-top:20px;font-size:9px;letter-spacing:1px;color:#79d9ff}
 .hq-data span:before{content:"● ";color:#65efc0}
-
-/* ROOM CARDS */
 .rooms{display:grid;grid-template-columns:1fr 1fr;gap:17px;margin-top:20px}
-.room-card{
- position:relative;overflow:hidden;border:1px solid #299bd1;border-radius:20px;padding:20px 17px;
- background:radial-gradient(ellipse at 50% 35%,#12517a77,transparent 65%),linear-gradient(145deg,#102d4b,#061020);
- box-shadow:0 0 25px #078dce18;transition:transform .3s,border-color .3s,box-shadow .3s
-}
+.room-card{position:relative;overflow:hidden;border:1px solid #299bd1;border-radius:20px;padding:20px 17px;background:radial-gradient(ellipse at 50% 35%,#12517a77,transparent 65%),linear-gradient(145deg,#102d4b,#061020);box-shadow:0 0 25px #078dce18;transition:.3s}
 .room-card:hover{transform:translateY(-4px);box-shadow:0 0 35px #078dce35}
-.room-card.nova{
- border-color:#9865ca;
- background:radial-gradient(ellipse at 50% 35%,#713ba477,transparent 65%),linear-gradient(145deg,#302047,#100d20);
- box-shadow:0 0 25px #a44dff18
-}
+.room-card.nova{border-color:#9865ca;background:radial-gradient(ellipse at 50% 35%,#713ba477,transparent 65%),linear-gradient(145deg,#302047,#100d20);box-shadow:0 0 25px #a44dff18}
 .room-code{font-size:9px;letter-spacing:3px;color:#71d9ff}
 .nova .room-code{color:#d2a0ff}
 .room-card h2{font-size:30px;letter-spacing:6px;margin:12px 0 5px}
 .room-desc{font-size:11px;line-height:1.6;color:#a9c5dc;min-height:38px}
 .room-visual{height:170px;position:relative;display:flex;align-items:center;justify-content:center;margin:8px 0;overflow:hidden}
-.orbit{position:absolute;width:135px;height:135px;border:1px solid #4dcaff88;border-radius:50%;
- transform:rotateX(65deg);animation:spin 9s linear infinite}
-.orbit:after{content:"";position:absolute;width:9px;height:9px;background:#a5f1ff;border-radius:50%;
- top:10px;left:18px;box-shadow:0 0 15px #57dfff}
+.orbit{position:absolute;width:135px;height:135px;border:1px solid #4dcaff88;border-radius:50%;transform:rotateX(65deg);animation:spin 9s linear infinite}
+.orbit:after{content:"";position:absolute;width:9px;height:9px;background:#a5f1ff;border-radius:50%;top:10px;left:18px;box-shadow:0 0 15px #57dfff}
 .nova .orbit{border-color:#ce9aff88}
 .nova .orbit:after{background:#e2bfff;box-shadow:0 0 15px #c27aff}
 .avatar{position:relative;width:90px;height:130px;filter:drop-shadow(0 0 15px #25bfff);animation:float 4s ease-in-out infinite}
@@ -112,38 +56,20 @@ main{position:relative;z-index:1;max-width:1100px;margin:auto;padding:20px 15px 
 .avatar svg{width:100%;height:100%}
 .avatar path,.avatar circle{stroke:#65dfff;fill:#147dbb33;stroke-width:2}
 .nova .avatar path,.nova .avatar circle{stroke:#d1a0ff;fill:#9755cb33}
-.room-floor{position:absolute;bottom:7px;width:165px;height:35px;border:2px solid #35bfff;border-radius:50%;
- transform:rotateX(65deg);box-shadow:0 0 18px #26bfff}
+.room-floor{position:absolute;bottom:7px;width:165px;height:35px;border:2px solid #35bfff;border-radius:50%;transform:rotateX(65deg);box-shadow:0 0 18px #26bfff}
 .nova .room-floor{border-color:#bd82ff;box-shadow:0 0 18px #bd82ff}
 .room-features{display:flex;flex-wrap:wrap;gap:6px;margin:13px 0}
 .feature{padding:7px 9px;border:1px solid #39739b;border-radius:20px;font-size:8px;color:#b9e6ff}
 .nova .feature{border-color:#8b62a9;color:#e3c9ff}
-.launch{width:100%;padding:15px;margin-top:9px;border-radius:9px;border:1px solid #54caff;
- background:linear-gradient(90deg,#075b92,#1686c5);color:white;font-weight:bold;font-size:10px;
- letter-spacing:2px;cursor:pointer;box-shadow:0 0 18px #168cff22}
+.launch{width:100%;padding:15px;margin-top:9px;border-radius:9px;border:1px solid #54caff;background:linear-gradient(90deg,#075b92,#1686c5);color:white;font-weight:bold;font-size:10px;letter-spacing:2px;box-shadow:0 0 18px #168cff22}
 .nova .launch{background:linear-gradient(90deg,#56317f,#9453c6);border-color:#c08bff}
 .launch:active{transform:scale(.98)}
-
-/* FULL ROOM */
-.room-view{
- position:relative;min-height:calc(100vh - 150px);border-radius:22px;overflow:hidden;padding:18px;
- animation:roomEnter .65s cubic-bezier(.2,.8,.2,1);border:1px solid #39bfff88;
- background:radial-gradient(ellipse at 50% 15%,#14517b88,transparent 55%),
- radial-gradient(ellipse at 50% 90%,#0b326055,transparent 55%),linear-gradient(145deg,#081b30,#020713 75%);
- box-shadow:0 0 55px #168cff25,inset 0 0 65px #168cff12
-}
-.room-view.nova-view{
- border-color:#bd80ff88;
- background:radial-gradient(ellipse at 50% 15%,#61358a88,transparent 55%),
- radial-gradient(ellipse at 50% 90%,#43215c55,transparent 55%),linear-gradient(145deg,#20132f,#080611 75%);
- box-shadow:0 0 55px #a44dff25,inset 0 0 65px #a44dff12
-}
-.room-view:before{content:"";position:absolute;inset:0;pointer-events:none;opacity:.18;
- background-image:linear-gradient(#52caff22 1px,transparent 1px),linear-gradient(90deg,#52caff22 1px,transparent 1px);
- background-size:38px 38px;mask-image:linear-gradient(to bottom,black,transparent)}
+.room-view{position:relative;min-height:calc(100vh - 150px);border-radius:22px;overflow:hidden;padding:18px;animation:roomEnter .65s cubic-bezier(.2,.8,.2,1);border:1px solid #39bfff88;background:radial-gradient(ellipse at 50% 15%,#14517b88,transparent 55%),radial-gradient(ellipse at 50% 90%,#0b326055,transparent 55%),linear-gradient(145deg,#081b30,#020713 75%);box-shadow:0 0 55px #168cff25,inset 0 0 65px #168cff12}
+.room-view.nova-view{border-color:#bd80ff88;background:radial-gradient(ellipse at 50% 15%,#61358a88,transparent 55%),radial-gradient(ellipse at 50% 90%,#43215c55,transparent 55%),linear-gradient(145deg,#20132f,#080611 75%);box-shadow:0 0 55px #a44dff25,inset 0 0 65px #a44dff12}
+.room-view:before{content:"";position:absolute;inset:0;pointer-events:none;opacity:.18;background-image:linear-gradient(#52caff22 1px,transparent 1px),linear-gradient(90deg,#52caff22 1px,transparent 1px);background-size:38px 38px;mask-image:linear-gradient(to bottom,black,transparent)}
 .room-view.nova-view:before{background-image:linear-gradient(#bd80ff22 1px,transparent 1px),linear-gradient(90deg,#bd80ff22 1px,transparent 1px)}
 .room-topbar{position:relative;z-index:2;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
-.back-btn{border:1px solid #4abfff88;background:#071b2dcc;color:#bdeeff;border-radius:9px;padding:11px 14px;font-size:10px;letter-spacing:1px;cursor:pointer}
+.back-btn{border:1px solid #4abfff88;background:#071b2dcc;color:#bdeeff;border-radius:9px;padding:11px 14px;font-size:10px;letter-spacing:1px}
 .nova-view .back-btn{border-color:#bd80ff88;color:#ead8ff;background:#1b1028cc}
 .room-live{font-size:9px;letter-spacing:2px;color:#74f2c4}
 .room-heading{position:relative;z-index:2;text-align:center;padding:23px 5px 15px}
@@ -152,55 +78,24 @@ main{position:relative;z-index:1;max-width:1100px;margin:auto;padding:20px 15px 
 .room-heading h2{font-size:clamp(30px,8vw,48px);letter-spacing:8px;margin:10px 0;text-shadow:0 0 25px #27baff}
 .nova-view .room-heading h2{text-shadow:0 0 25px #b56cff}
 .room-heading p{font-size:11px;color:#a9c5dc;line-height:1.6;margin:0 auto;max-width:500px}
-
-/* HOLOGRAM WORKSTATION */
-.workstation-stage{
- position:relative;z-index:1;height:350px;max-width:760px;margin:0 auto;overflow:hidden;
- perspective:900px;border-radius:18px;
- background:radial-gradient(ellipse at 50% 70%,#087db955,transparent 55%),linear-gradient(180deg,#06182a55,#02071399)
-}
+.workstation-stage{position:relative;z-index:1;height:350px;max-width:760px;margin:0 auto;overflow:hidden;perspective:900px;border-radius:18px;background:radial-gradient(ellipse at 50% 70%,#087db955,transparent 55%),linear-gradient(180deg,#06182a55,#02071399)}
 .nova-view .workstation-stage{background:radial-gradient(ellipse at 50% 70%,#9148bd55,transparent 55%),linear-gradient(180deg,#21112f55,#08061199)}
-.holo-grid{position:absolute;bottom:0;width:100%;height:120px;opacity:.35;
- background-image:linear-gradient(#43caff44 1px,transparent 1px),linear-gradient(90deg,#43caff44 1px,transparent 1px);
- background-size:25px 25px;transform:perspective(180px) rotateX(55deg);transform-origin:bottom}
+.holo-grid{position:absolute;bottom:0;width:100%;height:120px;opacity:.35;background-image:linear-gradient(#43caff44 1px,transparent 1px),linear-gradient(90deg,#43caff44 1px,transparent 1px);background-size:25px 25px;transform:perspective(180px) rotateX(55deg);transform-origin:bottom}
 .nova-view .holo-grid{background-image:linear-gradient(#bd80ff44 1px,transparent 1px),linear-gradient(90deg,#bd80ff44 1px,transparent 1px)}
-.projection-beam{
- position:absolute;z-index:1;left:50%;top:30px;transform:translateX(-50%);
- width:180px;height:255px;opacity:.16;pointer-events:none;
- background:linear-gradient(to bottom,transparent,#39c8ff33,transparent);
- clip-path:polygon(38% 0,62% 0,100% 100%,0 100%);
- animation:beamPulse 3s ease-in-out infinite
-}
+.projection-beam{position:absolute;z-index:1;left:50%;top:30px;transform:translateX(-50%);width:180px;height:255px;opacity:.16;pointer-events:none;background:linear-gradient(to bottom,transparent,#39c8ff33,transparent);clip-path:polygon(38% 0,62% 0,100% 100%,0 100%);animation:beamPulse 3s ease-in-out infinite}
 .nova-view .projection-beam{background:linear-gradient(to bottom,transparent,#bd80ff55,transparent)}
-.ai-figure{
- position:absolute;left:50%;top:12px;width:190px;height:245px;transform:translateX(-50%);
- z-index:2;animation:float 5s ease-in-out infinite;filter:drop-shadow(0 0 14px #39c8ff);
- transition:filter .3s
-}
+.ai-figure{position:absolute;left:50%;top:12px;width:190px;height:245px;transform:translateX(-50%);z-index:2;animation:float 5s ease-in-out infinite;filter:drop-shadow(0 0 14px #39c8ff)}
 .nova-view .ai-figure{filter:drop-shadow(0 0 16px #bd80ff)}
 .ai-figure svg{width:100%;height:100%;overflow:visible}
-.ai-figure path,.ai-figure circle,.ai-figure ellipse,.ai-figure line{
- fill:#39c8ff13;stroke:#70e5ff;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round
-}
-.nova-view .ai-figure path,.nova-view .ai-figure circle,.nova-view .ai-figure ellipse,.nova-view .ai-figure line{
- fill:#bd80ff16;stroke:#e0baff
-}
+.ai-figure path,.ai-figure circle,.ai-figure ellipse,.ai-figure line{fill:#39c8ff13;stroke:#70e5ff;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+.nova-view .ai-figure path,.nova-view .ai-figure circle,.nova-view .ai-figure ellipse,.nova-view .ai-figure line{fill:#bd80ff16;stroke:#e0baff}
 .ai-eyes{fill:#dfffff!important;stroke:none!important;filter:drop-shadow(0 0 8px #6ceaff)}
 .nova-view .ai-eyes{fill:#fff0ff!important;filter:drop-shadow(0 0 8px #d29aff)}
 .ai-core{fill:#baf7ff!important;stroke:#fff!important;filter:drop-shadow(0 0 10px #39c8ff)}
 .nova-view .ai-core{fill:#f4d7ff!important;filter:drop-shadow(0 0 10px #bd80ff)}
-.ai-scan{
- position:absolute;left:15%;right:15%;top:5px;height:2px;z-index:5;
- background:#a8f4ff;box-shadow:0 0 12px #39c8ff;opacity:.55;
- animation:scan 4s linear infinite
-}
+.ai-scan{position:absolute;left:15%;right:15%;top:5px;height:2px;z-index:5;background:#a8f4ff;box-shadow:0 0 12px #39c8ff;opacity:.55;animation:scan 4s linear infinite}
 .nova-view .ai-scan{background:#f1d8ff;box-shadow:0 0 12px #bd80ff}
-.ai-monitor{
- position:absolute;z-index:4;left:50%;bottom:65px;transform:translateX(-50%);
- width:min(88%,490px);height:105px;padding:7px;border:1px solid #51d9ff;border-radius:9px;
- background:linear-gradient(145deg,#092b45ee,#03101fee);
- box-shadow:0 0 15px #35caff88,inset 0 0 20px #35caff22
-}
+.ai-monitor{position:absolute;z-index:4;left:50%;bottom:65px;transform:translateX(-50%);width:min(88%,490px);height:105px;padding:7px;border:1px solid #51d9ff;border-radius:9px;background:linear-gradient(145deg,#092b45ee,#03101fee);box-shadow:0 0 15px #35caff88,inset 0 0 20px #35caff22}
 .nova-view .ai-monitor{border-color:#d0a0ff;background:linear-gradient(145deg,#38204fee,#130b20ee);box-shadow:0 0 15px #bd80ff88,inset 0 0 20px #bd80ff22}
 .monitor-top{display:flex;justify-content:space-between;gap:8px;font-size:7px;letter-spacing:2px;color:#8ceaff;padding:3px 5px 7px;border-bottom:1px solid #38bce955}
 .nova-view .monitor-top{color:#e2c4ff;border-color:#bd80ff55}
@@ -212,23 +107,11 @@ main{position:relative;z-index:1;max-width:1100px;margin:auto;padding:20px 15px 
 .monitor-graph{height:43px;display:flex;align-items:end;gap:4px}
 .monitor-graph span{flex:1;background:#45caff;box-shadow:0 0 6px #45caff;animation:graphMove 2s ease-in-out infinite alternate}
 .nova-view .monitor-graph span{background:#c58aff;box-shadow:0 0 6px #c58aff}
-.monitor-graph span:nth-child(1){height:35%}
-.monitor-graph span:nth-child(2){height:75%}
-.monitor-graph span:nth-child(3){height:45%}
-.monitor-graph span:nth-child(4){height:90%}
-.monitor-graph span:nth-child(5){height:60%}
-.monitor-graph span:nth-child(6){height:80%}
-.ai-desk{position:absolute;z-index:3;left:50%;bottom:35px;transform:translateX(-50%) rotateX(8deg);
- width:min(95%,550px);height:35px;border:1px solid #49cfff;border-radius:50% 50% 10px 10px;
- background:linear-gradient(180deg,#164b6b99,#061729);box-shadow:0 0 20px #32bfff77}
+.monitor-graph span:nth-child(1){height:35%}.monitor-graph span:nth-child(2){height:75%}.monitor-graph span:nth-child(3){height:45%}.monitor-graph span:nth-child(4){height:90%}.monitor-graph span:nth-child(5){height:60%}.monitor-graph span:nth-child(6){height:80%}
+.ai-desk{position:absolute;z-index:3;left:50%;bottom:35px;transform:translateX(-50%) rotateX(8deg);width:min(95%,550px);height:35px;border:1px solid #49cfff;border-radius:50% 50% 10px 10px;background:linear-gradient(180deg,#164b6b99,#061729);box-shadow:0 0 20px #32bfff77}
 .nova-view .ai-desk{border-color:#c28aff;background:linear-gradient(180deg,#603c7899,#1b1028);box-shadow:0 0 20px #bd80ff77}
-.ai-desk:after{content:"";position:absolute;left:15%;right:15%;bottom:-13px;height:12px;background:#39c8ff33;filter:blur(8px)}
-.nova-view .ai-desk:after{background:#bd80ff44}
-.ai-floor{position:absolute;bottom:7px;left:50%;transform:translateX(-50%) rotateX(68deg);
- width:290px;height:50px;border:2px solid #39c8ff;border-radius:50%;box-shadow:0 0 25px #39c8ff88}
+.ai-floor{position:absolute;bottom:7px;left:50%;transform:translateX(-50%) rotateX(68deg);width:290px;height:50px;border:2px solid #39c8ff;border-radius:50%;box-shadow:0 0 25px #39c8ff88}
 .nova-view .ai-floor{border-color:#bd80ff;box-shadow:0 0 25px #bd80ff88}
-
-/* WORKING ANIMATIONS */
 .room-view.working .ai-figure{animation:activeFloat 1.4s ease-in-out infinite;filter:drop-shadow(0 0 24px #8ceaff)}
 .room-view.nova-view.working .ai-figure{filter:drop-shadow(0 0 25px #e1b4ff)}
 .room-view.working .ai-core{animation:coreBeat .8s ease-in-out infinite alternate}
@@ -238,8 +121,6 @@ main{position:relative;z-index:1;max-width:1100px;margin:auto;padding:20px 15px 
 .room-view.responding .ai-figure{animation:respondFloat 2s ease-in-out infinite}
 .room-view.responding .ai-core{animation:coreBeat 1.4s ease-in-out infinite alternate}
 .room-view.responding .ai-scan{opacity:.9}
-
-/* CHAT */
 .room-content{position:relative;z-index:2;max-width:760px;margin:12px auto 0}
 .chatbox{display:block;padding:15px;border:1px solid #34749a;border-radius:16px;background:#061323cc;backdrop-filter:blur(12px)}
 .nova-view .chatbox{border-color:#79569a;background:#150e20cc}
@@ -256,42 +137,25 @@ main{position:relative;z-index:1;max-width:1100px;margin:auto;padding:20px 15px 
 .input-row{display:flex;gap:8px}
 .chat-input{flex:1;min-width:0;background:#061323;color:white;border:1px solid #39739b;border-radius:10px;padding:14px;font-size:13px;outline:none}
 .nova-view .chat-input{background:#150e20;border-color:#79569a}
-.send{border:0;border-radius:10px;padding:0 17px;background:#087db9;color:white;font-weight:bold;font-size:10px;cursor:pointer}
+.send{border:0;border-radius:10px;padding:0 17px;background:#087db9;color:white;font-weight:bold;font-size:10px}
 .nova-view .send{background:#7946a5}
 .send:disabled{opacity:.5}
 .tools{display:flex;gap:8px;flex-wrap:wrap;margin-top:11px}
-.tool-btn{background:#10283e;color:#b9e6ff;border:1px solid #39739b;border-radius:8px;padding:11px;font-size:9px;cursor:pointer}
+.tool-btn{background:#10283e;color:#b9e6ff;border:1px solid #39739b;border-radius:8px;padding:11px;font-size:9px}
 .nova-view .tool-btn{background:#251733;color:#e3c9ff;border-color:#79569a}
 #trendResult{white-space:pre-wrap;font-size:11px;line-height:1.7;color:#d8eaff;margin-top:12px;overflow-wrap:anywhere}
-
-/* VOICE CONTROLS */
-.voice-panel{
- margin-top:12px;padding:12px;border:1px solid #39739b;border-radius:10px;
- background:#071a2b;color:#b9e6ff
-}
+.voice-panel{margin-top:12px;padding:12px;border:1px solid #39739b;border-radius:10px;background:#071a2b;color:#b9e6ff}
 .nova-view .voice-panel{border-color:#79569a;background:#1b1028;color:#e3c9ff}
 .voice-heading{font-size:9px;letter-spacing:2px;margin-bottom:9px}
 .voice-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-.voice-select{
- flex:1;min-width:150px;padding:10px;border-radius:8px;
- color:#eaf6ff;background:#061323;border:1px solid #39739b;font-size:11px
-}
+.voice-select{flex:1;min-width:150px;padding:10px;border-radius:8px;color:#eaf6ff;background:#061323;border:1px solid #39739b;font-size:11px}
 .nova-view .voice-select{background:#150e20;border-color:#79569a}
-.voice-test,.speak-btn{
- border:1px solid #42caff88;border-radius:8px;
- background:#08243a;color:#a9eaff;padding:10px 12px;
- font-size:9px;letter-spacing:1px;cursor:pointer
-}
-.nova-view .voice-test,.nova-view .speak-btn{
- border-color:#bd80ff88;background:#261638;color:#e7caff
-}
+.voice-test,.speak-btn{border:1px solid #42caff88;border-radius:8px;background:#08243a;color:#a9eaff;padding:10px 12px;font-size:9px;letter-spacing:1px}
+.nova-view .voice-test,.nova-view .speak-btn{border-color:#bd80ff88;background:#261638;color:#e7caff}
 .voice-note{font-size:9px;line-height:1.5;color:#91a9c2;margin-top:8px}
 .speak-btn{display:block;margin-top:9px}
-.speak-btn:active,.voice-test:active{transform:scale(.97)}
 .speak-btn.speaking{border-color:#70f5c6;color:#70f5c6}
 .voice-status{font-size:9px;color:#70f5c6;margin-top:8px;min-height:12px}
-
-/* SYSTEM MONITOR */
 .panel{position:relative;z-index:1;border:1px solid #24496b;border-radius:16px;padding:17px;background:#091629;margin-top:22px;box-shadow:0 0 25px #008cff10}
 .panel h3{font-size:10px;letter-spacing:2px;color:#75cfff}
 .panel p{font-size:11px;color:#9db7cb;line-height:1.5}
@@ -302,43 +166,18 @@ main{position:relative;z-index:1;max-width:1100px;margin:auto;padding:20px 15px 
 .system-footer{text-align:center;margin-top:20px;padding:15px;color:#6687a3;font-size:9px;letter-spacing:2px;line-height:2}
 
 /* ACTIVITY CENTER */
-.activity-panel{
- position:relative;z-index:1;margin-top:22px;padding:17px;
- border:1px solid #287da5;border-radius:16px;
- background:linear-gradient(145deg,#091b30,#071020);
- box-shadow:0 0 25px #008cff13
-}
-.activity-heading{
- display:flex;justify-content:space-between;align-items:center;
- gap:10px;flex-wrap:wrap
-}
-.activity-heading h3{
- margin:0;font-size:11px;letter-spacing:2px;color:#75dfff
-}
-.activity-subtitle{
- margin:8px 0 15px;color:#91a9c2;font-size:10px;line-height:1.6
-}
-.activity-actions{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
-.activity-btn{
- padding:10px 12px;border:1px solid #3999c2;border-radius:8px;
- background:#0b2941;color:#bdeeff;font-size:9px;letter-spacing:1px;
- cursor:pointer
-}
-.activity-btn.nova-action{border-color:#9465bd;background:#29183d;color:#e4caff}
-.activity-btn.clear-action{border-color:#8b505b;background:#301820;color:#ffc6ce}
-.activity-list{display:flex;flex-direction:column;gap:8px}
-.activity-entry{
- display:flex;justify-content:space-between;align-items:flex-start;
- gap:12px;padding:11px 12px;border-radius:8px;
- border-left:3px solid #39c8ff;background:#0c2035
-}
-.activity-entry.nova-entry{border-left-color:#bd80ff}
-.activity-entry.system-entry{border-left-color:#70f5c6}
-.activity-message{font-size:11px;line-height:1.5;color:#d7edff;overflow-wrap:anywhere}
-.activity-time{font-size:9px;color:#83a8c1;white-space:nowrap}
-.activity-empty{padding:15px;color:#91a9c2;font-size:11px;text-align:center}
-.activity-count{font-size:9px;color:#70f5c6;letter-spacing:1px}
-
+.activity-actions{display:flex;gap:8px;flex-wrap:wrap;margin:13px 0}
+.activity-btn{flex:1;min-width:130px;padding:12px;border:1px solid #3289b9;border-radius:9px;background:#0b2942;color:#bdeeff;font-size:9px;letter-spacing:1px}
+.activity-btn.nova-btn{border-color:#9865ca;background:#29183b;color:#e5caff}
+.activity-btn.clear-btn{flex:0 0 auto;min-width:auto;border-color:#79515a;background:#301820;color:#ffc4c4}
+.activity-list{display:flex;flex-direction:column;gap:7px;margin-top:12px}
+.activity-entry{display:flex;align-items:flex-start;gap:10px;padding:11px;background:#0b2034;border:1px solid #234766;border-radius:9px}
+.activity-icon{font-size:16px;min-width:22px;text-align:center}
+.activity-detail{flex:1;min-width:0}
+.activity-name{font-size:10px;color:#d8efff;line-height:1.5;overflow-wrap:anywhere}
+.activity-time{font-size:9px;color:#7898b2;margin-top:4px}
+.activity-empty{padding:20px;text-align:center;color:#7898b2;font-size:11px;border:1px dashed #31516b;border-radius:9px}
+.activity-count{font-size:9px;color:#7ea4c2;letter-spacing:1px}
 @keyframes spin{to{transform:rotate(360deg)}}
 @keyframes float{0%,100%{translate:0 0}50%{translate:0 -10px}}
 @keyframes activeFloat{0%,100%{translate:0 0}50%{translate:0 -15px}}
@@ -352,31 +191,18 @@ main{position:relative;z-index:1;max-width:1100px;margin:auto;padding:20px 15px 
 @keyframes roomEnter{from{opacity:0;transform:scale(.96) translateY(15px);filter:blur(5px)}to{opacity:1;transform:scale(1) translateY(0);filter:blur(0)}}
 @keyframes monitorPulse{from{opacity:.3}to{opacity:1}}
 @keyframes graphMove{from{transform:scaleY(.65)}to{transform:scaleY(1)}}
-
 @media(max-width:650px){
- main{padding:14px 10px 28px}
- .rooms{grid-template-columns:1fr}
- .room-card{padding:17px}
- .headquarters{min-height:390px}
- .room-visual{height:150px}
+ main{padding:14px 10px 28px}.rooms{grid-template-columns:1fr}.room-card{padding:17px}
+ .headquarters{min-height:390px}.room-visual{height:150px}
  .room-view{padding:13px;min-height:calc(100vh - 135px)}
- .messages{height:230px}
- .room-heading{padding-top:18px}
- .workstation-stage{height:310px}
- .ai-figure{top:12px;width:165px;height:220px}
- .ai-monitor{height:95px;bottom:55px;width:94%}
- .monitor-content{height:58px}
- .ai-desk{bottom:30px}
- .ai-floor{width:240px}
- .voice-select{width:100%}
- .activity-entry{flex-direction:column;gap:5px}
+ .messages{height:230px}.room-heading{padding-top:18px}
+ .workstation-stage{height:310px}.ai-figure{top:12px;width:165px;height:220px}
+ .ai-monitor{height:95px;bottom:55px;width:94%}.monitor-content{height:58px}
+ .ai-desk{bottom:30px}.ai-floor{width:240px}.voice-select{width:100%}
 }
-@media(prefers-reduced-motion:reduce){
- *,*:before,*:after{animation:none!important;scroll-behavior:auto!important}
-}
+@media(prefers-reduced-motion:reduce){*,*:before,*:after{animation:none!important;scroll-behavior:auto!important}}
 </style>
 </head>
-
 <body>
 <header>
  <div class="logo">PERSONAL ARTIFICIAL INTELLIGENCE</div>
@@ -390,11 +216,7 @@ main{position:relative;z-index:1;max-width:1100px;margin:auto;padding:20px 15px 
  <div class="section-label">CENTRAL COMMAND / ÖVERSIKT</div>
  <section class="headquarters">
   <div class="hq-caption">CENTRAL AI CORE / SYSTEM 01</div>
-  <div class="core">
-   <div class="core-ring"></div><div class="core-ring r2"></div>
-   <div class="core-ring r3"></div><div class="core-ring r4"></div>
-   <div class="core-center"><span>AI</span></div>
-  </div>
+  <div class="core"><div class="core-ring"></div><div class="core-ring r2"></div><div class="core-ring r3"></div><div class="core-ring r4"></div><div class="core-center"><span>AI</span></div></div>
   <div class="core-floor"></div>
   <div class="hq-name">AI HEADQUARTERS</div>
   <div class="hq-desc">Ett gemensamt högkvarter för två avancerade AI-system. Välj ett rum för att gå in i respektive AI-miljö.</div>
@@ -404,50 +226,17 @@ main{position:relative;z-index:1;max-width:1100px;margin:auto;padding:20px 15px 
  <div class="section-label">VÄLJ DITT AI-RUM / SELECT DESTINATION</div>
  <div class="rooms">
   <section class="room-card">
-   <div class="room-code">01 / MAIN CONTROL ROOM</div>
-   <h2>JARVIS</h2>
+   <div class="room-code">01 / MAIN CONTROL ROOM</div><h2>JARVIS</h2>
    <div class="room-desc">Din personliga AI-assistent. Teknik, planering, research och problemlösning.</div>
-   <div class="room-visual">
-    <div class="orbit"></div>
-    <div class="avatar">
-     <svg viewBox="0 0 145 195">
-      <circle cx="72" cy="39" r="24"/>
-      <path d="M55 67 L48 83 L32 91 L20 123 L25 174 L120 174 L125 123 L112 91 L96 83 L89 67"/>
-      <path d="M48 91 L72 108 L96 91 M72 108 L72 174"/>
-      <path d="M55 37 L64 37 M81 37 L90 37 M63 53 Q72 59 81 53"/>
-      <path d="M48 91 L39 135 M96 91 L105 135 M58 80 L72 88 L86 80"/>
-     </svg>
-    </div>
-    <div class="room-floor"></div>
-   </div>
-   <div class="room-features">
-    <span class="feature">PERSONLIG AI</span><span class="feature">PLANERING</span>
-    <span class="feature">RESEARCH</span><span class="feature">TEKNIK</span>
-   </div>
+   <div class="room-visual"><div class="orbit"></div><div class="avatar"><svg viewBox="0 0 145 195"><circle cx="72" cy="39" r="24"/><path d="M55 67 L48 83 L32 91 L20 123 L25 174 L120 174 L125 123 L112 91 L96 83 L89 67"/><path d="M48 91 L72 108 L96 91 M72 108 L72 174"/><path d="M55 37 L64 37 M81 37 L90 37 M63 53 Q72 59 81 53"/><path d="M48 91 L39 135 M96 91 L105 135 M58 80 L72 88 L86 80"/></svg></div><div class="room-floor"></div></div>
+   <div class="room-features"><span class="feature">PERSONLIG AI</span><span class="feature">PLANERING</span><span class="feature">RESEARCH</span><span class="feature">TEKNIK</span></div>
    <button class="launch" onclick="enterRoom('jarvis')">GÅ IN I JARVIS RUM →</button>
   </section>
-
   <section class="room-card nova">
-   <div class="room-code">02 / CREATIVE PRODUCTION STUDIO</div>
-   <h2>NOVA</h2>
+   <div class="room-code">02 / CREATIVE PRODUCTION STUDIO</div><h2>NOVA</h2>
    <div class="room-desc">Din kreativa AI-produktionsassistent. Från idé till färdig YouTube-video.</div>
-   <div class="room-visual">
-    <div class="orbit"></div>
-    <div class="avatar">
-     <svg viewBox="0 0 145 195">
-      <circle cx="72" cy="39" r="24"/>
-      <path d="M55 67 L48 83 L32 91 L20 123 L25 174 L120 174 L125 123 L112 91 L96 83 L89 67"/>
-      <path d="M48 91 L72 108 L96 91 M72 108 L72 174"/>
-      <path d="M55 37 L64 37 M81 37 L90 37 M63 53 Q72 59 81 53"/>
-      <path d="M48 91 L39 135 M96 91 L105 135 M58 80 L72 88 L86 80"/>
-     </svg>
-    </div>
-    <div class="room-floor"></div>
-   </div>
-   <div class="room-features">
-    <span class="feature">YOUTUBE</span><span class="feature">VIDEO</span>
-    <span class="feature">MANUS</span><span class="feature">TRENDER</span><span class="feature">THUMBNAILS</span>
-   </div>
+   <div class="room-visual"><div class="orbit"></div><div class="avatar"><svg viewBox="0 0 145 195"><circle cx="72" cy="39" r="24"/><path d="M55 67 L48 83 L32 91 L20 123 L25 174 L120 174 L125 123 L112 91 L96 83 L89 67"/><path d="M48 91 L72 108 L96 91 M72 108 L72 174"/><path d="M55 37 L64 37 M81 37 L90 37 M63 53 Q72 59 81 53"/><path d="M48 91 L39 135 M96 91 L105 135 M58 80 L72 88 L86 80"/></svg></div><div class="room-floor"></div></div>
+   <div class="room-features"><span class="feature">YOUTUBE</span><span class="feature">VIDEO</span><span class="feature">MANUS</span><span class="feature">TRENDER</span><span class="feature">THUMBNAILS</span></div>
    <button class="launch" onclick="enterRoom('nova')">GÅ IN I NOVA STUDIO →</button>
   </section>
  </div>
@@ -466,287 +255,167 @@ main{position:relative;z-index:1;max-width:1100px;margin:auto;padding:20px 15px 
  </section>
 
  <!-- NEW ACTIVITY CENTER -->
- <section class="activity-panel" id="activityCenter">
-  <div class="activity-heading">
-   <h3>AI ACTIVITY CENTER</h3>
-   <div class="activity-count" id="activityCount">0 HÄNDELSER</div>
-  </div>
-  <div class="activity-subtitle">
-   Gemensam aktivitetslogg för JARVIS och NOVA. Här ser du vad systemen arbetar med och när det händer.
-  </div>
+ <section class="panel" id="activityPanel">
+  <h3>AI ACTIVITY CENTER / AKTIVITETSCENTRAL</h3>
+  <p>En samlad översikt över vad som händer i JARVIS och NOVA.</p>
   <div class="activity-actions">
-   <button class="activity-btn" onclick="enterRoom('jarvis')">🔵 ÖPPNA JARVIS</button>
-   <button class="activity-btn nova-action" onclick="enterRoom('nova')">🟣 ÖPPNA NOVA</button>
-   <button class="activity-btn clear-action" onclick="clearActivity()">RENSA HISTORIK</button>
+   <button class="activity-btn" onclick="enterRoom('jarvis')">✦ ÖPPNA JARVIS</button>
+   <button class="activity-btn nova-btn" onclick="enterRoom('nova')">✧ ÖPPNA NOVA</button>
   </div>
-  <div class="activity-list" id="activityList">
-   <div class="activity-empty">Laddar aktivitetsloggen...</div>
+  <div class="activity-count" id="activityCount">0 REGISTRERADE HÄNDELSER</div>
+  <div class="activity-list" id="activityList"><div class="activity-empty">Aktiviteter visas här när du börjar använda systemen.</div></div>
+  <div class="activity-actions">
+   <button class="activity-btn clear-btn" onclick="clearActivity()">RENSA AKTIVITETSLOGG</button>
   </div>
  </section>
 </div>
 
 <!-- JARVIS ROOM -->
 <section class="room-view hidden" id="jarvisView">
- <div class="room-topbar">
-  <button class="back-btn" onclick="goHome()">← TILL HUVUDCENTRALEN</button>
-  <div class="room-live" id="jarvisLive">● JARVIS ONLINE</div>
- </div>
- <div class="room-heading">
-  <div class="eyebrow">01 / MAIN CONTROL ROOM</div>
-  <h2>JARVIS</h2>
-  <p>Personlig AI-assistent. Redo att hjälpa dig med teknik, vardag, research och planering.</p>
- </div>
-
+ <div class="room-topbar"><button class="back-btn" onclick="goHome()">← TILL HUVUDCENTRALEN</button><div class="room-live" id="jarvisLive">● JARVIS ONLINE</div></div>
+ <div class="room-heading"><div class="eyebrow">01 / MAIN CONTROL ROOM</div><h2>JARVIS</h2><p>Personlig AI-assistent. Redo att hjälpa dig med teknik, vardag, research och planering.</p></div>
  <div class="workstation-stage">
   <div class="holo-grid"></div><div class="projection-beam"></div><div class="ai-scan"></div>
-  <div class="ai-figure">
-   <svg viewBox="0 0 180 250" aria-label="JARVIS hologram">
-    <ellipse cx="90" cy="239" rx="49" ry="7"/>
-    <path d="M62 36 Q62 8 90 8 Q118 8 118 36 L115 61 Q110 79 90 82 Q70 79 65 61 Z"/>
-    <path d="M62 31 Q90 15 118 31 M64 43 L55 49 L65 57 M116 43 L125 49 L115 57"/>
-    <path d="M70 47 L82 47 M98 47 L110 47"/>
-    <circle class="ai-eyes" cx="76" cy="47" r="4"/><circle class="ai-eyes" cx="104" cy="47" r="4"/>
-    <path d="M90 50 L86 61 L94 61 M80 69 Q90 74 100 69"/>
-    <path d="M78 78 L78 91 L102 91 L102 78"/>
-    <path d="M78 89 Q57 91 43 103 L29 125 L38 165 L58 178 L122 178 L142 165 L151 125 L137 103 Q123 91 102 89 Z"/>
-    <path d="M43 105 Q20 116 22 145 L34 181 L49 176 L47 143 L62 126"/>
-    <path d="M137 105 Q160 116 158 145 L146 181 L131 176 L133 143 L118 126"/>
-    <path d="M34 181 L30 203 L47 207 L53 180 M146 181 L150 203 L133 207 L127 180"/>
-    <path d="M59 103 L90 121 L121 103 M59 103 L67 150 L90 164 L113 150 L121 103"/>
-    <path d="M67 150 L90 137 L113 150 M90 121 L90 164"/>
-    <circle class="ai-core" cx="90" cy="139" r="8"/>
-    <path d="M43 124 L57 133 M137 124 L123 133"/>
-    <path d="M58 178 L53 221 L72 229 L90 222 L108 229 L127 221 L122 178"/>
-    <path d="M72 229 L69 239 M108 229 L111 239 M53 221 L127 221"/>
-    <path d="M90 8 L90 0 M62 36 L49 29 M118 36 L131 29"/>
-    <path d="M46 112 L38 118 M134 112 L142 118"/>
-   </svg>
-  </div>
-  <div class="ai-monitor">
-   <div class="monitor-top"><span>JARVIS / MAIN CONTROL</span><span id="jarvisMonitorStatus">● SYSTEM ACTIVE</span></div>
-   <div class="monitor-content">
-    <div class="monitor-panel"><div class="monitor-line"></div><div class="monitor-line"></div><div class="monitor-line"></div></div>
-    <div class="monitor-panel"><div class="monitor-graph"><span></span><span></span><span></span><span></span><span></span><span></span></div></div>
-    <div class="monitor-panel"><div class="monitor-line"></div><div class="monitor-line"></div><div class="monitor-line"></div></div>
-   </div>
-  </div>
+  <div class="ai-figure"><svg viewBox="0 0 180 250" aria-label="JARVIS hologram">
+   <ellipse cx="90" cy="239" rx="49" ry="7"/><path d="M62 36 Q62 8 90 8 Q118 8 118 36 L115 61 Q110 79 90 82 Q70 79 65 61 Z"/>
+   <path d="M62 31 Q90 15 118 31 M64 43 L55 49 L65 57 M116 43 L125 49 L115 57 M70 47 L82 47 M98 47 L110 47"/>
+   <circle class="ai-eyes" cx="76" cy="47" r="4"/><circle class="ai-eyes" cx="104" cy="47" r="4"/>
+   <path d="M90 50 L86 61 L94 61 M80 69 Q90 74 100 69 M78 78 L78 91 L102 91 L102 78"/>
+   <path d="M78 89 Q57 91 43 103 L29 125 L38 165 L58 178 L122 178 L142 165 L151 125 L137 103 Q123 91 102 89 Z"/>
+   <path d="M43 105 Q20 116 22 145 L34 181 L49 176 L47 143 L62 126 M137 105 Q160 116 158 145 L146 181 L131 176 L133 143 L118 126"/>
+   <path d="M34 181 L30 203 L47 207 L53 180 M146 181 L150 203 L133 207 L127 180 M59 103 L90 121 L121 103 M59 103 L67 150 L90 164 L113 150 L121 103 M67 150 L90 137 L113 150 M90 121 L90 164"/>
+   <circle class="ai-core" cx="90" cy="139" r="8"/><path d="M43 124 L57 133 M137 124 L123 133 M58 178 L53 221 L72 229 L90 222 L108 229 L127 221 L122 178 M72 229 L69 239 M108 229 L111 239 M53 221 L127 221 M90 8 L90 0 M62 36 L49 29 M118 36 L131 29 M46 112 L38 118 M134 112 L142 118"/>
+  </svg></div>
+  <div class="ai-monitor"><div class="monitor-top"><span>JARVIS / MAIN CONTROL</span><span id="jarvisMonitorStatus">● SYSTEM ACTIVE</span></div><div class="monitor-content"><div class="monitor-panel"><div class="monitor-line"></div><div class="monitor-line"></div><div class="monitor-line"></div></div><div class="monitor-panel"><div class="monitor-graph"><span></span><span></span><span></span><span></span><span></span><span></span></div></div><div class="monitor-panel"><div class="monitor-line"></div><div class="monitor-line"></div><div class="monitor-line"></div></div></div></div>
   <div class="ai-desk"></div><div class="ai-floor"></div>
  </div>
-
- <div class="room-content">
-  <div class="chatbox">
-   <div class="chat-title">JARVIS / SECURE AI CONNECTION</div>
-   <div class="messages" id="jarvisMessages"><div class="msg ai">God dag. JARVIS är redo. Vad kan jag hjälpa dig med?</div></div>
-
-   <div class="voice-panel">
-    <div class="voice-heading">JARVIS / RÖSTINSTÄLLNINGAR</div>
-    <div class="voice-row">
-     <select class="voice-select" id="jarvisVoiceSelect" aria-label="Välj JARVIS-röst">
-      <option value="">Laddar tillgängliga röster...</option>
-     </select>
-     <button class="voice-test" onclick="testVoice('jarvis')">TESTA RÖST</button>
-    </div>
-    <div class="voice-note">Välj en svensk röst om en sådan finns tillgänglig på din enhet.</div>
-    <div class="voice-status" id="jarvisVoiceStatus">Röstsystem redo.</div>
-   </div>
-
-   <form class="input-row" onsubmit="sendMessage(event,'jarvis')">
-    <input class="chat-input" id="jarvisInput" placeholder="Skriv till JARVIS..." autocomplete="off">
-    <button class="send" id="jarvisSend">SKICKA</button>
-   </form>
-  </div>
- </div>
+ <div class="room-content"><div class="chatbox">
+  <div class="chat-title">JARVIS / SECURE AI CONNECTION</div>
+  <div class="messages" id="jarvisMessages"><div class="msg ai">God dag. JARVIS är redo. Vad kan jag hjälpa dig med?</div></div>
+  <div class="voice-panel"><div class="voice-heading">JARVIS / RÖSTINSTÄLLNINGAR</div><div class="voice-row"><select class="voice-select" id="jarvisVoiceSelect" aria-label="Välj JARVIS-röst"><option value="">Laddar tillgängliga röster...</option></select><button class="voice-test" onclick="testVoice('jarvis')">TESTA RÖST</button></div><div class="voice-note">Välj en svensk röst om en sådan finns tillgänglig på din enhet.</div><div class="voice-status" id="jarvisVoiceStatus">Röstsystem redo.</div></div>
+  <form class="input-row" onsubmit="sendMessage(event,'jarvis')"><input class="chat-input" id="jarvisInput" placeholder="Skriv till JARVIS..." autocomplete="off"><button class="send" id="jarvisSend">SKICKA</button></form>
+ </div></div>
 </section>
 
 <!-- NOVA ROOM -->
 <section class="room-view nova-view hidden" id="novaView">
- <div class="room-topbar">
-  <button class="back-btn" onclick="goHome()">← TILL HUVUDCENTRALEN</button>
-  <div class="room-live" id="novaLive">● NOVA ONLINE</div>
- </div>
- <div class="room-heading">
-  <div class="eyebrow">02 / CREATIVE PRODUCTION STUDIO</div>
-  <h2>NOVA</h2>
-  <p>Kreativ produktionsstudio. Från trendspaning och manus till färdigt YouTube-innehåll.</p>
- </div>
-
+ <div class="room-topbar"><button class="back-btn" onclick="goHome()">← TILL HUVUDCENTRALEN</button><div class="room-live" id="novaLive">● NOVA ONLINE</div></div>
+ <div class="room-heading"><div class="eyebrow">02 / CREATIVE PRODUCTION STUDIO</div><h2>NOVA</h2><p>Kreativ produktionsstudio. Från trendspaning och manus till färdigt YouTube-innehåll.</p></div>
  <div class="workstation-stage">
   <div class="holo-grid"></div><div class="projection-beam"></div><div class="ai-scan"></div>
-  <div class="ai-figure">
-   <svg viewBox="0 0 180 250" aria-label="NOVA hologram">
-    <ellipse cx="90" cy="239" rx="49" ry="7"/>
-    <path d="M62 36 Q62 8 90 8 Q118 8 118 36 L115 61 Q110 79 90 82 Q70 79 65 61 Z"/>
-    <path d="M62 31 Q90 15 118 31 M64 43 L55 49 L65 57 M116 43 L125 49 L115 57"/>
-    <path d="M70 47 L82 47 M98 47 L110 47"/>
-    <circle class="ai-eyes" cx="76" cy="47" r="4"/><circle class="ai-eyes" cx="104" cy="47" r="4"/>
-    <path d="M90 50 L86 61 L94 61 M80 69 Q90 74 100 69"/>
-    <path d="M78 78 L78 91 L102 91 L102 78"/>
-    <path d="M78 89 Q57 91 43 103 L29 125 L38 165 L58 178 L122 178 L142 165 L151 125 L137 103 Q123 91 102 89 Z"/>
-    <path d="M43 105 Q20 116 22 145 L34 181 L49 176 L47 143 L62 126"/>
-    <path d="M137 105 Q160 116 158 145 L146 181 L131 176 L133 143 L118 126"/>
-    <path d="M34 181 L30 203 L47 207 L53 180 M146 181 L150 203 L133 207 L127 180"/>
-    <path d="M59 103 L90 121 L121 103 M59 103 L67 150 L90 164 L113 150 L121 103"/>
-    <path d="M67 150 L90 137 L113 150 M90 121 L90 164"/>
-    <circle class="ai-core" cx="90" cy="139" r="8"/>
-    <path d="M43 124 L57 133 M137 124 L123 133"/>
-    <path d="M58 178 L53 221 L72 229 L90 222 L108 229 L127 221 L122 178"/>
-    <path d="M72 229 L69 239 M108 229 L111 239 M53 221 L127 221"/>
-    <path d="M90 8 L90 0 M62 36 L49 29 M118 36 L131 29"/>
-    <path d="M46 112 L38 118 M134 112 L142 118"/>
-   </svg>
-  </div>
-  <div class="ai-monitor">
-   <div class="monitor-top"><span>NOVA / CREATIVE STUDIO</span><span id="novaMonitorStatus">● PRODUCTION ACTIVE</span></div>
-   <div class="monitor-content">
-    <div class="monitor-panel"><div class="monitor-line"></div><div class="monitor-line"></div><div class="monitor-line"></div></div>
-    <div class="monitor-panel"><div class="monitor-graph"><span></span><span></span><span></span><span></span><span></span><span></span></div></div>
-    <div class="monitor-panel"><div class="monitor-line"></div><div class="monitor-line"></div><div class="monitor-line"></div></div>
-   </div>
-  </div>
+  <div class="ai-figure"><svg viewBox="0 0 180 250" aria-label="NOVA hologram">
+   <ellipse cx="90" cy="239" rx="49" ry="7"/><path d="M62 36 Q62 8 90 8 Q118 8 118 36 L115 61 Q110 79 90 82 Q70 79 65 61 Z"/>
+   <path d="M62 31 Q90 15 118 31 M64 43 L55 49 L65 57 M116 43 L125 49 L115 57 M70 47 L82 47 M98 47 L110 47"/>
+   <circle class="ai-eyes" cx="76" cy="47" r="4"/><circle class="ai-eyes" cx="104" cy="47" r="4"/>
+   <path d="M90 50 L86 61 L94 61 M80 69 Q90 74 100 69 M78 78 L78 91 L102 91 L102 78"/>
+   <path d="M78 89 Q57 91 43 103 L29 125 L38 165 L58 178 L122 178 L142 165 L151 125 L137 103 Q123 91 102 89 Z"/>
+   <path d="M43 105 Q20 116 22 145 L34 181 L49 176 L47 143 L62 126 M137 105 Q160 116 158 145 L146 181 L131 176 L133 143 L118 126"/>
+   <path d="M34 181 L30 203 L47 207 L53 180 M146 181 L150 203 L133 207 L127 180 M59 103 L90 121 L121 103 M59 103 L67 150 L90 164 L113 150 L121 103 M67 150 L90 137 L113 150 M90 121 L90 164"/>
+   <circle class="ai-core" cx="90" cy="139" r="8"/><path d="M43 124 L57 133 M137 124 L123 133 M58 178 L53 221 L72 229 L90 222 L108 229 L127 221 L122 178 M72 229 L69 239 M108 229 L111 239 M53 221 L127 221 M90 8 L90 0 M62 36 L49 29 M118 36 L131 29 M46 112 L38 118 M134 112 L142 118"/>
+  </svg></div>
+  <div class="ai-monitor"><div class="monitor-top"><span>NOVA / CREATIVE STUDIO</span><span id="novaMonitorStatus">● PRODUCTION ACTIVE</span></div><div class="monitor-content"><div class="monitor-panel"><div class="monitor-line"></div><div class="monitor-line"></div><div class="monitor-line"></div></div><div class="monitor-panel"><div class="monitor-graph"><span></span><span></span><span></span><span></span><span></span><span></span></div></div><div class="monitor-panel"><div class="monitor-line"></div><div class="monitor-line"></div><div class="monitor-line"></div></div></div></div>
   <div class="ai-desk"></div><div class="ai-floor"></div>
  </div>
-
- <div class="room-content">
-  <div class="chatbox">
-   <div class="chat-title">NOVA / CREATIVE AI CONNECTION</div>
-   <div class="messages" id="novaMessages"><div class="msg ai">Hej! NOVA är redo att utveckla dina YouTube-projekt. Vad ska vi skapa?</div></div>
-
-   <div class="voice-panel">
-    <div class="voice-heading">NOVA / RÖSTINSTÄLLNINGAR</div>
-    <div class="voice-row">
-     <select class="voice-select" id="novaVoiceSelect" aria-label="Välj NOVA-röst">
-      <option value="">Laddar tillgängliga röster...</option>
-     </select>
-     <button class="voice-test" onclick="testVoice('nova')">TESTA RÖST</button>
-    </div>
-    <div class="voice-note">Välj en svensk röst om en sådan finns tillgänglig på din enhet.</div>
-    <div class="voice-status" id="novaVoiceStatus">Röstsystem redo.</div>
-   </div>
-
-   <form class="input-row" onsubmit="sendMessage(event,'nova')">
-    <input class="chat-input" id="novaInput" placeholder="Skriv till NOVA..." autocomplete="off">
-    <button class="send" id="novaSend">SKICKA</button>
-   </form>
-   <div class="tools"><button class="tool-btn" onclick="runTrends()">ANALYSERA YOUTUBE-TRENDER</button></div>
-   <div id="trendResult"></div>
-  </div>
- </div>
+ <div class="room-content"><div class="chatbox">
+  <div class="chat-title">NOVA / CREATIVE AI CONNECTION</div>
+  <div class="messages" id="novaMessages"><div class="msg ai">Hej! NOVA är redo att utveckla dina YouTube-projekt. Vad ska vi skapa?</div></div>
+  <div class="voice-panel"><div class="voice-heading">NOVA / RÖSTINSTÄLLNINGAR</div><div class="voice-row"><select class="voice-select" id="novaVoiceSelect" aria-label="Välj NOVA-röst"><option value="">Laddar tillgängliga röster...</option></select><button class="voice-test" onclick="testVoice('nova')">TESTA RÖST</button></div><div class="voice-note">Välj en svensk röst om en sådan finns tillgänglig på din enhet.</div><div class="voice-status" id="novaVoiceStatus">Röstsystem redo.</div></div>
+  <form class="input-row" onsubmit="sendMessage(event,'nova')"><input class="chat-input" id="novaInput" placeholder="Skriv till NOVA..." autocomplete="off"><button class="send" id="novaSend">SKICKA</button></form>
+  <div class="tools"><button class="tool-btn" onclick="runTrends()">ANALYSERA YOUTUBE-TRENDER</button></div><div id="trendResult"></div>
+ </div></div>
 </section>
 
-<div class="system-footer">
- JARVIS × NOVA<br>
- PRIVATE ARTIFICIAL INTELLIGENCE NETWORK<br>
- ALL SYSTEMS CONNECTED THROUGH NOVA CLOUD
-</div>
+<div class="system-footer">JARVIS × NOVA<br>PRIVATE ARTIFICIAL INTELLIGENCE NETWORK<br>ALL SYSTEMS CONNECTED THROUGH NOVA CLOUD</div>
 </main>
 
 <script>
-const $ = id => document.getElementById(id);
-let activeRoom = null;
+const $=id=>document.getElementById(id);
+let activeRoom=null;
+let availableVoices=[];
+let activeUtterance=null;
+let activeSpeechButton=null;
+let activeSpeechRoom=null;
 
 /* ACTIVITY CENTER */
-const ACTIVITY_STORAGE_KEY = "nova_hq_activity_v1";
-const MAX_ACTIVITY_ITEMS = 20;
-let previousCloudState = null;
+const ACTIVITY_KEY="jarvis_nova_activity_v1";
+let activityLog=[];
+let previousCloudState=null;
 
-function getActivityItems(){
+function loadActivity(){
  try{
-  const stored=JSON.parse(localStorage.getItem(ACTIVITY_STORAGE_KEY)||"[]");
-  return Array.isArray(stored)?stored:[];
- }catch(error){
-  return [];
- }
+  const saved=localStorage.getItem(ACTIVITY_KEY);
+  activityLog=saved?JSON.parse(saved):[];
+  if(!Array.isArray(activityLog))activityLog=[];
+ }catch(e){activityLog=[]}
+ renderActivity();
 }
 
-function saveActivityItems(items){
- try{
-  localStorage.setItem(ACTIVITY_STORAGE_KEY,JSON.stringify(items));
- }catch(error){
-  console.warn("Kunde inte spara aktivitetsloggen.",error);
- }
+function logActivity(title,icon="✦",detail=""){
+ const entry={
+  id:Date.now()+"-"+Math.random().toString(36).slice(2,7),
+  title:String(title),
+  icon:String(icon),
+  detail:String(detail),
+  time:new Date().toISOString()
+ };
+ activityLog.unshift(entry);
+ activityLog=activityLog.slice(0,20);
+ try{localStorage.setItem(ACTIVITY_KEY,JSON.stringify(activityLog))}catch(e){}
+ renderActivity();
 }
 
 function renderActivity(){
  const list=$("activityList");
  const count=$("activityCount");
- if(!list)return;
-
- const items=getActivityItems();
+ if(!list||!count)return;
+ count.textContent=activityLog.length+" REGISTRERADE HÄNDELSER";
  list.replaceChildren();
-
- if(count){
-  count.textContent=items.length+" HÄNDELSER";
- }
-
- if(items.length===0){
+ if(!activityLog.length){
   const empty=document.createElement("div");
   empty.className="activity-empty";
-  empty.textContent="Inga händelser ännu.";
+  empty.textContent="Aktiviteter visas här när du börjar använda systemen.";
   list.appendChild(empty);
   return;
  }
-
- items.forEach(item=>{
-  const entry=document.createElement("div");
-  entry.className="activity-entry";
-
-  if(item.type==="nova")entry.classList.add("nova-entry");
-  if(item.type==="system")entry.classList.add("system-entry");
-
-  const message=document.createElement("div");
-  message.className="activity-message";
-  message.textContent=item.message;
-
+ activityLog.forEach(item=>{
+  const row=document.createElement("div");
+  row.className="activity-entry";
+  const icon=document.createElement("div");
+  icon.className="activity-icon";
+  icon.textContent=item.icon||"✦";
+  const content=document.createElement("div");
+  content.className="activity-detail";
+  const name=document.createElement("div");
+  name.className="activity-name";
+  name.textContent=item.title;
   const time=document.createElement("div");
   time.className="activity-time";
-  time.textContent=item.time;
-
-  entry.append(message,time);
-  list.appendChild(entry);
+  const date=new Date(item.time);
+  time.textContent=(Number.isNaN(date.getTime())?"":date.toLocaleDateString("sv-SE")+" "+date.toLocaleTimeString("sv-SE",{hour:"2-digit",minute:"2-digit"}))+(item.detail?" · "+item.detail:"");
+  content.append(name,time);
+  row.append(icon,content);
+  list.appendChild(row);
  });
-}
-
-function logActivity(message,type="system"){
- const items=getActivityItems();
-
- items.unshift({
-  message:String(message),
-  type:type,
-  time:new Date().toLocaleString("sv-SE",{
-   day:"2-digit",
-   month:"2-digit",
-   hour:"2-digit",
-   minute:"2-digit"
-  })
- });
-
- saveActivityItems(items.slice(0,MAX_ACTIVITY_ITEMS));
- renderActivity();
 }
 
 function clearActivity(){
- saveActivityItems([]);
- logActivity("Aktivitetshistoriken rensades.","system");
+ if(!confirm("Vill du rensa hela aktivitetsloggen?"))return;
+ activityLog=[];
+ try{localStorage.removeItem(ACTIVITY_KEY)}catch(e){}
+ renderActivity();
 }
 
-/* VOICE SYSTEM */
-let availableVoices = [];
-let activeUtterance = null;
-let activeSpeechButton = null;
-let activeSpeechRoom = null;
+loadActivity();
 
+/* VOICE SYSTEM */
 function loadVoices(){
  if(!("speechSynthesis" in window))return;
-
  availableVoices=window.speechSynthesis.getVoices();
-
  ["jarvis","nova"].forEach(room=>{
   const select=$(room+"VoiceSelect");
   if(!select)return;
-
   const previous=select.value;
   select.innerHTML="";
-
   if(!availableVoices.length){
    const option=document.createElement("option");
    option.value="";
@@ -754,47 +423,38 @@ function loadVoices(){
    select.appendChild(option);
    return;
   }
-
   const sorted=[...availableVoices].sort((a,b)=>{
    const aSv=/sv/i.test(a.lang)?0:1;
    const bSv=/sv/i.test(b.lang)?0:1;
    return aSv-bSv;
   });
-
   sorted.forEach(voice=>{
    const option=document.createElement("option");
    option.value=voice.voiceURI;
    option.textContent=voice.name+" ("+voice.lang+")";
    select.appendChild(option);
   });
-
-  if(previous && sorted.some(v=>v.voiceURI===previous)){
-   select.value=previous;
-  }else{
+  if(previous&&sorted.some(v=>v.voiceURI===previous))select.value=previous;
+  else{
    const swedish=sorted.find(v=>/^sv/i.test(v.lang));
    if(swedish)select.value=swedish.voiceURI;
   }
-
   const status=$(room+"VoiceStatus");
   if(status){
    const hasSwedish=availableVoices.some(v=>/^sv/i.test(v.lang));
-   status.textContent=hasSwedish
-    ?"Svenska röster hittades."
-    :"Ingen svensk röst hittades. Standardröst används.";
+   status.textContent=hasSwedish?"Svenska röster hittades.":"Ingen svensk röst hittades. Standardröst används.";
   }
  });
 }
 
 function getSelectedVoice(room){
  const select=$(room+"VoiceSelect");
- if(!select || !select.value)return null;
+ if(!select||!select.value)return null;
  return availableVoices.find(v=>v.voiceURI===select.value)||null;
 }
 
 function stopSpeech(){
- if("speechSynthesis" in window){
-  window.speechSynthesis.cancel();
- }
+ if("speechSynthesis" in window)window.speechSynthesis.cancel();
  if(activeSpeechButton){
   activeSpeechButton.textContent="▶ LÄS UPP SVARET";
   activeSpeechButton.classList.remove("speaking");
@@ -815,60 +475,36 @@ function speakText(text,room,button=null){
   if(status)status.textContent="Rösten stöds inte i den här webbläsaren.";
   return;
  }
-
- if(!text || !text.trim())return;
-
+ if(!text||!text.trim())return;
  stopSpeech();
-
  const utterance=new SpeechSynthesisUtterance(text.trim());
  const voice=getSelectedVoice(room);
-
  utterance.lang=voice?voice.lang:"sv-SE";
- utterance.rate=0.95;
- utterance.pitch=0.92;
+ utterance.rate=.95;
+ utterance.pitch=.92;
  utterance.volume=1;
-
  if(voice)utterance.voice=voice;
-
  activeUtterance=utterance;
  activeSpeechButton=button;
  activeSpeechRoom=room;
-
  const status=$(room+"VoiceStatus");
-
  utterance.onstart=()=>{
-  if(button){
-   button.textContent="■ STOPPA UPPLÄSNING";
-   button.classList.add("speaking");
-  }
+  if(button){button.textContent="■ STOPPA UPPLÄSNING";button.classList.add("speaking")}
   if(status)status.textContent="AI-rösten läser upp svaret...";
   setRoomState(room,"responding");
  };
-
  utterance.onend=()=>{
-  if(button){
-   button.textContent="▶ LÄS UPP SVARET";
-   button.classList.remove("speaking");
-  }
+  if(button){button.textContent="▶ LÄS UPP SVARET";button.classList.remove("speaking")}
   if(status)status.textContent="Uppläsningen klar.";
   setRoomState(room,"idle");
-  activeUtterance=null;
-  activeSpeechButton=null;
-  activeSpeechRoom=null;
+  activeUtterance=null;activeSpeechButton=null;activeSpeechRoom=null;
  };
-
  utterance.onerror=()=>{
-  if(button){
-   button.textContent="▶ LÄS UPP SVARET";
-   button.classList.remove("speaking");
-  }
+  if(button){button.textContent="▶ LÄS UPP SVARET";button.classList.remove("speaking")}
   if(status)status.textContent="Kunde inte spela upp rösten.";
   setRoomState(room,"idle");
-  activeUtterance=null;
-  activeSpeechButton=null;
-  activeSpeechRoom=null;
+  activeUtterance=null;activeSpeechButton=null;activeSpeechRoom=null;
  };
-
  window.speechSynthesis.speak(utterance);
 }
 
@@ -876,41 +512,24 @@ function addSpeechButton(messageElement,room){
  const button=document.createElement("button");
  button.className="speak-btn";
  button.textContent="▶ LÄS UPP SVARET";
-
  button.onclick=()=>{
-  if(activeSpeechButton===button && window.speechSynthesis.speaking){
-   stopSpeech();
-   return;
-  }
-
-  const text=messageElement.dataset.speechText||"";
-  speakText(text,room,button);
+  if(activeSpeechButton===button&&window.speechSynthesis.speaking){stopSpeech();return}
+  speakText(messageElement.dataset.speechText||"",room,button);
  };
-
  messageElement.appendChild(button);
 }
 
 function testVoice(room){
- const select=$(room+"VoiceSelect");
-
- if("speechSynthesis" in window){
-  loadVoices();
- }
-
+ if("speechSynthesis" in window)loadVoices();
  const voice=getSelectedVoice(room);
  const name=voice?voice.name:"standardrösten";
-
- const text=room==="jarvis"
-  ?"Hej. Jag är JARVIS. Röstsystemet fungerar och jag är redo att hjälpa dig."
-  :"Hej! Jag är NOVA. Nu är min svenska röst redo för kreativ produktion.";
-
+ const text=room==="jarvis"?"Hej. Jag är JARVIS. Röstsystemet fungerar och jag är redo att hjälpa dig.":"Hej! Jag är NOVA. Nu är min svenska röst redo för kreativ produktion.";
  const status=$(room+"VoiceStatus");
  if(status)status.textContent="Testar "+name+"...";
-
+ logActivity(room.toUpperCase()+" – rösttest startat","🔊",name);
  speakText(text,room);
 }
 
-/* Keep voice list updated when the browser loads its voices */
 if("speechSynthesis" in window){
  loadVoices();
  window.speechSynthesis.onvoiceschanged=loadVoices;
@@ -918,13 +537,11 @@ if("speechSynthesis" in window){
 
 /* ROOM STATES */
 function setRoomState(room,state){
- const view = $(room+"View");
+ const view=$(room+"View");
  if(!view)return;
  view.classList.remove("working","responding");
-
- const live = $(room+"Live");
- const monitor = $(room+"MonitorStatus");
-
+ const live=$(room+"Live");
+ const monitor=$(room+"MonitorStatus");
  if(state==="working"){
   view.classList.add("working");
   if(live)live.textContent="● "+room.toUpperCase()+" ARBETAR";
@@ -941,14 +558,13 @@ function setRoomState(room,state){
 
 function enterRoom(room){
  activeRoom=room;
- logActivity(room.toUpperCase()+"-rummet öppnades.",room==="nova"?"nova":"jarvis");
-
  $("homeView").classList.add("hidden");
  $("jarvisView").classList.add("hidden");
  $("novaView").classList.add("hidden");
  $(room+"View").classList.remove("hidden");
  window.scrollTo({top:0,behavior:"smooth"});
  loadVoices();
+ logActivity(room.toUpperCase()+"-rummet öppnades",room==="nova"?"✧":"✦","AI-rum aktiverat");
  setTimeout(()=>$(room+"Input").focus(),450);
 }
 
@@ -974,27 +590,20 @@ function addMessage(target,text,type="ai"){
 /* CHAT CONNECTION */
 async function sendMessage(event,assistant){
  event.preventDefault();
-
  const isNova=assistant==="nova";
  const input=$(isNova?"novaInput":"jarvisInput");
  const messages=isNova?"novaMessages":"jarvisMessages";
  const button=$(isNova?"novaSend":"jarvisSend");
  const message=input.value.trim();
-
  if(!message)return;
-
  if("speechSynthesis" in window)stopSpeech();
-
- logActivity(assistant.toUpperCase()+": nytt meddelande skickat.",assistant);
-
  addMessage(messages,message,"user");
+ logActivity(assistant.toUpperCase()+" fick ett nytt meddelande",isNova?"✧":"✦",message.length>65?message.slice(0,65)+"…":message);
  input.value="";
  button.disabled=true;
  button.textContent="...";
  setRoomState(assistant,"working");
-
  const loading=addMessage(messages,isNova?"NOVA analyserar...":"JARVIS tänker...","ai");
-
  try{
   const endpoint=isNova?"/api/nova":"/api/chat";
   const response=await fetch(endpoint,{
@@ -1002,33 +611,22 @@ async function sendMessage(event,assistant){
    headers:{"Content-Type":"application/json"},
    body:JSON.stringify({message})
   });
-
   const data=await response.json();
-
-  if(!response.ok){
-   throw new Error(typeof data.detail==="string"?data.detail:JSON.stringify(data.detail||data));
-  }
-
-  const reply=(data.reply||"Inget svar mottogs.")+
-   "\n\nAI-motor: "+(data.engine||"Okänd");
-
+  if(!response.ok)throw new Error(typeof data.detail==="string"?data.detail:JSON.stringify(data.detail||data));
+  const reply=(data.reply||"Inget svar mottogs.")+"\n\nAI-motor: "+(data.engine||"Okänd");
   loading.textContent=reply;
   loading.dataset.speechText=data.reply||"Inget svar mottogs.";
   addSpeechButton(loading,assistant);
-
-  logActivity(assistant.toUpperCase()+": svar mottaget från AI-motorn.",assistant);
   setRoomState(assistant,"responding");
-
+  logActivity(assistant.toUpperCase()+" svarade","✓","AI-motor: "+(data.engine||"Okänd"));
  }catch(error){
   loading.className="msg error";
   loading.textContent="Anslutningsfel: "+error.message;
-  logActivity(assistant.toUpperCase()+": fel vid kommunikation – "+error.message,"system");
+  logActivity(assistant.toUpperCase()+" – anslutningsfel","⚠",error.message);
  }finally{
   button.disabled=false;
   button.textContent="SKICKA";
-  if(!activeSpeechRoom || activeSpeechRoom!==assistant){
-   setTimeout(()=>setRoomState(assistant,"idle"),1800);
-  }
+  if(!activeSpeechRoom||activeSpeechRoom!==assistant)setTimeout(()=>setRoomState(assistant,"idle"),1800);
   input.focus();
  }
 }
@@ -1037,30 +635,19 @@ async function sendMessage(event,assistant){
 async function runTrends(){
  const result=$("trendResult");
  result.textContent="NOVA hämtar trenddata och analyserar materialet...";
- logActivity("NOVA startade en YouTube-trendanalys.","nova");
  setRoomState("nova","working");
-
+ logActivity("NOVA startade YouTube-trendanalys","📊","Trendanalys begärd");
  try{
   const response=await fetch("/api/trends/ideas",{method:"POST"});
   const data=await response.json();
-
-  if(!response.ok){
-   throw new Error(typeof data.detail==="string"?data.detail:JSON.stringify(data.detail||data));
-  }
-
+  if(!response.ok)throw new Error(typeof data.detail==="string"?data.detail:JSON.stringify(data.detail||data));
   setRoomState("nova","responding");
-
   const analysis=data.analysis||"Ingen analys returnerades.";
-  result.textContent=analysis+
-   "\n\nAI-motor: "+(data.engine||"Okänd")+
-   "\nDatakällor: "+(data.sources||[]).join(", ")+
-   "\nKontrollerade RSS-kanaler: "+(data.data_quality?.youtube_channels_checked??0);
-
-  logActivity("NOVA slutförde trendanalysen.","nova");
-
+  result.textContent=analysis+"\n\nAI-motor: "+(data.engine||"Okänd")+"\nDatakällor: "+(data.sources||[]).join(", ")+"\nKontrollerade RSS-kanaler: "+(data.data_quality?.youtube_channels_checked??0);
+  logActivity("NOVA slutförde trendanalysen","📈","AI-motor: "+(data.engine||"Okänd"));
  }catch(error){
   result.textContent="Trendanalysen kunde inte genomföras: "+error.message;
-  logActivity("NOVA:s trendanalys misslyckades: "+error.message,"system");
+  logActivity("NOVA – trendanalysen misslyckades","⚠",error.message);
  }finally{
   setTimeout(()=>setRoomState("nova","idle"),1800);
  }
@@ -1071,9 +658,7 @@ async function checkCloud(){
  try{
   const response=await fetch("/api/status");
   if(!response.ok)throw new Error("Servern svarar inte");
-
   const data=await response.json();
-
   $("topStatus").textContent="● COMMAND CENTER ONLINE";
   $("cloudStatus").textContent="● NOVA CLOUD ONLINE";
   $("cloudStatus").style.color="#69f0c0";
@@ -1082,28 +667,21 @@ async function checkCloud(){
   $("routerStatus").textContent=data.openrouter_configured?"ONLINE":"EJ ANSLUTEN";
   $("jarvisStatus").textContent=data.jarvis==="online"?"ONLINE":"OKÄND";
   $("novaStatus").textContent=data.nova==="online"?"ONLINE":"OKÄND";
-
   if(previousCloudState!=="online"){
-   logActivity("NOVA Cloud är online. Systemanslutningen fungerar.","system");
-   previousCloudState="online";
+   logActivity("NOVA Cloud är online","☁","Serverversion "+(data.version||"okänd"));
   }
-
+  previousCloudState="online";
  }catch(error){
   $("topStatus").textContent="● CLOUD EJ NÅBAR";
   $("cloudStatus").textContent="● ANSLUTNING MISSLYCKADES";
   $("cloudStatus").style.color="#ffbd70";
   $("cloudInfo").textContent="Kontrollera Render och internetanslutningen.";
-
   if(previousCloudState!=="offline"){
-   logActivity("NOVA Cloud kunde inte nås. Kontrollera anslutningen.","system");
-   previousCloudState="offline";
+   logActivity("NOVA Cloud kunde inte nås","⚠","Kontrollera server och internet");
   }
+  previousCloudState="offline";
  }
 }
-
-/* STARTUP */
-renderActivity();
-logActivity("AI Headquarters startades.","system");
 
 checkCloud();
 setInterval(checkCloud,30000);
