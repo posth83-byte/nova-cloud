@@ -765,7 +765,11 @@ def get_youtube_rss():
 
     valid_ids = resolve_youtube_channel_ids()
 
-    invalid_count = len(YOUTUBE_CHANNEL_IDS) - len(valid_ids)
+    configured_valid_ids = [
+        item for item in YOUTUBE_CHANNEL_IDS
+        if item.startswith("UC") and len(item) == 24
+    ]
+    invalid_count = max(0, len(YOUTUBE_CHANNEL_IDS) - len(configured_valid_ids))
 
     if invalid_count:
         errors.append(
@@ -1124,7 +1128,8 @@ def collect_trends():
 
     elif not YOUTUBE_CHANNEL_IDS:
         data["errors"].append(
-            "YouTube RSS väntar på kanal-ID:n i Render."
+            "YouTube RSS väntar på YOUTUBE_API_KEY i Render för att slå upp @"
+            + YOUTUBE_CHANNEL_HANDLE + "."
         )
 
     if YOUTUBE_API_KEY:
