@@ -1136,7 +1136,7 @@ async function sendMessage(event,assistant){
    loading.textContent="✓ NOVA har skapat ett komplett produktionsunderlag för din video. Manus, scener, bild- och videoprompter samt undertexter finns samlade nedanför chatten.\n\nAI-motor: "+(data.engine||"Okänd");
    loading.dataset.speechText="NOVA har skapat ett produktionsunderlag för din video.";
   }else{
-   const reply=(data.reply||"Inget svar mottogs.")+"\n\nAI-motor: "+(data.engine||"Okänd)";
+   const reply=(data.reply||"Inget svar mottogs.")+"\n\nAI-motor: "+(data.engine||"Okänd");
    loading.textContent=reply;loading.dataset.speechText=data.reply||"Inget svar mottogs.";
   }
   saveChatHistory(assistant);addSpeechButton(loading,assistant);
