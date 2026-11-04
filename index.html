@@ -477,6 +477,7 @@ main{position:relative;z-index:1;max-width:1100px;margin:auto;padding:20px 15px 
    <div class="status-item">OPENROUTER<strong id="routerStatus">Kontrollerar...</strong></div>
    <div class="status-item">JARVIS<strong id="jarvisStatus">Kontrollerar...</strong></div>
    <div class="status-item">NOVA<strong id="novaStatus">Kontrollerar...</strong></div>
+   <div class="status-item">YOUTUBE API<strong id="youtubeStatus">Kontrollerar...</strong></div>
   </div><p id="cloudInfo">Väntar på servern.</p>
  </section>
  <section class="panel" id="activityPanel">
@@ -568,7 +569,7 @@ main{position:relative;z-index:1;max-width:1100px;margin:auto;padding:20px 15px 
    <div class="messages" id="novaMessages"><div class="msg ai">Hej! NOVA är redo att utveckla dina YouTube-projekt. Vad ska vi skapa?</div></div>
    <div class="voice-panel"><div class="voice-heading">NOVA / RÖSTINSTÄLLNINGAR</div><div class="voice-row"><select class="voice-select" id="novaVoiceSelect" aria-label="Välj NOVA-röst"><option value="">Laddar tillgängliga röster...</option></select><button class="voice-test" onclick="testVoice('nova')">TESTA RÖST</button></div><div class="voice-note">Välj en svensk röst om en sådan finns tillgänglig på din enhet.</div><div class="voice-status" id="novaVoiceStatus">Röstsystem redo.</div></div>
    <form class="input-row" onsubmit="sendMessage(event,'nova')"><input class="chat-input" id="novaInput" placeholder="Skriv till NOVA..." autocomplete="off"><button class="send" id="novaSend">SKICKA</button></form>
-   <div class="tools"><button class="tool-btn" onclick="runTrends()">ANALYSERA YOUTUBE-TRENDER</button></div><div id="trendResult"></div>
+   <div class="tools"><button class="tool-btn" onclick="runTrends()">ANALYSERA YOUTUBE-TRENDER</button><button class="tool-btn" onclick="runChannelAnalytics()">ANALYSERA MINA KANALER</button></div><div id="trendResult"></div><div id="channelAnalyticsResult"></div>
   </div>
  </div>
 </section>
@@ -772,6 +773,42 @@ async function sendMessage(event,assistant){
  finally{button.disabled=false;button.textContent="SKICKA";if(!activeSpeechRoom||activeSpeechRoom!==assistant)setTimeout(()=>setRoomState(assistant,"idle"),1800);input.focus()}
 }
 
+/* EGNA YOUTUBE-KANALER */
+async function runChannelAnalytics(){
+ const result=$("channelAnalyticsResult");
+ if(!result)return;
+ result.textContent="NOVA hämtar kanalernas prenumeranter, visningar och senaste videor...";
+ setRoomState("nova","working");
+ logActivity("NOVA startade kanalstatistik","📊","YouTube Data API");
+ try{
+  const response=await fetch("/api/youtube/analytics");
+  const data=await response.json();
+  if(!response.ok)throw new Error(typeof data.detail==="string"?data.detail:JSON.stringify(data.detail||data));
+  result.replaceChildren();
+  (data.channels||[]).forEach(channel=>{
+   const card=document.createElement("section");card.className="video-card";
+   const title=document.createElement("h4");title.textContent=channel.title;card.appendChild(title);
+   const stats=document.createElement("p");
+   stats.textContent="Prenumeranter: "+(channel.subscribers===null?"Dolda":Number(channel.subscribers||0).toLocaleString("sv-SE"))+" · Totala visningar: "+Number(channel.total_views||0).toLocaleString("sv-SE")+" · Videor: "+Number(channel.video_count||0).toLocaleString("sv-SE");
+   card.appendChild(stats);
+   const list=document.createElement("div");list.className="scene-list";
+   (channel.recent_videos||[]).forEach(video=>{
+    const row=document.createElement("div");row.className="scene-card";
+    const name=document.createElement("strong");name.textContent=video.title;row.appendChild(name);
+    const detail=document.createElement("p");detail.textContent="Visningar: "+Number(video.views||0).toLocaleString("sv-SE")+" · Gilla: "+Number(video.likes||0).toLocaleString("sv-SE")+" · Kommentarer: "+Number(video.comments||0).toLocaleString("sv-SE");row.appendChild(detail);
+    if(video.url){const link=document.createElement("a");link.href=video.url;link.target="_blank";link.rel="noopener noreferrer";link.textContent="ÖPPNA VIDEO ↗";row.appendChild(link)}
+    list.appendChild(row);
+   });
+   card.appendChild(list);result.appendChild(card);
+  });
+  const note=document.createElement("p");note.textContent="Hämtad "+new Date(data.updated).toLocaleString("sv-SE")+" · Källa: "+data.source;result.appendChild(note);
+  logActivity("NOVA hämtade YouTube-kanalstatistik","✓",(data.channels||[]).length+" kanaler");
+ }catch(error){
+  result.textContent="Kunde inte hämta kanalstatistik: "+error.message;
+  logActivity("NOVA – kanalstatistik misslyckades","⚠",error.message);
+ }finally{setRoomState("nova","idle")}
+}
+
 /* YOUTUBE TRENDS */
 async function runTrends(){
  const result=$("trendResult");result.textContent="NOVA hämtar trenddata och analyserar materialet...";
@@ -957,6 +994,7 @@ async function checkCloud(){
   $("topStatus").textContent="● COMMAND CENTER ONLINE";$("cloudStatus").textContent="● NOVA CLOUD ONLINE";$("cloudStatus").style.color="#69f0c0";
   $("cloudInfo").textContent="Version "+data.version+" – servern svarar.";
   $("geminiStatus").textContent=data.gemini_configured?"ONLINE":"EJ ANSLUTEN";
+  if($("youtubeStatus"))$("youtubeStatus").textContent=data.youtube_analytics_ready?"ONLINE":"EJ KONFIGURERAD";
   $("routerStatus").textContent=data.openrouter_configured?"ONLINE":"EJ ANSLUTEN";
   $("jarvisStatus").textContent=data.jarvis==="online"?"ONLINE":"OKÄND";$("novaStatus").textContent=data.nova==="online"?"ONLINE":"OKÄND";
   if(previousCloudState!=="online")logActivity("NOVA Cloud är online","☁","Serverversion "+(data.version||"okänd"));previousCloudState="online";
