@@ -20,7 +20,7 @@ from video_engine import router as video_router
 # NOVA CLOUD – VERSION 2.2.0
 # ==========================================
 
-APP_VERSION = "2.3.0"
+APP_VERSION = "2.4.0"
 
 app = FastAPI(
     title="NOVA Cloud",
@@ -1155,6 +1155,8 @@ async def status():
         "youtube_channels_configured": len(valid_channels),
         "youtube_analytics_ready": bool(YOUTUBE_API_KEY and valid_channels),
         "youtube_publish_ready": False,
+        "youtube_channel_handle": "@mikaelposth",
+        "youtube_channel_url": "https://www.youtube.com/@mikaelposth",
         "video_planner": "online",
         "video_renderer": "online",
         "version": APP_VERSION,
