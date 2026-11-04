@@ -671,45 +671,58 @@ function testVoice(room){
 if("speechSynthesis" in window){loadVoices();window.speechSynthesis.onvoiceschanged=loadVoices}
 
 
-/* HANDS-FREE WAKE PHRASES — requires an explicit microphone tap */
-let wakeRecognition=null,wakeListening=false,wakePausedForSpeech=false,voiceConversationRoom=null,lastVoiceCommandAt=0;
+/* VOICE CONVERSATION — wake phrase + hands-free turn-taking */
+let wakeRecognition=null,wakeListening=false,wakePausedForSpeech=false,voiceConversationRoom=null;
 function wakeStatus(message){const el=$("wakeStatus");if(el)el.textContent=message}
 function startWakeListening(){
  const SpeechRecognition=window.SpeechRecognition||window.webkitSpeechRecognition;
- if(!SpeechRecognition){wakeStatus("Taligenkänning stöds inte här. Öppna JARVIS eller NOVA med rums-knapparna.");return}
- if(wakeRecognition){try{wakeRecognition.abort()}catch(e){}}
- wakeRecognition=new SpeechRecognition();wakeRecognition.lang="sv-SE";wakeRecognition.continuous=true;wakeRecognition.interimResults=false;
- wakeListening=true;voiceConversationRoom=null;
+ if(!SpeechRecognition){wakeStatus("Den här webbläsaren stöder inte röstigenkänning. Prova Safari eller använd rums-knapparna.");return}
+ if(wakeRecognition){try{wakeRecognition.onend=null;wakeRecognition.abort()}catch(e){}}
+ wakeRecognition=new SpeechRecognition();
+ wakeRecognition.lang="sv-SE";wakeRecognition.continuous=true;wakeRecognition.interimResults=false;
+ wakeListening=true;wakePausedForSpeech=false;voiceConversationRoom=null;
  $("wakeStart").disabled=true;$("wakeStop").disabled=false;
- wakeStatus("Lyssnar efter ”Hej JARVIS” eller ”Hej NOVA” …");
+ wakeStatus("Mikrofonen är aktiv. Säg ”Hej JARVIS” eller ”Hej NOVA” …");
  wakeRecognition.onresult=(event)=>{
   for(let i=event.resultIndex;i<event.results.length;i++){
    if(!event.results[i].isFinal)continue;
-   const spoken=event.results[i][0].transcript.trim(),normalized=spoken.toLowerCase().replace(/[.,!?]/g,"");
-   const jarvis=normalized.includes("hej jarvis")||normalized.includes("hey jarvis");
-   const nova=normalized.includes("hej nova")||normalized.includes("hey nova");
-   if(!voiceConversationRoom&&(jarvis||nova)){
-    const room=jarvis?"jarvis":"nova";voiceConversationRoom=room;enterRoom(room);
-    wakeStatus((room==="jarvis"?"JARVIS":"NOVA")+" aktiverad. Säg vad du vill ha hjälp med.");
-    const remainder=normalized.replace(/.*?hej\s+(jarvis|nova)/,"").trim();
+   const spoken=event.results[i][0].transcript.trim();
+   const normalized=spoken.toLowerCase().replace(/[.,!?;:]/g," ").replace(/\\s+/g," ").trim();
+   if(normalized.includes("avsluta röst")||normalized.includes("stäng av mikrofon")||normalized.includes("sluta lyssna")){stopWakeListening();return}
+   const phrase=normalized.match(/\\b(?:hej|hey)\\s+(jarvis|nova)\\b/);
+   if(phrase){
+    const room=phrase[1];voiceConversationRoom=room;enterRoom(room);
+    const remainder=normalized.replace(phrase[0],"").trim();
+    wakeStatus((room==="jarvis"?"JARVIS":"NOVA")+" är aktiv. Du kan prata helt vanligt.");
     if(remainder){const input=$(room+"Input");input.value=remainder;sendMessage({preventDefault(){}},room)}
-    else speakText(room==="jarvis"?"Hej. JARVIS lyssnar. Vad kan jag hjälpa dig med?":"Hej! NOVA lyssnar. Vad ska vi skapa?",room);
+    else speakText(room==="jarvis"?"Hej. JARVIS är här och lyssnar. Vad kan jag hjälpa dig med?":"Hej! NOVA är här och lyssnar. Vad ska vi skapa?",room);
     continue;
    }
    if(voiceConversationRoom){
     const room=voiceConversationRoom;
-    if(normalized.includes("avsluta röst")||normalized.includes("stäng av mikrofon")){stopWakeListening();return}
     const input=$(room+"Input");input.value=spoken;
-    if(Date.now()-lastVoiceCommandAt>1200){lastVoiceCommandAt=Date.now();sendMessage({preventDefault(){}},room)}
+    sendMessage({preventDefault(){}},room);
    }
   }
  };
- wakeRecognition.onerror=(event)=>{if(event.error==="not-allowed"||event.error==="service-not-allowed"){wakeStatus("Mikrofonåtkomst nekades. Tillåt mikrofon i webbläsarens inställningar.");stopWakeListening()}else if(event.error!=="no-speech"){wakeStatus("Taligenkänningen pausades ("+event.error+"). Tryck på aktivera för att försöka igen.");stopWakeListening()}};
- wakeRecognition.onend=()=>{if(wakeListening&&!wakePausedForSpeech){try{wakeRecognition.start()}catch(e){wakeStatus("Lyssningen pausades av webbläsaren. Tryck på aktivera igen.");stopWakeListening()}}};
- try{wakeRecognition.start()}catch(e){wakeStatus("Kunde inte starta mikrofonen. Kontrollera mikrofontillståndet.");stopWakeListening()}
+ wakeRecognition.onerror=(event)=>{
+  if(event.error==="not-allowed"||event.error==="service-not-allowed"){
+   wakeStatus("Mikrofonåtkomst nekades. Tillåt mikrofonen i webbläsarens inställningar.");stopWakeListening();
+  }else if(event.error!=="no-speech"&&event.error!=="aborted"){
+   wakeStatus("Röstlyssningen avbröts ("+event.error+"). Tryck på aktivera igen.");stopWakeListening();
+  }
+ };
+ wakeRecognition.onend=()=>{
+  if(wakeListening&&!wakePausedForSpeech){
+   try{wakeRecognition.start()}
+   catch(e){wakeStatus("Webbläsaren stoppade lyssningen. Tryck på aktivera igen.");stopWakeListening()}
+  }
+ };
+ try{wakeRecognition.start()}
+ catch(e){wakeStatus("Kunde inte starta mikrofonen. Kontrollera mikrofontillståndet.");stopWakeListening()}
 }
 function stopWakeListening(){
- wakeListening=false;voiceConversationRoom=null;
+ wakeListening=false;wakePausedForSpeech=false;voiceConversationRoom=null;
  if(wakeRecognition){try{wakeRecognition.onend=null;wakeRecognition.stop()}catch(e){}wakeRecognition=null}
  const start=$("wakeStart"),stop=$("wakeStop");if(start)start.disabled=false;if(stop)stop.disabled=true;
  wakeStatus("Mikrofonen är avstängd.");
