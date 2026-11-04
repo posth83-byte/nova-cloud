@@ -20,7 +20,7 @@ from video_engine import router as video_router
 # NOVA CLOUD – VERSION 2.2.0
 # ==========================================
 
-APP_VERSION = "2.4.0"
+APP_VERSION = "2.5.0"
 
 app = FastAPI(
     title="NOVA Cloud",
@@ -935,36 +935,74 @@ def get_youtube_api_popular():
     return videos
 
 
+def get_public_youtube_video_views(video_id):
+    """Read a public view count; return None when unavailable."""
+    if not video_id:
+        return None
+    url = "https://www.youtube.com/watch?v=" + quote(video_id)
+    req = urllib.request.Request(
+        url,
+        headers={
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/131.0 Safari/537.36",
+            "Accept-Language": "sv-SE,sv;q=0.9,en;q=0.8"
+        }
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=15) as response:
+            html = response.read(5000000).decode("utf-8", errors="replace")
+        match = re.search(r'"viewCount"\s*:\s*"([0-9]+)"', html)
+        if not match:
+            match = re.search(r'"viewCount"\s*:\s*([0-9]+)', html)
+        return int(match.group(1)) if match else None
+    except Exception:
+        return None
+
+
 # ==========================================
 # YOUTUBE – EGNA KANALERS ANALYS
 # ==========================================
 
 def get_youtube_channel_analytics():
-    # Gratis reservläge: använd kanalens offentliga RSS-flöde
-    # när YouTube Data API-nyckel saknas. RSS innehåller inte statistik.
+    # Gratisläge: läs visningar från offentliga videosidor, aldrig gissa noll.
     if not YOUTUBE_API_KEY:
         rss_result = get_youtube_rss()
-        recent_videos = rss_result.get("videos", [])
+        recent_videos = rss_result.get("videos", [])[:10]
         channel_id = next(
-            (
-                item for item in YOUTUBE_CHANNEL_IDS
-                if item.startswith("UC") and len(item) == 24
-            ),
+            (item for item in YOUTUBE_CHANNEL_IDS
+             if item.startswith("UC") and len(item) == 24),
             None
         )
         channel_title = (
             recent_videos[0].get("channel")
             if recent_videos else "Mikael Posth"
         )
+
+        public_videos = []
+        for video in recent_videos:
+            views = get_public_youtube_video_views(video.get("video_id"))
+            public_videos.append({
+                "title": video.get("title", ""),
+                "published": video.get("published"),
+                "views": views,
+                "likes": None,
+                "comments": None,
+                "url": video.get("url"),
+                "source": "YouTube offentlig videosida" if views is not None else "Ej tillgänglig",
+                "statistics_available": views is not None
+            })
+
+        views_found = sum(1 for video in public_videos if video.get("views") is not None)
         return {
             "status": "partial",
             "updated": datetime.now(timezone.utc).isoformat(),
-            "source": "YouTube RSS – gratisläge",
-            "analytics_available": False,
+            "source": "YouTube offentliga videosidor + RSS",
+            "analytics_available": views_found > 0,
             "message": (
-                "Kanalens senaste offentliga videor hämtas via RSS. "
-                "Visningar, prenumeranter och total statistik kräver "
-                "YouTube Data API och visas därför inte."
+                f"Visningsantal kunde läsas för {views_found} av {len(public_videos)} "
+                "senaste videor från offentliga YouTube-sidor. Kanalens totala "
+                "visningar, prenumeranter, likes och kommentarer visas inte i "
+                "gratisläget. YouTube kan begränsa automatiska hämtningar, "
+                "så vissa värden kan saknas."
             ),
             "channels": [{
                 "channel_id": channel_id,
@@ -974,18 +1012,7 @@ def get_youtube_channel_analytics():
                 "subscribers": None,
                 "total_views": None,
                 "video_count": None,
-                "recent_videos": [
-                    {
-                        "title": video.get("title", ""),
-                        "published": video.get("published"),
-                        "views": None,
-                        "likes": None,
-                        "comments": None,
-                        "url": video.get("url"),
-                        "statistics_available": False
-                    }
-                    for video in recent_videos[:10]
-                ]
+                "recent_videos": public_videos
             }],
             "channels_checked": rss_result.get("channels_checked", 0),
             "errors": rss_result.get("errors", [])
