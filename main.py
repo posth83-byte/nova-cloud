@@ -21,7 +21,7 @@ from video_engine import router as video_router
 # NOVA CLOUD – VERSION 2.2.0
 # ==========================================
 
-APP_VERSION = "2.8.0"
+APP_VERSION = "2.9.0"
 
 app = FastAPI(
     title="NOVA Cloud",
