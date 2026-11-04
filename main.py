@@ -21,7 +21,7 @@ from video_engine import router as video_router
 # NOVA CLOUD – VERSION 2.2.0
 # ==========================================
 
-APP_VERSION = "2.7.0"
+APP_VERSION = "2.8.0"
 
 app = FastAPI(
     title="NOVA Cloud",
@@ -469,13 +469,27 @@ def generate_reply(
 
     if GEMINI_API_KEY:
         try:
-            return {
-                "reply": ask_gemini(
+            try:
+                answer = ask_gemini(
                     message,
                     system_prompt,
                     max_tokens,
                     json_mode
-                ),
+                )
+            except ValueError as error:
+                # Retry once with a larger output budget when Gemini truncates.
+                if "token-gränsen nåddes" not in str(error).lower() or max_tokens >= 16384:
+                    raise
+                retry_tokens = min(max_tokens * 2, 16384)
+                answer = ask_gemini(
+                    message,
+                    system_prompt,
+                    retry_tokens,
+                    json_mode
+                )
+
+            return {
+                "reply": answer,
                 "engine": "Gemini"
             }
 
