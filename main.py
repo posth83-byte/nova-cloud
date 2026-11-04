@@ -55,7 +55,7 @@ YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY")
 YOUTUBE_CHANNEL_IDS = [
     item.strip()
     for item in os.getenv(
-        "YOUTUBE_CHANNEL_IDS", "UCIfcnFeBoXK1SKmRFBgO1ug"
+        "YOUTUBE_CHANNEL_IDS", ""
     ).replace(";", ",").split(",")
     if item.strip()
 ]
@@ -106,9 +106,8 @@ Ta ett steg i taget när det behövs.
 NOVA_PROMPT = """
 Du är NOVA, en avancerad kreativ AI-producent.
 
-Du utvecklar YouTube-kanalerna:
+Du utvecklar YouTube-kanalen:
 - Mikael Posth
-- Skuggornas Arkiv
 
 Du ansvarar för:
 - Trendanalys och videoidéer
