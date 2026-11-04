@@ -940,11 +940,56 @@ def get_youtube_api_popular():
 # ==========================================
 
 def get_youtube_channel_analytics():
+    # Gratis reservläge: använd kanalens offentliga RSS-flöde
+    # när YouTube Data API-nyckel saknas. RSS innehåller inte statistik.
     if not YOUTUBE_API_KEY:
-        raise HTTPException(
-            status_code=503,
-            detail="YOUTUBE_API_KEY saknas i Render Environment."
+        rss_result = get_youtube_rss()
+        recent_videos = rss_result.get("videos", [])
+        channel_id = next(
+            (
+                item for item in YOUTUBE_CHANNEL_IDS
+                if item.startswith("UC") and len(item) == 24
+            ),
+            None
         )
+        channel_title = (
+            recent_videos[0].get("channel")
+            if recent_videos else "Mikael Posth"
+        )
+        return {
+            "status": "partial",
+            "updated": datetime.now(timezone.utc).isoformat(),
+            "source": "YouTube RSS – gratisläge",
+            "analytics_available": False,
+            "message": (
+                "Kanalens senaste offentliga videor hämtas via RSS. "
+                "Visningar, prenumeranter och total statistik kräver "
+                "YouTube Data API och visas därför inte."
+            ),
+            "channels": [{
+                "channel_id": channel_id,
+                "title": channel_title or "Mikael Posth",
+                "description": "",
+                "published_at": None,
+                "subscribers": None,
+                "total_views": None,
+                "video_count": None,
+                "recent_videos": [
+                    {
+                        "title": video.get("title", ""),
+                        "published": video.get("published"),
+                        "views": None,
+                        "likes": None,
+                        "comments": None,
+                        "url": video.get("url"),
+                        "statistics_available": False
+                    }
+                    for video in recent_videos[:10]
+                ]
+            }],
+            "channels_checked": rss_result.get("channels_checked", 0),
+            "errors": rss_result.get("errors", [])
+        }
 
     if not YOUTUBE_CHANNEL_IDS and not YOUTUBE_CHANNEL_HANDLE:
         raise HTTPException(
