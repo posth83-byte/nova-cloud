@@ -1131,6 +1131,7 @@ async function sendMessage(event,assistant){
   data=await response.json();
   if(!response.ok)throw new Error(typeof data.detail==="string"?data.detail:JSON.stringify(data.detail||data));
   if(isNova){
+   window.novaRunwayReferenceImageData=imageData;
    window.novaChatImageData="";
    const picker=$("novaImageInput");if(picker)picker.value="";
    const label=$("novaAttachmentName");if(label)label.textContent="Klistra in en länk direkt i chatten eller bifoga upp till 12 scenbilder.";
@@ -1301,6 +1302,72 @@ function renderVideoPlan(data){
  const scenesForRender=pick(plan,["scenes","shots","storyboard"]);
  const scriptText=textValue(pick(plan,["full_narration","full_script","narration","script","voiceover"])) || (Array.isArray(scenesForRender)?scenesForRender.map(s=>textValue(pick(s,["narration","voiceover","script","dialogue"]))).filter(Boolean).join("\n\n"):"");
  const scriptButton=document.createElement("button");scriptButton.className="export-btn";scriptButton.textContent="LADDA NER MANUS (.TXT)";scriptButton.onclick=()=>downloadText(scriptText||"Inget manus returnerades.","nova-manus.txt","text/plain");actions.appendChild(scriptButton);root.appendChild(actions);
+
+ // RUNWAY: real AI-generated moving scenes. A task is only submitted after a deliberate click.
+ const runwayPanel=document.createElement("section");runwayPanel.className="video-card";runwayPanel.style.marginTop="18px";
+ const runwayHeading=document.createElement("h4");runwayHeading.textContent="RUNWAY · RIKTIGA AI-GENERERADE VIDEOKLIPP";runwayPanel.appendChild(runwayHeading);
+ const runwayHelp=document.createElement("p");runwayHelp.textContent="Varje scen kan genereras som ett riktigt rörligt AI-klipp med Runway Gen-4.5. Att starta ett klipp kan förbruka API-krediter. NOVA kontrollerar saldot först och skickar inget jobb om saldot är 0.";runwayPanel.appendChild(runwayHelp);
+ const runwayStatus=document.createElement("div");runwayStatus.className="video-status";runwayStatus.textContent="Kontrollerar Runway och tillgängliga krediter…";runwayPanel.appendChild(runwayStatus);
+ const runwaySceneList=document.createElement("div");runwaySceneList.className="scene-list";runwayPanel.appendChild(runwaySceneList);
+ const runwayButtons=[];
+ if(Array.isArray(scenes)&&scenes.length){
+  scenes.forEach((scene,index)=>{
+   const card=document.createElement("div");card.className="scene-card";
+   const label=document.createElement("div");label.className="scene-head";
+   const sceneName=document.createElement("span");sceneName.className="scene-number";sceneName.textContent="SCEN "+(scene.scene_number||index+1);
+   const sceneTime=document.createElement("span");sceneTime.className="scene-time";sceneTime.textContent="AI-VIDEO";label.append(sceneName,sceneTime);card.appendChild(label);
+   const prompt=textValue(pick(scene,["video_prompt","videoPrompt","motion_prompt"]))||textValue(pick(scene,["visual_description","visual","description"]))+"; cinematic natural motion, coherent movement, professional camera movement.";
+   const promptPreview=document.createElement("p");promptPreview.textContent=prompt;card.appendChild(promptPreview);
+   const generate=document.createElement("button");generate.type="button";generate.className="export-btn";generate.textContent="KONTROLLERAR KREDITER…";generate.disabled=true;card.appendChild(generate);
+   const result=document.createElement("div");result.className="video-status";result.style.marginTop="8px";card.appendChild(result);
+   runwaySceneList.appendChild(card);runwayButtons.push({button:generate,result,prompt,index});
+  });
+ }else{runwayStatus.textContent="Scenplan saknas – skapa först ett videoproduktionsunderlag.";}
+ let runwayReady=false,runwayAspect="16:9";
+ if($("videoFormat")&&$("videoFormat").value==="short")runwayAspect="9:16";
+ fetch("/api/runway/status").then(response=>response.json()).then(status=>{
+  runwayReady=!!status.connected&&Number(status.credit_balance)>0;
+  if(!status.connected){runwayStatus.className="video-status error";runwayStatus.textContent="Runway är inte anslutet. Kontrollera API-anslutningen.";}
+  else if(Number(status.credit_balance)<=0){runwayStatus.className="video-status";runwayStatus.textContent="RUNWAY ANSLUTEN · 0 KREDITER. Motorn är installerad men väntar på krediter. Inga jobb har startats.";}
+  else{runwayStatus.className="video-status success";runwayStatus.textContent="RUNWAY ANSLUTEN · "+status.credit_balance+" krediter tillgängliga. Starta bara de scener du uttryckligen vill generera.";}
+  runwayButtons.forEach(item=>{item.button.disabled=!runwayReady;item.button.textContent=runwayReady?"GENERERA AI-KLIPP · SCEN "+(item.index+1):"VÄNTAR PÅ RUNWAY-KREDITER";});
+ }).catch(error=>{
+  runwayStatus.className="video-status error";runwayStatus.textContent="Kunde inte läsa Runway-status: "+error.message;
+  runwayButtons.forEach(item=>{item.button.disabled=true;item.button.textContent="RUNWAY EJ TILLGÄNGLIG";});
+ });
+ runwayButtons.forEach(item=>item.button.addEventListener("click",async()=>{
+  if(!runwayReady)return;
+  if(!window.confirm("Starta ett Runway Gen-4.5-klipp för scen "+(item.index+1)+"? Runway kan debitera krediter för genereringen."))return;
+  item.button.disabled=true;item.button.textContent="SKICKAR TILL RUNWAY…";item.result.textContent="Runway tar emot scenen…";
+  try{
+   const response=await fetch("/api/runway/scene",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({prompt:item.prompt,image_data:window.novaRunwayReferenceImageData||"",aspect:runwayAspect,duration:5})});
+   const submitted=await response.json();
+   if(!response.ok)throw new Error(typeof submitted.detail==="string"?submitted.detail:JSON.stringify(submitted.detail||submitted));
+   item.result.textContent="Jobb mottaget · "+submitted.task_id+" · kontrollerar status…";
+   item.button.textContent="GENERERING PÅGÅR…";
+   let completed=null;
+   for(let attempt=0;attempt<180;attempt++){
+    await new Promise(resolve=>setTimeout(resolve,5000));
+    const check=await fetch("/api/runway/task/"+encodeURIComponent(submitted.task_id));
+    const task=await check.json();
+    if(!check.ok)throw new Error(task.detail||"Kunde inte läsa Runway-jobbet.");
+    const state=String(task.status||"").toUpperCase();
+    item.result.textContent="Runway-status: "+state+(task.progress!==null&&task.progress!==undefined?" · "+Math.round(Number(task.progress)*100)+"%":"");
+    if(state==="SUCCEEDED"){completed=task;break;}
+    if(state==="FAILED"||state==="CANCELED"||state==="CANCELLED")throw new Error(task.failure||task.failure_code||"Runway kunde inte generera scenen.");
+   }
+   if(!completed)throw new Error("Runway-jobbet tar längre tid än väntat. Kontrollera status senare med jobb-ID: "+submitted.task_id);
+   const output=Array.isArray(completed.output)?completed.output[0]:completed.output;
+   if(!output)throw new Error("Runway markerade jobbet som klart men returnerade ingen videolänk.");
+   const link=document.createElement("a");link.href=output;link.target="_blank";link.rel="noopener noreferrer";link.className="export-btn";link.textContent="ÖPPNA AI-VIDEO · SCEN "+(item.index+1);item.result.replaceChildren(link);
+   item.button.textContent="KLART ✓";item.button.disabled=true;
+   logActivity("Runway skapade ett AI-videoklipp","🎬","Scen "+(item.index+1));
+  }catch(error){
+   item.result.className="video-status error";item.result.textContent="Runway: "+error.message;
+   item.button.disabled=!runwayReady;item.button.textContent="FÖRSÖK IGEN · SCEN "+(item.index+1);
+  }
+ }));
+ root.appendChild(runwayPanel);
 
  const renderPanel=document.createElement("section");renderPanel.className="video-card";renderPanel.style.marginTop="18px";
  const renderHeading=document.createElement("h4");renderHeading.textContent="SKAPA FÄRDIG MP4-VIDEO";renderPanel.appendChild(renderHeading);
