@@ -557,139 +557,129 @@ main{position:relative;z-index:1;max-width:1100px;margin:auto;padding:20px 15px 
   <div class="hq-caption">NOVA CLOUD / CENTRAL AI HEADQUARTERS</div>
   <div class="hq-room-scene crew-scene premium-office" aria-label="AI-högkvarter med fyra arbetsstationer">
    <div class="office-topline"><span>✦ NOVA CLOUD CAMPUS</span><span class="office-live"><i></i> LIVE · 4 AGENTER</span></div>
-   <svg class="office-art" viewBox="0 0 1200 820" role="img" aria-label="Ett stort tecknat futuristiskt kontor med JARVIS, NOVA, WEBMASTER och GAME DEVELOPER vid sina arbetsstationer">
+   <svg class="office-art" viewBox="0 0 1200 820" role="img" aria-label="Ett varmt och mysigt AI-kontor med fyra tydliga arbetsplatser för JARVIS, NOVA, WEBMASTER och GAME DEVELOPER">
     <defs>
-     <linearGradient id="wallBack" x2="0" y2="1"><stop stop-color="#263e62"/><stop offset="1" stop-color="#101d36"/></linearGradient>
-     <linearGradient id="floorMain" x2="0" y2="1"><stop stop-color="#344e70"/><stop offset="1" stop-color="#101c33"/></linearGradient>
-     <linearGradient id="blueDesk" x2="1" y2="1"><stop stop-color="#53d8ff"/><stop offset=".5" stop-color="#17618f"/><stop offset="1" stop-color="#102d50"/></linearGradient>
-     <linearGradient id="purpleDesk" x2="1" y2="1"><stop stop-color="#e0b5ff"/><stop offset=".5" stop-color="#8552b9"/><stop offset="1" stop-color="#382451"/></linearGradient>
-     <linearGradient id="greenDesk" x2="1" y2="1"><stop stop-color="#a7ffe0"/><stop offset=".5" stop-color="#398e78"/><stop offset="1" stop-color="#1d4c4b"/></linearGradient>
-     <linearGradient id="goldDesk" x2="1" y2="1"><stop stop-color="#fff0a6"/><stop offset=".5" stop-color="#b88a32"/><stop offset="1" stop-color="#503b18"/></linearGradient>
-     <linearGradient id="skin" x2=".8" y2="1"><stop stop-color="#ffe5c9"/><stop offset="1" stop-color="#c98569"/></linearGradient>
-     <linearGradient id="glass" x2="0" y2="1"><stop stop-color="#8edfff" stop-opacity=".55"/><stop offset="1" stop-color="#1d527c" stop-opacity=".12"/></linearGradient>
-     <radialGradient id="ceilingGlow"><stop stop-color="#80dfff" stop-opacity=".4"/><stop offset="1" stop-color="#80dfff" stop-opacity="0"/></radialGradient>
-     <filter id="shadow" x="-30%" y="-30%" width="160%" height="170%"><feGaussianBlur in="SourceAlpha" stdDeviation="12"/><feOffset dy="12"/><feComponentTransfer><feFuncA type="linear" slope=".45"/></feComponentTransfer><feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge></filter>
-     <filter id="glow"><feGaussianBlur stdDeviation="7" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
-     <pattern id="floorGrid" width="54" height="42" patternUnits="userSpaceOnUse"><path d="M54 0H0V42" fill="none" stroke="#9adfff" stroke-opacity=".12" stroke-width="1"/></pattern>
+     <linearGradient id="cozyWall" x2="0" y2="1"><stop stop-color="#344b62"/><stop offset="1" stop-color="#182b3b"/></linearGradient>
+     <linearGradient id="cozyFloor" x2="0" y2="1"><stop stop-color="#80664e"/><stop offset="1" stop-color="#3e3540"/></linearGradient>
+     <linearGradient id="wood" x2="0" y2="1"><stop stop-color="#b88b61"/><stop offset="1" stop-color="#684832"/></linearGradient>
+     <linearGradient id="screenBlue" x2="0" y2="1"><stop stop-color="#183e5c"/><stop offset="1" stop-color="#071b2d"/></linearGradient>
+     <linearGradient id="skinCozy" x2=".8" y2="1"><stop stop-color="#ffe5ca"/><stop offset="1" stop-color="#c98569"/></linearGradient>
+     <linearGradient id="deskBlue" x2="1" y2="1"><stop stop-color="#69d9ff"/><stop offset="1" stop-color="#17496a"/></linearGradient>
+     <linearGradient id="deskPurple" x2="1" y2="1"><stop stop-color="#e0b5ff"/><stop offset="1" stop-color="#63417f"/></linearGradient>
+     <linearGradient id="deskGreen" x2="1" y2="1"><stop stop-color="#a7ffe0"/><stop offset="1" stop-color="#326b5c"/></linearGradient>
+     <linearGradient id="deskGold" x2="1" y2="1"><stop stop-color="#ffe9a0"/><stop offset="1" stop-color="#8b642b"/></linearGradient>
+     <filter id="softShadow" x="-30%" y="-30%" width="160%" height="170%"><feGaussianBlur in="SourceAlpha" stdDeviation="9"/><feOffset dy="8"/><feComponentTransfer><feFuncA type="linear" slope=".35"/></feComponentTransfer><feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+     <filter id="warmGlow"><feGaussianBlur stdDeviation="12"/></filter>
     </defs>
-    <rect width="1200" height="820" fill="#0a1529"/>
-    <path d="M0 0H1200V430L600 590 0 430Z" fill="url(#wallBack)"/>
-    <path d="M0 0L160 85V470L0 430Z" fill="#172a49"/><path d="M1200 0L1040 85V470L1200 430Z" fill="#172a49"/>
-    <ellipse cx="600" cy="185" rx="470" ry="245" fill="url(#ceilingGlow)"/>
-    <path d="M190 55H1010V330H190Z" rx="16" fill="#07172b" stroke="#6486ad" stroke-width="12"/>
-    <path d="M205 70H995V312H205Z" fill="url(#glass)"/>
-    <path d="M405 70V312M600 70V312M795 70V312" stroke="#8bdfff" stroke-opacity=".38" stroke-width="8"/>
-    <path d="M205 190H995" stroke="#8bdfff" stroke-opacity=".24" stroke-width="5"/>
-    <g fill="#b8eaff" opacity=".8"><circle cx="270" cy="130" r="3"/><circle cx="350" cy="245" r="2"/><circle cx="525" cy="115" r="3"/><circle cx="710" cy="250" r="2"/><circle cx="880" cy="145" r="3"/><circle cx="940" cy="275" r="2"/></g>
-    <path d="M0 430L600 590 1200 430V820H0Z" fill="url(#floorMain)"/>
-    <path d="M0 430L600 590 1200 430V820H0Z" fill="url(#floorGrid)"/>
-    <path d="M0 430L600 590 1200 430" fill="none" stroke="#7adfff" stroke-opacity=".5" stroke-width="5"/>
-    <path d="M600 590V820M340 520L170 820M860 520L1030 820" stroke="#80cfff" stroke-opacity=".15" stroke-width="3"/>
-    <g opacity=".9"><path d="M70 350L150 372V465L70 445Z" fill="#183d5d" stroke="#4bbfff"/><path d="M1050 372L1130 350V445L1050 465Z" fill="#183d5d" stroke="#4bbfff"/><path d="M82 370L138 386V430L82 416Z" fill="#0b2038"/><path d="M1062 386L1118 370V416L1062 430Z" fill="#0b2038"/></g>
-    <g fill="none" stroke="#63d9ff" stroke-width="3" opacity=".7"><path d="M90 400l15-8 12 5 12-16"/><path d="M1075 404l13-17 12 5 11-13"/></g>
-    <g filter="url(#shadow)">
-     <g transform="translate(70 340)">
-      <path d="M0 80L180 30 345 83 165 140Z" fill="#1b3552" stroke="#5acfff" stroke-width="3"/>
-      <path d="M165 140L345 83V105L165 166Z" fill="#10243e"/><path d="M0 80V103L165 166V140Z" fill="#254967"/>
-      <path d="M52 58L164 27 271 62 158 96Z" fill="#071a30" stroke="#55cfff" stroke-width="5"/>
-      <path d="M64 57L164 31 257 62 157 89Z" fill="#0c2b49"/>
-      <g stroke="#69dcff" stroke-width="4" fill="none"><path d="M83 65l24-8 20 6 20-16"/><path d="M180 68l17-15 22 8 19-12"/></g>
-      <g fill="#a6f0ff"><circle cx="100" cy="55" r="4"/><circle cx="225" cy="52" r="4"/></g>
-      <path d="M75 115L90 111 90 173 75 179Z" fill="#17344e"/><path d="M260 109L275 104V157L260 162Z" fill="#17344e"/>
+    <rect width="1200" height="820" fill="#182637"/>
+    <path d="M0 0H1200V610L600 690 0 610Z" fill="url(#cozyWall)"/>
+    <path d="M0 0H1200V28H0Z" fill="#c08d5d" opacity=".7"/>
+    <path d="M0 600L600 690 1200 600V820H0Z" fill="url(#cozyFloor)"/>
+    <path d="M0 600L600 690 1200 600" fill="none" stroke="#d3a77c" stroke-width="8" opacity=".5"/>
+    <!-- warm panoramic windows -->
+    <rect x="280" y="45" width="640" height="165" rx="18" fill="#172b3d" stroke="#b78b65" stroke-width="12"/>
+    <rect x="295" y="59" width="610" height="138" rx="10" fill="#294b63"/>
+    <path d="M295 160Q420 95 530 150T760 133T905 145V197H295Z" fill="#d69a70" opacity=".42"/>
+    <circle cx="780" cy="100" r="31" fill="#f5c985" opacity=".85"/>
+    <path d="M495 59V197M700 59V197" stroke="#b78b65" stroke-width="7"/>
+    <path d="M295 175H905" stroke="#e7bd91" stroke-width="5" opacity=".5"/>
+    <!-- wall shelves and warm lighting -->
+    <path d="M35 220H165V232H35ZM1035 220H1165V232H1035Z" fill="#b88b61"/>
+    <g fill="#d7b18a"><rect x="48" y="175" width="24" height="43" rx="4"/><rect x="82" y="188" width="18" height="30" rx="3"/><rect x="1090" y="178" width="25" height="40" rx="4"/><rect x="1125" y="190" width="18" height="28" rx="3"/></g>
+    <g fill="#ffdca0" opacity=".28" filter="url(#warmGlow)"><circle cx="300" cy="255" r="90"/><circle cx="900" cy="255" r="90"/><circle cx="300" cy="555" r="90"/><circle cx="900" cy="555" r="90"/></g>
+    <!-- pendant lamps -->
+    <g stroke="#d9b58d" stroke-width="4" fill="none"><path d="M300 0V105M900 0V105"/></g>
+    <g fill="#f5d49d"><path d="M270 105Q300 145 330 105Z"/><path d="M870 105Q900 145 930 105Z"/></g>
+    <g fill="#ffe6b6" opacity=".35" filter="url(#warmGlow)"><circle cx="300" cy="145" r="22"/><circle cx="900" cy="145" r="22"/></g>
+    <!-- plants -->
+    <g>
+     <path d="M35 570H105L96 650H45Z" fill="#9a6a4b"/><path d="M70 570Q25 520 45 480Q82 510 70 570M72 570Q65 495 105 475Q112 530 72 570M66 570Q5 550 15 515Q55 515 66 570" fill="#6eaa83"/>
+     <path d="M1095 570H1165L1155 650H1105Z" fill="#9a6a4b"/><path d="M1130 570Q1085 520 1105 480Q1142 510 1130 570M1132 570Q1125 495 1165 475Q1172 530 1132 570M1126 570Q1065 550 1075 515Q1115 515 1126 570" fill="#6eaa83"/>
+    </g>
+    <!-- soft rug -->
+    <ellipse cx="600" cy="665" rx="390" ry="105" fill="#b18a6a" opacity=".38" stroke="#d6b18e" stroke-width="4"/>
+    <ellipse cx="600" cy="665" rx="350" ry="83" fill="none" stroke="#e5c4a1" stroke-width="2" opacity=".35"/>
+    <!-- four individual workstations, all at equal scale -->
+    <g filter="url(#softShadow)">
+     <g transform="translate(90 225)">
+      <rect x="100" y="0" width="220" height="112" rx="12" fill="#132b40" stroke="#69d9ff" stroke-width="5"/>
+      <rect x="111" y="11" width="198" height="90" rx="6" fill="url(#screenBlue)"/>
+      <path d="M130 75L165 52 190 65 224 35 278 48" fill="none" stroke="#7ce5ff" stroke-width="4"/>
+      <circle cx="160" cy="50" r="5" fill="#c7f6ff"/><circle cx="280" cy="48" r="5" fill="#c7f6ff"/>
+      <path d="M210 112V130M165 132H255" stroke="#a7c5d5" stroke-width="7" stroke-linecap="round"/>
+      <circle cx="210" cy="-47" r="38" fill="url(#skinCozy)" stroke="#d7f4ff" stroke-width="4"/>
+      <path d="M174 -55Q180 -95 220 -88Q251 -80 249 -47L230 -62 210 -69 190 -58Z" fill="#d7f4ff"/>
+      <path d="M195 -48h7M219 -48h7M201 -29Q210 -22 219 -29" stroke="#35445d" stroke-width="4" fill="none" stroke-linecap="round"/>
+      <path d="M155 15Q160 -5 185 -8H235Q260 -5 265 15L280 70H140Z" fill="#174d70" stroke="#69d9ff" stroke-width="4"/>
+      <path d="M70 145H350L385 178H35Z" fill="url(#deskBlue)" stroke="#8be8ff" stroke-width="4"/>
+      <path d="M80 178V220M305 178V220" stroke="#42677a" stroke-width="12"/>
+      <rect x="150" y="147" width="120" height="8" rx="4" fill="#d9faff" opacity=".8"/>
+      <rect x="110" y="235" width="200" height="43" rx="21" fill="#123c58" stroke="#69d9ff" stroke-width="3"/>
+      <text x="210" y="264" text-anchor="middle" font-family="Arial" font-size="23" font-weight="800" letter-spacing="3" fill="#d5f7ff">JARVIS</text>
+      <text x="210" y="302" text-anchor="middle" font-family="Arial" font-size="13" letter-spacing="2" fill="#b8d9e9">SYSTEM · RESEARCH</text>
      </g>
-     <g transform="translate(430 305)">
-      <path d="M0 100L175 47 345 100 170 157Z" fill="#2b2850" stroke="#d4a0ff" stroke-width="3"/>
-      <path d="M170 157L345 100V124L170 183Z" fill="#211b3d"/><path d="M0 100V123L170 183V157Z" fill="#51406c"/>
-      <path d="M52 76L164 41 273 77 160 113Z" fill="#130f28" stroke="#d4a0ff" stroke-width="5"/>
-      <path d="M64 75L164 46 258 78 158 106Z" fill="#25143f"/>
-      <g fill="none" stroke="#e1b9ff" stroke-width="4"><path d="M82 85l20-15 19 8 19-18"/><path d="M180 85l20-18 22 7 16-13"/></g>
-      <g fill="#e7caff"><circle cx="100" cy="70" r="4"/><circle cx="225" cy="68" r="4"/></g>
-      <path d="M76 135L91 139 91 196 76 191Z" fill="#32234c"/><path d="M260 126L275 121V177L260 182Z" fill="#32234c"/>
+     <g transform="translate(720 225)">
+      <rect x="100" y="0" width="220" height="112" rx="12" fill="#2a1d3c" stroke="#d9adff" stroke-width="5"/>
+      <rect x="111" y="11" width="198" height="90" rx="6" fill="#1c1530"/>
+      <path d="M130 72Q160 20 190 65T278 35" fill="none" stroke="#e5c4ff" stroke-width="4"/>
+      <circle cx="160" cy="50" r="5" fill="#f4e3ff"/><circle cx="280" cy="35" r="5" fill="#f4e3ff"/>
+      <path d="M210 112V130M165 132H255" stroke="#b9a6ca" stroke-width="7" stroke-linecap="round"/>
+      <circle cx="210" cy="-47" r="38" fill="url(#skinCozy)" stroke="#e5c4ff" stroke-width="4"/>
+      <path d="M174 -55Q180 -95 220 -88Q251 -80 249 -47L230 -62 210 -69 190 -58Z" fill="#d8aaff"/>
+      <path d="M195 -48h7M219 -48h7M201 -29Q210 -22 219 -29" stroke="#35445d" stroke-width="4" fill="none" stroke-linecap="round"/>
+      <path d="M155 15Q160 -5 185 -8H235Q260 -5 265 15L280 70H140Z" fill="#593c70" stroke="#d9adff" stroke-width="4"/>
+      <path d="M70 145H350L385 178H35Z" fill="url(#deskPurple)" stroke="#e5c4ff" stroke-width="4"/>
+      <path d="M80 178V220M305 178V220" stroke="#655071" stroke-width="12"/>
+      <rect x="150" y="147" width="120" height="8" rx="4" fill="#fff0ff" opacity=".8"/>
+      <rect x="110" y="235" width="200" height="43" rx="21" fill="#38264b" stroke="#d9adff" stroke-width="3"/>
+      <text x="210" y="264" text-anchor="middle" font-family="Arial" font-size="23" font-weight="800" letter-spacing="3" fill="#f5eaff">NOVA</text>
+      <text x="210" y="302" text-anchor="middle" font-family="Arial" font-size="13" letter-spacing="2" fill="#e3c9f4">YOUTUBE · CREATION</text>
      </g>
-     <g transform="translate(785 340)">
-      <path d="M0 80L180 30 345 83 165 140Z" fill="#1a4145" stroke="#8af0c8" stroke-width="3"/>
-      <path d="M165 140L345 83V105L165 166Z" fill="#102f34"/><path d="M0 80V103L165 166V140Z" fill="#285b58"/>
-      <path d="M52 58L164 27 271 62 158 96Z" fill="#071f28" stroke="#8af0c8" stroke-width="5"/>
-      <path d="M64 57L164 31 257 62 157 89Z" fill="#0b3539"/>
-      <g fill="none" stroke="#9bffdb" stroke-width="4"><path d="M83 65l24-8 20 6 20-16"/><path d="M180 68l17-15 22 8 19-12"/></g>
-      <g fill="#baffdf"><circle cx="100" cy="55" r="4"/><circle cx="225" cy="52" r="4"/></g>
-      <path d="M75 115L90 111 90 173 75 179Z" fill="#1b4243"/><path d="M260 109L275 104V157L260 162Z" fill="#1b4243"/>
+     <g transform="translate(90 525)">
+      <rect x="100" y="0" width="220" height="112" rx="12" fill="#15352f" stroke="#91edca" stroke-width="5"/>
+      <rect x="111" y="11" width="198" height="90" rx="6" fill="#0d2828"/>
+      <path d="M130 75L165 50 190 68 224 40 278 55" fill="none" stroke="#9bffdb" stroke-width="4"/>
+      <circle cx="160" cy="50" r="5" fill="#dcfff0"/><circle cx="280" cy="55" r="5" fill="#dcfff0"/>
+      <path d="M210 112V130M165 132H255" stroke="#a7c8b9" stroke-width="7" stroke-linecap="round"/>
+      <circle cx="210" cy="-47" r="38" fill="url(#skinCozy)" stroke="#a8f4d7" stroke-width="4"/>
+      <path d="M174 -55Q180 -95 220 -88Q251 -80 249 -47L230 -62 210 -69 190 -58Z" fill="#a8ffe0"/>
+      <path d="M195 -48h7M219 -48h7M201 -29Q210 -22 219 -29" stroke="#35445d" stroke-width="4" fill="none" stroke-linecap="round"/>
+      <path d="M155 15Q160 -5 185 -8H235Q260 -5 265 15L280 70H140Z" fill="#285b50" stroke="#91edca" stroke-width="4"/>
+      <path d="M70 145H350L385 178H35Z" fill="url(#deskGreen)" stroke="#a8f4d7" stroke-width="4"/>
+      <path d="M80 178V220M305 178V220" stroke="#42685d" stroke-width="12"/>
+      <rect x="150" y="147" width="120" height="8" rx="4" fill="#e2fff2" opacity=".8"/>
+      <rect x="110" y="235" width="200" height="43" rx="21" fill="#1c443c" stroke="#91edca" stroke-width="3"/>
+      <text x="210" y="264" text-anchor="middle" font-family="Arial" font-size="20" font-weight="800" letter-spacing="1.5" fill="#e0fff1">WEBMASTER</text>
+      <text x="210" y="302" text-anchor="middle" font-family="Arial" font-size="13" letter-spacing="2" fill="#c2eadb">WEB · DESIGN</text>
+     </g>
+     <g transform="translate(720 525)">
+      <rect x="100" y="0" width="220" height="112" rx="12" fill="#45361d" stroke="#ffd66b" stroke-width="5"/>
+      <rect x="111" y="11" width="198" height="90" rx="6" fill="#2b210f"/>
+      <path d="M130 75L165 50 190 68 224 40 278 55" fill="none" stroke="#ffe69a" stroke-width="4"/>
+      <circle cx="160" cy="50" r="5" fill="#fff5d2"/><circle cx="280" cy="55" r="5" fill="#fff5d2"/>
+      <path d="M210 112V130M165 132H255" stroke="#c6b58d" stroke-width="7" stroke-linecap="round"/>
+      <circle cx="210" cy="-47" r="38" fill="url(#skinCozy)" stroke="#ffe69a" stroke-width="4"/>
+      <path d="M174 -55Q180 -95 220 -88Q251 -80 249 -47L230 -62 210 -69 190 -58Z" fill="#f3d36f"/>
+      <path d="M195 -48h7M219 -48h7M201 -29Q210 -22 219 -29" stroke="#35445d" stroke-width="4" fill="none" stroke-linecap="round"/>
+      <path d="M155 15Q160 -5 185 -8H235Q260 -5 265 15L280 70H140Z" fill="#695027" stroke="#ffd66b" stroke-width="4"/>
+      <path d="M70 145H350L385 178H35Z" fill="url(#deskGold)" stroke="#ffe69a" stroke-width="4"/>
+      <path d="M80 178V220M305 178V220" stroke="#77603a" stroke-width="12"/>
+      <rect x="150" y="147" width="120" height="8" rx="4" fill="#fff4c8" opacity=".8"/>
+      <rect x="80" y="235" width="260" height="43" rx="21" fill="#493719" stroke="#ffd66b" stroke-width="3"/>
+      <text x="210" y="264" text-anchor="middle" font-family="Arial" font-size="18" font-weight="800" letter-spacing="1" fill="#fff0bf">GAME DEVELOPER</text>
+      <text x="210" y="302" text-anchor="middle" font-family="Arial" font-size="13" letter-spacing="2" fill="#ffe6a0">ROBLOX · GAME STUDIO</text>
      </g>
     </g>
-    <g filter="url(#shadow)">
-     <g transform="translate(150 235)">
-      <ellipse cx="115" cy="105" rx="70" ry="20" fill="#071526" opacity=".55"/>
-      <path d="M50 95Q45 30 115 28Q185 30 180 95L165 125H65Z" fill="#1a3652" stroke="#64d7ff" stroke-width="4"/>
-      <path d="M72 47Q115 5 158 47L166 85Q115 120 64 85Z" fill="url(#skin)"/>
-      <path d="M68 52Q70 5 120 12Q160 10 165 55L148 45 138 32 120 43 90 36Z" fill="#d7f4ff"/>
-      <path d="M89 65Q97 57 105 65M126 65Q134 57 142 65" fill="none" stroke="#35445d" stroke-width="5" stroke-linecap="round"/>
-      <ellipse cx="100" cy="66" rx="4" ry="6" fill="#172a40"/><ellipse cx="132" cy="66" rx="4" ry="6" fill="#172a40"/>
-      <path d="M108 84Q118 93 129 83" fill="none" stroke="#9c4f59" stroke-width="4" stroke-linecap="round"/>
-      <path d="M78 95Q115 75 152 95L173 133H57Z" fill="url(#blueDesk)" stroke="#9beaff" stroke-width="3"/>
-      <circle cx="115" cy="111" r="9" fill="#d5f8ff" filter="url(#glow)"/>
-     </g>
-     <g transform="translate(515 205)">
-      <ellipse cx="115" cy="125" rx="70" ry="20" fill="#071526" opacity=".55"/>
-      <path d="M50 105Q45 38 115 35Q185 38 180 105L165 135H65Z" fill="#3c2854" stroke="#d5aaff" stroke-width="4"/>
-      <path d="M72 55Q115 15 158 55L166 93Q115 128 64 93Z" fill="url(#skin)"/>
-      <path d="M65 65Q57 15 110 12Q169 7 169 66L151 50 140 32 121 44 91 37Z" fill="#d8aaff"/>
-      <path d="M89 75Q97 67 105 75M126 75Q134 67 142 75" fill="none" stroke="#35445d" stroke-width="5" stroke-linecap="round"/>
-      <ellipse cx="100" cy="76" rx="4" ry="6" fill="#172a40"/><ellipse cx="132" cy="76" rx="4" ry="6" fill="#172a40"/>
-      <path d="M108 94Q118 103 129 93" fill="none" stroke="#9c4f59" stroke-width="4" stroke-linecap="round"/>
-      <path d="M78 105Q115 85 152 105L173 143H57Z" fill="url(#purpleDesk)" stroke="#edcaff" stroke-width="3"/>
-      <circle cx="115" cy="121" r="9" fill="#f1dcff" filter="url(#glow)"/>
-     </g>
-     <g transform="translate(880 235)">
-      <ellipse cx="115" cy="105" rx="70" ry="20" fill="#071526" opacity=".55"/>
-      <path d="M50 95Q45 30 115 28Q185 30 180 95L165 125H65Z" fill="#1c4945" stroke="#8cf0ca" stroke-width="4"/>
-      <path d="M72 47Q115 5 158 47L166 85Q115 120 64 85Z" fill="url(#skin)"/>
-      <path d="M68 52Q70 5 120 12Q160 10 165 55L148 45 138 32 120 43 90 36Z" fill="#a8ffe0"/>
-      <path d="M89 65Q97 57 105 65M126 65Q134 57 142 65" fill="none" stroke="#35445d" stroke-width="5" stroke-linecap="round"/>
-      <ellipse cx="100" cy="66" rx="4" ry="6" fill="#172a40"/><ellipse cx="132" cy="66" rx="4" ry="6" fill="#172a40"/>
-      <path d="M108 84Q118 93 129 83" fill="none" stroke="#9c4f59" stroke-width="4" stroke-linecap="round"/>
-      <path d="M78 95Q115 75 152 95L173 133H57Z" fill="url(#greenDesk)" stroke="#baffdf" stroke-width="3"/>
-      <circle cx="115" cy="111" r="9" fill="#d8ffef" filter="url(#glow)"/>
-     </g>
+    <!-- shared lounge in the middle -->
+    <g filter="url(#softShadow)">
+     <ellipse cx="600" cy="450" rx="95" ry="38" fill="#302b35" opacity=".5"/>
+     <path d="M505 430Q520 390 600 390Q680 390 695 430L680 470H520Z" fill="#8d6958" stroke="#d5b08e" stroke-width="5"/>
+     <ellipse cx="600" cy="430" rx="92" ry="30" fill="#c39a75"/>
+     <rect x="570" y="400" width="60" height="28" rx="8" fill="#f4d7a8"/>
+     <path d="M580 407h40" stroke="#9a7153" stroke-width="4"/>
+     <circle cx="600" cy="382" r="9" fill="#8bd9c1"/>
     </g>
-    <g font-family="Arial,sans-serif" font-weight="800" text-anchor="middle">
-     <g><rect x="110" y="485" width="245" height="48" rx="24" fill="#102e4b" stroke="#5bd4ff" stroke-width="2"/><text x="232" y="516" fill="#c6f4ff" font-size="23" letter-spacing="3">JARVIS</text><circle cx="135" cy="509" r="5" fill="#64dcff"/></g>
-     <g><rect x="477" y="485" width="245" height="48" rx="24" fill="#302044" stroke="#d2a4ff" stroke-width="2"/><text x="599" y="516" fill="#f0ddff" font-size="23" letter-spacing="3">NOVA</text><circle cx="502" cy="509" r="5" fill="#d2a4ff"/></g>
-     <g><rect x="845" y="485" width="245" height="48" rx="24" fill="#153a38" stroke="#91edca" stroke-width="2"/><text x="967" y="516" fill="#d6ffed" font-size="23" letter-spacing="2">WEBMASTER</text><circle cx="870" cy="509" r="5" fill="#91edca"/></g>
-    </g>
-    <g opacity=".9" font-family="Arial,sans-serif" font-size="13" letter-spacing="2" fill="#a9d7ee" text-anchor="middle"><text x="232" y="557">SYSTEM · RESEARCH</text><text x="599" y="557">YOUTUBE · CREATION</text><text x="967" y="557">WEB · DESIGN</text></g>
-    <!-- GAME DEVELOPER: fourth workstation -->
-    <g filter="url(#shadow)">
-     <g transform="translate(870 525) scale(.72)">
-      <path d="M0 80L180 30 345 83 165 140Z" fill="#51401d" stroke="#ffd66b" stroke-width="4"/>
-      <path d="M165 140L345 83V105L165 166Z" fill="#302512"/><path d="M0 80V103L165 166V140Z" fill="#755a25"/>
-      <path d="M52 58L164 27 271 62 158 96Z" fill="#1e180b" stroke="#ffd66b" stroke-width="5"/>
-      <path d="M64 57L164 31 257 62 157 89Z" fill="#3c2d12"/>
-      <g fill="none" stroke="#ffe69a" stroke-width="5"><path d="M83 65l24-8 20 6 20-16"/><path d="M180 68l17-15 22 8 19-12"/></g>
-      <g fill="#fff0b8"><circle cx="100" cy="55" r="4"/><circle cx="225" cy="52" r="4"/></g>
-      <path d="M75 115L90 111 90 173 75 179Z" fill="#4c3919"/><path d="M260 109L275 104V157L260 162Z" fill="#4c3919"/>
-     </g>
-     <g transform="translate(930 390) scale(.78)">
-      <ellipse cx="115" cy="105" rx="70" ry="20" fill="#071526" opacity=".55"/>
-      <path d="M50 95Q45 30 115 28Q185 30 180 95L165 125H65Z" fill="#51401d" stroke="#ffd66b" stroke-width="4"/>
-      <path d="M72 47Q115 5 158 47L166 85Q115 120 64 85Z" fill="url(#skin)"/>
-      <path d="M68 52Q70 5 120 12Q160 10 165 55L148 45 138 32 120 43 90 36Z" fill="#f3d36f"/>
-      <path d="M89 65Q97 57 105 65M126 65Q134 57 142 65" fill="none" stroke="#35445d" stroke-width="5" stroke-linecap="round"/>
-      <ellipse cx="100" cy="66" rx="4" ry="6" fill="#172a40"/><ellipse cx="132" cy="66" rx="4" ry="6" fill="#172a40"/>
-      <path d="M108 84Q118 93 129 83" fill="none" stroke="#9c4f59" stroke-width="4" stroke-linecap="round"/>
-      <path d="M78 95Q115 75 152 95L173 133H57Z" fill="url(#goldDesk)" stroke="#ffe69a" stroke-width="3"/>
-      <circle cx="115" cy="111" r="9" fill="#fff0b8" filter="url(#glow)"/>
-     </g>
-    </g>
-    <g font-family="Arial,sans-serif" font-weight="800" text-anchor="middle">
-     <rect x="885" y="675" width="250" height="43" rx="21" fill="#493719" stroke="#ffd66b" stroke-width="2"/>
-     <text x="1010" y="703" fill="#fff0bf" font-size="19" letter-spacing="1">GAME DEVELOPER</text>
-     <circle cx="905" cy="696" r="5" fill="#ffe08a"/>
-    </g>
-    <text x="1010" y="739" text-anchor="middle" font-family="Arial,sans-serif" font-size="12" letter-spacing="2" fill="#ffe6a0">ROBLOX · GAME STUDIO</text>
-    <g transform="translate(500 650)" filter="url(#glow)"><ellipse cx="100" cy="25" rx="115" ry="27" fill="#123c5b" stroke="#76ddff" stroke-width="3"/><ellipse cx="100" cy="20" rx="70" ry="15" fill="#2d7194"/><path d="M100 -5V-48" stroke="#91e9ff" stroke-width="5"/><circle cx="100" cy="-58" r="18" fill="#d6faff" stroke="#6bdcff" stroke-width="5"/><text x="100" y="30" text-anchor="middle" font-family="Arial" font-size="12" font-weight="bold" fill="#effbff" letter-spacing="2">AI CORE</text></g>
-    <g fill="none" stroke="#72dfff" stroke-opacity=".55" stroke-width="3"><path d="M40 600H220l30 20h170"/><path d="M1160 600H980l-30 20H780"/></g>
-    <g fill="#a7eaff"><circle cx="40" cy="600" r="5"/><circle cx="1160" cy="600" r="5"/></g>
-    <g font-family="Arial,sans-serif" font-size="13" fill="#bdeaff" letter-spacing="2"><text x="44" y="785">CREATIVE OPERATIONS FLOOR</text><text x="1155" y="785" text-anchor="end">NOVA CLOUD · EST. 2026</text></g>
+    <g font-family="Arial" font-size="13" fill="#f3d8b8" opacity=".85" letter-spacing="2"><text x="600" y="790" text-anchor="middle">NOVA CLOUD · CREATIVE WORKSPACE</text></g>
    </svg>
    <div class="office-hint">TRYCK PÅ EN ARBETSSTATION FÖR ATT ÖPPNA RUMMET</div>
    <div class="office-hotspots">
