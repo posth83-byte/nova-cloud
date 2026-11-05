@@ -892,9 +892,10 @@ main{position:relative;z-index:1;max-width:1400px;margin:auto;padding:20px 15px 
   <div class="chat-title">WEBMASTER / WEBSITE CREATION LAB</div>
   <div class="messages" id="webMessages"><div class="msg ai">Hej! Jag är WEBMASTER. Berätta vilken hemsida du vill skapa – exempelvis en företagssida, portfolio, landningssida eller webbutik.</div></div>
   <div class="web-tools">
-   <label class="web-image-picker" for="webImageInput">＋ LÄGG TILL EGEN BILD <span id="webImageName">Valfritt – JPG, PNG eller WebP</span></label>
-   <input type="file" id="webImageInput" accept="image/png,image/jpeg,image/webp,image/gif" hidden onchange="webImageSelected(this)">
-   <button type="button" class="web-clear-image" onclick="clearWebImage()">TA BORT BILD</button>
+   <label class="web-image-picker" for="webImageInput">＋ LÄGG TILL BILDER <span id="webImageName">Välj upp till 8 bilder – JPG, PNG eller WebP</span></label>
+   <input type="file" id="webImageInput" accept="image/png,image/jpeg,image/webp" multiple hidden onchange="webImagesSelected(this)">
+   <button type="button" class="web-clear-image" onclick="clearWebImages()">TA BORT ALLA</button>
+   <div id="webImageList" class="web-image-list" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:10px"></div>
   </div>
   <form class="input-row" onsubmit="sendMessage(event,'web')"><input class="chat-input" id="webInput" placeholder="Beskriv hemsidan du vill skapa..." autocomplete="off"><button class="send" id="webSend">SKICKA</button></form>
   <div id="webPreviewArea" class="web-preview-area" hidden></div>
@@ -1125,18 +1126,50 @@ function addMessage(target,text,type="ai"){
 }
 restoreChatHistory();
 
-let webmasterImageData="";
-function webImageSelected(input){
- const file=input.files&&input.files[0];if(!file)return;
- if(file.size>4*1024*1024){alert("Bilden får vara högst 4 MB.");input.value="";return}
- const reader=new FileReader();
- reader.onload=()=>{webmasterImageData=String(reader.result||"");$("webImageName").textContent=file.name+" vald";};
- reader.onerror=()=>alert("Kunde inte läsa bilden.");
- reader.readAsDataURL(file);
+let webmasterImages=[];
+function updateWebImageList(){
+ const name=$("webImageName"),list=$("webImageList");
+ if(name)name.textContent=webmasterImages.length?webmasterImages.length+" av 8 bilder valda":"Välj upp till 8 bilder – JPG, PNG eller WebP";
+ if(!list)return;list.replaceChildren();
+ webmasterImages.forEach((item,index)=>{
+  const chip=document.createElement("div");chip.style.cssText="display:flex;align-items:center;gap:7px;padding:6px 9px;border:1px solid #55d9b688;border-radius:10px;background:#061c18;color:#d1fff1;font-size:12px;max-width:100%";
+  const thumb=document.createElement("img");thumb.src=item.data;thumb.alt="";thumb.style.cssText="width:38px;height:32px;object-fit:cover;border-radius:5px";
+  const label=document.createElement("span");label.textContent=(index+1)+". "+item.name;label.style.cssText="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap";
+  const remove=document.createElement("button");remove.type="button";remove.textContent="×";remove.title="Ta bort "+item.name;remove.style.cssText="border:0;background:transparent;color:#ffb8b8;font-size:20px;cursor:pointer";remove.onclick=()=>{webmasterImages.splice(index,1);updateWebImageList()};
+  chip.append(thumb,label,remove);list.append(chip);
+ });
 }
-function clearWebImage(){
- webmasterImageData="";const input=$("webImageInput");if(input)input.value="";
- const name=$("webImageName");if(name)name.textContent="Valfritt – JPG, PNG eller WebP";
+function compressWebImage(file){
+ return new Promise((resolve,reject)=>{
+  const reader=new FileReader();
+  reader.onerror=()=>reject(new Error("Kunde inte läsa "+file.name));
+  reader.onload=()=>{
+   const img=new Image();
+   img.onerror=()=>reject(new Error("Kunde inte öppna "+file.name));
+   img.onload=()=>{
+    const scale=Math.min(1,1600/Math.max(img.width,img.height));
+    const canvas=document.createElement("canvas");canvas.width=Math.max(1,Math.round(img.width*scale));canvas.height=Math.max(1,Math.round(img.height*scale));
+    const ctx=canvas.getContext("2d");ctx.drawImage(img,0,0,canvas.width,canvas.height);
+    resolve({name:file.name,data:canvas.toDataURL("image/jpeg",0.82)});
+   };
+   img.src=String(reader.result||"");
+  };
+  reader.readAsDataURL(file);
+ });
+}
+async function webImagesSelected(input){
+ const files=Array.from(input.files||[]);
+ if(webmasterImages.length+files.length>8){alert("Du kan lägga till högst 8 bilder. Ta bort en bild om du vill byta.");input.value="";return}
+ for(const file of files){
+  if(!/^image\/(png|jpeg|webp)$/.test(file.type)){alert("Välj JPG, PNG eller WebP.");continue}
+  if(file.size>12*1024*1024){alert(file.name+" är större än 12 MB.");continue}
+  try{const item=await compressWebImage(file);webmasterImages.push(item);updateWebImageList()}
+  catch(error){alert(error.message)}
+ }
+ input.value="";
+}
+function clearWebImages(){
+ webmasterImages=[];const input=$("webImageInput");if(input)input.value="";updateWebImageList();
 }
 async function createWebPreview(reply){
  const tick=String.fromCharCode(96);
@@ -1144,7 +1177,10 @@ async function createWebPreview(reply){
  const match=reply.match(new RegExp(marker+"html\\s*([\\s\\S]*?)"+marker,"i"));
  if(!match)return false;
  let page=match[1].trim();
- if(webmasterImageData)page=page.split("{{WEBMASTER_IMAGE}}").join(webmasterImageData);else page=page.split("{{WEBMASTER_IMAGE}}").join("data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%27800%27 height=%27450%27 viewBox=%270 0 800 450%27%3E%3Crect width=%27800%27 height=%27450%27 fill=%27%23102233%27/%3E%3Ctext x=%27400%27 y=%27225%27 fill=%27%23ffffff%27 font-size=%2728%27 text-anchor=%27middle%27%3ELagg till en egen bild%3C/text%3E%3C/svg%3E");
+ const placeholder="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%27800%27 height=%27450%27 viewBox=%270 0 800 450%27%3E%3Crect width=%27800%27 height=%27450%27 fill=%27%23102233%27/%3E%3Ctext x=%27400%27 y=%27225%27 fill=%27%23ffffff%27 font-size=%2728%27 text-anchor=%27middle%27%3ELagg till en egen bild%3C/text%3E%3C/svg%3E";
+ webmasterImages.forEach((item,index)=>{page=page.split("{{WEBMASTER_IMAGE_"+(index+1)+"}}").join(item.data)});
+ page=page.split("{{WEBMASTER_IMAGE}}").join(webmasterImages.length?webmasterImages[0].data:placeholder);
+ page=page.replace(/\{\{WEBMASTER_IMAGE_\d+\}\}/g,placeholder);
  const response=await fetch("/api/webmaster/preview",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({html:page})});
  const data=await response.json();if(!response.ok)throw new Error(data.detail||"Kunde inte skapa förhandsvisningen.");
  const area=$("webPreviewArea");area.hidden=false;area.replaceChildren();
@@ -1187,7 +1223,10 @@ async function sendMessage(event,assistant){
    const referenceUrl=urlMatch?urlMatch[0].replace(/[),.]+$/,""):"";
    response=await fetch("/api/game-developer",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({message,reference_url:referenceUrl,history:conversationHistory})});
   }else{
-   response=await fetch(isWeb?"/api/webmaster":"/api/chat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({message,history:conversationHistory})});
+   const webmasterMessage=isWeb&&webmasterImages.length
+    ?message+"\\n\\nANVÄNDARENS BIFOGADE BILDER (använd dessa bildplatshållare i HTML-koden):\\n"+webmasterImages.map((item,index)=>"Bild "+(index+1)+": "+item.name+" – använd exakt {{WEBMASTER_IMAGE_"+(index+1)+"}} som img src.").join("\\n")+"\\nAnvänd bilderna i relevanta delar av designen. Skapa gärna ett bildgalleri om flera bilder passar."
+    :message;
+   response=await fetch(isWeb?"/api/webmaster":"/api/chat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({message:webmasterMessage,history:conversationHistory})});
   }
   data=await response.json();
   if(!response.ok)throw new Error(typeof data.detail==="string"?data.detail:JSON.stringify(data.detail||data));
