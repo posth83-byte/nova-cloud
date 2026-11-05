@@ -81,6 +81,8 @@ def create_runway_scene(request: RunwaySceneRequest):
     """Start one explicitly requested paid Runway video task."""
     if request.aspect not in ("16:9", "9:16"):
         raise HTTPException(400, "Videoformat måste vara 16:9 eller 9:16.")
+    if request.duration not in (5, 10):
+        raise HTTPException(400, "Runway Gen-4.5 stöder 5 eller 10 sekunder per scen.")
 
     image_data = request.image_data.strip()
     if image_data:
@@ -160,6 +162,16 @@ def runway_ffmpeg(args):
     )
     if result.returncode != 0:
         raise RuntimeError((result.stderr or "FFmpeg-fel")[-1800:])
+
+
+def get_media_duration(path):
+    ffmpeg = imageio_ffmpeg.get_ffmpeg_exe()
+    result = subprocess.run([ffmpeg, "-i", str(path), "-f", "null", "-"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=60)
+    match = re.search(r"Duration:\\s*(\\d+):(\\d+):(\\d+(?:\\.\\d+)?)", result.stderr or "")
+    if not match:
+        raise RuntimeError("Kunde inte läsa mediefilens längd.")
+    hours, minutes, seconds = match.groups()
+    return int(hours) * 3600 + int(minutes) * 60 + float(seconds)
 
 
 def srt_time(seconds):
@@ -256,6 +268,14 @@ async def finalize_runway_video(request: RunwayFinalizeRequest):
         narration_path = job_dir / "narration.mp3"
         await edge_tts.Communicate(request.narration, VOICE).save(str(narration_path))
 
+        visual_duration = get_media_duration(silent_video)
+        narration_duration = get_media_duration(narration_path)
+        if narration_duration > visual_duration + 1.5:
+            raise HTTPException(
+                400,
+                f"Berättarrösten är {narration_duration:.0f} sekunder men de valda klippen täcker bara {visual_duration:.0f} sekunder. Generera fler scener eller korta manuset."
+            )
+
         final_video = job_dir / "nova_runway_video.mp4"
         runway_ffmpeg([
             "-i", str(silent_video), "-i", str(narration_path),
@@ -265,8 +285,8 @@ async def finalize_runway_video(request: RunwayFinalizeRequest):
         ])
 
         subtitles_path = job_dir / "undertexter.srt"
-        # Approximate subtitle timing across the finished visual timeline.
-        subtitle_duration = max(1, len(clip_paths) * 5)
+        # Align subtitle blocks with the generated narration duration.
+        subtitle_duration = max(1, narration_duration)
         subtitles_path.write_text(
             build_srt(request.narration, subtitle_duration),
             encoding="utf-8"
