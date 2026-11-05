@@ -826,7 +826,7 @@ main{position:relative;z-index:1;max-width:1100px;margin:auto;padding:20px 15px 
    <div class="voice-panel"><div class="voice-heading">NOVA / RÖSTINSTÄLLNINGAR</div><div class="voice-row"><select class="voice-select" id="novaVoiceSelect" aria-label="Välj NOVA-röst"><option value="">Laddar tillgängliga röster...</option></select><button class="voice-test" onclick="testVoice('nova')">TESTA RÖST</button></div><div class="voice-note">Välj en svensk röst om en sådan finns tillgänglig på din enhet.</div><div class="voice-status" id="novaVoiceStatus">Röstsystem redo.</div></div>
    <div class="nova-composer">
     <button type="button" class="nova-attach" onclick="document.getElementById('novaImageInput').click()">＋ BIFOGA BILD</button>
-    <input type="file" id="novaImageInput" accept="image/png,image/jpeg,image/webp" hidden>
+    <input type="file" id="novaImageInput" accept="image/png,image/jpeg,image/webp" multiple hidden>
     <form class="input-row" onsubmit="sendMessage(event,'nova')"><input class="chat-input" id="novaInput" placeholder="Skriv till NOVA eller klistra in en video-/bildlänk..." autocomplete="off"><button class="send" id="novaSend">SKICKA</button></form>
     <div class="nova-attachment-name" id="novaAttachmentName">Klistra in en länk direkt i chatten eller bifoga en referensbild.</div>
    </div>
@@ -1103,10 +1103,11 @@ async function sendMessage(event,assistant){
  event.preventDefault();
  const isNova=assistant==="nova",isWeb=assistant==="web",input=$(assistant+"Input"),messages=assistant+"Messages",button=$(assistant+"Send");
  const imageData=isNova?(window.novaChatImageData||""):"";
- const message=input.value.trim()||((isNova&&imageData)?"Analysera den bifogade bilden och föreslå hur den kan användas i en YouTube-video.":"");
+ const sceneFiles=isNova?(window.novaChatSceneFiles||[]):[];
+ const message=input.value.trim()||((isNova&&imageData)?"Analysera de bifogade bilderna och föreslå hur de kan användas i en YouTube-video.":"");
  if(!message)return;
  if("speechSynthesis" in window)stopSpeech();
- const shownMessage=message+(isNova&&imageData?"\n📎 Referensbild bifogad":"");
+ const shownMessage=message+(isNova&&sceneFiles.length?"\n📎 "+sceneFiles.length+" referens-/scenbild"+(sceneFiles.length===1?" bifogad":"er bifogade"):"");
  addMessage(messages,shownMessage,"user");logActivity(assistant.toUpperCase()+" fick ett nytt meddelande",isWeb?"⌘":isNova?"✧":"✦",message.length>65?message.slice(0,65)+"…":message);
  input.value="";button.disabled=true;button.textContent="...";setRoomState(assistant,"working");
  const loading=addMessage(messages,isWeb?"WEBMASTER bygger en lösning...":isNova?"NOVA analyserar...":"JARVIS tänker...","ai");
@@ -1118,7 +1119,8 @@ async function sendMessage(event,assistant){
    videoRequest=/\b(skapa|gör|bygg|producera|framställ)\b.{0,55}\b(video|short|film|klipp)\b|\b(video|short|film|klipp)\b.{0,55}\b(skapa|gör|bygg|producera)\b/i.test(message);
    if(videoRequest){
     const isShort=/\bshort\b/i.test(message);
-    const payload={prompt:message,channel:"Mikael Posth",format:isShort?"short":"long",duration_minutes:isShort?1:5,style:"Anpassad efter användarens idé och referensmaterial",audience:"Svensk publik",reference_url:referenceUrl,reference_image_data:imageData};
+    const sceneNote=sceneFiles.length?"\n\nBIFOGADE SCENBILDER: Använd bilderna i den ordning de bifogats som scenmaterial i den färdiga MP4-renderingen. Första bilden används även som visuell referens i analysen.":"";
+    const payload={prompt:message+sceneNote,channel:"Mikael Posth",format:isShort?"short":"long",duration_minutes:isShort?1:5,style:"Anpassad efter användarens idé och referensmaterial",audience:"Svensk publik",reference_url:referenceUrl,reference_image_data:imageData};
     response=await fetch("/api/video/plan",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});
    }else{
     response=await fetch("/api/nova",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({message,reference_url:referenceUrl,reference_image_data:imageData})});
@@ -1131,13 +1133,14 @@ async function sendMessage(event,assistant){
   if(isNova){
    window.novaChatImageData="";
    const picker=$("novaImageInput");if(picker)picker.value="";
-   const label=$("novaAttachmentName");if(label)label.textContent="Klistra in en länk direkt i chatten eller bifoga en referensbild.";
+   const label=$("novaAttachmentName");if(label)label.textContent="Klistra in en länk direkt i chatten eller bifoga upp till 12 scenbilder.";
   }
   if(isNova&&videoRequest){
    renderVideoPlan(data);
    loading.textContent="✓ NOVA har skapat ett komplett produktionsunderlag för din video. Manus, scener, bild- och videoprompter samt undertexter finns samlade nedanför chatten.\n\nAI-motor: "+(data.engine||"Okänd");
    loading.dataset.speechText="NOVA har skapat ett produktionsunderlag för din video.";
   }else{
+   if(isNova)window.novaChatSceneFiles=[];
    const reply=(data.reply||"Inget svar mottogs.")+"\n\nAI-motor: "+(data.engine||"Okänd");
    loading.textContent=reply;loading.dataset.speechText=data.reply||"Inget svar mottogs.";
   }
@@ -1306,6 +1309,11 @@ function renderVideoPlan(data){
  const narrationInput=document.createElement("textarea");narrationInput.rows=8;narrationInput.maxLength=6000;narrationInput.value=scriptText;narrationInput.placeholder="NOVA:s berättarmanus visas här...";narrationInput.style.width="100%";narrationInput.style.margin="8px 0 12px";narrationInput.style.padding="12px";narrationInput.style.borderRadius="10px";narrationInput.style.background="#071426";narrationInput.style.color="#eaf6ff";narrationInput.style.border="1px solid #315a7a";renderPanel.appendChild(narrationInput);
  const imageLabel=document.createElement("label");imageLabel.textContent="SCENBILDER – 1 TILL 12 BILDER";imageLabel.style.display="block";renderPanel.appendChild(imageLabel);
  const imageInput=document.createElement("input");imageInput.type="file";imageInput.accept="image/jpeg,image/png,image/webp";imageInput.multiple=true;imageInput.style.display="block";imageInput.style.margin="8px 0 14px";renderPanel.appendChild(imageInput);
+ const attachedSceneFiles=window.novaChatSceneFiles||[];
+ if(attachedSceneFiles.length){
+  try{const transfer=new DataTransfer();attachedSceneFiles.forEach(file=>transfer.items.add(file));imageInput.files=transfer.files;renderHelp.textContent="✓ "+attachedSceneFiles.length+" bild"+(attachedSceneFiles.length===1?" är":"er är")+" redan hämtade från NOVA-chatten i rätt scenordning. Du kan lägga till eller byta bilder här. Renderingen skapar svensk berättarröst, rörliga bildscener och undertexter – inte AI-genererade filmklipp.";}catch(error){renderHelp.textContent="Bilderna finns bifogade i chatten. Om de inte syns som valda här, välj dem manuellt nedan."}
+  window.novaChatSceneFiles=[];
+ }
  const aspectLabel=document.createElement("label");aspectLabel.textContent="VIDEOFORMAT";aspectLabel.style.display="block";renderPanel.appendChild(aspectLabel);
  const aspectSelect=document.createElement("select");aspectSelect.style.margin="8px 0 14px";aspectSelect.style.padding="9px";aspectSelect.style.borderRadius="8px";aspectSelect.style.background="#071426";aspectSelect.style.color="#eaf6ff";
  [["16:9","16:9 – YouTube-video"],["9:16","9:16 – YouTube Short"]].forEach(([value,label])=>{const option=document.createElement("option");option.value=value;option.textContent=label;aspectSelect.appendChild(option)});
@@ -1352,14 +1360,22 @@ function makeSrt(subtitles){
 /* NOVA VIDEO REFERENCES */
 let novaReferenceImageData="";
 window.novaChatImageData="";
-$("novaImageInput").addEventListener("change",event=>{
- const file=event.target.files&&event.target.files[0];if(!file)return;
- if(!["image/jpeg","image/png","image/webp"].includes(file.type)){alert("Välj en JPG-, PNG- eller WebP-bild.");event.target.value="";return}
- if(file.size>4*1024*1024){alert("Bilden får vara högst 4 MB.");event.target.value="";return}
- const reader=new FileReader();
- reader.onload=()=>{window.novaChatImageData=String(reader.result||"");$("novaAttachmentName").textContent="📎 "+file.name+" bifogad – skickas med nästa chattmeddelande."};
- reader.onerror=()=>{window.novaChatImageData="";alert("Kunde inte läsa bilden.")};
- reader.readAsDataURL(file);
+window.novaChatSceneFiles=[];
+$("novaImageInput").addEventListener("change",async event=>{
+ const files=Array.from(event.target.files||[]);
+ if(!files.length){window.novaChatImageData="";window.novaChatSceneFiles=[];return}
+ if(files.length>12){alert("Du kan bifoga högst 12 scenbilder åt gången.");event.target.value="";return}
+ const allowed=["image/jpeg","image/png","image/webp"];
+ if(files.some(file=>!allowed.includes(file.type))){alert("Alla bilder måste vara JPG, PNG eller WebP.");event.target.value="";return}
+ if(files.some(file=>file.size>4*1024*1024)){alert("Varje bild får vara högst 4 MB.");event.target.value="";return}
+ if(files.reduce((sum,file)=>sum+file.size,0)>24*1024*1024){alert("Bilderna får tillsammans vara högst 24 MB.");event.target.value="";return}
+ try{
+  const readAsDataUrl=file=>new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(String(reader.result||""));reader.onerror=()=>reject(new Error("Kunde inte läsa "+file.name));reader.readAsDataURL(file)});
+  window.novaChatSceneFiles=files;
+  window.novaChatImageData=await readAsDataUrl(files[0]);
+  const names=files.map(file=>file.name).join(", ");
+  $("novaAttachmentName").textContent="📎 "+files.length+" bild"+(files.length===1?"":"er")+" bifogad – "+names+" · första bilden analyseras av NOVA, alla används i scenordning vid MP4-rendering.";
+ }catch(error){window.novaChatImageData="";window.novaChatSceneFiles=[];event.target.value="";alert(error.message)}
 });
 $("videoReferenceImage").addEventListener("change",event=>{
  const file=event.target.files&&event.target.files[0];
