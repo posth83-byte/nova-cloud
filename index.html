@@ -909,11 +909,18 @@ main{position:relative;z-index:1;max-width:1400px;margin:auto;padding:20px 15px 
      <input id="webDropShipping" type="number" min="0" step="0.01" placeholder="Frakt per order (kr)" style="min-width:0;padding:10px;border-radius:8px;border:1px solid #416276;background:#071522;color:white">
      <input id="webDropPrice" type="number" min="0" step="0.01" placeholder="Ditt försäljningspris (kr)" style="min-width:0;padding:10px;border-radius:8px;border:1px solid #416276;background:#071522;color:white">
      <input id="webDropSupplierUrl" type="url" placeholder="Leverantörslänk (valfri)" style="min-width:0;padding:10px;border-radius:8px;border:1px solid #416276;background:#071522;color:white">
+     <input id="webDropCategory" placeholder="Produktkategori (valfri)" style="min-width:0;padding:10px;border-radius:8px;border:1px solid #416276;background:#071522;color:white">
+     <input id="webDropSku" placeholder="Eget SKU/artikelnummer (valfritt)" style="min-width:0;padding:10px;border-radius:8px;border:1px solid #416276;background:#071522;color:white">
     </div>
+    <textarea id="webDropDescription" rows="2" placeholder="Kort produktbeskrivning (valfri)" style="display:block;width:100%;box-sizing:border-box;margin-top:7px;padding:10px;border-radius:8px;border:1px solid #416276;background:#071522;color:white;resize:vertical"></textarea>
     <button type="button" onclick="addDropshipProduct()" style="margin-top:8px;padding:10px 13px;border:1px solid #55d9b6;border-radius:8px;background:#123c38;color:#d8fff0;font-weight:800">＋ SPARA PRODUKT</button>
    </div>
    <div style="margin-top:12px">
-    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><strong style="font-size:13px">DIN PRODUKTKATALOG</strong><button type="button" onclick="exportDropshipProducts()" style="border:1px solid #567080;border-radius:7px;padding:6px 9px;background:#102738;color:#d7efff;font-size:11px">EXPORTERA CSV</button></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><strong style="font-size:13px">DIN PRODUKTKATALOG</strong><div style="display:flex;gap:5px;flex-wrap:wrap">
+     <button type="button" onclick="exportDropshipProducts()" style="border:1px solid #567080;border-radius:7px;padding:6px 9px;background:#102738;color:#d7efff;font-size:11px">EXPORTERA EGEN CSV</button>
+     <button type="button" onclick="exportDropshipShopify()" style="border:1px solid #78b9a5;border-radius:7px;padding:6px 9px;background:#123c38;color:#d8fff0;font-size:11px">SHOPIFY CSV</button>
+     <button type="button" onclick="exportDropshipWoo()" style="border:1px solid #b69be0;border-radius:7px;padding:6px 9px;background:#332247;color:#f4eaff;font-size:11px">WOOCOMMERCE CSV</button>
+    </div></div>
     <div id="webDropProductList" style="display:grid;gap:7px;margin-top:8px"><div style="font-size:12px;color:#8da8b9">Inga produkter tillagda ännu.</div></div>
     <div id="webDropTotals" style="font-size:12px;color:#bdebdc;margin-top:8px"></div>
    </div>
@@ -1265,8 +1272,8 @@ function addDropshipProduct(){
  if(!name){alert("Ange ett produktnamn.");return}
  const cost=moneyValue("webDropCost"),shipping=moneyValue("webDropShipping"),price=moneyValue("webDropPrice");
  if(price<=0){alert("Ange ett försäljningspris som är större än 0.");return}
- webmasterDropProducts.push({id:Date.now()+"-"+Math.random().toString(36).slice(2,7),name,supplier,cost,shipping,price,url:$("webDropSupplierUrl").value.trim()});
- ["webDropProductName","webDropSupplier","webDropCost","webDropShipping","webDropPrice","webDropSupplierUrl"].forEach(id=>$(id).value="");
+ webmasterDropProducts.push({id:Date.now()+"-"+Math.random().toString(36).slice(2,7),name,supplier,cost,shipping,price,url:$("webDropSupplierUrl").value.trim(),category:$("webDropCategory").value.trim(),sku:$("webDropSku").value.trim(),description:$("webDropDescription").value.trim()});
+ ["webDropProductName","webDropSupplier","webDropCost","webDropShipping","webDropPrice","webDropSupplierUrl","webDropCategory","webDropSku","webDropDescription"].forEach(id=>$(id).value="");
  saveDropshipProducts();
 }
 function removeDropshipProduct(id){webmasterDropProducts=webmasterDropProducts.filter(p=>p.id!==id);saveDropshipProducts()}
@@ -1286,6 +1293,28 @@ function renderDropshipProducts(){
   card.append(info,remove);list.append(card);
  });
  totals.textContent="Summa möjlig marginal före övriga kostnader: "+total.toFixed(2)+" kr per såld enhet av varje produkt.";
+}
+function downloadDropshipCsv(filename,headers,products,mapper){
+ if(!products.length){alert("Lägg till minst en produkt först.");return}
+ const rows=[headers,...products.map(mapper)];
+ const csv="\\uFEFF"+rows.map(row=>row.map(v=>'"'+String(v??"").replace(/"/g,'""')+'"').join(",")).join("\\r\\n");
+ const blob=new Blob([csv],{type:"text/csv;charset=utf-8"}),url=URL.createObjectURL(blob);
+ const a=document.createElement("a");a.href=url;a.download=filename;document.body.appendChild(a);a.click();a.remove();
+ setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+function dropshipHandle(name){
+ return String(name||"produkt").normalize("NFD").replace(/[\\u0300-\\u036f]/g,"").toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"")||"produkt";
+}
+function dropshipSku(p){
+ return String(p.sku||("NOVA-"+p.id)).trim().replace(/[^a-zA-Z0-9._-]/g,"-").slice(0,80);
+}
+function exportDropshipShopify(){
+ const headers=["Handle","Title","Body (HTML)","Vendor","Product category","Type","Tags","Published","Option1 Name","Option1 Value","Variant SKU","Variant Inventory Tracker","Variant Inventory Qty","Variant Inventory Policy","Variant Fulfillment Service","Variant Price","Variant Requires Shipping","Variant Taxable","Image Src","Image Position","Status"];
+ downloadDropshipCsv("nova-shopify-produkter.csv",headers,webmasterDropProducts,p=>[dropshipHandle(p.name),p.name,p.description||"",p.supplier||"",p.category||"","","", "false","Title","Default Title",dropshipSku(p),"","","","manual",Number(p.price).toFixed(2),"true","true","","","draft"]);
+}
+function exportDropshipWoo(){
+ const headers=["Type","SKU","Name","Published","Visibility in catalog","Short description","Description","Tax status","In stock?","Stock","Regular price","Categories","Tags","Images"];
+ downloadDropshipCsv("nova-woocommerce-produkter.csv",headers,webmasterDropProducts,p=>["simple",dropshipSku(p),p.name,"0","visible",p.description||"",p.description||"","taxable","","",Number(p.price).toFixed(2),p.category||"","",""]);
 }
 function exportDropshipProducts(){
  if(!webmasterDropProducts.length){alert("Lägg till minst en produkt först.");return}
