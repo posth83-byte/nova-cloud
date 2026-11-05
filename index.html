@@ -541,6 +541,54 @@ main{position:relative;z-index:1;max-width:1400px;margin:auto;padding:20px 15px 
 }
 @media(prefers-reduced-motion:reduce){.office-live i{animation:none}}
 
+
+/* JARVIS FIRST — red holographic command landing */
+header{background:linear-gradient(180deg,#100609ee,#080307ee);border-bottom-color:#7c2a25}
+header .logo{color:#ff9b75}header h1{color:#fff0e9;text-shadow:0 0 24px #ff4a20}
+header .sub{color:#d6a19a}
+#homeView>.section-label:first-child{color:#ff9a78}
+.headquarters{padding:12px!important;border-color:#8d3028!important;background:linear-gradient(145deg,#17080b,#050306 82%)!important;box-shadow:0 0 55px #ff351d22,inset 0 0 65px #ff3b1b18!important}
+.premium-office{aspect-ratio:1200/820;max-height:none!important;background:radial-gradient(ellipse at 50% 48%,#3b100b,#100508 56%,#050306 100%)!important;border-color:#a43b2b!important}
+.office-art,.office-hotspots{display:none!important}
+.office-topline{color:#ffd5c8;background:linear-gradient(180deg,#140508ee,transparent)}
+.office-live{color:#8affc8}
+.jarvis-landing{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden;text-align:center;color:#fff1e9;background:radial-gradient(ellipse at 50% 48%,#a32b1230,transparent 45%)}
+.jarvis-landing:before,.jarvis-landing:after{content:"";position:absolute;left:50%;top:49%;width:55%;aspect-ratio:1;border:1px solid #ff684c66;border-radius:50%;transform:translate(-50%,-50%) rotateX(68deg);animation:jarvisOrbit 24s linear infinite;box-shadow:0 0 22px #ff4a2522}
+.jarvis-landing:after{width:72%;border-color:#ffb18a55;animation-duration:34s;animation-direction:reverse}
+.jarvis-kicker{position:relative;z-index:2;font-size:clamp(7px,1vw,11px);letter-spacing:3px;color:#ffb29a;margin:24px 0 5px}
+.jarvis-core-wrap{position:relative;z-index:2;width:clamp(165px,28vw,290px);aspect-ratio:1;display:grid;place-items:center;margin:4px auto}
+.jarvis-orbit{position:absolute;inset:5%;border:1px solid #ff7b5d99;border-radius:50%;box-shadow:0 0 22px #ff492d33;animation:jarvisOrbit 13s linear infinite}
+.jarvis-orbit.o2{inset:-5%;border-style:dashed;border-color:#ffc09b88;animation-duration:22s;animation-direction:reverse}
+.jarvis-orbit.o3{inset:17%;border-color:#ff3e2399;animation-duration:8s}
+.jarvis-orbit.o4{inset:0;border-radius:50%;transform:rotateX(68deg);animation:jarvisOrbit 10s linear infinite}
+.jarvis-energy{width:44%;aspect-ratio:1;border-radius:50%;background:radial-gradient(circle at 48% 42%,#fffbdc 0 8%,#fff2a0 15%,#ff9b27 32%,#ed3a12 53%,#6c100b 75%,#210507 100%);box-shadow:0 0 22px #fff1a0,0 0 55px #ff6a20,0 0 105px #f22b12;animation:jarvisPulse 2.4s ease-in-out infinite}
+.jarvis-platform{position:relative;z-index:2;width:clamp(205px,38vw,410px);height:clamp(48px,8vw,78px);margin:-13px auto 12px;border:2px solid #ff6745;border-radius:50%;transform:perspective(300px) rotateX(62deg);box-shadow:0 0 18px #ff4b24,0 0 48px #ff341c55,inset 0 0 22px #ff6b3444}
+.jarvis-name{position:relative;z-index:2;font-size:clamp(15px,2.3vw,25px);font-weight:800;letter-spacing:6px;text-shadow:0 0 18px #ff572e}
+.jarvis-role{position:relative;z-index:2;margin-top:7px;font-size:clamp(7px,.9vw,10px);letter-spacing:3px;color:#ffb29a}
+.jarvis-wave{position:relative;z-index:2;display:flex;align-items:center;justify-content:center;gap:4px;height:28px;margin:12px 0 5px}
+.jarvis-wave i{display:block;width:3px;height:var(--wave,9px);border-radius:5px;background:#ffb58d;box-shadow:0 0 8px #ff532c;animation:jarvisWave .8s ease-in-out infinite alternate}
+.jarvis-wave i:nth-child(3n){animation-delay:.2s}.jarvis-wave i:nth-child(2n){animation-delay:.4s}
+.jarvis-listening{position:relative;z-index:2;font-size:7px;letter-spacing:3px;color:#ff9b79}
+.jarvis-status-panels{position:absolute;z-index:2;left:3%;right:3%;top:24%;display:flex;justify-content:space-between;pointer-events:none}
+.jarvis-status-panel{width:19%;padding:9px;border:1px solid #b34a3b66;border-radius:7px;background:#14070ad9;text-align:left;color:#e7a596;font-size:clamp(5px,.65vw,8px);letter-spacing:1px;line-height:2}
+.jarvis-status-panel b{display:block;color:#ffbd9e;font-size:clamp(6px,.8vw,9px)}
+.jarvis-open{position:relative;z-index:5;margin-top:12px;border:1px solid #ff8c69;border-radius:8px;padding:12px 20px;background:linear-gradient(90deg,#6e170f,#c43b1d);color:white;font-size:clamp(8px,1vw,11px);font-weight:800;letter-spacing:2px;box-shadow:0 0 22px #ff4b2e55;cursor:pointer}
+.jarvis-nova-link{position:absolute;z-index:6;right:3%;bottom:3%;border:1px solid #bb8cff;border-radius:8px;padding:9px 12px;background:#21132ee8;color:#ead8ff;font-size:clamp(7px,.8vw,9px);letter-spacing:1px;cursor:pointer}
+.jarvis-landing-hint{position:relative;z-index:2;margin-top:7px;color:#c78f83;font-size:clamp(6px,.75vw,9px);letter-spacing:1px}
+@keyframes jarvisOrbit{to{rotate:360deg}}
+@keyframes jarvisPulse{0%,100%{transform:scale(.94);filter:brightness(.95)}50%{transform:scale(1.08);filter:brightness(1.35)}}
+@keyframes jarvisWave{from{transform:scaleY(.45);opacity:.6}to{transform:scaleY(1.45);opacity:1}}
+@media(max-width:650px){
+ .premium-office{aspect-ratio:1/1.12!important}
+ .jarvis-status-panels{top:20%;left:2%;right:2%}
+ .jarvis-status-panel{width:25%;padding:5px;font-size:5px;line-height:1.7}
+ .jarvis-core-wrap{width:clamp(150px,48vw,220px)}
+ .jarvis-platform{width:68%;height:48px}
+ .jarvis-name{letter-spacing:4px}
+ .jarvis-nova-link{right:2%;bottom:2%;padding:8px 9px}
+ .jarvis-open{margin-top:7px;padding:10px 13px}
+}
+
 </style>
 </head>
 <body>
@@ -558,6 +606,25 @@ main{position:relative;z-index:1;max-width:1400px;margin:auto;padding:20px 15px 
   <div class="hq-room-scene crew-scene premium-office" aria-label="AI-högkvarter med fyra arbetsstationer">
    <div class="office-topline"><span>✦ NOVA CLOUD CAMPUS</span><span class="office-live"><i></i> LIVE · 4 AGENTER</span></div>
    <div class="office-hint">TRYCK PÅ EN AI-ARBETARE FÖR ATT ÖPPNA DESS RUM</div>
+   <div class="jarvis-landing" id="jarvisLandingCore" role="group" aria-label="JARVIS huvudkontrollrum">
+    <div class="jarvis-status-panels">
+     <div class="jarvis-status-panel">SYSTEM STATUS<b>ONLINE</b>CORE STABLE</div>
+     <div class="jarvis-status-panel" style="text-align:right">COMMAND NETWORK<b>CONNECTED</b>AI HQ ACTIVE</div>
+    </div>
+    <div class="jarvis-kicker">CHIEF AI COMMANDER · MAIN CONTROL</div>
+    <div class="jarvis-core-wrap" aria-hidden="true">
+     <div class="jarvis-orbit"></div><div class="jarvis-orbit o2"></div><div class="jarvis-orbit o3"></div><div class="jarvis-orbit o4"></div>
+     <div class="jarvis-energy"></div>
+    </div>
+    <div class="jarvis-platform"></div>
+    <div class="jarvis-name">J.A.R.V.I.S</div>
+    <div class="jarvis-role">CHIEF AI COMMANDER</div>
+    <div class="jarvis-wave" aria-hidden="true"><i style="--wave:6px"></i><i style="--wave:13px"></i><i style="--wave:20px"></i><i style="--wave:11px"></i><i style="--wave:24px"></i><i style="--wave:14px"></i><i style="--wave:8px"></i><i style="--wave:18px"></i><i style="--wave:10px"></i><i style="--wave:22px"></i><i style="--wave:12px"></i><i style="--wave:7px"></i></div>
+    <div class="jarvis-listening">LISTENING · READY FOR YOUR COMMAND</div>
+    <button class="jarvis-open" type="button" onclick="enterRoom('jarvis')">ENTER JARVIS CONTROL ROOM</button>
+    <div class="jarvis-landing-hint">TALA MED JARVIS · HAN LEDER HELA AI-TEAMET</div>
+    <button class="jarvis-nova-link" type="button" onclick="event.stopPropagation();enterRoom('nova')">ÖPPNA NOVA STUDIO ↗</button>
+   </div>
    <svg class="office-art" viewBox="0 0 1200 820" role="img" aria-label="Ett varmt och mysigt AI-kontor med fyra tydliga arbetsplatser för JARVIS, NOVA, WEBMASTER och GAME DEVELOPER">
     <defs>
      <linearGradient id="cozyWall" x2="0" y2="1"><stop stop-color="#344b62"/><stop offset="1" stop-color="#182b3b"/></linearGradient>
