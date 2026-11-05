@@ -140,7 +140,7 @@ class GameDeveloperChatRequest(BaseModel):
 
 
 class WebPreviewRequest(BaseModel):
-    html: str = Field(min_length=20, max_length=2000000)
+    html: str = Field(min_length=20, max_length=12000000)
 
 
 class VideoPlanRequest(BaseModel):
@@ -1851,9 +1851,16 @@ Du arbetar ENDAST med att skapa och förbättra webbplatser åt användaren.
 När användaren ber dig skapa en hemsida ska du leverera en komplett,
 självständig HTML-sida i ETT enda kodblock märkt ```html.
 Sidan ska innehålla all CSS och JavaScript inline och fungera direkt.
-Skriv en kort sammanfattning före kodblocket. Använd en tydlig bildyta
-med exakt token {{WEBMASTER_IMAGE}} som bildens src. Om ingen egen bild
-finns ska sidan visa en neutral snygg platshållare.
+Skriv en kort sammanfattning före kodblocket. Använd användarens bifogade
+bilder där de passar naturligt i designen. Om flera bilder finns ska du
+använda separata bildytor med exakt dessa tokens som img src:
+{{WEBMASTER_IMAGE_1}}, {{WEBMASTER_IMAGE_2}}, {{WEBMASTER_IMAGE_3}},
+{{WEBMASTER_IMAGE_4}}, {{WEBMASTER_IMAGE_5}}, {{WEBMASTER_IMAGE_6}},
+{{WEBMASTER_IMAGE_7}}, {{WEBMASTER_IMAGE_8}}.
+Använd bara så många bildtokens som användaren har bifogat och placera
+dem i relevanta sektioner, exempelvis hero, galleri, tjänster eller
+produktkort. Den första bilden kan användas som huvudbild.
+Om ingen egen bild finns ska sidan visa en neutral snygg platshållare.
 
 Du hjälper till med:
 - moderna, professionella och mobilanpassade hemsidor
