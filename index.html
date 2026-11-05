@@ -1297,13 +1297,13 @@ function renderDropshipProducts(){
 function downloadDropshipCsv(filename,headers,products,mapper){
  if(!products.length){alert("Lägg till minst en produkt först.");return}
  const rows=[headers,...products.map(mapper)];
- const csv="\\uFEFF"+rows.map(row=>row.map(v=>'"'+String(v??"").replace(/"/g,'""')+'"').join(",")).join("\\r\\n");
+ const csv="\uFEFF"+rows.map(row=>row.map(v=>'"'+String(v??"").replace(/"/g,'""')+'"').join(",")).join("\r\n");
  const blob=new Blob([csv],{type:"text/csv;charset=utf-8"}),url=URL.createObjectURL(blob);
  const a=document.createElement("a");a.href=url;a.download=filename;document.body.appendChild(a);a.click();a.remove();
  setTimeout(()=>URL.revokeObjectURL(url),1000);
 }
 function dropshipHandle(name){
- return String(name||"produkt").normalize("NFD").replace(/[\\u0300-\\u036f]/g,"").toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"")||"produkt";
+ return String(name||"produkt").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"")||"produkt";
 }
 function dropshipSku(p){
  return String(p.sku||("NOVA-"+p.id)).trim().replace(/[^a-zA-Z0-9._-]/g,"-").slice(0,80);
