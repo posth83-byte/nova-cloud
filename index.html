@@ -1163,7 +1163,7 @@ async function sendMessage(event,assistant){
  const message=input.value.trim()||((isNova&&imageData)?"Analysera de bifogade bilderna och föreslå hur de kan användas i en YouTube-video.":"");
  if(!message)return;
  if("speechSynthesis" in window)stopSpeech();
- const conversationHistory=(isNova||isGame)?getConversationHistory(assistant,14):[];
+ const conversationHistory=getConversationHistory(assistant,14);
  const shownMessage=message+(isNova&&sceneFiles.length?"\n📎 "+sceneFiles.length+" referens-/scenbild"+(sceneFiles.length===1?" bifogad":"er bifogade"):"");
  addMessage(messages,shownMessage,"user");logActivity(assistant.toUpperCase()+" fick ett nytt meddelande",isWeb?"⌘":isNova?"✧":"✦",message.length>65?message.slice(0,65)+"…":message);
  input.value="";button.disabled=true;button.textContent="...";setRoomState(assistant,"working");
@@ -1177,7 +1177,7 @@ async function sendMessage(event,assistant){
    if(videoRequest){
     const isShort=/\bshort\b/i.test(message);
     const sceneNote=sceneFiles.length?"\n\nBIFOGADE SCENBILDER: Använd bilderna i den ordning de bifogats som scenmaterial i den färdiga MP4-renderingen. Första bilden används även som visuell referens i analysen.":"";
-    const payload={prompt:message+sceneNote,channel:"Mikael Posth",format:isShort?"short":"long",duration_minutes:isShort?1:5,style:"Anpassad efter användarens idé och referensmaterial",audience:"Svensk publik",reference_url:referenceUrl,reference_image_data:imageData};
+    const payload={prompt:message+sceneNote,channel:"Mikael Posth",format:isShort?"short":"long",duration_minutes:isShort?1:5,style:"Anpassad efter användarens idé och referensmaterial",audience:"Svensk publik",reference_url:referenceUrl,reference_image_data:imageData,history:conversationHistory};
     response=await fetch("/api/video/plan",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});
    }else{
     response=await fetch("/api/nova",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({message,reference_url:referenceUrl,reference_image_data:imageData,history:conversationHistory})});
@@ -1187,7 +1187,7 @@ async function sendMessage(event,assistant){
    const referenceUrl=urlMatch?urlMatch[0].replace(/[),.]+$/,""):"";
    response=await fetch("/api/game-developer",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({message,reference_url:referenceUrl,history:conversationHistory})});
   }else{
-   response=await fetch(isWeb?"/api/webmaster":"/api/chat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({message})});
+   response=await fetch(isWeb?"/api/webmaster":"/api/chat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({message,history:conversationHistory})});
   }
   data=await response.json();
   if(!response.ok)throw new Error(typeof data.detail==="string"?data.detail:JSON.stringify(data.detail||data));
