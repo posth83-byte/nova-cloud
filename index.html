@@ -892,10 +892,14 @@ main{position:relative;z-index:1;max-width:1400px;margin:auto;padding:20px 15px 
   <div class="chat-title">WEBMASTER / WEBSITE CREATION LAB</div>
   <section id="webDropshipPanel" style="margin:12px 0 16px;padding:14px;border:1px solid #55d9b655;border-radius:14px;background:linear-gradient(135deg,#071d25,#10172c);color:#e7f7ff">
    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
-    <div><div style="font-size:12px;letter-spacing:1.5px;color:#91edca;font-weight:800">✦ WEBMASTER COMMERCE</div><div style="font-size:18px;font-weight:800;margin-top:4px">Bygg din egen webbutik</div></div>
-    <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:#bce9dc"><input id="webDropMode" type="checkbox" style="width:18px;height:18px;accent-color:#55d9b6"> DROPSHIPPINGLÄGE</label>
+    <div><div style="font-size:12px;letter-spacing:1.5px;color:#91edca;font-weight:800">✦ WEBMASTER WEBBSTUDIO</div><div style="font-size:18px;font-weight:800;margin-top:4px">Skapa vilken webbplats du vill</div></div>
+    <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:#bce9dc"><input id="webDropMode" type="checkbox" style="width:18px;height:18px;accent-color:#55d9b6"> Aktivera dropshippingverktyg</label>
    </div>
-   <p style="font-size:12px;line-height:1.5;color:#a9c5d5;margin:8px 0 12px">Samla produkter, leverantörer och priser här. Uppgifterna sparas i den här webbläsaren på din enhet.</p>
+   <p style="font-size:12px;line-height:1.5;color:#a9c5d5;margin:8px 0 12px">Välj vanlig webbplats eller webbutik. Vanliga webbplatser byggs direkt via WEBMASTER-chatten. Aktivera dropshippingverktygen när du vill skapa en butik med produkter och leverantörer.</p>
+   <div style="display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 12px">
+    <button type="button" onclick="webmasterBuildWebsite()" style="flex:1;min-width:150px;padding:11px;border:1px solid #55d9b6;border-radius:9px;background:#10352f;color:#e5fff5;font-weight:800">＋ BYGG VANLIG WEBBPLATS</button>
+    <button type="button" onclick="webmasterBuildStore()" style="flex:1;min-width:150px;padding:11px;border:1px solid #d6adff;border-radius:9px;background:#332247;color:#f4eaff;font-weight:800">✧ BYGG DROPSHIPPINGBUTIK</button>
+   </div>
    <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px">
     <label style="font-size:11px;color:#a9c5d5">BUTIKENS NAMN<input id="webDropStoreName" placeholder="Ex. Nordisk Hem" style="display:block;width:100%;box-sizing:border-box;margin-top:4px;padding:10px;border-radius:8px;border:1px solid #416276;background:#071522;color:white"></label>
     <label style="font-size:11px;color:#a9c5d5">PRODUKTOMRÅDE<input id="webDropNiche" placeholder="Ex. smarta hemprodukter" style="display:block;width:100%;box-sizing:border-box;margin-top:4px;padding:10px;border-radius:8px;border:1px solid #416276;background:#071522;color:white"></label>
@@ -1374,6 +1378,12 @@ function dropshipBrief(){
  const name=$("webDropStoreName")?.value.trim()||"Inte bestämt",niche=$("webDropNiche")?.value.trim()||"Föreslå en lämplig nisch";
  const products=webmasterDropProducts.map(p=>({name:p.name,supplier:p.supplier,cost_sek:p.cost,shipping_sek:p.shipping,sale_price_sek:p.price,estimated_margin_before_other_costs_sek:Number(p.price-p.cost-p.shipping).toFixed(2),supplier_url:p.url}));
  return "DROPSHIPPINGBUTIK – PROJEKTUNDERLAG\nButiksnamn: "+name+"\nProduktområde: "+niche+"\nProdukter: "+JSON.stringify(products)+"\n\nSkapa en genomarbetad svensk webbutik med mobilanpassad design, produktkategorier, produktsidor, varukorg och checkout-gränssnitt. Om produkter saknas, föreslå produkter och leverantörsalternativ men markera allt som måste verifieras. Prioritera Sverige/EU. Redovisa kalkyl inklusive moms, betalavgifter, annonsering, returer och leverans. Bygg inte falska betalnings- eller orderintegrationer. Lägg till utkast för leveransvillkor, ångerrätt, reklamationer, integritet och kontaktuppgifter som måste granskas före lansering. Leverera komplett HTML i ett enda html-kodblock så förhandsvisningen kan skapas.";
+}
+function webmasterBuildWebsite(){
+ $("webDropMode").checked=false;
+ $("webInput").value="Bygg en vanlig, professionell webbplats – inte en dropshippingbutik. Börja med att förstå syftet och skapa en komplett, responsiv webbplats med genomtänkt design, startsida, relevanta undersidor, navigation, kontaktsektion och bildytor. Anpassa innehåll och funktioner efter min beskrivning. Lägg inte till kundvagn, kassa eller leverantörssystem om jag inte uttryckligen ber om det. Leverera komplett HTML i ett enda html-kodblock så att webbplatsen kan förhandsvisas.\n\n";
+ $("webInput").focus();
+ $("webInput").form.requestSubmit();
 }
 function webmasterBuildStore(){
  $("webDropMode").checked=true;$("webInput").value="Bygg min dropshippingbutik. "+dropshipBrief();$("webInput").form.requestSubmit();
