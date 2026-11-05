@@ -172,7 +172,7 @@ def srt_time(seconds):
 
 def build_srt(text, duration):
     import re as _re
-    sentences = [part.strip() for part in _re.split(r"(?<=[.!?])\\s+", text.strip()) if part.strip()]
+    sentences = [part.strip() for part in _re.split(r"(?<=[.!?])\s+", text.strip()) if part.strip()]
     if not sentences:
         raise RuntimeError("Berättarmanuset saknar text.")
     total = sum(max(1, len(part)) for part in sentences)
@@ -182,9 +182,9 @@ def build_srt(text, duration):
         span = duration * max(1, len(sentence)) / total
         start = cursor
         end = min(duration, cursor + span)
-        blocks.append(f"{number}\\n{srt_time(start)} --> {srt_time(end)}\\n{sentence}\\n")
+        blocks.append(f"{number}\n{srt_time(start)} --> {srt_time(end)}\n{sentence}\n")
         cursor = end
-    return "\\n".join(blocks)
+    return "\n".join(blocks)
 
 
 @router.post("/api/runway/finalize")
@@ -242,7 +242,7 @@ async def finalize_runway_video(request: RunwayFinalizeRequest):
 
         concat_file = job_dir / "clips.txt"
         concat_file.write_text(
-            "".join(f"file '{path.as_posix()}'\\n" for path in clip_paths),
+            "".join(f"file '{path.as_posix()}'\n" for path in clip_paths),
             encoding="utf-8"
         )
         silent_video = job_dir / "scenes.mp4"
