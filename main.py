@@ -16,13 +16,14 @@ from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse, HTMLResponse
 from pydantic import BaseModel, Field
 from video_engine import router as video_router
+from runway_engine import router as runway_router
 
 
 # ==========================================
 # NOVA CLOUD – VERSION 2.2.0
 # ==========================================
 
-APP_VERSION = "2.9.0"
+APP_VERSION = "3.0.0"
 
 app = FastAPI(
     title="NOVA Cloud",
@@ -31,6 +32,7 @@ app = FastAPI(
 )
 
 app.include_router(video_router)
+app.include_router(runway_router)
 
 # Temporary previews are cleared when the service restarts.
 preview_pages = {}
@@ -1451,6 +1453,7 @@ async def status():
         "youtube_channel_url": "https://www.youtube.com/@mikaelposth",
         "video_planner": "online",
         "video_renderer": "online",
+        "runway_video_generation": bool(RUNWAY_API_KEY),
         "version": APP_VERSION,
         "time": datetime.now(timezone.utc).isoformat()
     }
