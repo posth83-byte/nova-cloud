@@ -890,6 +890,39 @@ main{position:relative;z-index:1;max-width:1400px;margin:auto;padding:20px 15px 
  </div>
  <div class="room-content"><div class="chatbox">
   <div class="chat-title">WEBMASTER / WEBSITE CREATION LAB</div>
+  <section id="webDropshipPanel" style="margin:12px 0 16px;padding:14px;border:1px solid #55d9b655;border-radius:14px;background:linear-gradient(135deg,#071d25,#10172c);color:#e7f7ff">
+   <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+    <div><div style="font-size:12px;letter-spacing:1.5px;color:#91edca;font-weight:800">✦ WEBMASTER COMMERCE</div><div style="font-size:18px;font-weight:800;margin-top:4px">Bygg din egen webbutik</div></div>
+    <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:#bce9dc"><input id="webDropMode" type="checkbox" style="width:18px;height:18px;accent-color:#55d9b6"> DROPSHIPPINGLÄGE</label>
+   </div>
+   <p style="font-size:12px;line-height:1.5;color:#a9c5d5;margin:8px 0 12px">Samla produkter, leverantörer och priser här. Uppgifterna sparas i den här webbläsaren på din enhet.</p>
+   <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px">
+    <label style="font-size:11px;color:#a9c5d5">BUTIKENS NAMN<input id="webDropStoreName" placeholder="Ex. Nordisk Hem" style="display:block;width:100%;box-sizing:border-box;margin-top:4px;padding:10px;border-radius:8px;border:1px solid #416276;background:#071522;color:white"></label>
+    <label style="font-size:11px;color:#a9c5d5">PRODUKTOMRÅDE<input id="webDropNiche" placeholder="Ex. smarta hemprodukter" style="display:block;width:100%;box-sizing:border-box;margin-top:4px;padding:10px;border-radius:8px;border:1px solid #416276;background:#071522;color:white"></label>
+   </div>
+   <div style="margin-top:13px;padding-top:12px;border-top:1px solid #31505e">
+    <div style="font-weight:800;font-size:13px;margin-bottom:8px">＋ LÄGG TILL PRODUKT</div>
+    <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px">
+     <input id="webDropProductName" placeholder="Produktnamn" style="min-width:0;padding:10px;border-radius:8px;border:1px solid #416276;background:#071522;color:white">
+     <input id="webDropSupplier" placeholder="Leverantör" style="min-width:0;padding:10px;border-radius:8px;border:1px solid #416276;background:#071522;color:white">
+     <input id="webDropCost" type="number" min="0" step="0.01" placeholder="Inköpspris (kr)" style="min-width:0;padding:10px;border-radius:8px;border:1px solid #416276;background:#071522;color:white">
+     <input id="webDropShipping" type="number" min="0" step="0.01" placeholder="Frakt per order (kr)" style="min-width:0;padding:10px;border-radius:8px;border:1px solid #416276;background:#071522;color:white">
+     <input id="webDropPrice" type="number" min="0" step="0.01" placeholder="Ditt försäljningspris (kr)" style="min-width:0;padding:10px;border-radius:8px;border:1px solid #416276;background:#071522;color:white">
+     <input id="webDropSupplierUrl" type="url" placeholder="Leverantörslänk (valfri)" style="min-width:0;padding:10px;border-radius:8px;border:1px solid #416276;background:#071522;color:white">
+    </div>
+    <button type="button" onclick="addDropshipProduct()" style="margin-top:8px;padding:10px 13px;border:1px solid #55d9b6;border-radius:8px;background:#123c38;color:#d8fff0;font-weight:800">＋ SPARA PRODUKT</button>
+   </div>
+   <div style="margin-top:12px">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><strong style="font-size:13px">DIN PRODUKTKATALOG</strong><button type="button" onclick="exportDropshipProducts()" style="border:1px solid #567080;border-radius:7px;padding:6px 9px;background:#102738;color:#d7efff;font-size:11px">EXPORTERA CSV</button></div>
+    <div id="webDropProductList" style="display:grid;gap:7px;margin-top:8px"><div style="font-size:12px;color:#8da8b9">Inga produkter tillagda ännu.</div></div>
+    <div id="webDropTotals" style="font-size:12px;color:#bdebdc;margin-top:8px"></div>
+   </div>
+   <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
+    <button type="button" onclick="webmasterDropshipResearch()" style="flex:1;min-width:140px;padding:11px;border:1px solid #8bcfff;border-radius:9px;background:#12314a;color:#e4f7ff;font-weight:800">⌕ HITTA PRODUKTIDÉER</button>
+    <button type="button" onclick="webmasterBuildStore()" style="flex:1;min-width:140px;padding:11px;border:1px solid #d6adff;border-radius:9px;background:#332247;color:#f4eaff;font-weight:800">✧ BYGG MIN WEBBUTIK</button>
+   </div>
+   <div style="font-size:10px;line-height:1.5;color:#819eae;margin-top:10px">OBS: Produktkatalogen är lokal i webbläsaren. Betalningar, leverantörssynk och automatisk orderhantering är inte anslutna ännu. Kalkylen visar marginal före moms, avgifter, annonsering, returer och skatt.</div>
+  </section>
   <div class="messages" id="webMessages"><div class="msg ai">Hej! Jag är WEBMASTER. Berätta vilken hemsida du vill skapa – exempelvis en företagssida, portfolio, landningssida eller webbutik.</div></div>
   <div class="web-tools">
    <label class="web-image-picker" for="webImageInput">＋ LÄGG TILL BILDER <span id="webImageName">Välj upp till 8 bilder – JPG, PNG eller WebP</span></label>
@@ -1190,6 +1223,65 @@ async function createWebPreview(reply){
  area.append(title,document.createElement("br"),link,note);return true;
 }
 
+/* WEBMASTER DROPSHIPPING WORKSPACE */
+const WEBDROP_KEY="nova_webmaster_dropship_products_v1";
+let webmasterDropProducts=[];
+function loadDropshipProducts(){
+ try{const data=JSON.parse(localStorage.getItem(WEBDROP_KEY)||"[]");webmasterDropProducts=Array.isArray(data)?data:[]}catch(e){webmasterDropProducts=[]}
+ renderDropshipProducts();
+}
+function saveDropshipProducts(){
+ try{localStorage.setItem(WEBDROP_KEY,JSON.stringify(webmasterDropProducts))}catch(e){alert("Kunde inte spara produktlistan i webbläsaren.")}
+ renderDropshipProducts();
+}
+function moneyValue(id){const el=$(id);const n=Number(String(el?.value||"").replace(",", "."));return Number.isFinite(n)&&n>=0?n:0}
+function addDropshipProduct(){
+ const name=$("webDropProductName").value.trim(),supplier=$("webDropSupplier").value.trim();
+ if(!name){alert("Ange ett produktnamn.");return}
+ const cost=moneyValue("webDropCost"),shipping=moneyValue("webDropShipping"),price=moneyValue("webDropPrice");
+ if(price<=0){alert("Ange ett försäljningspris som är större än 0.");return}
+ webmasterDropProducts.push({id:Date.now()+"-"+Math.random().toString(36).slice(2,7),name,supplier,cost,shipping,price,url:$("webDropSupplierUrl").value.trim()});
+ ["webDropProductName","webDropSupplier","webDropCost","webDropShipping","webDropPrice","webDropSupplierUrl"].forEach(id=>$(id).value="");
+ saveDropshipProducts();
+}
+function removeDropshipProduct(id){webmasterDropProducts=webmasterDropProducts.filter(p=>p.id!==id);saveDropshipProducts()}
+function renderDropshipProducts(){
+ const list=$("webDropProductList"),totals=$("webDropTotals");if(!list||!totals)return;list.replaceChildren();
+ if(!webmasterDropProducts.length){const empty=document.createElement("div");empty.textContent="Inga produkter tillagda ännu.";empty.style.cssText="font-size:12px;color:#8da8b9";list.append(empty);totals.textContent="";return}
+ let total=0;
+ webmasterDropProducts.forEach(p=>{
+  const margin=Number(p.price)-Number(p.cost)-Number(p.shipping);total+=margin;
+  const card=document.createElement("div");card.style.cssText="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:9px;border:1px solid #355568;border-radius:9px;background:#081a28";
+  const info=document.createElement("div");info.style.cssText="min-width:0;font-size:12px";
+  const title=document.createElement("strong");title.textContent=p.name;title.style.display="block";
+  const detail=document.createElement("span");detail.textContent=(p.supplier||"Leverantör ej angiven")+" · Inköp "+Number(p.cost).toFixed(2)+" kr · Frakt "+Number(p.shipping).toFixed(2)+" kr · Sälj "+Number(p.price).toFixed(2)+" kr";detail.style.cssText="display:block;color:#9db6c5;margin-top:3px;overflow-wrap:anywhere";
+  const profit=document.createElement("span");profit.textContent="+"+margin.toFixed(2)+" kr";profit.style.cssText="display:block;color:"+(margin>=0?"#91edca":"#ffaaaa")+";font-weight:800;margin-top:3px";
+  info.append(title,detail,profit);
+  const remove=document.createElement("button");remove.type="button";remove.textContent="×";remove.title="Ta bort produkt";remove.style.cssText="border:0;background:transparent;color:#ffb8b8;font-size:22px;cursor:pointer";remove.onclick=()=>removeDropshipProduct(p.id);
+  card.append(info,remove);list.append(card);
+ });
+ totals.textContent="Summa möjlig marginal före övriga kostnader: "+total.toFixed(2)+" kr per såld enhet av varje produkt.";
+}
+function exportDropshipProducts(){
+ if(!webmasterDropProducts.length){alert("Lägg till minst en produkt först.");return}
+ const rows=[["Produkt","Leverantör","Inköpspris SEK","Frakt SEK","Försäljningspris SEK","Marginal före övriga kostnader SEK","Leverantörslänk"],...webmasterDropProducts.map(p=>[p.name,p.supplier,p.cost,p.shipping,p.price,(p.price-p.cost-p.shipping).toFixed(2),p.url])];
+ const csv="\uFEFF"+rows.map(row=>row.map(v=>'"'+String(v??"").replace(/"/g,'""')+'"').join(";")).join("\r\n");
+ const url=URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8"}));const a=document.createElement("a");a.href=url;a.download="webmaster-produktkatalog.csv";a.click();URL.revokeObjectURL(url);
+}
+function dropshipBrief(){
+ const name=$("webDropStoreName")?.value.trim()||"Inte bestämt",niche=$("webDropNiche")?.value.trim()||"Föreslå en lämplig nisch";
+ const products=webmasterDropProducts.map(p=>({name:p.name,supplier:p.supplier,cost_sek:p.cost,shipping_sek:p.shipping,sale_price_sek:p.price,estimated_margin_before_other_costs_sek:Number(p.price-p.cost-p.shipping).toFixed(2),supplier_url:p.url}));
+ return "DROPSHIPPINGBUTIK – PROJEKTUNDERLAG\nButiksnamn: "+name+"\nProduktområde: "+niche+"\nProdukter: "+JSON.stringify(products)+"\n\nSkapa en genomarbetad svensk webbutik med mobilanpassad design, produktkategorier, produktsidor, varukorg och checkout-gränssnitt. Om produkter saknas, föreslå produkter och leverantörsalternativ men markera allt som måste verifieras. Prioritera Sverige/EU. Redovisa kalkyl inklusive moms, betalavgifter, annonsering, returer och leverans. Bygg inte falska betalnings- eller orderintegrationer. Lägg till utkast för leveransvillkor, ångerrätt, reklamationer, integritet och kontaktuppgifter som måste granskas före lansering. Leverera komplett HTML i ett enda html-kodblock så förhandsvisningen kan skapas.";
+}
+function webmasterBuildStore(){
+ $("webDropMode").checked=true;$("webInput").value="Bygg min dropshippingbutik. "+dropshipBrief();$("webInput").form.requestSubmit();
+}
+function webmasterDropshipResearch(){
+ $("webDropMode").checked=true;$("webInput").value="Gör produktresearch för min tänkta dropshippingbutik. "+dropshipBrief()+"\n\nBörja med att analysera 5-10 tänkbara produktidéer för svenska kunder. Jämför sannolik efterfrågan, konkurrens, leverantörernas geografiska placering, frakt, returer, säkerhetskrav och realistisk marginal. Hitta inte på aktuella priser eller lagerstatus; länka källor och markera osäkra uppgifter.";
+ $("webInput").form.requestSubmit();
+}
+loadDropshipProducts();
+
 /* CHAT CONNECTION – ALL NOVA WORK STARTS HERE */
 async function sendMessage(event,assistant){
  event.preventDefault();
@@ -1223,9 +1315,9 @@ async function sendMessage(event,assistant){
    const referenceUrl=urlMatch?urlMatch[0].replace(/[),.]+$/,""):"";
    response=await fetch("/api/game-developer",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({message,reference_url:referenceUrl,history:conversationHistory})});
   }else{
-   const webmasterMessage=isWeb&&webmasterImages.length
-    ?message+"\n\nANVÄNDARENS BIFOGADE BILDER (använd dessa bildplatshållare i HTML-koden):\n"+webmasterImages.map((item,index)=>"Bild "+(index+1)+": "+item.name+" – använd exakt {{WEBMASTER_IMAGE_"+(index+1)+"}} som img src.").join("\n")+"\nAnvänd bilderna i relevanta delar av designen. Skapa gärna ett bildgalleri om flera bilder passar."
-    :message;
+   let webmasterMessage=message;
+   if(isWeb&&webmasterImages.length)webmasterMessage+="\n\nANVÄNDARENS BIFOGADE BILDER (använd dessa bildplatshållare i HTML-koden):\n"+webmasterImages.map((item,index)=>"Bild "+(index+1)+": "+item.name+" – använd exakt {{WEBMASTER_IMAGE_"+(index+1)+"}} som img src.").join("\n")+"\nAnvänd bilderna i relevanta delar av designen. Skapa gärna ett bildgalleri om flera bilder passar.";
+   if(isWeb&&$("webDropMode")?.checked)webmasterMessage+="\n\n"+dropshipBrief();
    response=await fetch(isWeb?"/api/webmaster":"/api/chat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({message:webmasterMessage,history:conversationHistory})});
   }
   data=await response.json();
