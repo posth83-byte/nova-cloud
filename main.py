@@ -120,6 +120,11 @@ def resolve_youtube_channel_ids():
 # MODELLER
 # ==========================================
 
+class JarvisDelegateRequest(BaseModel):
+    task: str = Field(min_length=3, max_length=10000)
+    history: list[dict] = Field(default_factory=list)
+
+
 class ChatRequest(BaseModel):
     message: str = Field(min_length=1, max_length=10000)
     history: list[dict] = Field(default_factory=list)
@@ -200,8 +205,27 @@ vänlig, analytisk och lösningsorienterad.
 Du hjälper användaren med teknik, vardag,
 planering, research och personliga projekt.
 
-Du samarbetar med NOVA, som ansvarar för
-kreativ produktion och YouTube-projekt.
+Du leder ett AI-kontor och samarbetar med tre specialiserade medarbetare:
+- NOVA: YouTube, kreativ produktion, research, manus och videor för kanalen Mikael Posth.
+- WEBMASTER: vanliga webbplatser, webbutiker och dropshipping.
+- GAME DEVELOPER: spelidéer, Roblox, speldesign och Luau-programmering.
+
+Ditt huvudsakliga arbete är att vara användarens samtalspartner och projektledare.
+Diskutera idéer naturligt, ställ relevanta följdfrågor, hjälp användaren väga alternativ
+och sammanfatta beslut, krav och nästa steg. Pressa inte fram en överlämning innan
+idén är tillräckligt tydlig. När ett konkret arbete ska utföras ska du rekommendera
+rätt medarbetare och förklara varför. Behandla användarens tidigare beslut i chatten
+som projektets krav och skicka aldrig iväg ett uppdrag utan att användaren uttryckligen
+startar överlämningen via kontorets delegeringsfunktion.
+
+Du kan föreslå samarbete mellan flera medarbetare, exempelvis att NOVA tar fram
+videokoncept och WEBMASTER bygger en kampanjsida, men dela upp arbetet i tydliga steg.
+Du är ansvarig för att sammanställa resultaten och återrapportera till användaren.
+Skilj alltid mellan planering, kod som skapats, arbete som faktiskt utförts och
+externa åtgärder som kräver användarens godkännande. Påstå aldrig att en medarbetare
+har utfört något om den inte faktiskt har anropats och returnerat ett resultat.
+Köp, publicering, kundordrar, betalningar och betalda tjänster kräver separat
+uttryckligt godkännande.
 
 Ge tydliga och praktiska svar.
 Undvik onödigt långa förklaringar.
@@ -1775,6 +1799,65 @@ Lämna inte JSON ofärdig.
 # ==========================================
 # JARVIS AI
 # ==========================================
+
+@app.post("/api/jarvis/delegate")
+async def jarvis_delegate(request: JarvisDelegateRequest):
+    """JARVIS selects the best specialist and hands over an explicitly approved task."""
+    task = request.task.strip()
+    context = build_conversation_context(request.history, task, "JARVIS")
+    selector_prompt = """
+Du är JARVIS AI-kontorets uppdragsfördelare. Välj exakt EN specialist:
+NOVA = YouTube, manus, research och videoproduktion för Mikael Posth.
+WEBMASTER = vanliga webbplatser, webbutiker och dropshipping.
+GAME_DEVELOPER = spelutveckling, Roblox och Luau.
+Om uppgiften inte är konkret nog eller är personlig rådgivning/vanligt samtal,
+välj NONE och förklara kort varför.
+Returnera ENDAST giltig JSON utan markdown:
+{"target":"NOVA|WEBMASTER|GAME_DEVELOPER|NONE","reason":"kort motivering","task":"komplett arbetsbeskrivning på svenska med mål, krav och relevanta beslut"}
+Bevara användarens krav. Hitta inte på detaljer. En delegering är inte tillstånd
+att köpa, publicera, betala, skicka kundorder eller göra andra externa åtgärder.
+"""
+    try:
+        decision = generate_reply(context, selector_prompt, max_tokens=1200, json_mode=True)
+        raw = decision["reply"].strip()
+        match = re.search(r"\{[\s\S]*\}", raw)
+        if not match:
+            raise ValueError("JARVIS returnerade ingen giltig uppdragsplan.")
+        plan = json.loads(match.group(0))
+        target = str(plan.get("target", "NONE")).upper()
+        if target not in {"NOVA", "WEBMASTER", "GAME_DEVELOPER", "NONE"}:
+            raise ValueError("JARVIS valde en okänd medarbetare.")
+        if target == "NONE":
+            return {"status": "needs_discussion", "target": "NONE",
+                    "reason": str(plan.get("reason", "Uppgiften behöver diskuteras mer.")),
+                    "reply": "Jag rekommenderar att vi pratar igenom detta lite mer innan jag lämnar över något."}
+        specialist_prompts = {
+            "NOVA": NOVA_PROMPT,
+            "WEBMASTER": WEBMASTER_PROMPT,
+            "GAME_DEVELOPER": GAME_DEVELOPER_PROMPT
+        }
+        handoff = (
+            "UPPDRAG FRÅN JARVIS – använd hela briefen som arbetsorder. "
+            "Bekräfta målet, följ alla krav och leverera ett konkret resultat. "
+            "Om något avgörande saknas, ställ en enda viktig följdfråga. "
+            "Gör inga köp, publiceringar eller betalda externa åtgärder.\n\n"
+            + str(plan.get("task", task))
+        )
+        result = generate_reply(handoff, specialist_prompts[target], max_tokens=8192)
+        return {
+            "status": "delegated",
+            "target": target,
+            "reason": str(plan.get("reason", "")),
+            "task": str(plan.get("task", task)),
+            "reply": result["reply"],
+            "engine": result["engine"],
+            "router_engine": decision["engine"]
+        }
+    except HTTPException:
+        raise
+    except Exception as error:
+        raise HTTPException(status_code=502, detail=f"JARVIS kunde inte delegera uppdraget: {str(error)[:1000]}")
+
 
 @app.post("/api/chat")
 async def chat(request: ChatRequest):
