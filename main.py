@@ -379,7 +379,9 @@ def ask_gemini(
     )
 
     last_error = None
-    for attempt in range(3):
+    # Four attempts with increasing waits help ride out temporary 503
+    # overloads without immediately failing the user's chat request.
+    for attempt in range(4):
         try:
             with urllib.request.urlopen(req, timeout=180) as response:
                 result = json.loads(
@@ -393,8 +395,8 @@ def ask_gemini(
             last_error = ValueError(
                 f"Gemini API-fel {error.code}: {details[:1500]}"
             )
-            # Retry temporary overload/rate-limit/server failures.
-            if error.code not in (429, 500, 502, 503, 504) or attempt == 2:
+            # Retry temporary overload/rate-limit/server failures only.
+            if error.code not in (429, 500, 502, 503, 504) or attempt == 3:
                 raise last_error
             time.sleep(2 ** (attempt + 1))
 
@@ -402,7 +404,7 @@ def ask_gemini(
             last_error = ValueError(
                 f"Gemini kunde inte nås: {str(error)[:800]}"
             )
-            if attempt == 2:
+            if attempt == 3:
                 raise last_error
             time.sleep(2 ** (attempt + 1))
 
