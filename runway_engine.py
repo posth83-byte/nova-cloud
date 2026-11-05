@@ -147,7 +147,7 @@ def get_runway_task(task_id: str):
 
 
 class RunwayFinalizeRequest(BaseModel):
-    task_ids: list[str] = Field(min_length=1, max_length=12)
+    task_ids: list[str] = Field(min_length=1, max_length=30)
     narration: str = Field(min_length=20, max_length=12000)
 
 
@@ -208,6 +208,7 @@ async def finalize_runway_video(request: RunwayFinalizeRequest):
     try:
         clip_paths = []
         seen = set()
+        total_downloaded = 0
         for index, task_id in enumerate(request.task_ids):
             if not re.fullmatch(r"[A-Za-z0-9_-]{8,100}", task_id):
                 raise HTTPException(400, "Ett Runway-jobb-ID har fel format.")
@@ -240,8 +241,11 @@ async def finalize_runway_video(request: RunwayFinalizeRequest):
                             if not chunk:
                                 break
                             total_bytes += len(chunk)
+                            total_downloaded += len(chunk)
                             if total_bytes > 150 * 1024 * 1024:
                                 raise HTTPException(413, "Ett Runway-klipp överskrider gränsen på 150 MB.")
+                            if total_downloaded > 800 * 1024 * 1024:
+                                raise HTTPException(413, "Den sammanlagda videostorleken överskrider 800 MB.")
                             output.write(chunk)
             except urllib.error.URLError as error:
                 raise HTTPException(502, f"Kunde inte hämta Runway-klippet: {str(error)[:400]}")
