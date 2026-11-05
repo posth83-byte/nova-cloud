@@ -1224,7 +1224,7 @@ async function sendMessage(event,assistant){
    response=await fetch("/api/game-developer",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({message,reference_url:referenceUrl,history:conversationHistory})});
   }else{
    const webmasterMessage=isWeb&&webmasterImages.length
-    ?message+"\\n\\nANVÄNDARENS BIFOGADE BILDER (använd dessa bildplatshållare i HTML-koden):\\n"+webmasterImages.map((item,index)=>"Bild "+(index+1)+": "+item.name+" – använd exakt {{WEBMASTER_IMAGE_"+(index+1)+"}} som img src.").join("\\n")+"\\nAnvänd bilderna i relevanta delar av designen. Skapa gärna ett bildgalleri om flera bilder passar."
+    ?message+"\n\nANVÄNDARENS BIFOGADE BILDER (använd dessa bildplatshållare i HTML-koden):\n"+webmasterImages.map((item,index)=>"Bild "+(index+1)+": "+item.name+" – använd exakt {{WEBMASTER_IMAGE_"+(index+1)+"}} som img src.").join("\n")+"\nAnvänd bilderna i relevanta delar av designen. Skapa gärna ett bildgalleri om flera bilder passar."
     :message;
    response=await fetch(isWeb?"/api/webmaster":"/api/chat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({message:webmasterMessage,history:conversationHistory})});
   }
