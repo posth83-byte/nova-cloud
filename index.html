@@ -27,11 +27,11 @@ header{position:relative;z-index:2;text-align:center;padding:23px 15px 18px;bord
 h1{margin:12px 0 7px;font-size:clamp(22px,5vw,34px);letter-spacing:4px;text-shadow:0 0 25px #29baff}
 .sub{font-size:9px;color:#8da9c4;letter-spacing:3px}
 .top-status{display:inline-block;margin-top:13px;padding:8px 15px;border:1px solid #19a985;border-radius:30px;color:#70f5c6;font-size:10px;letter-spacing:1px}
-main{position:relative;z-index:1;max-width:1100px;margin:auto;padding:20px 15px 35px}
+main{position:relative;z-index:1;max-width:1400px;margin:auto;padding:20px 15px 35px}
 .section-label{font-size:10px;letter-spacing:3px;color:#7bd5ff;margin:15px 3px}
 .hidden{display:none!important}
 #homeView{animation:appear .65s ease}
-.headquarters{position:relative;overflow:hidden;text-align:center;min-height:420px;padding:25px 15px 30px;border:1px solid #367da7;border-radius:24px;background:radial-gradient(ellipse at 50% 45%,#16436b99,transparent 55%),linear-gradient(145deg,#0c2039,#050d1d);box-shadow:0 0 45px #008cff25,inset 0 0 55px #168cff16;perspective:900px}
+.headquarters{position:relative;overflow:hidden;text-align:center;min-height:520px;padding:25px 15px 30px;border:1px solid #367da7;border-radius:24px;background:radial-gradient(ellipse at 50% 45%,#16436b99,transparent 55%),linear-gradient(145deg,#0c2039,#050d1d);box-shadow:0 0 45px #008cff25,inset 0 0 55px #168cff16;perspective:900px}
 .headquarters:before,.headquarters:after{content:"";position:absolute;border:1px solid #4abaff27;border-radius:50%;pointer-events:none;left:50%;top:48%;transform:translate(-50%,-50%) rotateX(68deg)}
 .headquarters:before{width:340px;height:340px;animation:spin 30s linear infinite}
 .headquarters:after{width:460px;height:460px;animation:spin 45s linear infinite reverse}
@@ -523,7 +523,7 @@ main{position:relative;z-index:1;max-width:1100px;margin:auto;padding:20px 15px 
 .office-topline{position:absolute;z-index:3;top:0;left:0;right:0;display:flex;justify-content:space-between;align-items:center;padding:13px 18px;background:linear-gradient(180deg,#091629d9,transparent);font-size:clamp(8px,1vw,12px);font-weight:800;letter-spacing:2px;color:#c5edff}
 .office-live{color:#a7f7d9;letter-spacing:1px}.office-live i{display:inline-block;width:7px;height:7px;border-radius:50%;background:#5df0ae;box-shadow:0 0 12px #5df0ae;margin-right:7px;animation:livePulse 1.8s infinite}
 .office-art{display:block;width:100%;height:100%;filter:saturate(1.08)}
-.office-art g[onclick]{cursor:pointer}
+.office-art g[onclick]{cursor:pointer;transition:filter .18s ease}.office-art g[onclick]:hover{filter:brightness(1.18) drop-shadow(0 0 12px #8bdfff)}.office-art g[onclick]:focus{outline:none;filter:brightness(1.2) drop-shadow(0 0 16px #fff)}
 .office-hint{position:absolute;bottom:9%;left:0;right:0;text-align:center;font-size:clamp(6px,.8vw,10px);letter-spacing:2px;color:#c4eaff;opacity:.82;pointer-events:none}
 .office-hotspots{position:absolute;inset:0;display:grid;grid-template-columns:repeat(3,1fr);gap:1%;padding:0 7%;align-items:end;pointer-events:none}
 .office-hotspots button{pointer-events:auto;margin-bottom:15%;border:1px solid #8bdfff77;border-radius:12px;padding:9px 6px;background:#0b1b30b8;color:#e8f8ff;font-size:clamp(8px,1vw,12px);font-weight:800;letter-spacing:1px;backdrop-filter:blur(8px);cursor:pointer;box-shadow:0 5px 18px #0005}
@@ -557,6 +557,7 @@ main{position:relative;z-index:1;max-width:1100px;margin:auto;padding:20px 15px 
   <div class="hq-caption">NOVA CLOUD / CENTRAL AI HEADQUARTERS</div>
   <div class="hq-room-scene crew-scene premium-office" aria-label="AI-högkvarter med fyra arbetsstationer">
    <div class="office-topline"><span>✦ NOVA CLOUD CAMPUS</span><span class="office-live"><i></i> LIVE · 4 AGENTER</span></div>
+   <div class="office-hint">TRYCK PÅ EN AI-ARBETARE FÖR ATT ÖPPNA DESS RUM</div>
    <svg class="office-art" viewBox="0 0 1200 820" role="img" aria-label="Ett varmt och mysigt AI-kontor med fyra tydliga arbetsplatser för JARVIS, NOVA, WEBMASTER och GAME DEVELOPER">
     <defs>
      <linearGradient id="cozyWall" x2="0" y2="1"><stop stop-color="#344b62"/><stop offset="1" stop-color="#182b3b"/></linearGradient>
@@ -601,7 +602,7 @@ main{position:relative;z-index:1;max-width:1100px;margin:auto;padding:20px 15px 
     <ellipse cx="600" cy="665" rx="350" ry="83" fill="none" stroke="#e5c4a1" stroke-width="2" opacity=".35"/>
     <!-- four individual workstations, all at equal scale -->
     <g filter="url(#softShadow)">
-     <g transform="translate(90 225)">
+     <g transform="translate(90 225)" onclick="enterRoom('jarvis')" role="button" tabindex="0" aria-label="Öppna JARVIS" onkeydown="if(event.key==='Enter'||event.key===' ')enterRoom('jarvis')">
       <rect x="100" y="0" width="220" height="112" rx="12" fill="#132b40" stroke="#69d9ff" stroke-width="5"/>
       <rect x="111" y="11" width="198" height="90" rx="6" fill="url(#screenBlue)"/>
       <path d="M130 75L165 52 190 65 224 35 278 48" fill="none" stroke="#7ce5ff" stroke-width="4"/>
@@ -618,7 +619,7 @@ main{position:relative;z-index:1;max-width:1100px;margin:auto;padding:20px 15px 
       <text x="210" y="264" text-anchor="middle" font-family="Arial" font-size="23" font-weight="800" letter-spacing="3" fill="#d5f7ff">JARVIS</text>
       <text x="210" y="302" text-anchor="middle" font-family="Arial" font-size="13" letter-spacing="2" fill="#b8d9e9">SYSTEM · RESEARCH</text>
      </g>
-     <g transform="translate(720 225)">
+     <g transform="translate(720 225)" onclick="enterRoom('nova')" role="button" tabindex="0" aria-label="Öppna NOVA" onkeydown="if(event.key==='Enter'||event.key===' ')enterRoom('nova')">
       <rect x="100" y="0" width="220" height="112" rx="12" fill="#2a1d3c" stroke="#d9adff" stroke-width="5"/>
       <rect x="111" y="11" width="198" height="90" rx="6" fill="#1c1530"/>
       <path d="M130 72Q160 20 190 65T278 35" fill="none" stroke="#e5c4ff" stroke-width="4"/>
@@ -635,7 +636,7 @@ main{position:relative;z-index:1;max-width:1100px;margin:auto;padding:20px 15px 
       <text x="210" y="264" text-anchor="middle" font-family="Arial" font-size="23" font-weight="800" letter-spacing="3" fill="#f5eaff">NOVA</text>
       <text x="210" y="302" text-anchor="middle" font-family="Arial" font-size="13" letter-spacing="2" fill="#e3c9f4">YOUTUBE · CREATION</text>
      </g>
-     <g transform="translate(90 525)">
+     <g transform="translate(90 525)" onclick="enterRoom('web')" role="button" tabindex="0" aria-label="Öppna WEBMASTER" onkeydown="if(event.key==='Enter'||event.key===' ')enterRoom('web')">
       <rect x="100" y="0" width="220" height="112" rx="12" fill="#15352f" stroke="#91edca" stroke-width="5"/>
       <rect x="111" y="11" width="198" height="90" rx="6" fill="#0d2828"/>
       <path d="M130 75L165 50 190 68 224 40 278 55" fill="none" stroke="#9bffdb" stroke-width="4"/>
@@ -652,7 +653,7 @@ main{position:relative;z-index:1;max-width:1100px;margin:auto;padding:20px 15px 
       <text x="210" y="264" text-anchor="middle" font-family="Arial" font-size="20" font-weight="800" letter-spacing="1.5" fill="#e0fff1">WEBMASTER</text>
       <text x="210" y="302" text-anchor="middle" font-family="Arial" font-size="13" letter-spacing="2" fill="#c2eadb">WEB · DESIGN</text>
      </g>
-     <g transform="translate(720 525)">
+     <g transform="translate(720 525)" onclick="enterRoom('game')" role="button" tabindex="0" aria-label="Öppna GAME DEVELOPER" onkeydown="if(event.key==='Enter'||event.key===' ')enterRoom('game')">
       <rect x="100" y="0" width="220" height="112" rx="12" fill="#45361d" stroke="#ffd66b" stroke-width="5"/>
       <rect x="111" y="11" width="198" height="90" rx="6" fill="#2b210f"/>
       <path d="M130 75L165 50 190 68 224 40 278 55" fill="none" stroke="#ffe69a" stroke-width="4"/>
