@@ -122,6 +122,7 @@ def resolve_youtube_channel_ids():
 
 class ChatRequest(BaseModel):
     message: str = Field(min_length=1, max_length=10000)
+    history: list[dict] = Field(default_factory=list)
 
 
 class NovaChatRequest(BaseModel):
@@ -151,6 +152,7 @@ class VideoPlanRequest(BaseModel):
     audience: str = "Svensk YouTube-publik"
     reference_url: str = Field(default="", max_length=2000)
     reference_image_data: str = Field(default="", max_length=6000000)
+    history: list[dict] = Field(default_factory=list)
 
 
 def build_conversation_context(history, current_message, assistant_name="NOVA"):
@@ -1704,6 +1706,8 @@ Avsluta samtliga strängar, listor och objekt.
 Lämna inte JSON ofärdig.
 """
 
+    user_prompt = build_conversation_context(request.history, user_prompt, "NOVA")
+
     reference_image_data = request.reference_image_data.strip()
     if reference_image_data and not reference_image_data.startswith("data:image/"):
         raise HTTPException(status_code=400, detail="Referensbilden har ett ogiltigt format.")
@@ -1782,6 +1786,8 @@ async def chat(request: ChatRequest):
             status_code=400,
             detail="Meddelandet får inte vara tomt."
         )
+
+    message = build_conversation_context(request.history, message, "JARVIS")
 
     result = generate_reply(
         message,
@@ -1993,6 +1999,7 @@ async def webmaster(request: ChatRequest):
             status_code=400,
             detail="Meddelandet får inte vara tomt."
         )
+    message = build_conversation_context(request.history, message, "WEBMASTER")
     result = generate_reply(
         message,
         WEBMASTER_PROMPT,
