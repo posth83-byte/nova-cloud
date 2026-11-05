@@ -1373,7 +1373,7 @@ function renderVideoPlan(data){
     const task=await check.json();
     if(!check.ok)throw new Error(task.detail||"Kunde inte läsa Runway-jobbet.");
     const state=String(task.status||"").toUpperCase();
-    item.result.textContent="Runway-status: "+state+(task.progress!==null&&task.progress!==undefined?" · "+Math.round(Number(task.progress)*100)+"%":"");
+    item.result.textContent="Runway-status: "+state+(task.progress!==null&&task.progress!==undefined?" · "+(Number(task.progress)>1?Math.round(Number(task.progress)):Math.round(Number(task.progress)*100))+"%":"");
     if(state==="SUCCEEDED"){completed=task;break;}
     if(state==="FAILED"||state==="CANCELED"||state==="CANCELLED")throw new Error(task.failure||task.failure_code||"Runway kunde inte generera scenen.");
    }
