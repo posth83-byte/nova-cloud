@@ -53,6 +53,8 @@ GEMINI_FALLBACK_MODEL = os.getenv(
     "gemini-3.8-flash"
 )
 
+RUNWAY_API_KEY = os.getenv("RUNWAYML_API_SECRET")
+
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 OPENROUTER_MODEL = os.getenv(
     "OPENROUTER_MODEL",
@@ -1340,6 +1342,66 @@ async def home():
 # ==========================================
 # HÄLSOKONTROLL
 # ==========================================
+
+
+@app.get("/api/runway/status")
+async def runway_status():
+    """Verify the Runway API key and read the account credit balance without generating media."""
+    if not RUNWAY_API_KEY:
+        return {
+            "configured": False,
+            "connected": False,
+            "message": "RUNWAYML_API_SECRET saknas i Render Environment."
+        }
+
+    req = urllib.request.Request(
+        "https://api.dev.runwayml.com/v1/organization",
+        headers={
+            "Authorization": f"Bearer {RUNWAY_API_KEY}",
+            "X-Runway-Version": "2024-11-06",
+            "Accept": "application/json"
+        },
+        method="GET"
+    )
+
+    try:
+        with urllib.request.urlopen(req, timeout=20) as response:
+            account = json.loads(response.read().decode("utf-8"))
+
+        balance = account.get("creditBalance")
+        tier = account.get("tier", {})
+        if isinstance(tier, dict):
+            tier_name = tier.get("name") or tier.get("id")
+        else:
+            tier_name = tier
+
+        return {
+            "configured": True,
+            "connected": True,
+            "tier": tier_name,
+            "credit_balance": balance,
+            "message": "Runway API-nyckeln fungerar. Ingen videogenerering har startats."
+        }
+
+    except urllib.error.HTTPError as error:
+        details = error.read().decode("utf-8", errors="replace")
+        if error.code in (401, 403):
+            return {
+                "configured": True,
+                "connected": False,
+                "message": "Runway avvisade API-nyckeln eller projektets behörighet.",
+                "provider_status": error.code
+            }
+        raise HTTPException(
+            status_code=502,
+            detail=f"Runway API svarade {error.code}: {details[:800]}"
+        )
+    except (urllib.error.URLError, TimeoutError) as error:
+        raise HTTPException(
+            status_code=502,
+            detail=f"NOVA kunde inte nå Runway API: {str(error)[:500]}"
+        )
+
 
 @app.get("/health")
 async def health():
