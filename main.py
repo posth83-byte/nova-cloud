@@ -53,7 +53,7 @@ GEMINI_FALLBACK_MODEL = os.getenv(
     "gemini-3.8-flash"
 )
 
-RUNWAY_API_KEY = os.getenv("RUNWAYML_API_SECRET")
+RUNWAY_API_KEY = os.getenv("RUNWAYML_API_SECRET", "").strip()
 
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 OPENROUTER_MODEL = os.getenv(
@@ -1389,8 +1389,9 @@ async def runway_status():
             return {
                 "configured": True,
                 "connected": False,
-                "message": "Runway avvisade API-nyckeln eller projektets behörighet.",
-                "provider_status": error.code
+                "message": "Runway avvisade API-nyckeln. Kontrollera att den kommer från Developer Portal, är aktiv och inte innehåller Bearer eller extra tecken.",
+                "provider_status": error.code,
+                "key_format_valid": bool(re.fullmatch(r"key_[0-9a-fA-F]{128}", RUNWAY_API_KEY))
             }
         raise HTTPException(
             status_code=502,
