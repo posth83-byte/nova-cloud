@@ -130,6 +130,12 @@ class NovaChatRequest(BaseModel):
     reference_image_data: str = Field(default="", max_length=5600000)
 
 
+class GameDeveloperChatRequest(BaseModel):
+    message: str = Field(min_length=1, max_length=10000)
+    reference_url: str = Field(default="", max_length=2000)
+    reference_image_data: str = Field(default="", max_length=5600000)
+
+
 class WebPreviewRequest(BaseModel):
     html: str = Field(min_length=20, max_length=2000000)
 
@@ -1754,6 +1760,44 @@ async def chat(request: ChatRequest):
 # NOVA AI – YOUTUBE PRODUCENT
 # ==========================================
 
+GAME_DEVELOPER_PROMPT = """
+Du är GAME DEVELOPER, en erfaren Roblox-spelutvecklare,
+speldesigner och Luau-programmerare.
+Du hjälper användaren skapa Roblox-spel från idé till fungerande projekt
+och kan arbeta med simulatorer, tycoons, skräck, obby, racing, rollspel,
+äventyr, överlevnad, samlarspel och nya koncept.
+
+ARBETE:
+1. Speldesign: kärnloop, mål, progression och belöningar.
+2. Världsdesign: kartor, områden, byggnader, hinder och miljöer.
+3. Programmering: Roblox-kompatibel Luau-kod.
+4. System: pengar, nivåer, uppdrag, inventarier, butiker, rundor,
+   checkpoints, DataStore och multiplayer.
+5. UI: menyer, HUD, knappar och mobilkontroller.
+6. Testning: felsökning, säkerhet och prestanda.
+7. Publiceringsförberedelser: testchecklista, ikonidéer och beskrivning.
+
+ARBETSSÄTT:
+- Börja med en konkret spelplan och dela upp större spel i byggsteg.
+- Ange exakt var varje Script, LocalScript eller ModuleScript ska placeras
+  i Roblox Studios Explorer.
+- Använd Luau och Roblox API korrekt. Lägg auktoritativa värden på servern
+  och validera klientdata.
+- Leverera kompletta filer eller sammanhängande kodblock, inte små fragment.
+- Förklara hur användaren testar varje del i Roblox Studio.
+- Föreslå i första hand kostnadsfria Studio-funktioner och Creator Store-
+  resurser. Kontrollera licens och rättigheter.
+- Påstå aldrig att du öppnat Studio, byggt en 3D-värld, testat eller
+  publicerat något om det inte faktiskt har gjorts.
+- NOVA Cloud kan just nu skapa planer, instruktioner och kod. Direkt
+  styrning av Roblox Studio kräver en separat lokal koppling på Windows
+  och är inte automatiskt aktiverad i denna chatt.
+- Roblox Studio är gratis, men AI-kvoter och externa resurser kan ha
+  begränsningar. Starta aldrig köp eller betalda tjänster utan godkännande.
+Svara på naturlig svenska och arbeta som en professionell spelutvecklare.
+"""
+
+
 WEBMASTER_PROMPT = """
 Du är WEBMASTER, en senior webbdesigner och fullstackutvecklare.
 Du arbetar ENDAST med att skapa och förbättra webbplatser åt användaren.
@@ -1844,6 +1888,31 @@ async def nova(request: NovaChatRequest):
         "reply": result["reply"],
         "reference_received": bool(reference_url or reference_image_data)
     }
+
+@app.post("/api/game-developer")
+async def game_developer(request: GameDeveloperChatRequest):
+    message = request.message.strip()
+    reference_url = request.reference_url.strip()
+    image_data = request.reference_image_data.strip()
+    if not message:
+        raise HTTPException(status_code=400, detail="Meddelandet får inte vara tomt.")
+    if reference_url:
+        message += (
+            "\n\nREFERENSLÄNK FRÅN ANVÄNDAREN:\n" + reference_url
+            + "\nAnvänd länken som referens. Påstå inte att du granskat innehållet om det inte faktiskt är åtkomligt."
+        )
+    if image_data:
+        if not image_data.startswith("data:image/"):
+            raise HTTPException(status_code=400, detail="Referensbilden har ett ogiltigt format.")
+        if len(image_data) > 5600000:
+            raise HTTPException(status_code=413, detail="Referensbilden är för stor. Max 4 MB.")
+    try:
+        result = generate_reply(message, GAME_DEVELOPER_PROMPT, max_tokens=8192, image_data=image_data)
+    except Exception as error:
+        raise HTTPException(status_code=502, detail=f"GAME DEVELOPER kunde inte behandla uppdraget: {str(error)[:1200]}")
+    return {"assistant": "GAME DEVELOPER", "status": "online", "engine": result["engine"],
+            "reply": result["reply"], "reference_received": bool(reference_url or image_data)}
+
 
 @app.post("/api/webmaster/preview")
 async def create_webmaster_preview(request: WebPreviewRequest):
