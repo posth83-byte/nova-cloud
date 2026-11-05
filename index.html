@@ -708,6 +708,13 @@ main{position:relative;z-index:1;max-width:1100px;margin:auto;padding:20px 15px 
    <div class="room-features"><span class="feature">WEBBDESIGN</span><span class="feature">HTML / CSS</span><span class="feature">JAVASCRIPT</span><span class="feature">SEO</span><span class="feature">MOBILANPASSNING</span></div>
    <button class="launch" onclick="enterRoom('web')">GÅ IN I WEBMASTER →</button>
   </section>
+  <section class="room-card game-developer">
+   <div class="room-code">04 / ROBLOX GAME DEVELOPMENT</div><h2>GAME DEVELOPER</h2>
+   <div class="room-desc">Din Roblox-spelutvecklare. Från spelidé och värld till Luau-kod, system, testning och publiceringsförberedelser.</div>
+   <div class="room-visual"><div class="orbit"></div><div class="avatar"><svg viewBox="0 0 145 195"><rect x="25" y="24" width="95" height="95" rx="18"/><path d="M49 54 H96 M72 40 V87 M45 102 H100 M54 119 V146 M91 119 V146 M42 146 H103"/><circle cx="48" cy="72" r="7"/><circle cx="97" cy="72" r="7"/></svg></div><div class="room-floor"></div></div>
+   <div class="room-features"><span class="feature">ROBLOX STUDIO</span><span class="feature">LUAU</span><span class="feature">SPELDESIGN</span><span class="feature">TESTNING</span><span class="feature">ALLA GENRER</span></div>
+   <button class="launch" onclick="enterRoom('game')">ÖPPNA GAME DEVELOPER →</button>
+  </section>
  </div>
  <section class="panel">
   <h3>HOLOGRAPHIC SYSTEM MONITOR</h3><p>Övervakning av NOVA Cloud och AI-motorerna.</p>
@@ -836,6 +843,21 @@ main{position:relative;z-index:1;max-width:1100px;margin:auto;padding:20px 15px 
  </div>
 </section>
 
+<!-- GAME DEVELOPER ROOM -->
+<section class="room-view game-view hidden" id="gameView">
+ <div class="room-topbar"><button class="back-btn" onclick="goHome()">← TILL HUVUDCENTRALEN</button><div class="room-live" id="gameLive">● GAME DEVELOPER ONLINE</div></div>
+ <div class="room-heading"><div class="eyebrow">04 / ROBLOX GAME DEVELOPMENT</div><h2>GAME DEVELOPER</h2><p>Din personliga Roblox-spelutvecklare. Beskriv spelet du vill skapa – så tar vi fram spelplan, värld, Luau-skript och en tydlig byggordning.</p></div>
+ <div class="workstation-stage"><div class="holo-grid"></div><div class="projection-beam"></div><div class="ai-scan"></div>
+  <div class="ai-monitor"><div class="monitor-top"><span>GAME DEVELOPER / ROBLOX STUDIO</span><span id="gameMonitorStatus">● READY</span></div><div class="monitor-content"><div class="monitor-panel"><div class="monitor-line"></div><div class="monitor-line"></div><div class="monitor-line"></div></div><div class="monitor-panel"><div class="monitor-graph"><span></span><span></span><span></span><span></span><span></span><span></span></div></div><div class="monitor-panel"><div class="monitor-line"></div><div class="monitor-line"></div><div class="monitor-line"></div></div></div></div>
+  <div class="ai-desk"></div><div class="ai-floor"></div>
+ </div>
+ <div class="room-content"><div class="chatbox"><div class="chat-title">GAME DEVELOPER / BUILD CHAT</div>
+  <div class="chat-messages" id="gameMessages" aria-live="polite"><div class="msg ai">GAME DEVELOPER online. Berätta vilken typ av Roblox-spel du vill skapa. Jag hjälper dig med spelvärld, mekanik, Luau-kod och steg-för-steg-instruktioner för Roblox Studio.</div></div>
+  <form class="input-row" onsubmit="sendMessage(event,'game')"><input class="chat-input" id="gameInput" placeholder="Beskriv ditt Roblox-spel eller klistra in en referenslänk..." autocomplete="off"><button class="send" id="gameSend">SKICKA</button></form>
+  <div class="voice-note">Här skapar GAME DEVELOPER spelplaner och Luau-kod. Roblox Studio används på din Windows-dator för att bygga, provspela och publicera. Inga köp eller betalda genereringar startas automatiskt.</div>
+ </div></div>
+</section>
+
 <!-- WEBMASTER ROOM -->
 <section class="room-view webmaster-view hidden" id="webView">
  <div class="room-topbar"><button class="back-btn" onclick="goHome()">← TILL HUVUDCENTRALEN</button><div class="room-live" id="webLive">● WEBMASTER ONLINE</div></div>
@@ -910,7 +932,7 @@ function openVideoStudio(){
 function loadVoices(){
  if(!("speechSynthesis" in window))return;
  availableVoices=window.speechSynthesis.getVoices();
- ["jarvis","nova","web"].forEach(room=>{
+ ["jarvis","nova","web","game"].forEach(room=>{
   const select=$(room+"VoiceSelect");if(!select)return;
   const previous=select.value;select.innerHTML="";
   if(!availableVoices.length){const option=document.createElement("option");option.value="";option.textContent="Webbläsarens standardröst";select.appendChild(option);return}
@@ -1024,7 +1046,7 @@ function setRoomState(room,state){
  else{if(live)live.textContent="● "+room.toUpperCase()+" ONLINE";if(monitor)monitor.textContent=room==="nova"?"● PRODUCTION ACTIVE":"● SYSTEM ACTIVE"}
 }
 function enterRoom(room){
- activeRoom=room;$("homeView").classList.add("hidden");$("jarvisView").classList.add("hidden");$("novaView").classList.add("hidden");$("webView").classList.add("hidden");
+ activeRoom=room;$("homeView").classList.add("hidden");$("jarvisView").classList.add("hidden");$("novaView").classList.add("hidden");$("webView").classList.add("hidden");$("gameView").classList.add("hidden");
  $(room+"View").classList.remove("hidden");window.scrollTo({top:0,behavior:"smooth"});loadVoices();
  if(room==="nova")refreshYouTubeCenter();
  logActivity(room.toUpperCase()+"-rummet öppnades",room==="nova"?"✧":"✦","AI-rum aktiverat");
@@ -1032,7 +1054,7 @@ function enterRoom(room){
  setTimeout(()=>$(room+"Input").focus(),450);
 }
 function goHome(){
- stopSpeech();activeRoom=null;$("jarvisView").classList.add("hidden");$("novaView").classList.add("hidden");$("webView").classList.add("hidden");$("homeView").classList.remove("hidden");
+ stopSpeech();activeRoom=null;$("jarvisView").classList.add("hidden");$("novaView").classList.add("hidden");$("webView").classList.add("hidden");$("gameView").classList.add("hidden");$("homeView").classList.remove("hidden");
  window.scrollTo({top:0,behavior:"smooth"});
 }
 const CHAT_HISTORY_KEY="jarvis_nova_chat_history_v1";
@@ -1045,7 +1067,7 @@ function saveChatHistory(room){
  try{localStorage.setItem(CHAT_HISTORY_KEY+"_"+room,JSON.stringify(items))}catch(e){}
 }
 function restoreChatHistory(){
- ["jarvis","nova","web"].forEach(room=>{
+ ["jarvis","nova","web","game"].forEach(room=>{
   try{
    const saved=JSON.parse(localStorage.getItem(CHAT_HISTORY_KEY+"_"+room)||"[]");
    if(!Array.isArray(saved)||!saved.length)return;
@@ -1101,7 +1123,7 @@ async function createWebPreview(reply){
 /* CHAT CONNECTION – ALL NOVA WORK STARTS HERE */
 async function sendMessage(event,assistant){
  event.preventDefault();
- const isNova=assistant==="nova",isWeb=assistant==="web",input=$(assistant+"Input"),messages=assistant+"Messages",button=$(assistant+"Send");
+ const isNova=assistant==="nova",isWeb=assistant==="web",isGame=assistant==="game",input=$(assistant+"Input"),messages=assistant+"Messages",button=$(assistant+"Send");
  const imageData=isNova?(window.novaChatImageData||""):"";
  const sceneFiles=isNova?(window.novaChatSceneFiles||[]):[];
  const message=input.value.trim()||((isNova&&imageData)?"Analysera de bifogade bilderna och föreslå hur de kan användas i en YouTube-video.":"");
@@ -1110,7 +1132,7 @@ async function sendMessage(event,assistant){
  const shownMessage=message+(isNova&&sceneFiles.length?"\n📎 "+sceneFiles.length+" referens-/scenbild"+(sceneFiles.length===1?" bifogad":"er bifogade"):"");
  addMessage(messages,shownMessage,"user");logActivity(assistant.toUpperCase()+" fick ett nytt meddelande",isWeb?"⌘":isNova?"✧":"✦",message.length>65?message.slice(0,65)+"…":message);
  input.value="";button.disabled=true;button.textContent="...";setRoomState(assistant,"working");
- const loading=addMessage(messages,isWeb?"WEBMASTER bygger en lösning...":isNova?"NOVA analyserar...":"JARVIS tänker...","ai");
+ const loading=addMessage(messages,isGame?"GAME DEVELOPER bygger spelplan...":isWeb?"WEBMASTER bygger en lösning...":isNova?"NOVA analyserar...":"JARVIS tänker...","ai");
  try{
    videoRequest=/\b(skapa|gör(?:a)?|bygg|producera|framställ|ta fram)\b.{0,55}\b(video|short|film|klipp|avsnitt)\b|\b(video|short|film|klipp|avsnitt)\b.{0,55}\b(skapa|gör(?:a)?|bygg|producera)\b/i.test(message);
   if(isNova){
@@ -1125,6 +1147,10 @@ async function sendMessage(event,assistant){
    }else{
     response=await fetch("/api/nova",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({message,reference_url:referenceUrl,reference_image_data:imageData})});
    }
+  }else if(isGame){
+   const urlMatch=message.match(/https?:\/\/[^\s<>"']+/i);
+   const referenceUrl=urlMatch?urlMatch[0].replace(/[),.]+$/,""):"";
+   response=await fetch("/api/game-developer",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({message,reference_url:referenceUrl})});
   }else{
    response=await fetch(isWeb?"/api/webmaster":"/api/chat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({message})});
   }
