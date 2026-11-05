@@ -555,15 +555,16 @@ main{position:relative;z-index:1;max-width:1100px;margin:auto;padding:20px 15px 
  <div class="section-label">CENTRAL COMMAND / ÖVERSIKT</div>
  <section class="headquarters">
   <div class="hq-caption">NOVA CLOUD / CENTRAL AI HEADQUARTERS</div>
-  <div class="hq-room-scene crew-scene premium-office" aria-label="AI-högkvarter med tre arbetsstationer">
-   <div class="office-topline"><span>✦ NOVA CLOUD CAMPUS</span><span class="office-live"><i></i> LIVE · 3 AGENTER</span></div>
-   <svg class="office-art" viewBox="0 0 1200 820" role="img" aria-label="Ett stort tecknat futuristiskt kontor med JARVIS, NOVA och WEBMASTER vid sina arbetsstationer">
+  <div class="hq-room-scene crew-scene premium-office" aria-label="AI-högkvarter med fyra arbetsstationer">
+   <div class="office-topline"><span>✦ NOVA CLOUD CAMPUS</span><span class="office-live"><i></i> LIVE · 4 AGENTER</span></div>
+   <svg class="office-art" viewBox="0 0 1200 820" role="img" aria-label="Ett stort tecknat futuristiskt kontor med JARVIS, NOVA, WEBMASTER och GAME DEVELOPER vid sina arbetsstationer">
     <defs>
      <linearGradient id="wallBack" x2="0" y2="1"><stop stop-color="#263e62"/><stop offset="1" stop-color="#101d36"/></linearGradient>
      <linearGradient id="floorMain" x2="0" y2="1"><stop stop-color="#344e70"/><stop offset="1" stop-color="#101c33"/></linearGradient>
      <linearGradient id="blueDesk" x2="1" y2="1"><stop stop-color="#53d8ff"/><stop offset=".5" stop-color="#17618f"/><stop offset="1" stop-color="#102d50"/></linearGradient>
      <linearGradient id="purpleDesk" x2="1" y2="1"><stop stop-color="#e0b5ff"/><stop offset=".5" stop-color="#8552b9"/><stop offset="1" stop-color="#382451"/></linearGradient>
      <linearGradient id="greenDesk" x2="1" y2="1"><stop stop-color="#a7ffe0"/><stop offset=".5" stop-color="#398e78"/><stop offset="1" stop-color="#1d4c4b"/></linearGradient>
+     <linearGradient id="goldDesk" x2="1" y2="1"><stop stop-color="#fff0a6"/><stop offset=".5" stop-color="#b88a32"/><stop offset="1" stop-color="#503b18"/></linearGradient>
      <linearGradient id="skin" x2=".8" y2="1"><stop stop-color="#ffe5c9"/><stop offset="1" stop-color="#c98569"/></linearGradient>
      <linearGradient id="glass" x2="0" y2="1"><stop stop-color="#8edfff" stop-opacity=".55"/><stop offset="1" stop-color="#1d527c" stop-opacity=".12"/></linearGradient>
      <radialGradient id="ceilingGlow"><stop stop-color="#80dfff" stop-opacity=".4"/><stop offset="1" stop-color="#80dfff" stop-opacity="0"/></radialGradient>
@@ -656,6 +657,35 @@ main{position:relative;z-index:1;max-width:1100px;margin:auto;padding:20px 15px 
      <g><rect x="845" y="485" width="245" height="48" rx="24" fill="#153a38" stroke="#91edca" stroke-width="2"/><text x="967" y="516" fill="#d6ffed" font-size="23" letter-spacing="2">WEBMASTER</text><circle cx="870" cy="509" r="5" fill="#91edca"/></g>
     </g>
     <g opacity=".9" font-family="Arial,sans-serif" font-size="13" letter-spacing="2" fill="#a9d7ee" text-anchor="middle"><text x="232" y="557">SYSTEM · RESEARCH</text><text x="599" y="557">YOUTUBE · CREATION</text><text x="967" y="557">WEB · DESIGN</text></g>
+    <!-- GAME DEVELOPER: fourth workstation -->
+    <g filter="url(#shadow)">
+     <g transform="translate(870 525) scale(.72)">
+      <path d="M0 80L180 30 345 83 165 140Z" fill="#51401d" stroke="#ffd66b" stroke-width="4"/>
+      <path d="M165 140L345 83V105L165 166Z" fill="#302512"/><path d="M0 80V103L165 166V140Z" fill="#755a25"/>
+      <path d="M52 58L164 27 271 62 158 96Z" fill="#1e180b" stroke="#ffd66b" stroke-width="5"/>
+      <path d="M64 57L164 31 257 62 157 89Z" fill="#3c2d12"/>
+      <g fill="none" stroke="#ffe69a" stroke-width="5"><path d="M83 65l24-8 20 6 20-16"/><path d="M180 68l17-15 22 8 19-12"/></g>
+      <g fill="#fff0b8"><circle cx="100" cy="55" r="4"/><circle cx="225" cy="52" r="4"/></g>
+      <path d="M75 115L90 111 90 173 75 179Z" fill="#4c3919"/><path d="M260 109L275 104V157L260 162Z" fill="#4c3919"/>
+     </g>
+     <g transform="translate(930 390) scale(.78)">
+      <ellipse cx="115" cy="105" rx="70" ry="20" fill="#071526" opacity=".55"/>
+      <path d="M50 95Q45 30 115 28Q185 30 180 95L165 125H65Z" fill="#51401d" stroke="#ffd66b" stroke-width="4"/>
+      <path d="M72 47Q115 5 158 47L166 85Q115 120 64 85Z" fill="url(#skin)"/>
+      <path d="M68 52Q70 5 120 12Q160 10 165 55L148 45 138 32 120 43 90 36Z" fill="#f3d36f"/>
+      <path d="M89 65Q97 57 105 65M126 65Q134 57 142 65" fill="none" stroke="#35445d" stroke-width="5" stroke-linecap="round"/>
+      <ellipse cx="100" cy="66" rx="4" ry="6" fill="#172a40"/><ellipse cx="132" cy="66" rx="4" ry="6" fill="#172a40"/>
+      <path d="M108 84Q118 93 129 83" fill="none" stroke="#9c4f59" stroke-width="4" stroke-linecap="round"/>
+      <path d="M78 95Q115 75 152 95L173 133H57Z" fill="url(#goldDesk)" stroke="#ffe69a" stroke-width="3"/>
+      <circle cx="115" cy="111" r="9" fill="#fff0b8" filter="url(#glow)"/>
+     </g>
+    </g>
+    <g font-family="Arial,sans-serif" font-weight="800" text-anchor="middle">
+     <rect x="885" y="675" width="250" height="43" rx="21" fill="#493719" stroke="#ffd66b" stroke-width="2"/>
+     <text x="1010" y="703" fill="#fff0bf" font-size="19" letter-spacing="1">GAME DEVELOPER</text>
+     <circle cx="905" cy="696" r="5" fill="#ffe08a"/>
+    </g>
+    <text x="1010" y="739" text-anchor="middle" font-family="Arial,sans-serif" font-size="12" letter-spacing="2" fill="#ffe6a0">ROBLOX · GAME STUDIO</text>
     <g transform="translate(500 650)" filter="url(#glow)"><ellipse cx="100" cy="25" rx="115" ry="27" fill="#123c5b" stroke="#76ddff" stroke-width="3"/><ellipse cx="100" cy="20" rx="70" ry="15" fill="#2d7194"/><path d="M100 -5V-48" stroke="#91e9ff" stroke-width="5"/><circle cx="100" cy="-58" r="18" fill="#d6faff" stroke="#6bdcff" stroke-width="5"/><text x="100" y="30" text-anchor="middle" font-family="Arial" font-size="12" font-weight="bold" fill="#effbff" letter-spacing="2">AI CORE</text></g>
     <g fill="none" stroke="#72dfff" stroke-opacity=".55" stroke-width="3"><path d="M40 600H220l30 20h170"/><path d="M1160 600H980l-30 20H780"/></g>
     <g fill="#a7eaff"><circle cx="40" cy="600" r="5"/><circle cx="1160" cy="600" r="5"/></g>
