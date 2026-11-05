@@ -1215,8 +1215,16 @@ function enterRoom(room){
  if(room==="nova")setTimeout(()=>{if($("novaView").classList.contains("hidden"))return;window.scrollTo({top:0,behavior:"smooth"})},100);
  setTimeout(()=>$(room+"Input").focus(),450);
 }
+function restartJarvisLandingAnimations(){
+ const root=$("jarvisLandingCore");if(!root)return;
+ const animated=root.querySelectorAll(".jarvis-orbit,.jarvis-energy,.jarvis-wave i");
+ animated.forEach(el=>{el.style.animation="none"});
+ void root.offsetWidth;
+ animated.forEach(el=>{el.style.animation=""});
+}
 function goHome(){
  stopSpeech();activeRoom=null;$("jarvisView").classList.add("hidden");$("novaView").classList.add("hidden");$("webView").classList.add("hidden");$("gameView").classList.add("hidden");$("homeView").classList.remove("hidden");
+ restartJarvisLandingAnimations();
  window.scrollTo({top:0,behavior:"smooth"});
 }
 const CHAT_HISTORY_KEY="jarvis_nova_chat_history_v1";
