@@ -128,12 +128,14 @@ class NovaChatRequest(BaseModel):
     message: str = Field(min_length=1, max_length=10000)
     reference_url: str = Field(default="", max_length=2000)
     reference_image_data: str = Field(default="", max_length=5600000)
+    history: list[dict] = Field(default_factory=list)
 
 
 class GameDeveloperChatRequest(BaseModel):
     message: str = Field(min_length=1, max_length=10000)
     reference_url: str = Field(default="", max_length=2000)
     reference_image_data: str = Field(default="", max_length=5600000)
+    history: list[dict] = Field(default_factory=list)
 
 
 class WebPreviewRequest(BaseModel):
@@ -149,6 +151,37 @@ class VideoPlanRequest(BaseModel):
     audience: str = "Svensk YouTube-publik"
     reference_url: str = Field(default="", max_length=2000)
     reference_image_data: str = Field(default="", max_length=6000000)
+
+
+def build_conversation_context(history, current_message, assistant_name="NOVA"):
+    """Convert recent browser chat turns into explicit context for stateless AI APIs."""
+    turns = []
+    total_chars = 0
+    for item in (history or [])[-14:]:
+        if not isinstance(item, dict):
+            continue
+        role = str(item.get("role", "")).lower()
+        if role not in ("user", "assistant"):
+            continue
+        content = str(item.get("content", "")).strip()[:2500]
+        if not content:
+            continue
+        label = "ANVÄNDAREN" if role == "user" else assistant_name.upper()
+        entry = f"{label}:\n{content}"
+        if total_chars + len(entry) > 22000:
+            break
+        turns.append(entry)
+        total_chars += len(entry)
+    if not turns:
+        return current_message
+    return (
+        "SAMMANHANG FRÅN DEN PÅGÅENDE KONVERSATIONEN. "
+        "Använd detta som aktivt minne och fortsätt från tidigare beslut. "
+        "Fråga inte efter information som redan finns här.\n\n"
+        + "\n\n".join(turns)
+        + "\n\nAKTUELLT MEDDELANDE FRÅN ANVÄNDAREN:\n"
+        + current_message
+    )
 
 
 # ==========================================
@@ -189,6 +222,11 @@ Du ansvarar för:
 - Titlar, thumbnails och SEO
 - Analys av YouTube-innehåll
 - Strategier för kanalutveckling.
+- Du får också diskutera och hjälpa användaren att utveckla egna spelidéer, särskilt Roblox-spel, när användaren tar upp det.
+- Behandla en spelidé som ett långsiktigt projekt: kom ihåg namn, genre, spelvärld, funktioner, regler, stil, plattform och användarens beslut i konversationshistoriken.
+- När användaren säger fortsätt, bygg vidare eller gör spelet ska du utgå från den senaste spelidén och tidigare beslut i chatten. Börja inte om, byt inte idé och ge inte bara nya allmänna tips.
+- Arbeta tillsammans med användaren i en naturlig dialog. Ställ högst en viktig följdfråga åt gången och ge konkreta nästa byggsteg när det är dags.
+- Skilj mellan att planera spelet, skriva färdig kod och faktiskt lägga in/testa det i Roblox Studio. Påstå aldrig att spelet är byggt eller testat om det inte är sant.
 - Använd referenslänkar och bifogade bilder som en del av samma chattuppdrag.
 - När användaren klistrar in en video- eller bildlänk ska du väga in den som referens.
 - Påstå aldrig att du har sett eller analyserat innehållet i en länk om det inte faktiskt är åtkomligt.
@@ -1844,12 +1882,15 @@ async def nova(request: NovaChatRequest):
     message = request.message.strip()
     reference_url = request.reference_url.strip()
     reference_image_data = request.reference_image_data.strip()
+    history = request.history
 
     if not message:
         raise HTTPException(
             status_code=400,
             detail="Meddelandet får inte vara tomt."
         )
+
+    message = build_conversation_context(history, message, "NOVA")
 
     if reference_url:
         message += (
@@ -1896,8 +1937,10 @@ async def game_developer(request: GameDeveloperChatRequest):
     message = request.message.strip()
     reference_url = request.reference_url.strip()
     image_data = request.reference_image_data.strip()
+    history = request.history
     if not message:
         raise HTTPException(status_code=400, detail="Meddelandet får inte vara tomt.")
+    message = build_conversation_context(history, message, "GAME DEVELOPER")
     if reference_url:
         message += (
             "\n\nREFERENSLÄNK FRÅN ANVÄNDAREN:\n" + reference_url
