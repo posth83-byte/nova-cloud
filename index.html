@@ -781,6 +781,10 @@ main{position:relative;z-index:1;max-width:1400px;margin:auto;padding:20px 15px 
   <div class="messages" id="jarvisMessages"><div class="msg ai">God dag. JARVIS är redo. Vad kan jag hjälpa dig med?</div></div>
   <div class="voice-panel"><div class="voice-heading">JARVIS / RÖSTINSTÄLLNINGAR</div><div class="voice-row"><select class="voice-select" id="jarvisVoiceSelect" aria-label="Välj JARVIS-röst"><option value="">Laddar tillgängliga röster...</option></select><button class="voice-test" onclick="testVoice('jarvis')">TESTA RÖST</button></div><div class="voice-note">Välj en svensk röst om en sådan finns tillgänglig på din enhet.</div><div class="voice-status" id="jarvisVoiceStatus">Röstsystem redo.</div></div>
   <form class="input-row" onsubmit="sendMessage(event,'jarvis')"><input class="chat-input" id="jarvisInput" placeholder="Skriv till JARVIS..." autocomplete="off"><button class="send" id="jarvisSend">SKICKA</button></form>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:9px">
+   <button type="button" id="jarvisDelegateButton" onclick="jarvisDelegateLatest()" style="width:100%;padding:11px;border:1px solid #39c8ff88;border-radius:9px;background:linear-gradient(135deg,#0b2941,#172044);color:#eaf8ff;font-weight:800">✦ LÅT JARVIS VÄLJA MEDARBETARE OCH UTFÖRA JOBBET</button>
+  </div>
+  <div style="font-size:11px;color:#91a9c2;margin-top:6px;line-height:1.45">Diskutera först med JARVIS. När ni är överens trycker du här för att lämna över den senaste uppgiften till rätt medarbetare.</div>
  </div></div>
 </section>
 
@@ -1455,6 +1459,37 @@ async function sendMessage(event,assistant){
   setRoomState(assistant,"responding");logActivity(assistant.toUpperCase()+" svarade","✓","AI-motor: "+(data.engine||"Okänd"));
  }catch(error){loading.className="msg error";loading.textContent="Anslutningsfel: "+error.message;saveChatHistory(assistant);logActivity(assistant.toUpperCase()+" – anslutningsfel","⚠",error.message)}
  finally{button.disabled=false;button.textContent="SKICKA";if(!activeSpeechRoom||activeSpeechRoom!==assistant)setTimeout(()=>setRoomState(assistant,"idle"),1800);input.focus()}
+}
+
+async function jarvisDelegateLatest(){
+ const button=$("jarvisDelegateButton");
+ const history=getConversationHistory("jarvis",14);
+ const lastUser=[...history].reverse().find(item=>item&&item.role==="user"&&String(item.content||"").trim());
+ const task=lastUser?String(lastUser.content).trim():$("jarvisInput").value.trim();
+ if(!task){addMessage("jarvisMessages","Skriv först vad du vill att jag ska hjälpa dig med, så kan jag fördela uppdraget.","error");return;}
+ if(!confirm("Vill du att JARVIS väljer rätt medarbetare och skickar den senaste uppgiften för utförande?"))return;
+ button.disabled=true;button.textContent="JARVIS FÖRDELAR UPPDRAGET...";
+ const loading=addMessage("jarvisMessages","JARVIS analyserar uppgiften och väljer rätt medarbetare...","ai");
+ setRoomState("jarvis","working");
+ try{
+  const response=await fetch("/api/jarvis/delegate",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({task,history})});
+  const data=await response.json();
+  if(!response.ok)throw new Error(typeof data.detail==="string"?data.detail:JSON.stringify(data.detail||data));
+  if(data.status==="needs_discussion"){
+   loading.textContent="Jag rekommenderar att vi diskuterar vidare innan jag lämnar över uppdraget.\n"+(data.reason||"");
+  }else{
+   const names={NOVA:"NOVA",WEBMASTER:"WEBMASTER",GAME_DEVELOPER:"GAME DEVELOPER"};
+   loading.textContent="✓ JARVIS skickade uppdraget till "+(names[data.target]||data.target)+".\nVarför: "+(data.reason||"Rätt specialist för uppgiften.")+"\n\nMEDARBETARENS RESULTAT:\n"+(data.reply||"Inget resultat mottogs.")+"\n\nAI-motor: "+(data.engine||"Okänd");
+   loading.dataset.speechText="Jag har lämnat över uppdraget till "+(names[data.target]||data.target)+".";
+   logActivity("JARVIS delegerade till "+data.target,"↗",task.slice(0,80));
+  }
+  saveChatHistory("jarvis");addSpeechButton(loading,"jarvis");
+  if(voiceConversationRoom==="jarvis")speakText(loading.dataset.speechText||loading.textContent,"jarvis");
+ }catch(error){
+  loading.className="msg error";loading.textContent="Kunde inte delegera uppdraget: "+error.message;saveChatHistory("jarvis");
+ }finally{
+  button.disabled=false;button.textContent="✦ LÅT JARVIS VÄLJA MEDARBETARE OCH UTFÖRA JOBBET";setRoomState("jarvis","idle");
+ }
 }
 
 /* EGNA YOUTUBE-KANALER */
