@@ -5,6 +5,7 @@ import re
 import uuid
 import urllib.request
 import urllib.error
+import time
 import xml.etree.ElementTree as ET
 
 from pathlib import Path
@@ -353,17 +354,36 @@ def ask_gemini(
         method="POST"
     )
 
-    try:
-        with urllib.request.urlopen(req, timeout=180) as response:
-            result = json.loads(
-                response.read().decode("utf-8")
-            )
+    last_error = None
+    for attempt in range(3):
+        try:
+            with urllib.request.urlopen(req, timeout=180) as response:
+                result = json.loads(
+                    response.read().decode("utf-8")
+                )
+            last_error = None
+            break
 
-    except urllib.error.HTTPError as error:
-        details = error.read().decode("utf-8", errors="replace")
-        raise ValueError(
-            f"Gemini API-fel {error.code}: {details[:1500]}"
-        )
+        except urllib.error.HTTPError as error:
+            details = error.read().decode("utf-8", errors="replace")
+            last_error = ValueError(
+                f"Gemini API-fel {error.code}: {details[:1500]}"
+            )
+            # Retry temporary overload/rate-limit/server failures.
+            if error.code not in (429, 500, 502, 503, 504) or attempt == 2:
+                raise last_error
+            time.sleep(2 ** (attempt + 1))
+
+        except (urllib.error.URLError, TimeoutError) as error:
+            last_error = ValueError(
+                f"Gemini kunde inte nås: {str(error)[:800]}"
+            )
+            if attempt == 2:
+                raise last_error
+            time.sleep(2 ** (attempt + 1))
+
+    if last_error is not None:
+        raise last_error
 
     candidates = result.get("candidates", [])
 
