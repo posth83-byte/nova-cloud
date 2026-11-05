@@ -1079,6 +1079,18 @@ function goHome(){
  window.scrollTo({top:0,behavior:"smooth"});
 }
 const CHAT_HISTORY_KEY="jarvis_nova_chat_history_v1";
+function getConversationHistory(room,limit=14){
+ const area=$(room+"Messages");if(!area)return [];
+ return Array.from(area.querySelectorAll(".msg"))
+  .filter(node=>node.classList.contains("user")||node.classList.contains("ai"))
+  .map(node=>{
+   let content=(node.textContent||"").trim();
+   content=content.replace(/\n\nAI-motor:\s*[^\n]+/g,"").trim();
+   return {role:node.classList.contains("user")?"user":"assistant",content};
+  })
+  .filter(item=>item.content && !/^(NOVA analyserar|GAME DEVELOPER bygger spelplan|JARVIS tänker|WEBMASTER bygger en lösning)\.\.\.$/i.test(item.content))
+  .slice(-limit);
+}
 function saveChatHistory(room){
  const area=$(room+"Messages");if(!area)return;
  const items=Array.from(area.querySelectorAll(".msg")).map(node=>({
@@ -1151,6 +1163,7 @@ async function sendMessage(event,assistant){
  const message=input.value.trim()||((isNova&&imageData)?"Analysera de bifogade bilderna och föreslå hur de kan användas i en YouTube-video.":"");
  if(!message)return;
  if("speechSynthesis" in window)stopSpeech();
+ const conversationHistory=(isNova||isGame)?getConversationHistory(assistant,14):[];
  const shownMessage=message+(isNova&&sceneFiles.length?"\n📎 "+sceneFiles.length+" referens-/scenbild"+(sceneFiles.length===1?" bifogad":"er bifogade"):"");
  addMessage(messages,shownMessage,"user");logActivity(assistant.toUpperCase()+" fick ett nytt meddelande",isWeb?"⌘":isNova?"✧":"✦",message.length>65?message.slice(0,65)+"…":message);
  input.value="";button.disabled=true;button.textContent="...";setRoomState(assistant,"working");
@@ -1167,12 +1180,12 @@ async function sendMessage(event,assistant){
     const payload={prompt:message+sceneNote,channel:"Mikael Posth",format:isShort?"short":"long",duration_minutes:isShort?1:5,style:"Anpassad efter användarens idé och referensmaterial",audience:"Svensk publik",reference_url:referenceUrl,reference_image_data:imageData};
     response=await fetch("/api/video/plan",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});
    }else{
-    response=await fetch("/api/nova",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({message,reference_url:referenceUrl,reference_image_data:imageData})});
+    response=await fetch("/api/nova",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({message,reference_url:referenceUrl,reference_image_data:imageData,history:conversationHistory})});
    }
   }else if(isGame){
    const urlMatch=message.match(/https?:\/\/[^\s<>"']+/i);
    const referenceUrl=urlMatch?urlMatch[0].replace(/[),.]+$/,""):"";
-   response=await fetch("/api/game-developer",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({message,reference_url:referenceUrl})});
+   response=await fetch("/api/game-developer",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({message,reference_url:referenceUrl,history:conversationHistory})});
   }else{
    response=await fetch(isWeb?"/api/webmaster":"/api/chat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({message})});
   }
