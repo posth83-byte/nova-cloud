@@ -48,6 +48,10 @@ GEMINI_MODEL = os.getenv(
     "GEMINI_MODEL",
     "gemini-3.5-flash-lite"
 )
+GEMINI_FALLBACK_MODEL = os.getenv(
+    "GEMINI_FALLBACK_MODEL",
+    "gemini-3.8-flash"
+)
 
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 OPENROUTER_MODEL = os.getenv(
@@ -309,12 +313,14 @@ def ask_gemini(
     system_prompt,
     max_tokens=2048,
     json_mode=False,
-    image_data=""
+    image_data="",
+    model=None
 ):
 
+    selected_model = model or GEMINI_MODEL
     url = (
         "https://generativelanguage.googleapis.com/"
-        f"v1beta/models/{GEMINI_MODEL}:generateContent"
+        f"v1beta/models/{selected_model}:generateContent"
     )
 
     generation_config = {
@@ -546,6 +552,28 @@ def generate_reply(
 
         except Exception as error:
             gemini_error = str(error)
+
+            # Try a second Google model automatically if the primary model
+            # is unavailable or overloaded. Uses the same Gemini API key.
+            if GEMINI_FALLBACK_MODEL and GEMINI_FALLBACK_MODEL != GEMINI_MODEL:
+                try:
+                    fallback_answer = ask_gemini(
+                        message,
+                        system_prompt,
+                        max_tokens,
+                        json_mode,
+                        image_data,
+                        model=GEMINI_FALLBACK_MODEL
+                    )
+                    return {
+                        "reply": fallback_answer,
+                        "engine": f"Gemini reserv ({GEMINI_FALLBACK_MODEL})"
+                    }
+                except Exception as fallback_error:
+                    gemini_error += (
+                        f". Reservmodell {GEMINI_FALLBACK_MODEL}: "
+                        f"{str(fallback_error)}"
+                    )
 
     else:
         gemini_error = "Gemini API-nyckel saknas."
