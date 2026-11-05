@@ -167,7 +167,7 @@ def runway_ffmpeg(args):
 def get_media_duration(path):
     ffmpeg = imageio_ffmpeg.get_ffmpeg_exe()
     result = subprocess.run([ffmpeg, "-i", str(path), "-f", "null", "-"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=60)
-    match = re.search(r"Duration:\\s*(\\d+):(\\d+):(\\d+(?:\\.\\d+)?)", result.stderr or "")
+    match = re.search(r"Duration:\s*(\d+):(\d+):(\d+(?:\.\d+)?)", result.stderr or "")
     if not match:
         raise RuntimeError("Kunde inte läsa mediefilens längd.")
     hours, minutes, seconds = match.groups()
