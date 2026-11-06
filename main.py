@@ -1802,61 +1802,85 @@ Lämna inte JSON ofärdig.
 
 @app.post("/api/jarvis/delegate")
 async def jarvis_delegate(request: JarvisDelegateRequest):
-    """JARVIS selects the best specialist and hands over an explicitly approved task."""
+    """JARVIS plans and coordinates work across multiple specialists."""
     task = request.task.strip()
     context = build_conversation_context(request.history, task, "JARVIS")
     selector_prompt = """
-Du är JARVIS AI-kontorets uppdragsfördelare. Välj exakt EN specialist:
-NOVA = YouTube, manus, research och videoproduktion för Mikael Posth.
-WEBMASTER = vanliga webbplatser, webbutiker och dropshipping.
+Du är JARVIS, projektledare för ett AI-kontor. Välj vilka specialister som behövs:
+NOVA = YouTube, kreativ produktion, research, manus och videor.
+WEBMASTER = webbplatser, webbutiker och dropshipping.
 GAME_DEVELOPER = spelutveckling, Roblox och Luau.
-Om uppgiften inte är konkret nog eller är personlig rådgivning/vanligt samtal,
-välj NONE och förklara kort varför.
-Returnera ENDAST giltig JSON utan markdown:
-{"target":"NOVA|WEBMASTER|GAME_DEVELOPER|NONE","reason":"kort motivering","task":"komplett arbetsbeskrivning på svenska med mål, krav och relevanta beslut"}
-Bevara användarens krav. Hitta inte på detaljer. En delegering är inte tillstånd
-att köpa, publicera, betala, skicka kundorder eller göra andra externa åtgärder.
+Välj EN ELLER FLERA om uppgiften kräver det. Välj inte alla av slentrian.
+Planera arbetsordning och beroenden. Ge varje specialist en konkret avgränsad arbetsorder.
+Om uppgiften är vanlig diskussion eller otydlig, returnera tom lista och förklara varför.
+Returnera ENDAST giltig JSON:
+{"targets":["NOVA","WEBMASTER"],"reason":"motivering","tasks":{"NOVA":"arbetsorder","WEBMASTER":"arbetsorder"},"sequence":["NOVA","WEBMASTER"]}
+Bevara krav och tidigare beslut. Hitta inte på detaljer.
+Delegering ger inte tillstånd att köpa, publicera, betala eller utföra externa åtgärder.
 """
     try:
-        decision = generate_reply(context, selector_prompt, max_tokens=1200, json_mode=True)
-        raw = decision["reply"].strip()
-        match = re.search(r"\{[\s\S]*\}", raw)
+        decision = generate_reply(context, selector_prompt, max_tokens=2200, json_mode=True)
+        match = re.search(r"\{[\s\S]*\}", decision["reply"].strip())
         if not match:
-            raise ValueError("JARVIS returnerade ingen giltig uppdragsplan.")
+            raise ValueError("JARVIS returnerade ingen giltig samarbetsplan.")
         plan = json.loads(match.group(0))
-        target = str(plan.get("target", "NONE")).upper()
-        if target not in {"NOVA", "WEBMASTER", "GAME_DEVELOPER", "NONE"}:
+        allowed = {"NOVA", "WEBMASTER", "GAME_DEVELOPER"}
+        targets = plan.get("targets", [])
+        if not isinstance(targets, list):
+            raise ValueError("Ogiltig lista över medarbetare.")
+        targets = list(dict.fromkeys(str(x).upper() for x in targets))
+        if any(x not in allowed for x in targets):
             raise ValueError("JARVIS valde en okänd medarbetare.")
-        if target == "NONE":
-            return {"status": "needs_discussion", "target": "NONE",
+        if not targets:
+            return {"status": "needs_discussion", "target": "NONE", "targets": [],
                     "reason": str(plan.get("reason", "Uppgiften behöver diskuteras mer.")),
                     "reply": "Jag rekommenderar att vi pratar igenom detta lite mer innan jag lämnar över något."}
-        specialist_prompts = {
-            "NOVA": NOVA_PROMPT,
-            "WEBMASTER": WEBMASTER_PROMPT,
-            "GAME_DEVELOPER": GAME_DEVELOPER_PROMPT
-        }
-        handoff = (
-            "UPPDRAG FRÅN JARVIS – använd hela briefen som arbetsorder. "
-            "Bekräfta målet, följ alla krav och leverera ett konkret resultat. "
-            "Om något avgörande saknas, ställ en enda viktig följdfråga. "
-            "Gör inga köp, publiceringar eller betalda externa åtgärder.\n\n"
-            + str(plan.get("task", task))
+
+        prompts = {"NOVA": NOVA_PROMPT, "WEBMASTER": WEBMASTER_PROMPT,
+                   "GAME_DEVELOPER": GAME_DEVELOPER_PROMPT}
+        tasks = plan.get("tasks", {})
+        if not isinstance(tasks, dict):
+            tasks = {}
+        sequence = plan.get("sequence", [])
+        if not isinstance(sequence, list):
+            sequence = []
+        ordered = [x for x in sequence if x in targets]
+        ordered += [x for x in targets if x not in ordered]
+
+        results, previous = [], []
+        for target in ordered:
+            assigned = str(tasks.get(target, "")).strip() or f"Bidra till projektet: {task}"
+            handoff = (
+                "UPPDRAG FRÅN JARVIS. Utför din avgränsade del och leverera konkret resultat. "
+                "Ta hänsyn till hela projektet och tidigare specialistresultat. "
+                "Var tydlig med antaganden, beroenden och vad nästa specialist behöver. "
+                "Gör inga köp, publiceringar eller betalda externa åtgärder.\n\n"
+                f"HELA PROJEKTET:\n{task}\n\nDIN ARBETSORDER:\n{assigned}\n\n"
+                + ("TIDIGARE RESULTAT:\n" + "\n\n".join(previous)
+                   if previous else "Du är först i arbetsordningen.")
+            )
+            result = generate_reply(handoff, prompts[target], max_tokens=8192)
+            results.append({"target": target, "task": assigned,
+                            "reply": result["reply"], "engine": result["engine"]})
+            previous.append(f"{target} RESULTAT:\n{result['reply'][:9000]}")
+
+        summary_input = "PROJEKT:\n" + task + "\n\n" + "\n\n".join(
+            f"{r['target']}:\n{r['reply'][:9000]}" for r in results)
+        summary_prompt = (
+            "Du är JARVIS, projektledare. Sammanställ de faktiska specialistresultaten "
+            "på svenska. Redovisa vad som är klart, vad som återstår, konflikter och nästa steg. "
+            "Påstå inte att externa åtgärder har utförts."
         )
-        result = generate_reply(handoff, specialist_prompts[target], max_tokens=8192)
-        return {
-            "status": "delegated",
-            "target": target,
-            "reason": str(plan.get("reason", "")),
-            "task": str(plan.get("task", task)),
-            "reply": result["reply"],
-            "engine": result["engine"],
-            "router_engine": decision["engine"]
-        }
+        summary = generate_reply(summary_input, summary_prompt, max_tokens=3000)
+        return {"status": "delegated", "target": ordered[0] if len(ordered) == 1 else "MULTI",
+                "targets": ordered, "reason": str(plan.get("reason", "")),
+                "results": results, "reply": summary["reply"],
+                "engine": summary["engine"], "router_engine": decision["engine"]}
     except HTTPException:
         raise
     except Exception as error:
-        raise HTTPException(status_code=502, detail=f"JARVIS kunde inte delegera uppdraget: {str(error)[:1000]}")
+        raise HTTPException(status_code=502,
+                            detail=f"JARVIS kunde inte samordna uppdraget: {str(error)[:1000]}")
 
 
 @app.post("/api/chat")
