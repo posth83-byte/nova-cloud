@@ -353,13 +353,13 @@ def get_user_authored_memory_text(message):
     """Keep assistant replies and injected memory out of the memory curator input."""
     source = str(message or "").strip()
     markers = (
-        r"(?:ANVÄNDAREN:\\s*|AKTUELLT MEDDELANDE FRÅN ANVÄNDAREN:\\s*)"
-        r"(.*?)(?=\\n\\n(?:JARVIS|NOVA|WEBMASTER|GAME DEVELOPER):\\s*|"
-        r"\\n\\nRELEVANT LÅNGTIDSMINNE|$)"
+        r"(?:ANVÄNDAREN:\s*|AKTUELLT MEDDELANDE FRÅN ANVÄNDAREN:\s*)"
+        r"(.*?)(?=\n\n(?:JARVIS|NOVA|WEBMASTER|GAME DEVELOPER):\s*|"
+        r"\n\nRELEVANT LÅNGTIDSMINNE|$)"
     )
     matches = re.findall(markers, source, flags=re.IGNORECASE | re.DOTALL)
     if matches:
-        return "\\n".join(part.strip() for part in matches if part.strip())[-9000:]
+        return "\n".join(part.strip() for part in matches if part.strip())[-9000:]
     # Raw JARVIS messages arrive without conversation-role labels.
     return source[:9000]
 
@@ -397,13 +397,13 @@ VIKTIGA REGLER:
     try:
         result = generate_reply(
             "AKTUELLT PROJEKT/AGENT: " + str(project or "shared")
-            + "\\n\\nANVÄNDARENS EGNA MEDDELANDEN:\\n" + source,
+            + "\n\nANVÄNDARENS EGNA MEDDELANDEN:\n" + source,
             curator_prompt,
             max_tokens=900,
             json_mode=True
         )
         raw = str(result.get("reply", "")).strip()
-        match = re.search(r"\\{[\\s\\S]*\\}", raw)
+        match = re.search(r"\{[\s\S]*\}", raw)
         data = json.loads(match.group(0)) if match else {}
         memories = data.get("memories", [])
         if not isinstance(memories, list):
@@ -413,7 +413,7 @@ VIKTIGA REGLER:
         for item in memories[:5]:
             if not isinstance(item, dict):
                 continue
-            text_value = re.sub(r"\\s+", " ", str(item.get("text", ""))).strip()
+            text_value = re.sub(r"\s+", " ", str(item.get("text", ""))).strip()
             category = str(item.get("category", "fact")).lower().strip()
             memory_project = str(item.get("project", project or "shared")).strip()[:120]
             try:
