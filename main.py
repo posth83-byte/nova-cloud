@@ -2942,6 +2942,7 @@ att inga åtgärder påstås vara utförda utan belägg, att viktiga risker och 
 syns och att rekommendationen är praktiskt genomförbar.
 Behåll användbara detaljer. Om något inte kan verifieras, märk det tydligt.
 Returnera en kort slutrapport på naturlig svenska, högst 6 meningar. Beskriv resultat, verifiering och vad som återstår.
+Om en specialist faktiskt har publicerat en webbplats eller ett spel och lämnat dess riktiga liveadress, ta med exakt adress på en egen rad märkt PUBLICERAD PROJEKTLÄNK: https://... . Ta aldrig med tillfälliga förhandsvisningar, källor eller exempeladresser som projektlänk.
 Visa aldrig råkod, kodblock, HTML, CSS, JavaScript, Luau, JSON, patchar, specialistanalyser eller interna granskningsanteckningar.
 Tekniska artefakter ska stanna i det interna specialistunderlaget. Lägg inte till nya fakta.
 Avsluta med "Kvar att göra" endast om något faktiskt återstår.
