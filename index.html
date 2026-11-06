@@ -1942,7 +1942,7 @@ async function jarvisDelegateLatest(){
  setRoomState("jarvis","working");
  startTeamRuntimePolling();
  try{
-  const response=await fetch("/api/jarvis/delegate",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({task,history})});
+  const response=await fetch("/api/jarvis/jobs",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({task,history})});
   const data=await response.json();
   if(!response.ok)throw new Error(typeof data.detail==="string"?data.detail:JSON.stringify(data.detail||data));
   if(data.status==="needs_discussion"){
