@@ -178,6 +178,15 @@ main{position:relative;z-index:1;max-width:1400px;margin:auto;padding:20px 15px 
 .send{border:0;border-radius:10px;padding:0 17px;background:#087db9;color:white;font-weight:bold;font-size:10px}
 .nova-view .send{background:#7946a5}
 .send:disabled{opacity:.5}
+.voice-settings{margin:0 0 10px;text-align:right;color:#a9c9dc;font-size:10px}
+.voice-settings summary{display:inline-block;cursor:pointer;padding:7px 10px;border:1px solid #39739b;border-radius:8px;background:#071a2b;color:#a9dfff;list-style:none}
+.voice-settings summary::-webkit-details-marker{display:none}
+.voice-settings[open]{text-align:left}
+.voice-settings .voice-panel{margin-top:8px}
+.jarvis-input-row{align-items:center}
+.voice-toggle{flex:0 0 46px;width:46px;height:46px;border:1px solid #ff9a70;border-radius:50%;background:linear-gradient(145deg,#3a1b13,#1d1010);color:#ffd0b8;font-size:20px;box-shadow:0 0 14px #ff8a3d35}
+.voice-toggle.active{background:#5b2418;color:#fff;border-color:#ffb08a;box-shadow:0 0 18px #ff713f88}
+@media(max-width:420px){.voice-toggle{flex-basis:42px;width:42px;height:42px}.jarvis-input-row{gap:6px}.jarvis-input-row .send{padding:0 12px}}
 .tools{display:flex;gap:8px;flex-wrap:wrap;margin-top:11px}
 .tool-btn{background:#10283e;color:#b9e6ff;border:1px solid #39739b;border-radius:8px;padding:11px;font-size:9px}
 .nova-view .tool-btn{background:#251733;color:#e3c9ff;border-color:#79569a}
@@ -865,9 +874,8 @@ header .sub{color:#d6a19a}
   <div class="chatbox">
   <div class="chat-title">JARVIS / SECURE AI CONNECTION</div>
   <div class="messages" id="jarvisMessages"><div class="msg ai">God dag. JARVIS är redo. Vad kan jag hjälpa dig med?</div></div>
-  <div class="voice-panel"><div class="voice-heading">JARVIS / RÖSTINSTÄLLNINGAR</div><div class="voice-row"><select class="voice-select" id="jarvisVoiceSelect" aria-label="Välj JARVIS-röst"><option value="">Laddar tillgängliga röster...</option></select><button class="voice-test" type="button" onclick="testVoice('jarvis')">TESTA RÖST</button></div><div class="voice-row" style="margin-top:12px"><label style="flex:1;min-width:145px;font-size:10px">TALHASTIGHET <strong id="jarvisRateValue">0,95×</strong><input id="jarvisRate" type="range" min="0.7" max="1.2" step="0.05" value="0.95" style="display:block;width:100%;margin-top:7px"></label><label style="flex:1;min-width:145px;font-size:10px">TONLÄGE <strong id="jarvisPitchValue">0,92</strong><input id="jarvisPitch" type="range" min="0.7" max="1.3" step="0.05" value="0.92" style="display:block;width:100%;margin-top:7px"></label></div><div class="voice-note" style="margin-top:12px">Automatisk uppläsning är avstängd. Aktivera samtalsläge eller tryck på ”LÄS UPP SVARET” när du själv vill höra JARVIS.</div><div class="voice-note">Röstlistan visar de röster som Safari faktiskt gör tillgängliga. En nedladdad Siri-röst kan saknas om iOS inte exponerar den för webbsidor.</div><div class="voice-status" id="jarvisVoiceStatus">Röstsystem redo.</div></div>
-  <div class="voice-panel" style="margin-top:10px"><div class="voice-heading">JARVIS / SAMTALSLÄGE</div><div class="voice-row"><button type="button" class="voice-test" id="jarvisTalkStart" onclick="startJarvisVoiceConversation()">🎙 STARTA SAMTAL MED JARVIS</button><button type="button" class="voice-test" id="jarvisTalkStop" onclick="stopWakeListening()" disabled>STOPPA</button></div><div class="voice-note">Tryck en gång för att börja prata. JARVIS lyssnar på svenska och svarar med vald röst. Skriv till mig när som helst. Röstläget startar bara när du själv trycker på knappen.</div></div>
-  <form class="input-row" onsubmit="sendMessage(event,'jarvis')"><input class="chat-input" id="jarvisInput" placeholder="Skriv till JARVIS..." autocomplete="off"><button class="send" id="jarvisSend">SKICKA</button></form>
+  <details class="voice-settings"><summary>⚙ RÖSTINSTÄLLNINGAR</summary><div class="voice-panel"><div class="voice-heading">JARVIS / RÖSTINSTÄLLNINGAR</div><div class="voice-row"><select class="voice-select" id="jarvisVoiceSelect" aria-label="Välj JARVIS-röst"><option value="">Laddar tillgängliga röster...</option></select><button class="voice-test" type="button" onclick="testVoice('jarvis')">TESTA RÖST</button></div><div class="voice-row" style="margin-top:12px"><label style="flex:1;min-width:145px;font-size:10px">TALHASTIGHET <strong id="jarvisRateValue">0,95×</strong><input id="jarvisRate" type="range" min="0.7" max="1.2" step="0.05" value="0.95" style="display:block;width:100%;margin-top:7px"></label><label style="flex:1;min-width:145px;font-size:10px">TONLÄGE <strong id="jarvisPitchValue">0,92</strong><input id="jarvisPitch" type="range" min="0.7" max="1.3" step="0.05" value="0.92" style="display:block;width:100%;margin-top:7px"></label></div><div class="voice-note" style="margin-top:12px">Automatisk uppläsning är avstängd. Tryck på mikrofonknappen när du själv vill prata med JARVIS.</div><div class="voice-note">Röstlistan visar de röster som Safari faktiskt gör tillgängliga. En nedladdad Siri-röst kan saknas om iOS inte exponerar den för webbsidor.</div><div class="voice-status" id="jarvisVoiceStatus">Röstsystem redo.</div></div></details>
+   <form class="input-row jarvis-input-row" onsubmit="sendMessage(event,'jarvis')"><input class="chat-input" id="jarvisInput" placeholder="Skriv till JARVIS..." autocomplete="off"><button class="voice-toggle" id="jarvisVoiceButton" type="button" onclick="toggleJarvisVoice()" aria-label="Starta röstsamtal med JARVIS" title="Prata med JARVIS">🎙</button><button class="send" id="jarvisSend">SKICKA</button></form>
 
   </div>
  </section>
@@ -1407,14 +1415,15 @@ function startWakeListening(){
 function startJarvisVoiceConversation(){
  startWakeListening();
  voiceConversationRoom="jarvis";
- const start=$("jarvisTalkStart"),stop=$("jarvisTalkStop");if(start)start.disabled=true;if(stop)stop.disabled=false;
+ const start=$("jarvisTalkStart"),stop=$("jarvisTalkStop");if(start)start.disabled=true;if(stop)stop.disabled=false;const compactVoice=$("jarvisVoiceButton");if(compactVoice){compactVoice.textContent="■";compactVoice.classList.add("active");compactVoice.setAttribute("aria-label","Stoppa röstsamtal med JARVIS");compactVoice.title="Stoppa röstsamtal";}
  wakeStatus("JARVIS-samtal aktivt. Prata nu – säg ”avsluta röst” när du vill stänga av.");
 }
+function toggleJarvisVoice(){if(wakeListening){stopWakeListening();return}startJarvisVoiceConversation()}
 function stopWakeListening(){
  wakeListening=false;wakePausedForSpeech=false;voiceConversationRoom=null;
  if(wakeRecognition){try{wakeRecognition.onend=null;wakeRecognition.stop()}catch(e){}wakeRecognition=null}
  const start=$("wakeStart"),stop=$("wakeStop");if(start)start.disabled=false;if(stop)stop.disabled=true;
- const jarvisStart=$("jarvisTalkStart"),jarvisStop=$("jarvisTalkStop");if(jarvisStart)jarvisStart.disabled=false;if(jarvisStop)jarvisStop.disabled=true;
+ const jarvisStart=$("jarvisTalkStart"),jarvisStop=$("jarvisTalkStop");if(jarvisStart)jarvisStart.disabled=false;if(jarvisStop)jarvisStop.disabled=true;const compactVoice=$("jarvisVoiceButton");if(compactVoice){compactVoice.textContent="🎙";compactVoice.classList.remove("active");compactVoice.setAttribute("aria-label","Starta röstsamtal med JARVIS");compactVoice.title="Prata med JARVIS";}
  wakeStatus("Mikrofonen är avstängd.");
 }
 
