@@ -1880,7 +1880,7 @@ async function waitForJarvisJob(jobId,token,loading,task){
    throw new Error(data.error||data.phase||"JARVIS kunde inte slutföra uppdraget.");
   }
   const phase=data.phase||"JARVIS arbetar i bakgrunden";
-  loading.textContent="✓ Uppdraget är sparat på servern.\n\n"+phase+"\n\nDu kan låsa mobilen. JARVIS fortsätter arbeta och resultatet hämtas när anslutningen är tillbaka.";
+  loading.textContent="✓ Uppdraget är sparat på servern.\n\n"+phase+"\n\nDu kan låsa mobilen, men Render Free kan pausa tjänsten efter 15 minuter utan inkommande trafik. Om det händer återupptas kön när JARVIS öppnas igen.";
   updateTeamBoard("working",task,data.active||[],phase);
   await new Promise(resolve=>setTimeout(resolve,4000));
  }
@@ -1900,14 +1900,14 @@ async function resumePendingJarvisJob(){
  try{
   const data=await waitForJarvisJob(pending.jobId,pending.token,loading,task);
   if(data.status==="needs_discussion"){
-   loading.textContent="JARVIS har slutfört analysen och rekommenderar fortsatt diskussion innan specialistarbete startas.\\n\\n"+(data.reason||data.reply||"");
+   loading.textContent="JARVIS har slutfört analysen och rekommenderar fortsatt diskussion innan specialistarbete startas.\n\n"+(data.reason||data.reply||"");
    updateTeamBoard("idle",task,[],"JARVIS rekommenderar fortsatt diskussion.");
   }else{
    const names={NOVA:"NOVA",WEBMASTER:"WEBMASTER",GAME_DEVELOPER:"GAME DEVELOPER"};
    const team=(data.targets||[]).map(name=>names[name]||name).join(", ")||"AI-rådet";
-   const detail=(data.results||[]).map(item=>"\\n\\n"+(names[item.target]||item.target)+" – ANALYS:\\n"+(item.reply||"Inget resultat mottogs.")).join("");
-   const reviews=(data.reviews||[]).map(item=>"\\n\\n"+(names[item.target]||item.target)+" – GRANSKNING:\\n"+(item.reply||"Ingen granskning returnerades.")).join("");
-   loading.textContent="✓ JARVIS har slutfört ditt bakgrundsuppdrag.\\nSamordnade med: "+team+"\\n\\nJARVIS BESLUT OCH RESULTAT:\\n"+(data.reply||"Uppdraget är färdigt.")+detail+reviews+"\\n\\nAI-motor: "+(data.engine||"Okänd");
+   const detail=(data.results||[]).map(item=>"\n\n"+(names[item.target]||item.target)+" – ANALYS:\n"+(item.reply||"Inget resultat mottogs.")).join("");
+   const reviews=(data.reviews||[]).map(item=>"\n\n"+(names[item.target]||item.target)+" – GRANSKNING:\n"+(item.reply||"Ingen granskning returnerades.")).join("");
+   loading.textContent="✓ JARVIS har slutfört ditt bakgrundsuppdrag.\nSamordnade med: "+team+"\n\nJARVIS BESLUT OCH RESULTAT:\n"+(data.reply||"Uppdraget är färdigt.")+detail+reviews+"\n\nAI-motor: "+(data.engine||"Okänd");
    updateTeamBoard("done",task,data.targets||[],"Bakgrundsuppdraget har återhämtats och slutförts.");
    logActivity("JARVIS slutförde ett återupptaget bakgrundsuppdrag","✓",task.slice(0,80));
   }
@@ -1916,7 +1916,7 @@ async function resumePendingJarvisJob(){
   saveChatHistory("jarvis");
  }catch(error){
   loading.className="msg error";
-  loading.textContent="JARVIS kunde inte hämta det sparade uppdraget ännu: "+error.message+"\\n\\nUppdraget kan fortfarande finnas kvar i serverns jobbkö. Öppna JARVIS igen när servern är online.";
+  loading.textContent="JARVIS kunde inte hämta det sparade uppdraget ännu: "+error.message+"\n\nUppdraget kan fortfarande finnas kvar i serverns jobbkö. Öppna JARVIS igen när servern är online.";
   saveChatHistory("jarvis");
  }finally{
   jarvisPendingResumeStarted=false;
