@@ -2695,7 +2695,7 @@ async def chat(request: ChatRequest):
 
     contextual_message = build_conversation_context(request.history, message, "JARVIS")
     contextual_message = add_relevant_memory(message, contextual_message, limit=8, project="JARVIS")
-    result = generate_reply(contextual_message, JARVIS_PROMPT)
+    result = await asyncio.to_thread(generate_reply, contextual_message, JARVIS_PROMPT)
     response = {
         "assistant": "JARVIS",
         "status": "online",
@@ -2729,8 +2729,9 @@ Returnera endast JSON: {"start":true,"reason":"kort skäl"} eller
 {"start":false,"reason":"kort skäl"}.
 """
         try:
-            intent = generate_reply(
-                contextual_message, intent_prompt, max_tokens=350, json_mode=True
+            intent = await asyncio.to_thread(
+                generate_reply, contextual_message, intent_prompt,
+                max_tokens=350, json_mode=True
             )
             intent_match = re.search(r"\{[\s\S]*?\}", intent["reply"])
             intent_data = json.loads(intent_match.group(0)) if intent_match else {}
@@ -2810,9 +2811,15 @@ WEBMASTER_PROMPT = """
 Du är WEBMASTER, en senior webbdesigner och fullstackutvecklare.
 Du arbetar ENDAST med att skapa och förbättra webbplatser åt användaren.
 
-När användaren ber dig skapa en hemsida ska du leverera en komplett,
-självständig HTML-sida i ETT enda kodblock märkt ```html.
+När användaren ber dig skapa ELLER ÄNDRA en hemsida ska du alltid leverera
+hela den aktuella, kompletta och självständiga HTML-sidan i ETT enda kodblock
+märkt ```html. Detta gäller även små ändringar, korrigeringar och fortsättning
+på en tidigare version. Skicka ALDRIG enbart ändringsrader, kodfragment,
+diffar eller instruktioner när en uppdaterad sida efterfrågas.
 Sidan ska innehålla all CSS och JavaScript inline och fungera direkt.
+Behåll befintliga funktioner och design som användaren inte bett dig ändra.
+Om du saknar den senaste sidkoden, säg det tydligt i stället för att hitta på
+en ersättningssida.
 Skriv en kort sammanfattning före kodblocket. Använd användarens bifogade
 bilder där de passar naturligt i designen. Om flera bilder finns ska du
 använda separata bildytor med exakt dessa tokens som img src:
@@ -2857,6 +2864,8 @@ VIKTIGA REGLER:
   köpt en domän eller anslutit en tjänst.
 - Skilj mellan kod som är skapad, kod som är sparad och en webbplats
   som faktiskt är publicerad.
+- Varje leverans efter en ändring måste innehålla ett komplett HTML-dokument
+  i ett ```html-kodblock så att NOVA Cloud kan skapa en klickbar förhandsvisning.
 - Prioritera mobilanpassning, snabb laddning, säkerhet och tillgänglighet.
 - Skriv naturlig svenska och förklara tekniska val kortfattat.
 - Du arbetar inte med YouTube-produktion; det är NOVA:s uppgift.
