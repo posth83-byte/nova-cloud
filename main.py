@@ -2949,7 +2949,7 @@ Returnera endast JSON: {"start":true,"reason":"kort skäl"} eller
                 response["job_id"] = job["id"]
                 response["job_access_token"] = job["access_token"]
                 response["reply"] += (
-                    "\\n\\nJag har sparat uppdraget på servern och startat bakgrundsarbetet. "
+                    "\n\nJag har sparat uppdraget på servern och startat bakgrundsarbetet. "
                     "Du kan låsa mobilen – JARVIS fortsätter arbeta och resultatet sparas."
                 )
         except Exception as error:
