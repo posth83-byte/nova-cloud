@@ -2051,6 +2051,7 @@ Delegering ger inte tillstånd att köpa, publicera, betala eller utföra extern
 
         # RÅDSRUNDA 1: varje specialist gör sin självständiga analys.
         results, previous = [], []
+        shared_project_memory = add_relevant_memory(task, "", limit=8)
         set_team_runtime("working", task, "Specialisterna gör sina första analyser", [ordered[0]], [])
         for target in ordered:
             set_team_runtime("working", task, f"{target} arbetar med sin specialistanalys", [target], [r["target"] for r in results])
@@ -2060,7 +2061,10 @@ Delegering ger inte tillstånd att köpa, publicera, betala eller utföra extern
                 "och leverera ett konkret förslag inom din specialistroll. "
                 "Identifiera antaganden, risker, beroenden och vad övriga roller behöver veta. "
                 "Du får diskutera och planera, men inte köpa, publicera eller göra betalda externa åtgärder.\n\n"
-                f"HELA PROJEKTET:\n{task}\n\nDIN ARBETSORDER:\n{assigned}\n\n"
+                f"HELA PROJEKTET:\n{task}\n\n"
+                + (("GEMENSAMT PROJEKTMENNE:\n" + shared_project_memory + "\n\n")
+                   if shared_project_memory else "")
+                + f"DIN ARBETSORDER:\n{assigned}\n\n"
                 + ("TIDIGARE RÅDSUNDERLAG:\n" + "\n\n".join(previous)
                    if previous else "Du är först i arbetsordningen.")
             )
@@ -2362,6 +2366,7 @@ async def nova(request: NovaChatRequest):
             detail=f"NOVA kunde inte behandla meddelandet: {str(error)[:1200]}"
         )
 
+    save_chat_exchange(message, result["reply"], project="NOVA")
     return {
         "assistant": "NOVA",
         "status": "online",
@@ -2394,6 +2399,7 @@ async def game_developer(request: GameDeveloperChatRequest):
         result = generate_reply(message, GAME_DEVELOPER_PROMPT, max_tokens=8192, image_data=image_data)
     except Exception as error:
         raise HTTPException(status_code=502, detail=f"GAME DEVELOPER kunde inte behandla uppdraget: {str(error)[:1200]}")
+    save_chat_exchange(message, result["reply"], project="GAME DEVELOPER")
     return {"assistant": "GAME DEVELOPER", "status": "online", "engine": result["engine"],
             "reply": result["reply"], "reference_received": bool(reference_url or image_data)}
 
@@ -2439,6 +2445,7 @@ async def webmaster(request: ChatRequest):
         WEBMASTER_PROMPT,
         max_tokens=8192
     )
+    save_chat_exchange(message, result["reply"], project="WEBMASTER")
     return {
         "assistant": "WEBMASTER",
         "status": "online",
