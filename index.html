@@ -933,7 +933,7 @@ header .sub{color:#d6a19a}
   <div class="chat-title">JARVIS / SECURE AI CONNECTION</div>
   <div class="messages" id="jarvisMessages"><div class="msg ai">God dag. JARVIS är redo. Vad kan jag hjälpa dig med?</div></div>
   
-   <div class="jarvis-holo-voice" id="jarvisHoloVoice"><button class="jarvis-orb-button" id="jarvisVoiceButton" type="button" onclick="toggleJarvisVoice()" aria-label="Tryck för att prata med JARVIS" title="Tryck för att prata med JARVIS"><span class="jarvis-orb-ring"></span><span class="jarvis-orb-ring ring-two"></span><span class="jarvis-orb-ring ring-three"></span><span class="jarvis-holo-ball" id="jarvisHoloBall"><span class="jarvis-orb-core"></span></span></button><div class="jarvis-orb-caption" id="jarvisOrbCaption">JARVIS / STANDBY</div><div class="jarvis-orb-hint" id="jarvisOrbHint">Tryck på den orange holografiska ringen för att starta ett röstsamtal</div></div><form class="input-row jarvis-input-row" onsubmit="sendMessage(event,'jarvis')"><button class="jarvis-projects-button" type="button" id="jarvisProjectsButton" onclick="toggleJarvisProjects()" aria-expanded="false">📁 <span>MINA PROJEKT</span><b id="jarvisProjectCount">0</b></button><input class="chat-input" id="jarvisInput" placeholder="Eller skriv till JARVIS..." autocomplete="off"><button class="send" id="jarvisSend">SKICKA</button></form><div id="jarvisProjectShelf" class="jarvis-project-shelf" hidden><div class="jarvis-project-shelf-head"><strong>MINA FÄRDIGA PROJEKT</strong><button type="button" onclick="toggleJarvisProjects(false)">STÄNG ×</button></div><div id="jarvisProjectList" class="jarvis-project-list"><p>Inga färdiga projekt ännu.</p></div></div><button type="button" id="jarvisNotificationsButton" onclick="enableJarvisNotifications()" style="margin-top:8px;padding:9px 13px;border:1px solid #39c8ff66;border-radius:9px;background:#0b2440;color:#bfeaff;font-size:10px;letter-spacing:1px">🔔 AKTIVERA KLARMEDDELANDEN</button>
+   <div class="jarvis-holo-voice" id="jarvisHoloVoice"><button class="jarvis-orb-button" id="jarvisVoiceButton" type="button" onclick="toggleJarvisVoice()" aria-label="Tryck för att prata med JARVIS" title="Tryck för att prata med JARVIS"><span class="jarvis-orb-ring"></span><span class="jarvis-orb-ring ring-two"></span><span class="jarvis-orb-ring ring-three"></span><span class="jarvis-holo-ball" id="jarvisHoloBall"><span class="jarvis-orb-core"></span></span></button><div class="jarvis-orb-caption" id="jarvisOrbCaption">JARVIS / STANDBY</div><div class="jarvis-orb-hint" id="jarvisOrbHint">Tryck på den orange holografiska ringen för att starta ett röstsamtal</div></div><form class="input-row jarvis-input-row" onsubmit="sendMessage(event,'jarvis')"><button class="jarvis-projects-button" type="button" id="jarvisProjectsButton" onclick="toggleJarvisProjects()" aria-expanded="false">📁 <span>MINA PROJEKT</span><b id="jarvisProjectCount">0</b></button><input class="chat-input" id="jarvisInput" placeholder="Eller skriv till JARVIS..." autocomplete="off"><button class="send" id="jarvisSend">SKICKA</button></form><div id="jarvisProjectShelf" class="jarvis-project-shelf" hidden><div class="jarvis-project-shelf-head"><strong>MINA FÄRDIGA PROJEKT</strong><button type="button" onclick="toggleJarvisProjects(false)">STÄNG ×</button></div><div id="jarvisProjectList" class="jarvis-project-list"><p>Inga färdiga projekt ännu.</p></div></div><button type="button" id="jarvisNotificationsButton" onclick="enableJarvisNotifications()" style="margin-top:8px;padding:9px 13px;border:1px solid #39c8ff66;border-radius:9px;background:#0b2440;color:#bfeaff;font-size:10px;letter-spacing:1px">🔔 AKTIVERA KLARMEDDELANDEN</button><button type="button" id="jarvisTestNotificationButton" onclick="testJarvisNotification()" style="margin:8px 0 0 6px;padding:9px 13px;border:1px solid #39c8ff66;border-radius:9px;background:#102b34;color:#bfeaff;font-size:10px;letter-spacing:1px">TESTA NOTIS</button>
 
   </div>
  </section>
@@ -1998,6 +1998,37 @@ async function enableJarvisNotifications(){
  }catch(error){
   if(button){button.textContent="🔔 AKTIVERA KLARMEDDELANDEN";button.disabled=false}
   alert("Kunde inte aktivera notiser: "+error.message);
+ }
+}
+
+
+async function testJarvisNotification(){
+ const button=$("jarvisTestNotificationButton");
+ const subscription=getSavedJarvisPushSubscription();
+ if(!subscription||!subscription.endpoint){
+  alert("Aktivera först klarmeddelanden med knappen bredvid.");
+  return;
+ }
+ if(!("Notification" in window)||Notification.permission!=="granted"){
+  alert("Notistillstånd saknas. Aktivera notiser för JARVIS i iPhone-inställningarna.");
+  return;
+ }
+ if(button){button.disabled=true;button.textContent="SKICKAR..."}
+ try{
+  const response=await fetch("/api/push/test",{
+   method:"POST",
+   headers:{"Content-Type":"application/json"},
+   body:JSON.stringify({subscription})
+  });
+  const data=await response.json();
+  if(!response.ok)throw new Error(data.detail||"Testnotisen kunde inte skickas.");
+  if(button)button.textContent="✓ TEST SKICKAT";
+  alert("Testnotisen har skickats. Kontrollera om den visas på din iPhone.");
+ }catch(error){
+  if(button)button.textContent="TESTA NOTIS";
+  alert("Kunde inte skicka testnotisen: "+error.message);
+ }finally{
+  if(button)button.disabled=false;
  }
 }
 
