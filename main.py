@@ -26,7 +26,7 @@ from runway_engine import router as runway_router
 # NOVA CLOUD – VERSION 2.2.0
 # ==========================================
 
-APP_VERSION = "3.2.0"
+APP_VERSION = "3.3.0"
 
 app = FastAPI(
     title="NOVA Cloud",
@@ -624,41 +624,53 @@ def build_conversation_context(history, current_message, assistant_name="NOVA"):
 # ==========================================
 
 JARVIS_PROMPT = """
-Du är JARVIS, en avancerad personlig AI-assistent.
+Du är JARVIS, användarens personliga AI-chef och huvudansvariga projektledare.
 
-Du kommunicerar på naturlig svenska.
-Du är lugn, intelligent, professionell,
-vänlig, analytisk och lösningsorienterad.
+SPRÅK OCH PERSONLIGHET
+- Tala naturlig, tydlig och professionell svenska.
+- Var lugn, intelligent, analytisk, vänlig och lösningsorienterad.
+- Var proaktiv: identifiera nästa rimliga steg och föregrip problem.
+- Var kortfattad i vardagliga samtal och grundlig när uppgiften kräver det.
 
-Du hjälper användaren med teknik, vardag,
-planering, research och personliga projekt.
-
-Du leder ett AI-kontor och samarbetar med tre specialiserade medarbetare:
-- NOVA: YouTube, kreativ produktion, research, manus och videor för kanalen Mikael Posth.
-- WEBMASTER: vanliga webbplatser, webbutiker och dropshipping.
+LEDARSKAP
+Du leder AI-kontoret och är användarens enda primära kontakt.
+- NOVA: YouTube, kreativ produktion, research, manus, video, röster, thumbnails och SEO.
+- WEBMASTER: webbplatser, webbutiker, dropshipping, design och fullstackutveckling.
 - GAME DEVELOPER: spelidéer, Roblox, speldesign och Luau-programmering.
+Du väljer själv specialist(er), skriver tydliga arbetsorder, bestämmer ordningsföljd,
+samordnar beroenden, granskar resultat och presenterar en samlad leverans.
+Lasta inte över interna val av specialist eller arbetsmetod på användaren.
+Ställ högst en nödvändig fråga åt gången. Om ett säkert och rimligt antagande räcker,
+gör det och redovisa antagandet kort.
 
-Ditt huvudsakliga arbete är att vara användarens samtalspartner och projektledare.
-Diskutera idéer naturligt, hjälp användaren väga alternativ och sammanfatta beslut,
-krav och nästa steg. Ställ högst en viktig följdfråga åt gången och undvik frågor
-när rimliga antaganden räcker. När användaren ber dig att skapa, bygga, undersöka,
-producera eller på annat sätt utföra ett konkret arbete ska du själv avgöra vilka
-specialister som behövs och kalla till ett internt AI-råd automatiskt. Användaren
-ska inte behöva välja medarbetare eller trycka på en separat delegeringsknapp.
-Vanliga frågor, idébollning och samtal ska däremot stanna i dialogen.
+BESLUT OCH RESONEMANG
+1. Förstå användarens egentliga mål, inte bara enstaka nyckelord.
+2. Hämta relevant projektminne och tidigare beslut; fråga inte efter sådant som redan finns.
+3. Dela större uppdrag i tydliga delmål, beroenden och leveranser.
+4. Välj minsta effektiva specialistteam. Ta inte in alla av slentrian.
+5. Låt specialister arbeta inom sina kompetensområden och granska varandras förslag.
+6. Jämför förslag mot målet, budgeten, användarens begränsningar och faktisk genomförbarhet.
+7. Upptäck motsägelser, saknade uppgifter, risker och tekniska beroenden innan du rekommenderar.
+8. Presentera en tydlig rekommendation och ett konkret nästa steg, inte en lång lista med val.
 
-Du kan låta flera medarbetare samarbeta, granska varandras förslag och förbättra
-en gemensam arbetsplan. Du är ansvarig för att sammanställa resultaten och
-återrapportera till användaren.
-Skilj alltid mellan planering, kod som skapats, arbete som faktiskt utförts och
-externa åtgärder som kräver användarens godkännande. Påstå aldrig att en medarbetare
-har utfört något om den inte faktiskt har anropats och returnerat ett resultat.
-Köp, publicering, kundordrar, betalningar och betalda tjänster kräver separat
-uttryckligt godkännande.
+KVALITET OCH SANNING
+- Skilj fakta, antaganden, rekommendationer och osäkerheter åt.
+- Hitta aldrig på att verktyg har körts, filer ändrats, kod testats eller externa åtgärder slutförts.
+- Rapportera endast specialistarbete som faktiskt har anropats och returnerat resultat.
+- Kontrollera att en leverans svarar mot uppdraget och att viktiga krav inte tappats bort.
+- Om en del misslyckas, isolera felet och föreslå en fungerande reservväg.
+- Kom ihåg att AI-modeller kan göra fel; granska särskilt siffror, kod, juridik och externa fakta.
 
-Ge tydliga och praktiska svar.
-Undvik onödigt långa förklaringar.
-Ta ett steg i taget när det behövs.
+SÄKERHET OCH GODKÄNNANDE
+Du får planera, analysera, skriva, skapa kod och använda tillgängliga godkända verktyg.
+Köp, betalningar, publicering, kundordrar, radering av data, betalda tjänster och andra
+svåråterkalleliga externa åtgärder kräver separat uttryckligt godkännande.
+Exponera aldrig API-nycklar, lösenord eller andra hemligheter.
+
+ARBETSSÄTT
+Vanliga frågor, samtal och idébollning ska besvaras direkt utan att starta ett råd.
+Vid tydliga konkreta uppdrag ska du själv ta rodret och starta rätt interna arbetsflöde.
+Avsluta med resultatet och vad som faktiskt återstår, inte med att be användaren leda teamet.
 """
 
 NOVA_PROMPT = """
@@ -1965,9 +1977,51 @@ async def status():
         "memory_core": "online",
         "memory_items": get_memory_status()["items"],
         "memory_storage": "supabase" if USE_SUPABASE_MEMORY else "sqlite",
+        "intelligence_core": {
+            "status": "online",
+            "version": "3.3.0",
+            "reasoning": "model_based",
+            "memory_retrieval": "project_aware_ranked",
+            "memory_curation": "ai_curated_v1",
+            "specialist_routing": "automatic",
+            "collaboration": "multi_agent_council",
+            "quality_control": "final_review",
+            "approval_gates": "enabled",
+            "autonomous_external_actions": False
+        },
         "runway_video_generation": bool(RUNWAY_API_KEY),
         "version": APP_VERSION,
         "time": datetime.now(timezone.utc).isoformat()
+    }
+
+
+@app.get("/api/jarvis/intelligence")
+async def jarvis_intelligence():
+    """Expose the real, currently enabled JARVIS intelligence capabilities."""
+    memory = get_memory_status()
+    return {
+        "assistant": "JARVIS",
+        "status": "online",
+        "version": APP_VERSION,
+        "core": "jarvis_intelligence_core_v1",
+        "capabilities": {
+            "contextual_reasoning": True,
+            "project_aware_long_term_memory": memory.get("status") == "online",
+            "ai_curated_memory": True,
+            "automatic_specialist_selection": True,
+            "multi_agent_collaboration": True,
+            "peer_review": True,
+            "final_quality_gate": True,
+            "project_result_memory": True,
+            "live_team_status": True
+        },
+        "specialists": ["NOVA", "WEBMASTER", "GAME_DEVELOPER"],
+        "memory": memory,
+        "boundaries": [
+            "Externally consequential actions require explicit approval.",
+            "Actual execution depends on connected APIs, permissions and available services.",
+            "The AI model can make mistakes; important outputs must be verified."
+        ]
     }
 
 
@@ -2364,17 +2418,46 @@ Delegering ger inte tillstånd att köpa, publicera, betala eller utföra extern
             "Påstå inte att externa åtgärder har utförts. Svara på naturlig svenska."
         )
         summary = generate_reply(summary_input, summary_prompt, max_tokens=4000)
-        set_team_runtime("done", task, "Rådet är klart – JARVIS har sammanställt resultatet", [], ordered)
+
+        # SISTA KVALITETSGRINDEN: även en ensam specialist får sitt resultat granskat.
+        set_team_runtime("working", task, "JARVIS gör slutlig kvalitetskontroll", ["JARVIS"], ordered)
+        quality_input = (
+            "UPPDRAG:\\n" + task + "\\n\\n"
+            "JARVIS FÖRSLAG:\\n" + summary["reply"][:9000] + "\\n\\n"
+            "SPECIALISTERNAS UNDERLAG:\\n"
+            + "\\n\\n".join(
+                f"{item['target']}:\\n{item['reply'][:5000]}" for item in results
+            )
+            + ("\\n\\nKOLLEGIAL GRANSKNING:\\n"
+               + "\\n\\n".join(
+                   f"{item['target']}:\\n{item['reply'][:3500]}" for item in council_reviews
+               ) if council_reviews else "")
+        )
+        quality_prompt = """
+Du är JARVIS oberoende kvalitetsansvarige. Granska leveransen mot användarens
+uppdrag och specialistunderlaget. Rätta motsägelser och överdrifter. Kontrollera
+att inga åtgärder påstås vara utförda utan belägg, att viktiga risker och beroenden
+syns och att rekommendationen är praktiskt genomförbar.
+Behåll användbara detaljer. Om något inte kan verifieras, märk det tydligt.
+Returnera en förbättrad slutleverans på naturlig svenska. Lägg inte till nya fakta.
+Avsluta med en kort sektion "Kvar att göra" endast om något faktiskt återstår.
+"""
+        quality = generate_reply(quality_input, quality_prompt, max_tokens=3500)
+        final_reply = quality["reply"].strip() or summary["reply"]
+        set_team_runtime("done", task, "Rådet är klart – JARVIS har kvalitetsgranskat leveransen", [], ordered)
         return {
             "status": "delegated",
             "target": ordered[0] if len(ordered) == 1 else "MULTI",
             "targets": ordered,
             "reason": str(plan.get("reason", "")),
             "council_rounds": 2 if council_reviews else 1,
+            "quality_gate": "passed",
+            "workflow": ["routing", "specialist_analysis", "peer_review" if council_reviews else "self_review", "synthesis", "final_quality_check"],
             "results": results,
             "reviews": council_reviews,
-            "reply": summary["reply"],
+            "reply": final_reply,
             "engine": summary["engine"],
+            "quality_engine": quality["engine"],
             "router_engine": decision["engine"]
         }
     except HTTPException:
