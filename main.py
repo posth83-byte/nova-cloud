@@ -2944,17 +2944,13 @@ Returnera endast JSON: {"start":true,"reason":"kort skäl"} eller
             intent_match = re.search(r"\{[\s\S]*?\}", intent["reply"])
             intent_data = json.loads(intent_match.group(0)) if intent_match else {}
             if intent_data.get("start") is True:
-                council = await jarvis_delegate(
-                    JarvisDelegateRequest(task=message, history=request.history)
-                )
-                response["council_started"] = council.get("status") == "delegated"
-                response["council"] = council
+                job = await asyncio.to_thread(enqueue_jarvis_job, message, request.history)
+                response["job_queued"] = True
+                response["job_id"] = job["id"]
+                response["job_access_token"] = job["access_token"]
                 response["reply"] += (
-                    "\n\nJag har även kallat in AI-rådet automatiskt. "
-                    "Här är teamets gemensamma arbetsplan och granskning."
-                    if response["council_started"] else
-                    "\n\nJag bedömde att vi behöver prata igenom uppgiften lite mer "
-                    "innan jag startar specialisterna."
+                    "\\n\\nJag har sparat uppdraget på servern och startat bakgrundsarbetet. "
+                    "Du kan låsa mobilen – JARVIS fortsätter arbeta och resultatet sparas."
                 )
         except Exception as error:
             # Ett misslyckat råd får inte förstöra det vanliga JARVIS-svaret.
