@@ -1200,6 +1200,28 @@ function updateTeamBoard(status,task,targets=[],detail=""){
  try{localStorage.setItem(TEAM_BOARD_KEY,JSON.stringify(teamBoard))}catch(e){}
  renderTeamBoard();
 }
+let teamRuntimePoll=null;
+async function refreshTeamRuntime(){
+ try{
+  const response=await fetch("/api/team/status",{cache:"no-store"});if(!response.ok)return;
+  const live=await response.json();if(!live||!live.status)return;
+  const targets=[...new Set([...(live.completed||[]),...(live.active||[])])];
+  updateTeamBoard(live.status,live.task||"Inget aktivt uppdrag",targets,live.phase||"");
+  const workers=$("teamWorkers");if(workers){
+   workers.querySelectorAll(".team-worker").forEach(card=>{
+    const name=card.querySelector("strong")?.textContent||"";
+    const key=name==="GAME DEV"?"GAME_DEVELOPER":name;
+    if((live.active||[]).includes(key)){card.classList.remove("is-done","is-error");card.classList.add("is-working");const label=card.querySelector("small");if(label)label.textContent="Arbetar just nu";}
+    else if((live.completed||[]).includes(key)){card.classList.remove("is-working","is-error");card.classList.add("is-done");const label=card.querySelector("small");if(label)label.textContent="Delmoment klart";}
+   });
+  }
+ }catch(error){/* Live status is supplemental; chat must keep working if polling fails. */}
+}
+function startTeamRuntimePolling(){
+ if(teamRuntimePoll)clearInterval(teamRuntimePoll);
+ refreshTeamRuntime();teamRuntimePoll=setInterval(refreshTeamRuntime,1800);
+}
+function stopTeamRuntimePolling(){if(teamRuntimePoll){clearInterval(teamRuntimePoll);teamRuntimePoll=null;}refreshTeamRuntime();}
 function renderTeamBoard(){
  const workers=$("teamWorkers"),state=$("teamBoardState"),task=$("teamTask");if(!workers||!state||!task)return;
  const active=teamBoard.status==="working";
@@ -1702,6 +1724,7 @@ async function sendMessage(event,assistant){
  const loading=addMessage(messages,isGame?"GAME DEVELOPER bygger spelplan...":isWeb?"WEBMASTER bygger en lösning...":isNova?"NOVA analyserar...":"JARVIS tänker...","ai");
  try{
    videoRequest=/\b(skapa|gör(?:a)?|bygg|producera|framställ|ta fram)\b.{0,55}\b(video|short|film|klipp|avsnitt)\b|\b(video|short|film|klipp|avsnitt)\b.{0,55}\b(skapa|gör(?:a)?|bygg|producera)\b/i.test(message);
+  if(assistant==="jarvis")startTeamRuntimePolling();
   if(isNova){
    const urlMatch=message.match(/https?:\/\/[^\s<>"']+/i);
    const referenceUrl=urlMatch?urlMatch[0].replace(/[),.]+$/,""):"";
@@ -1762,7 +1785,7 @@ async function sendMessage(event,assistant){
   if(assistant==="jarvis"&&voiceConversationRoom==="jarvis")speakText(data.reply||"JARVIS har svarat.",assistant);else if(voiceConversationRoom===assistant)speakText(data.reply||"NOVA har skapat ett produktionsunderlag.",assistant);
   setRoomState(assistant,"responding");logActivity(assistant.toUpperCase()+" svarade","✓","AI-motor: "+(data.engine||"Okänd"));
  }catch(error){loading.className="msg error";loading.textContent="Anslutningsfel: "+error.message;saveChatHistory(assistant);logActivity(assistant.toUpperCase()+" – anslutningsfel","⚠",error.message)}
- finally{button.disabled=false;button.textContent="SKICKA";if(!activeSpeechRoom||activeSpeechRoom!==assistant)setTimeout(()=>setRoomState(assistant,"idle"),1800);input.focus()}
+ finally{if(assistant==="jarvis")stopTeamRuntimePolling();button.disabled=false;button.textContent="SKICKA";if(!activeSpeechRoom||activeSpeechRoom!==assistant)setTimeout(()=>setRoomState(assistant,"idle"),1800);input.focus()}
 }
 
 async function jarvisDelegateLatest(){
