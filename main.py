@@ -26,7 +26,7 @@ from runway_engine import router as runway_router
 # NOVA CLOUD – VERSION 2.2.0
 # ==========================================
 
-APP_VERSION = "3.4.0"
+APP_VERSION = "3.4.1"
 
 app = FastAPI(
     title="NOVA Cloud",
@@ -150,6 +150,45 @@ def supabase_table_request(table, method, query="", payload=None, prefer=""):
         ) from error
 
 
+def jarvis_project_key(project_name, task):
+    clean_name = re.sub(r"\s+", " ", str(project_name or task[:100])).strip()[:120]
+    key = re.sub(r"[^a-z0-9]+", "-", clean_name.casefold()).strip("-")[:100]
+    return key or ("jarvis-" + hashlib.sha256(task.encode("utf-8")).hexdigest()[:16])
+
+
+def get_jarvis_project_context(project_name, task, limit=10):
+    """Retrieve prior project decisions and specialist work before a new council run."""
+    if not USE_SUPABASE_MEMORY:
+        return ""
+    key = jarvis_project_key(project_name, task)
+    projects, _ = supabase_table_request(
+        "jarvis_projects", "GET",
+        urllib.parse.urlencode({"select":"id,name,description,status,updated_at",
+                                "project_key":"eq."+key,"limit":"1"})
+    )
+    if not projects:
+        return ""
+    project = projects[0]
+    tasks, _ = supabase_table_request(
+        "jarvis_tasks", "GET",
+        urllib.parse.urlencode({"select":"title,description,assignee,status,result,blocker,updated_at",
+                                "project_id":"eq."+str(project["id"]),
+                                "order":"updated_at.desc","limit":str(max(1,min(20,limit)))})
+    )
+    lines = [
+        f"Projekt: {project.get('name','')}",
+        f"Status: {project.get('status','active')}",
+        f"Beskrivning: {project.get('description','')}"
+    ]
+    for item in tasks:
+        lines.append(
+            f"- {item.get('assignee','JARVIS')} [{item.get('status','')}] "
+            f"{item.get('title','')}: {str(item.get('result') or item.get('description') or '')[:1800]}"
+            + (f" | Blockerare: {item.get('blocker')}" if item.get("blocker") else "")
+        )
+    return "\n".join(lines)[:14000]
+
+
 def persist_jarvis_project(task, plan, results, final_reply, quality_status):
     """Persist one completed council execution as a project and specialist tasks."""
     if not USE_SUPABASE_MEMORY:
@@ -157,9 +196,7 @@ def persist_jarvis_project(task, plan, results, final_reply, quality_status):
     project_name = re.sub(
         r"\s+", " ", str(plan.get("project_name") or task[:100])
     ).strip()[:120] or "JARVIS-projekt"
-    project_key = re.sub(r"[^a-z0-9]+", "-", project_name.casefold()).strip("-")[:100]
-    if not project_key:
-        project_key = "jarvis-" + hashlib.sha256(task.encode("utf-8")).hexdigest()[:16]
+    project_key = jarvis_project_key(project_name, task)
     execution_id = str(uuid.uuid4())
     now = datetime.now(timezone.utc).isoformat()
     project_rows, _ = supabase_table_request(
@@ -200,7 +237,8 @@ def persist_jarvis_project(task, plan, results, final_reply, quality_status):
                 "metadata": {
                     "engine": item.get("engine"),
                     "quality_gate": quality_status
-                }
+                },
+                "completed_at": now
             },
             prefer="return=representation"
         )
@@ -217,7 +255,8 @@ def persist_jarvis_project(task, plan, results, final_reply, quality_status):
             "status": "completed",
             "priority": 3,
             "result": str(final_reply or "")[:12000],
-            "metadata": {"quality_gate": quality_status}
+            "metadata": {"quality_gate": quality_status},
+            "completed_at": now
         },
         prefer="return=representation"
     )
@@ -2109,32 +2148,6 @@ async def status():
     }
 
 
-@app.get("/api/jarvis/projects")
-async def jarvis_projects(limit: int = 50, status: str = ""):
-    """List persistent JARVIS projects and their latest activity."""
-    if not USE_SUPABASE_MEMORY:
-        raise HTTPException(status_code=503, detail="Supabase-projektregistret är inte konfigurerat.")
-    params = {"select": "*", "order": "updated_at.desc", "limit": str(max(1, min(100, limit)))}
-    if status in {"active", "paused", "completed", "archived"}:
-        params["status"] = "eq." + status
-    rows, _ = supabase_table_request("jarvis_projects", "GET", urllib.parse.urlencode(params))
-    return {"status": "online", "count": len(rows), "projects": rows}
-
-
-@app.get("/api/jarvis/tasks")
-async def jarvis_tasks(limit: int = 100, status: str = "", assignee: str = ""):
-    """List persistent JARVIS tasks, optionally filtered by status or specialist."""
-    if not USE_SUPABASE_MEMORY:
-        raise HTTPException(status_code=503, detail="Supabase-projektregistret är inte konfigurerat.")
-    params = {"select": "*", "order": "updated_at.desc", "limit": str(max(1, min(200, limit)))}
-    if status in {"planned", "in_progress", "blocked", "completed", "cancelled"}:
-        params["status"] = "eq." + status
-    if assignee.strip():
-        params["assignee"] = "eq." + assignee.strip()[:40]
-    rows, _ = supabase_table_request("jarvis_tasks", "GET", urllib.parse.urlencode(params))
-    return {"status": "online", "count": len(rows), "tasks": rows}
-
-
 @app.get("/api/jarvis/intelligence")
 async def jarvis_intelligence():
     """Expose the real, currently enabled JARVIS intelligence capabilities."""
@@ -2160,8 +2173,9 @@ async def jarvis_intelligence():
         "specialists": ["NOVA", "WEBMASTER", "GAME_DEVELOPER"],
         "project_registry": {
             "status": "online" if USE_SUPABASE_MEMORY else "unavailable",
-            "projects_endpoint": "/api/jarvis/projects",
-            "tasks_endpoint": "/api/jarvis/tasks"
+            "persistent": True,
+            "retrieval": "automatic_project_context",
+            "read_access": "server_only"
         },
         "memory": memory,
         "boundaries": [
@@ -2496,6 +2510,9 @@ Delegering ger inte tillstånd att köpa, publicera, betala eller utföra extern
         ordered = [x for x in sequence if x in targets]
         ordered += [x for x in targets if x not in ordered]
 
+        # Hämta tidigare projektresultat innan nya arbetsorder skickas ut.
+        project_name = str(plan.get("project_name") or task[:100])
+        prior_project_context = get_jarvis_project_context(project_name, task)
         # RÅDSRUNDA 1: varje specialist gör sin självständiga analys.
         results, previous = [], []
         shared_project_memory = add_relevant_memory(task, "", limit=8, project="JARVIS")
@@ -2515,6 +2532,8 @@ Delegering ger inte tillstånd att köpa, publicera, betala eller utföra extern
                 f"HELA PROJEKTET:\n{task}\n\n"
                 + (("GEMENSAMT PROJEKTMENNE:\n" + shared_project_memory + "\n\n")
                    if shared_project_memory else "")
+                + (("TIDIGARE SPARAD PROJEKTHISTORIK:\n" + prior_project_context + "\n\n")
+                   if prior_project_context else "")
                 + f"DIN ARBETSORDER:\n{assigned}\n\n"
                 + ("TIDIGARE RÅDSUNDERLAG:\n" + "\n\n".join(previous)
                    if previous else "Du är först i arbetsordningen.")
@@ -2553,7 +2572,10 @@ Delegering ger inte tillstånd att köpa, publicera, betala eller utföra extern
 
         set_team_runtime("working", task, "JARVIS sammanställer rådets gemensamma beslut", ["JARVIS"], ordered)
         summary_input = (
-            "PROJEKT:\n" + task + "\n\nFÖRSTA ANALYSER:\n"
+            "PROJEKT:\n" + task + "\n\n"
+            + ("TIDIGARE SPARAD PROJEKTHISTORIK:\n" + prior_project_context + "\n\n"
+               if prior_project_context else "")
+            + "FÖRSTA ANALYSER:\n"
             + "\n\n".join(f"{r['target']}:\n{r['reply'][:7000]}" for r in results)
             + ("\n\nKOLLEGIAL GRANSKNING:\n"
                + "\n\n".join(f"{r['target']}:\n{r['reply'][:5000]}" for r in council_reviews)
