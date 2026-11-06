@@ -155,9 +155,11 @@ def search_memory_items(query, limit=6, project=""):
             haystack = (row["text"] + " " + row["category"] + " " + row_project).casefold()
             overlap = sum(1 for term in terms if term in haystack)
             project_match = bool(requested_project and (
-                row_project == requested_project
-                or requested_project in row_project
-                or row_project in requested_project
+                row_project and (
+                    row_project == requested_project
+                    or requested_project in row_project
+                    or row_project in requested_project
+                )
             ))
             # Project context is a relevance bonus, not permission to inject unrelated memories.
             if not overlap and not (project_match and terms):
