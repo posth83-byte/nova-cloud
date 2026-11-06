@@ -183,6 +183,29 @@ main{position:relative;z-index:1;max-width:1400px;margin:auto;padding:20px 15px 
 .voice-settings summary::-webkit-details-marker{display:none}
 .voice-settings[open]{text-align:left}
 .voice-settings .voice-panel{margin-top:8px}
+
+/* JARVIS HOLOGRAPHIC VOICE CONTROL */
+.jarvis-holo-voice{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:9px;padding:16px 10px 13px;margin:2px auto 13px;min-height:190px;overflow:hidden;border:1px solid #ff9b5633;border-radius:16px;background:radial-gradient(ellipse at 50% 52%,#ff7b2415,transparent 62%),linear-gradient(180deg,#081827aa,#040d19aa)}
+.jarvis-holo-voice:before{content:"";position:absolute;inset:0;pointer-events:none;opacity:.22;background:repeating-linear-gradient(0deg,transparent 0 5px,#ff9b5612 6px)}
+.jarvis-orb-button{position:relative;z-index:1;width:142px;height:142px;border:0;border-radius:50%;display:grid;place-items:center;background:transparent;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+.jarvis-orb-ring{position:absolute;inset:8px;border:2px solid #ff9a55;border-radius:50%;box-shadow:0 0 12px #ff762e99,inset 0 0 12px #ff762e44;animation:jarvisOrangeOrbit 8s linear infinite}
+.jarvis-orb-ring.ring-two{inset:-1px;border-style:dashed;border-color:#ffc18a99;animation:jarvisOrangeOrbit 14s linear infinite reverse}
+.jarvis-orb-ring.ring-three{inset:20px;border-color:#ff8c4d88;transform:rotateX(65deg);animation:jarvisOrangePulse 2.8s ease-in-out infinite}
+.jarvis-holo-ball{position:relative;width:72px;height:72px;border-radius:50%;background:radial-gradient(circle at 34% 28%,#f4ffff 0 3%,#8beaff 9%,#36bdf4 22%,#0873b5 48%,#041b39 76%);box-shadow:0 0 18px #42ceff,0 0 42px #138cffaa,0 0 70px #ff812f33;animation:jarvisBallFloat 3.2s ease-in-out infinite;transition:transform .07s linear,filter .07s linear}
+.jarvis-holo-ball:before,.jarvis-holo-ball:after{content:"";position:absolute;inset:8px;border:1px solid #c8f8ff99;border-radius:50%;transform:rotateX(65deg)}
+.jarvis-holo-ball:after{inset:-8px;border-color:#ffae7188;transform:rotateY(65deg)}
+.jarvis-orb-button:focus-visible{outline:2px solid #ffd0a8;outline-offset:8px}
+.jarvis-orb-button.active .jarvis-orb-ring{border-color:#ffbd91;box-shadow:0 0 22px #ff762e,inset 0 0 18px #ff762e88}
+.jarvis-orb-button.listening .jarvis-holo-ball{box-shadow:0 0 24px #54d9ff,0 0 58px #ff812f88}
+.jarvis-orb-button.speaking .jarvis-holo-ball{animation:jarvisBallSpeak .48s ease-in-out infinite alternate;box-shadow:0 0 30px #b6f6ff,0 0 70px #ff812fbb}
+.jarvis-orb-caption{position:relative;z-index:1;color:#ffc39f;font-size:9px;letter-spacing:3px;text-align:center;text-shadow:0 0 12px #ff8b45}
+.jarvis-orb-hint{position:relative;z-index:1;color:#8ea9c2;font-size:9px;text-align:center;line-height:1.5}
+@keyframes jarvisOrangeOrbit{to{transform:rotate(360deg)}}
+@keyframes jarvisOrangePulse{0%,100%{opacity:.45;transform:scale(.94) rotateX(65deg)}50%{opacity:1;transform:scale(1.06) rotateX(65deg)}}
+@keyframes jarvisBallFloat{0%,100%{transform:translateY(0) scale(1)}50%{transform:translateY(-5px) scale(1.035)}}
+@keyframes jarvisBallSpeak{from{transform:scale(.94)}to{transform:scale(1.17)}}
+@media(max-width:420px){.jarvis-holo-voice{min-height:174px}.jarvis-orb-button{width:128px;height:128px}.jarvis-holo-ball{width:66px;height:66px}}
+
 .jarvis-input-row{align-items:center}
 .voice-toggle{flex:0 0 46px;width:46px;height:46px;border:1px solid #ff9a70;border-radius:50%;background:linear-gradient(145deg,#3a1b13,#1d1010);color:#ffd0b8;font-size:20px;box-shadow:0 0 14px #ff8a3d35}
 .voice-toggle.active{background:#5b2418;color:#fff;border-color:#ffb08a;box-shadow:0 0 18px #ff713f88}
@@ -876,7 +899,7 @@ header .sub{color:#d6a19a}
   <div class="chat-title">JARVIS / SECURE AI CONNECTION</div>
   <div class="messages" id="jarvisMessages"><div class="msg ai">God dag. JARVIS är redo. Vad kan jag hjälpa dig med?</div></div>
   
-   <form class="input-row jarvis-input-row" onsubmit="sendMessage(event,'jarvis')"><input class="chat-input" id="jarvisInput" placeholder="Skriv till JARVIS..." autocomplete="off"><button class="voice-toggle" id="jarvisVoiceButton" type="button" onclick="toggleJarvisVoice()" aria-label="Starta röstsamtal med JARVIS" title="Prata med JARVIS">🎙</button><button class="send" id="jarvisSend">SKICKA</button></form>
+   <div class="jarvis-holo-voice" id="jarvisHoloVoice"><button class="jarvis-orb-button" id="jarvisVoiceButton" type="button" onclick="toggleJarvisVoice()" aria-label="Tryck för att prata med JARVIS" title="Tryck för att prata med JARVIS"><span class="jarvis-orb-ring"></span><span class="jarvis-orb-ring ring-two"></span><span class="jarvis-orb-ring ring-three"></span><span class="jarvis-holo-ball" id="jarvisHoloBall"></span></button><div class="jarvis-orb-caption" id="jarvisOrbCaption">JARVIS / STANDBY</div><div class="jarvis-orb-hint" id="jarvisOrbHint">Tryck på den orange holografiska ringen för att starta ett röstsamtal</div></div><form class="input-row jarvis-input-row" onsubmit="sendMessage(event,'jarvis')"><input class="chat-input" id="jarvisInput" placeholder="Eller skriv till JARVIS..." autocomplete="off"><button class="send" id="jarvisSend">SKICKA</button></form>
 
   </div>
  </section>
@@ -1343,9 +1366,9 @@ function speakText(text,room,button=null){
  stopSpeech();if(wakeListening&&wakeRecognition){wakePausedForSpeech=true;try{wakeRecognition.stop()}catch(e){}}const utterance=new SpeechSynthesisUtterance(text.trim());const voice=getSelectedVoice(room);
  const settings=room==="jarvis"?getJarvisVoiceSettings():{rate:.95,pitch:.92};utterance.lang=voice?voice.lang:"sv-SE";utterance.rate=settings.rate;utterance.pitch=settings.pitch;utterance.volume=1;if(voice)utterance.voice=voice;
  activeUtterance=utterance;activeSpeechButton=button;activeSpeechRoom=room;const status=$(room+"VoiceStatus");
- utterance.onstart=()=>{if(button){button.textContent="■ STOPPA UPPLÄSNING";button.classList.add("speaking")}if(status)status.textContent="AI-rösten läser upp svaret...";setRoomState(room,"responding")};
- utterance.onend=()=>{if(button){button.textContent="▶ LÄS UPP SVARET";button.classList.remove("speaking")}if(status)status.textContent="Uppläsningen klar.";setRoomState(room,"idle");activeUtterance=null;activeSpeechButton=null;activeSpeechRoom=null;if(wakeListening&&wakeRecognition&&wakePausedForSpeech){wakePausedForSpeech=false;try{wakeRecognition.start()}catch(e){wakeStatus("Tryck på aktivera igen för att fortsätta lyssna.")}}};
- utterance.onerror=()=>{if(button){button.textContent="▶ LÄS UPP SVARET";button.classList.remove("speaking")}if(status)status.textContent="Kunde inte spela upp rösten.";setRoomState(room,"idle");activeUtterance=null;activeSpeechButton=null;activeSpeechRoom=null;if(wakeListening&&wakeRecognition&&wakePausedForSpeech){wakePausedForSpeech=false;try{wakeRecognition.start()}catch(e){wakeStatus("Tryck på aktivera igen för att fortsätta lyssna.")}}};
+ utterance.onstart=()=>{if(button){button.textContent="■ STOPPA UPPLÄSNING";button.classList.add("speaking")}if(status)status.textContent="AI-rösten läser upp svaret...";setRoomState(room,"responding");if(room==="jarvis")setJarvisOrbState("speaking")};
+ utterance.onend=()=>{if(button){button.textContent="▶ LÄS UPP SVARET";button.classList.remove("speaking")}if(status)status.textContent="Uppläsningen klar.";setRoomState(room,"idle");if(room==="jarvis")setJarvisOrbState(wakeListening?"listening":"idle");activeUtterance=null;activeSpeechButton=null;activeSpeechRoom=null;if(wakeListening&&wakeRecognition&&wakePausedForSpeech){wakePausedForSpeech=false;try{wakeRecognition.start()}catch(e){wakeStatus("Tryck på aktivera igen för att fortsätta lyssna.")}}};
+ utterance.onerror=()=>{if(button){button.textContent="▶ LÄS UPP SVARET";button.classList.remove("speaking")}if(status)status.textContent="Kunde inte spela upp rösten.";setRoomState(room,"idle");if(room==="jarvis")setJarvisOrbState(wakeListening?"listening":"idle");activeUtterance=null;activeSpeechButton=null;activeSpeechRoom=null;if(wakeListening&&wakeRecognition&&wakePausedForSpeech){wakePausedForSpeech=false;try{wakeRecognition.start()}catch(e){wakeStatus("Tryck på aktivera igen för att fortsätta lyssna.")}}};
  window.speechSynthesis.speak(utterance);
 }
 function addSpeechButton(messageElement,room){
@@ -1413,11 +1436,38 @@ function startWakeListening(){
  try{wakeRecognition.start()}
  catch(e){wakeStatus("Kunde inte starta mikrofonen. Kontrollera mikrofontillståndet.");stopWakeListening()}
 }
-function startJarvisVoiceConversation(){
- startWakeListening();
- voiceConversationRoom="jarvis";
- const start=$("jarvisTalkStart"),stop=$("jarvisTalkStop");if(start)start.disabled=true;if(stop)stop.disabled=false;const compactVoice=$("jarvisVoiceButton");if(compactVoice){compactVoice.textContent="■";compactVoice.classList.add("active");compactVoice.setAttribute("aria-label","Stoppa röstsamtal med JARVIS");compactVoice.title="Stoppa röstsamtal";}
- wakeStatus("JARVIS-samtal aktivt. Prata nu – säg ”avsluta röst” när du vill stänga av.");
+let jarvisAudioStream=null,jarvisAudioContext=null,jarvisAudioAnalyser=null,jarvisAudioFrame=0;
+function setJarvisOrbState(state){
+ const button=$("jarvisVoiceButton"),caption=$("jarvisOrbCaption"),hint=$("jarvisOrbHint");if(!button)return;
+ button.classList.remove("active","listening","speaking");
+ if(state==="listening"){button.classList.add("active","listening");if(caption)caption.textContent="JARVIS / LYSSNAR";if(hint)hint.textContent="Jag hör dig – fortsätt prata."}
+ else if(state==="speaking"){button.classList.add("active","speaking");if(caption)caption.textContent="JARVIS / SVARAR";if(hint)hint.textContent="JARVIS talar."}
+ else{if(caption)caption.textContent="JARVIS / STANDBY";if(hint)hint.textContent="Tryck på den orange holografiska ringen för att starta ett röstsamtal"}
+}
+async function startJarvisAudioMeter(){
+ stopJarvisAudioMeter();if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia)return false;
+ try{
+  jarvisAudioStream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true}});
+  const AudioCtx=window.AudioContext||window.webkitAudioContext;if(!AudioCtx)return false;
+  jarvisAudioContext=new AudioCtx();if(jarvisAudioContext.state==="suspended")await jarvisAudioContext.resume();
+  jarvisAudioAnalyser=jarvisAudioContext.createAnalyser();jarvisAudioAnalyser.fftSize=256;
+  jarvisAudioContext.createMediaStreamSource(jarvisAudioStream).connect(jarvisAudioAnalyser);
+  const data=new Uint8Array(jarvisAudioAnalyser.fftSize);
+  const draw=()=>{if(!jarvisAudioAnalyser)return;jarvisAudioAnalyser.getByteTimeDomainData(data);let sum=0;for(let i=0;i<data.length;i++){const n=(data[i]-128)/128;sum+=n*n}const level=Math.min(1,Math.sqrt(sum/data.length)*5.5);const ball=$("jarvisHoloBall");if(ball&&wakeListening){const scale=1+level*.42;ball.style.transform="scale("+scale.toFixed(3)+")";ball.style.filter="brightness("+(1+level*.9).toFixed(2)+")"}jarvisAudioFrame=requestAnimationFrame(draw)};
+  jarvisAudioFrame=requestAnimationFrame(draw);return true;
+ }catch(error){return false}
+}
+function stopJarvisAudioMeter(){
+ if(jarvisAudioFrame)cancelAnimationFrame(jarvisAudioFrame);jarvisAudioFrame=0;jarvisAudioAnalyser=null;
+ if(jarvisAudioStream){jarvisAudioStream.getTracks().forEach(track=>track.stop());jarvisAudioStream=null}
+ if(jarvisAudioContext){jarvisAudioContext.close().catch(()=>{});jarvisAudioContext=null}
+ const ball=$("jarvisHoloBall");if(ball){ball.style.transform="";ball.style.filter=""}
+}
+async function startJarvisVoiceConversation(){
+ setJarvisOrbState("listening");const meterReady=await startJarvisAudioMeter();startWakeListening();voiceConversationRoom="jarvis";
+ const start=$("jarvisTalkStart"),stop=$("jarvisTalkStop");if(start)start.disabled=true;if(stop)stop.disabled=false;
+ const compactVoice=$("jarvisVoiceButton");if(compactVoice){compactVoice.setAttribute("aria-label","Stoppa röstsamtal med JARVIS");compactVoice.title="Tryck för att avsluta röstsamtalet"}
+ wakeStatus(meterReady?"JARVIS-samtal aktivt. Bollen reagerar på din röst.":"JARVIS-samtal aktivt. Prata nu.");
 }
 function toggleJarvisVoice(){if(wakeListening){stopWakeListening();return}startJarvisVoiceConversation()}
 function stopWakeListening(){
@@ -1425,7 +1475,7 @@ function stopWakeListening(){
  if(wakeRecognition){try{wakeRecognition.onend=null;wakeRecognition.stop()}catch(e){}wakeRecognition=null}
  const start=$("wakeStart"),stop=$("wakeStop");if(start)start.disabled=false;if(stop)stop.disabled=true;
  const jarvisStart=$("jarvisTalkStart"),jarvisStop=$("jarvisTalkStop");if(jarvisStart)jarvisStart.disabled=false;if(jarvisStop)jarvisStop.disabled=true;const compactVoice=$("jarvisVoiceButton");if(compactVoice){compactVoice.textContent="🎙";compactVoice.classList.remove("active");compactVoice.setAttribute("aria-label","Starta röstsamtal med JARVIS");compactVoice.title="Prata med JARVIS";}
- wakeStatus("Mikrofonen är avstängd.");
+ wakeStatus("Mikrofonen är avstängd.");stopJarvisAudioMeter();setJarvisOrbState("idle");
 }
 
 /* JARVIS-FIRST CONTROL ROOM: move the existing live team board into the shared collaboration room */
