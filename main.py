@@ -1,5 +1,6 @@
 
 import os
+import asyncio
 import json
 import re
 import uuid
@@ -2476,7 +2477,10 @@ Bevara krav och tidigare beslut. Hitta inte på detaljer.
 Delegering ger inte tillstånd att köpa, publicera, betala eller utföra externa åtgärder.
 """
     try:
-        decision = generate_reply(context, selector_prompt, max_tokens=2200, json_mode=True)
+        decision = await asyncio.to_thread(
+            generate_reply, context, selector_prompt,
+            max_tokens=2200, json_mode=True
+        )
         match = re.search(r"\{[\s\S]*\}", decision["reply"].strip())
         if not match:
             raise ValueError("JARVIS returnerade ingen giltig samarbetsplan.")
@@ -2542,7 +2546,9 @@ Delegering ger inte tillstånd att köpa, publicera, betala eller utföra extern
                 + ("TIDIGARE RÅDSUNDERLAG:\n" + "\n\n".join(previous)
                    if previous else "Du är först i arbetsordningen.")
             )
-            result = generate_reply(handoff, prompts[target], max_tokens=8192)
+            result = await asyncio.to_thread(
+                generate_reply, handoff, prompts[target], max_tokens=8192
+            )
             results.append({
                 "target": target, "task": assigned,
                 "reply": result["reply"], "engine": result["engine"]
@@ -2569,7 +2575,9 @@ Delegering ger inte tillstånd att köpa, publicera, betala eller utföra extern
                     + next((item["reply"][:6000] for item in results if item["target"] == target), "")
                     + "\n\nÖVRIGA SPECIALISTERS FÖRSLAG:\n" + peer_material
                 )
-                review = generate_reply(review_prompt, prompts[target], max_tokens=5000)
+                review = await asyncio.to_thread(
+                    generate_reply, review_prompt, prompts[target], max_tokens=5000
+                )
                 council_reviews.append({
                     "target": target, "reply": review["reply"], "engine": review["engine"]
                 })
@@ -2594,7 +2602,9 @@ Delegering ger inte tillstånd att köpa, publicera, betala eller utföra extern
             "Skilj tydligt mellan förslag, producerat material och faktiskt utförda åtgärder. "
             "Påstå inte att externa åtgärder har utförts. Svara på naturlig svenska."
         )
-        summary = generate_reply(summary_input, summary_prompt, max_tokens=4000)
+        summary = await asyncio.to_thread(
+            generate_reply, summary_input, summary_prompt, max_tokens=4000
+        )
 
         # SISTA KVALITETSGRINDEN: även en ensam specialist får sitt resultat granskat.
         set_team_runtime("working", task, "JARVIS gör slutlig kvalitetskontroll", ["JARVIS"], ordered)
@@ -2622,7 +2632,9 @@ Avsluta med en kort sektion "Kvar att göra" endast om något faktiskt återstå
         quality = None
         quality_error = None
         try:
-            quality = generate_reply(quality_input, quality_prompt, max_tokens=3500)
+            quality = await asyncio.to_thread(
+                generate_reply, quality_input, quality_prompt, max_tokens=3500
+            )
             final_reply = quality["reply"].strip() or summary["reply"]
             quality_status = "reviewed"
         except Exception as error:
@@ -2942,10 +2954,12 @@ async def game_developer(request: GameDeveloperChatRequest):
 async def create_webmaster_preview(request: WebPreviewRequest):
     page_id = uuid.uuid4().hex[:12]
     preview_pages[page_id] = request.html
+    base_url = os.getenv("RENDER_EXTERNAL_URL", "").strip().rstrip("/")
+    preview_path = f"/preview/{page_id}"
     return {
         "status": "ready",
-        "preview_url": f"/preview/{page_id}",
-        "note": "Tillfälliga förhandsvisningar rensas när Render startas om."
+        "preview_url": f"{base_url}{preview_path}" if base_url else preview_path,
+        "note": "Tillfällig förhandsvisning; den rensas när Render startas om."
     }
 
 
