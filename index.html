@@ -1644,11 +1644,17 @@ function clearWebImages(){
  webmasterImages=[];const input=$("webImageInput");if(input)input.value="";updateWebImageList();
 }
 async function createWebPreview(reply,mountElement=null){
- const tick=String.fromCharCode(96);
- const marker=tick+tick+tick;
- const match=reply.match(new RegExp(marker+"html\\s*([\\s\\S]*?)"+marker,"i"));
- if(!match)return false;
- let page=match[1].trim();
+ const source=String(reply||"");
+ const marker=String.fromCharCode(96).repeat(3);
+ const blocks=[...source.matchAll(/\`\`\`(?:html)?\\s*([\\s\\S]*?)\`\`\`/gi)].map(match=>match[1].trim());
+ let page=blocks.find(block=>/<(?:!doctype\\s+html|html|head|body)\\b/i.test(block))||"";
+ if(!page){
+  const start=source.search(/<!doctype\\s+html|<html\\b/i);
+  if(start>=0)page=source.slice(start).trim();
+ }
+ page=page.replace(new RegExp(marker+"\\s*$"),"").trim();
+ if(!/<(?:!doctype\\s+html|html)\\b/i.test(page))return false;
+ if(!/<html\\b/i.test(page))page="<!doctype html><html><head><meta charset=\\"utf-8\\"></head><body>"+page+"</body></html>";
  const placeholder="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%27800%27 height=%27450%27 viewBox=%270 0 800 450%27%3E%3Crect width=%27800%27 height=%27450%27 fill=%27%23102233%27/%3E%3Ctext x=%27400%27 y=%27225%27 fill=%27%23ffffff%27 font-size=%2728%27 text-anchor=%27middle%27%3ELagg till en egen bild%3C/text%3E%3C/svg%3E";
  webmasterImages.forEach((item,index)=>{page=page.split("{{WEBMASTER_IMAGE_"+(index+1)+"}}").join(item.data)});
  page=page.split("{{WEBMASTER_IMAGE}}").join(webmasterImages.length?webmasterImages[0].data:placeholder);
@@ -1870,7 +1876,7 @@ async function sendMessage(event,assistant){
      try{
       const previewReady=await createWebPreview(webmasterResult.reply,loading);
       if(previewReady)logActivity("WEBMASTER levererade en klickbar hemsideförhandsvisning","⌘",message.slice(0,90));
-      else{const note=document.createElement("div");note.className="web-preview-note";note.textContent="WEBMASTER levererade inget komplett HTML-kodblock som kunde förhandsvisas.";loading.appendChild(note)}
+      else{const note=document.createElement("div");note.className="web-preview-note";note.textContent="Webmaster lämnade ingen komplett HTML-sida ännu. JARVIS ska be om en komplett uppdaterad fil innan leveransen räknas som klar.";loading.appendChild(note)}
      }catch(previewError){const note=document.createElement("div");note.className="web-preview-note";note.textContent="Hemsidans förhandsvisning kunde inte skapas: "+previewError.message;loading.appendChild(note)}
     }
    }else if(assistant==="jarvis"&&data.council_error){
