@@ -203,45 +203,23 @@ def save_chat_exchange(user_message, assistant_reply, project=""):
 init_memory_core()
 
 
-@app.get("/api/memory")
-async def list_memory(limit: int = 50):
-    limit = max(1, min(200, limit))
+@app.get("/api/memory/status")
+async def memory_status():
     with memory_connection() as connection:
-        rows = connection.execute("""
-            SELECT id, text, category, project, importance, source,
-                   created_at, updated_at, access_count
-            FROM memory_items
-            ORDER BY updated_at DESC LIMIT ?
-        """, (limit,)).fetchall()
-    return {"status": "online", "count": len(rows), "items": [dict(row) for row in rows],
-            "storage": "sqlite", "database_path": str(MEMORY_DB_PATH)}
-
-
-@app.get("/api/memory/search")
-async def memory_search(q: str, limit: int = 6):
-    if not q.strip():
-        raise HTTPException(status_code=400, detail="Söktext saknas.")
-    items = search_memory_items(q, limit=limit)
-    return {"status": "online", "query": q, "count": len(items), "items": items}
-
-
-@app.post("/api/memory")
-async def create_memory(request: MemoryCreateRequest):
-    item_id = save_memory_item(
-        request.text, request.category, request.project,
-        request.importance, request.source
-    )
-    return {"status": "saved", "id": item_id, "message": "Minnet har sparats i JARVIS Memory Core."}
-
-
-@app.delete("/api/memory/{memory_id}")
-async def delete_memory(memory_id: int):
-    with memory_connection() as connection:
-        result = connection.execute("DELETE FROM memory_items WHERE id=?", (memory_id,))
-    if result.rowcount == 0:
-        raise HTTPException(status_code=404, detail="Minnet hittades inte.")
-    return {"status": "deleted", "id": memory_id}
-
+        count = connection.execute("SELECT COUNT(*) AS total FROM memory_items").fetchone()["total"]
+        latest = connection.execute(
+            "SELECT updated_at FROM memory_items ORDER BY updated_at DESC LIMIT 1"
+        ).fetchone()
+    return {
+        "status": "online",
+        "items": count,
+        "last_updated": latest["updated_at"] if latest else None,
+        "storage": "sqlite",
+        "persistence_note": (
+            "Använd en sökväg på persistent disk via JARVIS_MEMORY_DB "
+            "för att behålla minnet efter omstarter."
+        )
+    }
 
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
