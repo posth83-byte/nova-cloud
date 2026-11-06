@@ -1272,7 +1272,13 @@ async function refreshTeamRuntime(){
   const response=await fetch("/api/team/status",{cache:"no-store"});if(!response.ok)return;
   const live=await response.json();if(!live||!live.status)return;
   const targets=[...new Set([...(live.completed||[]),...(live.active||[])])];
-  updateTeamBoard(live.status,live.task||"Inget aktivt uppdrag",targets,live.phase||"");
+  const sourceNote=live.source==="supabase"?" · LIVE FRÅN SUPABASE":live.warning?" · STATUSRESERV":"";
+  const phase=(live.phase||"")+(live.job_status==="queued"?" · I JOBBKÖN":"")+(live.job_status==="running"?" · AKTIVT BAKGRUNDSJOBB":"")+sourceNote;
+  updateTeamBoard(live.status,live.task||"Inget aktivt uppdrag",targets,phase);
+  const boardState=$("teamBoardState");
+  if(boardState&&live.job_status==="queued")boardState.textContent="● UPPDRAG VÄNTAR PÅ ARBETARE";
+  if(boardState&&live.job_status==="running")boardState.textContent="● BAKGRUNDSARBETE PÅGÅR";
+  if(boardState&&live.job_status==="completed")boardState.textContent="● SENASTE UPPDRAG SLUTFÖRT";
   const workers=$("teamWorkers");if(workers){
    workers.querySelectorAll(".team-worker").forEach(card=>{
     const name=card.querySelector("strong")?.textContent||"";
