@@ -26,7 +26,7 @@ from runway_engine import router as runway_router
 # NOVA CLOUD – VERSION 2.2.0
 # ==========================================
 
-APP_VERSION = "3.3.0"
+APP_VERSION = "3.3.1"
 
 app = FastAPI(
     title="NOVA Cloud",
@@ -1979,7 +1979,7 @@ async def status():
         "memory_storage": "supabase" if USE_SUPABASE_MEMORY else "sqlite",
         "intelligence_core": {
             "status": "online",
-            "version": "3.3.0",
+            "version": APP_VERSION,
             "reasoning": "model_based",
             "memory_retrieval": "project_aware_ranked",
             "memory_curation": "ai_curated_v1",
