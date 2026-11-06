@@ -1391,7 +1391,7 @@ let wakeRecognition=null,wakeListening=false,wakePausedForSpeech=false,voiceConv
 function wakeStatus(message){const el=$("wakeStatus");if(el)el.textContent=message}
 function startWakeListening(){
  const SpeechRecognition=window.SpeechRecognition||window.webkitSpeechRecognition;
- if(!SpeechRecognition){wakeStatus("Den här webbläsaren stöder inte röstigenkänning. Prova Safari eller använd rums-knapparna.");return}
+ if(!SpeechRecognition){wakeStatus("Den här webbläsaren stöder inte röstigenkänning. Prova Safari eller använd rums-knapparna.");stopJarvisAudioMeter();setJarvisOrbState("idle");return}
  if(wakeRecognition){try{wakeRecognition.onend=null;wakeRecognition.abort()}catch(e){}}
  wakeRecognition=new SpeechRecognition();
  wakeRecognition.lang="sv-SE";wakeRecognition.continuous=true;wakeRecognition.interimResults=false;
@@ -1448,7 +1448,7 @@ async function startJarvisAudioMeter(){
  stopJarvisAudioMeter();if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia)return false;
  try{
   jarvisAudioStream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true}});
-  const AudioCtx=window.AudioContext||window.webkitAudioContext;if(!AudioCtx)return false;
+  const AudioCtx=window.AudioContext||window.webkitAudioContext;if(!AudioCtx){stopJarvisAudioMeter();return false;}
   jarvisAudioContext=new AudioCtx();if(jarvisAudioContext.state==="suspended")await jarvisAudioContext.resume();
   jarvisAudioAnalyser=jarvisAudioContext.createAnalyser();jarvisAudioAnalyser.fftSize=256;
   jarvisAudioContext.createMediaStreamSource(jarvisAudioStream).connect(jarvisAudioAnalyser);
