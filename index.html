@@ -1643,7 +1643,7 @@ async function webImagesSelected(input){
 function clearWebImages(){
  webmasterImages=[];const input=$("webImageInput");if(input)input.value="";updateWebImageList();
 }
-async function createWebPreview(reply){
+async function createWebPreview(reply,mountElement=null){
  const tick=String.fromCharCode(96);
  const marker=tick+tick+tick;
  const match=reply.match(new RegExp(marker+"html\\s*([\\s\\S]*?)"+marker,"i"));
@@ -1655,11 +1655,14 @@ async function createWebPreview(reply){
  page=page.replace(/\{\{WEBMASTER_IMAGE_\d+\}\}/g,placeholder);
  const response=await fetch("/api/webmaster/preview",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({html:page})});
  const data=await response.json();if(!response.ok)throw new Error(data.detail||"Kunde inte skapa förhandsvisningen.");
- const area=$("webPreviewArea");area.hidden=false;area.replaceChildren();
+ const area=mountElement||$("webPreviewArea");if(!area)return false;
+ const card=document.createElement("div");card.className="web-preview-area";card.hidden=false;
  const title=document.createElement("strong");title.textContent="DIN HEMSIDA ÄR REDO ATT FÖRHANDSVISA";
- const link=document.createElement("a");link.className="web-preview-link";link.href=data.preview_url;link.target="_blank";link.rel="noopener";link.textContent="ÖPPNA HEMSIDAN ↗";
- const note=document.createElement("div");note.className="web-preview-note";note.textContent="Länken är tillfällig och kan försvinna när NOVA Cloud startas om.";
- area.append(title,document.createElement("br"),link,note);return true;
+ const link=document.createElement("a");link.className="web-preview-link";link.href=new URL(data.preview_url,window.location.origin).href;link.target="_blank";link.rel="noopener noreferrer";link.textContent="ÖPPNA HEMSIDAN ↗";
+ const note=document.createElement("div");note.className="web-preview-note";note.textContent="Detta är en tillfällig förhandsvisning, inte en permanent publicering.";
+ card.append(title,document.createElement("br"),link,note);
+ if(mountElement)area.appendChild(card);else{area.hidden=false;area.replaceChildren(card)}
+ return true;
 }
 
 /* WEBMASTER DROPSHIPPING WORKSPACE */
@@ -1862,6 +1865,14 @@ async function sendMessage(event,assistant){
     loading.textContent+="\n\n════════ AI-RÅD AUTOMATISKT SAMMANKALLAT ════════\nTeam: "+team+"\nJARVIS GEMENSAMMA ARBETSPLAN:\n"+(council.reply||"Ingen sammanställning mottogs.")+analyses+reviews;
     logActivity("JARVIS kallade automatiskt AI-rådet","✦",team+" · "+(council.council_rounds||1)+" rådsrundor");
     updateTeamBoard("done",message,council.targets||[],(council.council_rounds||1)+" rådsrundor genomförda");
+    const webmasterResult=(council.results||[]).find(item=>item.target==="WEBMASTER"&&item.reply);
+    if(webmasterResult){
+     try{
+      const previewReady=await createWebPreview(webmasterResult.reply,loading);
+      if(previewReady)logActivity("WEBMASTER levererade en klickbar hemsideförhandsvisning","⌘",message.slice(0,90));
+      else{const note=document.createElement("div");note.className="web-preview-note";note.textContent="WEBMASTER levererade inget komplett HTML-kodblock som kunde förhandsvisas.";loading.appendChild(note)}
+     }catch(previewError){const note=document.createElement("div");note.className="web-preview-note";note.textContent="Hemsidans förhandsvisning kunde inte skapas: "+previewError.message;loading.appendChild(note)}
+    }
    }else if(assistant==="jarvis"&&data.council_error){
     updateTeamBoard("error",message,[],"AI-rådet kunde inte startas.");
     loading.textContent+="\n\nAI-rådet kunde inte startas: "+data.council_error;
@@ -1902,6 +1913,8 @@ async function jarvisDelegateLatest(){
    const detail=(data.results||[]).map(item=>"\n\n"+(names[item.target]||item.target)+" – FÖRSTA ANALYS:\n"+(item.reply||"Inget resultat mottogs.")).join("");
    const reviews=(data.reviews||[]).map(item=>"\n\n"+(names[item.target]||item.target)+" – KOLLEGIAL GRANSKNING:\n"+(item.reply||"Ingen granskning returnerades.")).join("");
    loading.textContent="✓ JARVIS samordnade: "+team+".\nRådsrundor: "+(data.council_rounds||1)+"\nVarför: "+(data.reason||"Flera specialistroller behövs för uppgiften.")+"\n\nJARVIS GEMENSAMMA BESLUT OCH ARBETSPLAN:\n"+(data.reply||"Inget sammanställt resultat.")+detail+reviews+"\n\nAI-motor: "+(data.engine||"Okänd");
+   const webmasterResult=(data.results||[]).find(item=>item.target==="WEBMASTER"&&item.reply);
+   if(webmasterResult){try{await createWebPreview(webmasterResult.reply,loading)}catch(previewError){const note=document.createElement("div");note.className="web-preview-note";note.textContent="Förhandsvisningen kunde inte skapas: "+previewError.message;loading.appendChild(note)}}
    loading.dataset.speechText="Jag har lämnat över uppdraget till "+(names[data.target]||data.target)+".";
    logActivity("JARVIS delegerade till "+data.target,"↗",task.slice(0,80));
    updateTeamBoard("done",task,data.targets||[data.target],"Uppdraget analyserat och sammanställt.");
