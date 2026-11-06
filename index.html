@@ -1722,6 +1722,7 @@ function toggleJarvisProjects(force){
  if(show)renderJarvisProjects();
 }
 loadJarvisProjects();
+saveJarvisProject("JARVIS Arcade – Spelportal",new URL("/arcade",window.location.origin).href,"WEBBAPP");
 function appendProjectLinks(element,source){
  if(!element||!source)return;
  const text=String(source),tick=String.fromCharCode(96);
