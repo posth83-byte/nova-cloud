@@ -654,6 +654,40 @@ header .sub{color:#d6a19a}
 @keyframes miniHeadBob{to{transform:translateY(-3px) rotate(4deg)}}
 @keyframes miniWork{to{transform:translateY(-2px) scale(1.04);filter:brightness(1.25)}}
 @media(max-width:520px){.team-room-stage{min-height:160px;padding:10px 8px}.team-stage-display{width:86%}.team-stage-table{width:66%}.team-stage-caption{font-size:6px}.team-room-shell .team-worker{min-height:100px}}
+
+/* Expanded shared office: panoramic command display and specialist workstations */
+.team-room-stage{min-height:330px;padding:13px 14px 12px;background:radial-gradient(ellipse at 50% 76%,#9a4b2670,transparent 48%),linear-gradient(180deg,#25170f,#100b08 85%)}
+.team-panoramic{position:relative;z-index:3;max-width:720px;margin:13px auto 0;padding:10px 13px 12px;overflow:hidden;border:1px solid #e18a54;border-radius:10px;background:linear-gradient(145deg,#24140e,#3b2115 48%,#1b100b);box-shadow:0 0 24px #ff8a3d38,inset 0 0 20px #ffb27d12}
+.panoramic-head{display:flex;justify-content:space-between;gap:8px;padding-bottom:7px;border-bottom:1px solid #b76a4266;color:#ffbd91;font-size:7px;letter-spacing:1.6px}
+.panoramic-main{display:grid;grid-template-columns:1.5fr 1fr;gap:12px;align-items:center;padding-top:9px}
+.panoramic-project small,.panoramic-indicators small{display:block;color:#c58d6e;font-size:7px;letter-spacing:1.2px}
+.panoramic-project strong{display:block;margin:5px 0;color:#fff0e5;font-size:clamp(10px,2.5vw,14px);line-height:1.3;overflow-wrap:anywhere}
+.panoramic-project span{display:block;color:#d5aa8d;font-size:8px;line-height:1.4;overflow-wrap:anywhere}
+.panoramic-indicators{display:grid;grid-template-columns:repeat(3,1fr);gap:5px}
+.panoramic-indicators>div{padding:7px 4px;border:1px solid #a35f3d66;border-radius:6px;background:#170e0a;text-align:center}
+.panoramic-indicators i{display:block;width:5px;height:5px;margin:0 auto 4px;border-radius:50%;background:#80e6a8;box-shadow:0 0 8px #80e6a8}
+.panoramic-indicators b{display:block;color:#ffe1ca;font-size:8px;letter-spacing:.4px;overflow-wrap:anywhere}
+.panoramic-scan{position:absolute;left:0;right:0;top:0;height:1px;background:#ffc08f;opacity:.45;box-shadow:0 0 8px #ff9b5c;animation:panoramicScan 6s linear infinite}
+@keyframes panoramicScan{0%{transform:translateY(0)}100%{transform:translateY(105px)}}
+.team-office-floor{position:relative;z-index:1;height:155px;max-width:850px;margin:0 auto;overflow:hidden;perspective:600px;background:radial-gradient(ellipse at 50% 100%,#a6532e55,transparent 62%)}
+.team-office-floor:after{content:"";position:absolute;left:-5%;right:-5%;bottom:-60px;height:145px;border:1px solid #b86b3d66;border-radius:50%;transform:rotateX(62deg);background:repeating-linear-gradient(90deg,transparent 0 38px,#c5794b18 39px 40px),repeating-linear-gradient(0deg,transparent 0 26px,#c5794b18 27px 28px)}
+.team-office-backglow{position:absolute;left:15%;right:15%;bottom:22px;height:50px;border-radius:50%;background:#d86c3550;filter:blur(22px)}
+.team-station{position:absolute;z-index:2;bottom:28px;width:90px;height:92px;text-align:center}
+.station-left{left:3%}.station-midleft{left:24%}.station-midright{right:24%}.station-right{right:3%}
+.station-screen{position:absolute;left:50%;top:2px;transform:translateX(-50%);width:48px;height:31px;border:2px solid #d78a59;border-radius:4px;background:linear-gradient(145deg,#5a2d19,#130d0a);box-shadow:0 0 13px #ff8a3d66}
+.station-screen:after{content:"";display:block;width:70%;height:2px;margin:7px auto;background:#ffc08f;box-shadow:0 6px #b96842,0 12px #b96842}
+.station-desk{position:absolute;left:5px;right:5px;top:39px;height:9px;border:1px solid #d18b5d;border-radius:50%;background:linear-gradient(90deg,#552b18,#bd7043,#552b18);box-shadow:0 5px 0 #27140c}
+.station-worker{position:absolute;left:50%;top:50px;width:14px;height:14px;transform:translateX(-50%);border-radius:50%;background:radial-gradient(circle at 35% 30%,#ffe2c5,#a95d37);box-shadow:0 0 8px #ff9b5c}
+.station-worker:after{content:"";position:absolute;left:-6px;top:14px;width:26px;height:20px;border-radius:7px 7px 3px 3px;background:linear-gradient(90deg,#63341e,#d27b48,#63341e);border:1px solid #e7a477}
+.team-station small{position:absolute;top:83px;left:0;right:0;color:#d5a181;font-size:6px;letter-spacing:.7px}
+.team-round-table{position:absolute;z-index:3;left:50%;bottom:20px;transform:translateX(-50%);width:140px;height:43px;border:2px solid #e3a071;border-radius:50%;background:linear-gradient(180deg,#a75b34,#482719 70%,#24140e);box-shadow:0 8px 0 #1a100c,0 10px 20px #000a,0 0 25px #ff8a3d55}
+.team-round-table b{position:absolute;left:50%;top:12px;transform:translateX(-50%);color:#ffe0c7;font-size:9px;letter-spacing:2px;text-shadow:0 0 8px #ff9b5c}
+.team-round-table span{position:absolute;top:-10px;width:8px;height:8px;border-radius:50%;background:#ffc08f;box-shadow:0 0 9px #ff9b5c}
+.team-round-table span:nth-child(1){left:16%}.team-round-table span:nth-child(2){left:39%}.team-round-table span:nth-child(3){right:39%}.team-round-table span:nth-child(4){right:16%}
+.team-is-working .station-worker{animation:miniHeadBob .55s ease-in-out infinite alternate}
+.team-is-working .station-screen{box-shadow:0 0 20px #ff9b5c}
+@media(max-width:520px){.team-room-stage{min-height:300px}.team-panoramic{padding:8px}.panoramic-main{grid-template-columns:1fr;gap:8px}.panoramic-indicators>div{padding:5px 2px}.team-office-floor{height:142px}.team-station{transform:scale(.78);transform-origin:bottom center}.station-left{left:-2%}.station-midleft{left:17%}.station-midright{right:17%}.station-right{right:-2%}.team-round-table{width:110px;height:37px}.team-round-table b{top:10px}}
+
 </style>
 </head>
 <body>
@@ -911,11 +945,24 @@ ox-spelutvecklare. Från spelidé och värld till Luau-kod, system, testning och
  </section>
  <section class="team-room-shell" id="teamRoomShell">
   <div class="team-room-heading"><div class="eyebrow">COLLABORATION FLOOR / AI TEAM</div><h2>GEMENSAMT AI-RUM</h2><p>Här samlas NOVA, Webmaster, Game Developer och övriga specialister när JARVIS kallar in dem. Du följer samarbetet här – all kommunikation och alla uppdrag går via JARVIS.</p></div>
-  <div class="team-room-stage" aria-label="Gemensamt AI-kontor med animerade medarbetare">
-   <div class="team-stage-topline"><span>✦ COLLABORATION FLOOR</span><span><i></i> TEAM NETWORK READY</span></div>
-   <div class="team-stage-display"><span>JARVIS PROJECT TABLE</span><b>SHARED INTELLIGENCE · LIVE WORKSPACE</b><span>UPPDRAG FÖRDELAS AV JARVIS</span></div>
-   <div class="team-stage-table"><span></span><span></span><span></span></div>
-   <div class="team-stage-caption">MEDARBETARNA SAMLAS HÄR NÄR JARVIS KALLAR IN DEM</div>
+  <div class="team-room-stage" aria-label="Gemensamt AI-kontor med panoramaskärm, arbetsstationer och animerade medarbetare">
+   <div class="team-stage-topline"><span>✦ COLLABORATION FLOOR</span><span><i></i> <span id="teamRoomStatus">TEAMET REDO</span></span></div>
+   <div class="team-panoramic">
+    <div class="panoramic-head"><span>JARVIS COMMAND DISPLAY</span><span id="teamUpdated">SYSTEMÖVERSIKT</span></div>
+    <div class="panoramic-main"><div class="panoramic-project"><small>AKTUELLT UPPDRAG</small><strong id="teamProjectTitle">Inget aktivt projekt</strong><span id="teamProjectMeta">Väntar på nästa uppdrag från JARVIS</span></div>
+     <div class="panoramic-indicators"><div><i></i><b id="teamProjectStatus">STANDBY</b><small>STATUS</small></div><div><i></i><b id="teamProjectCount">0</b><small>SPECIALISTER</small></div><div><i></i><b>JARVIS</b><small>LEDNING</small></div></div>
+    </div>
+    <div class="panoramic-scan"></div>
+   </div>
+   <div class="team-office-floor">
+    <div class="team-office-backglow"></div>
+    <div class="team-station station-left"><span class="station-screen"></span><span class="station-desk"></span><span class="station-worker"></span><small>NOVA · PRODUKTION</small></div>
+    <div class="team-station station-midleft"><span class="station-screen"></span><span class="station-desk"></span><span class="station-worker"></span><small>WEB · DESIGN</small></div>
+    <div class="team-round-table"><span></span><span></span><span></span><span></span><b>AI</b></div>
+    <div class="team-station station-midright"><span class="station-screen"></span><span class="station-desk"></span><span class="station-worker"></span><small>GAME DEV</small></div>
+    <div class="team-station station-right"><span class="station-screen"></span><span class="station-desk"></span><span class="station-worker"></span><small>RESEARCH</small></div>
+   </div>
+   <div class="team-stage-caption">GEMENSAMMA ARBETSSTATIONER · JARVIS FÖRDELAR ARBETET TILL RÄTT SPECIALISTER</div>
   </div>
   <div id="teamBoardMount"></div>
   <button type="button" class="team-room-link" onclick="enterRoom('jarvis')">← TILLBAKA TILL JARVIS</button>
@@ -1168,6 +1215,14 @@ function renderTeamBoard(){
   card.append(avatar,name,label);workers.appendChild(card);
  });
  task.textContent=teamBoard.task+(teamBoard.detail?" · "+teamBoard.detail:"");
+ const roomStatus=$("teamRoomStatus"),projectTitle=$("teamProjectTitle"),projectMeta=$("teamProjectMeta"),projectStatus=$("teamProjectStatus"),projectCount=$("teamProjectCount"),updated=$("teamUpdated");
+ if(roomStatus)roomStatus.textContent=active?"TEAMET ARBETAR":teamBoard.status==="error"?"UPPDRAG AVBRUTET":teamBoard.targets.length?"SENASTE UPPDRAG KLART":"TEAMET REDO";
+ if(projectTitle)projectTitle.textContent=teamBoard.task||"Inget aktivt projekt";
+ if(projectMeta)projectMeta.textContent=teamBoard.detail|| (teamBoard.targets.length?teamBoard.targets.map(id=>id==="GAME_DEVELOPER"?"GAME DEV":id).join(" · "):"Väntar på nästa uppdrag från JARVIS");
+ if(projectStatus)projectStatus.textContent=active?"PÅGÅR":teamBoard.status==="error"?"FEL":teamBoard.targets.length?"KLART":"STANDBY";
+ if(projectCount)projectCount.textContent=String(teamBoard.targets.length);
+ if(updated){const date=new Date(teamBoard.updated||Date.now());updated.textContent="SENAST UPPDATERAD "+(Number.isNaN(date.getTime())?"":date.toLocaleTimeString("sv-SE",{hour:"2-digit",minute:"2-digit"}));}
+ const stage=$("teamRoomShell");if(stage)stage.classList.toggle("team-is-working",active);
 }
 try{const saved=JSON.parse(localStorage.getItem(TEAM_BOARD_KEY)||"null");if(saved&&typeof saved==="object")teamBoard=saved}catch(e){}
 function logActivity(title,icon="✦",detail=""){
