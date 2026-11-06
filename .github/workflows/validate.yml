@@ -5,6 +5,9 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  workflow_dispatch:
+  schedule:
+    - cron: "15 7 * * *"
 
 jobs:
   validate:
@@ -52,7 +55,66 @@ jobs:
               parser.feed(Path(filename).read_text(encoding="utf-8"))
               if not parser.parts:
                   raise SystemExit(f"No inline JavaScript found in {filename}")
-              Path(f"/tmp/{Path(filename).stem}.js").write_text("\n".join(parser.parts), encoding="utf-8")
+              Path(f"/tmp/{Path(filename).stem}.js").write_text("\\n".join(parser.parts), encoding="utf-8")
           PY
           node --check /tmp/index.js
           node --check /tmp/arcade.js
+
+  runtime-health:
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check live JARVIS services
+        env:
+          BASE_URL: https://nova-cloud-c4t9.onrender.com
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          import time
+          import urllib.request
+
+          base = os.environ["BASE_URL"].rstrip("/")
+          paths = ("/health", "/api/status", "/api/worker/status",
+                   "/api/github/status", "/api/memory/status", "/api/team/status")
+
+          def get_json(path):
+              last_error = None
+              for attempt in range(15):
+                  try:
+                      request = urllib.request.Request(
+                          base + path,
+                          headers={"User-Agent": "JARVIS-Runtime-Health/1.0"}
+                      )
+                      with urllib.request.urlopen(request, timeout=20) as response:
+                          if response.status != 200:
+                              raise RuntimeError(f"HTTP {response.status}")
+                          return json.loads(response.read().decode("utf-8"))
+                  except Exception as error:
+                      last_error = error
+                      if attempt < 14:
+                          time.sleep(10)
+              raise RuntimeError(f"{path} svarade inte efter återförsök: {last_error}")
+
+          results = {path: get_json(path) for path in paths}
+          worker = results["/api/worker/status"]
+          github = results["/api/github/status"]
+          memory = results["/api/memory/status"]
+
+          checks = {
+              "worker_running": worker.get("worker_running") is True,
+              "supabase_configured": worker.get("supabase_configured") is True,
+              "push_configured": worker.get("push_configured") is True,
+              "github_configured": worker.get("github_configured") is True,
+              "github_draft_only": github.get("direct_push_to_main") is False,
+              "memory_online": memory.get("status") == "online"
+          }
+
+          for name, passed in checks.items():
+              print(f"{'PASS' if passed else 'FAIL'} {name}")
+
+          if not all(checks.values()):
+              raise SystemExit("JARVIS runtime health check failed.")
+
+          print("All live JARVIS health checks passed.")
+          PY
