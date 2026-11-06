@@ -25,7 +25,7 @@ from runway_engine import router as runway_router
 # NOVA CLOUD – VERSION 2.2.0
 # ==========================================
 
-APP_VERSION = "3.0.0"
+APP_VERSION = "3.1.0"
 
 app = FastAPI(
     title="NOVA Cloud",
@@ -1719,6 +1719,11 @@ async def status():
         "youtube_channel_url": "https://www.youtube.com/@mikaelposth",
         "video_planner": "online",
         "video_renderer": "online",
+        "memory_core": "online",
+        "memory_items": memory_connection().execute(
+            "SELECT COUNT(*) FROM memory_items"
+        ).fetchone()[0],
+        "memory_storage": "sqlite",
         "runway_video_generation": bool(RUNWAY_API_KEY),
         "version": APP_VERSION,
         "time": datetime.now(timezone.utc).isoformat()
