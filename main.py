@@ -1802,7 +1802,7 @@ Lämna inte JSON ofärdig.
 
 @app.post("/api/jarvis/delegate")
 async def jarvis_delegate(request: JarvisDelegateRequest):
-    """JARVIS plans and coordinates work across multiple specialists."""
+    """JARVIS leder ett internt AI-råd, låter specialisterna granska varandra och sammanställer en plan."""
     task = request.task.strip()
     context = build_conversation_context(request.history, task, "JARVIS")
     selector_prompt = """
@@ -1811,8 +1811,10 @@ NOVA = YouTube, kreativ produktion, research, manus och videor.
 WEBMASTER = webbplatser, webbutiker och dropshipping.
 GAME_DEVELOPER = spelutveckling, Roblox och Luau.
 Välj EN ELLER FLERA om uppgiften kräver det. Välj inte alla av slentrian.
-Planera arbetsordning och beroenden. Ge varje specialist en konkret avgränsad arbetsorder.
+Om flera behövs ska du planera ett gemensamt rådsmöte och tydliga beroenden.
+Ge varje specialist en konkret avgränsad arbetsorder.
 Om uppgiften är vanlig diskussion eller otydlig, returnera tom lista och förklara varför.
+Undvik onödiga följdfrågor: gör rimliga, tydligt redovisade antaganden när det går.
 Returnera ENDAST giltig JSON:
 {"targets":["NOVA","WEBMASTER"],"reason":"motivering","tasks":{"NOVA":"arbetsorder","WEBMASTER":"arbetsorder"},"sequence":["NOVA","WEBMASTER"]}
 Bevara krav och tidigare beslut. Hitta inte på detaljer.
@@ -1832,12 +1834,17 @@ Delegering ger inte tillstånd att köpa, publicera, betala eller utföra extern
         if any(x not in allowed for x in targets):
             raise ValueError("JARVIS valde en okänd medarbetare.")
         if not targets:
-            return {"status": "needs_discussion", "target": "NONE", "targets": [],
-                    "reason": str(plan.get("reason", "Uppgiften behöver diskuteras mer.")),
-                    "reply": "Jag rekommenderar att vi pratar igenom detta lite mer innan jag lämnar över något."}
+            return {
+                "status": "needs_discussion", "target": "NONE", "targets": [],
+                "reason": str(plan.get("reason", "Uppgiften behöver diskuteras mer.")),
+                "reply": "Jag rekommenderar att vi pratar igenom detta lite mer innan jag lämnar över något."
+            }
 
-        prompts = {"NOVA": NOVA_PROMPT, "WEBMASTER": WEBMASTER_PROMPT,
-                   "GAME_DEVELOPER": GAME_DEVELOPER_PROMPT}
+        prompts = {
+            "NOVA": NOVA_PROMPT,
+            "WEBMASTER": WEBMASTER_PROMPT,
+            "GAME_DEVELOPER": GAME_DEVELOPER_PROMPT
+        }
         tasks = plan.get("tasks", {})
         if not isinstance(tasks, dict):
             tasks = {}
@@ -1847,40 +1854,86 @@ Delegering ger inte tillstånd att köpa, publicera, betala eller utföra extern
         ordered = [x for x in sequence if x in targets]
         ordered += [x for x in targets if x not in ordered]
 
+        # RÅDSRUNDA 1: varje specialist gör sin självständiga analys.
         results, previous = [], []
         for target in ordered:
             assigned = str(tasks.get(target, "")).strip() or f"Bidra till projektet: {task}"
             handoff = (
-                "UPPDRAG FRÅN JARVIS. Utför din avgränsade del och leverera konkret resultat. "
-                "Ta hänsyn till hela projektet och tidigare specialistresultat. "
-                "Var tydlig med antaganden, beroenden och vad nästa specialist behöver. "
-                "Gör inga köp, publiceringar eller betalda externa åtgärder.\n\n"
+                "DU DELTAR I JARVIS INTERNA AI-RÅD. Gör en självständig första analys "
+                "och leverera ett konkret förslag inom din specialistroll. "
+                "Identifiera antaganden, risker, beroenden och vad övriga roller behöver veta. "
+                "Du får diskutera och planera, men inte köpa, publicera eller göra betalda externa åtgärder.\n\n"
                 f"HELA PROJEKTET:\n{task}\n\nDIN ARBETSORDER:\n{assigned}\n\n"
-                + ("TIDIGARE RESULTAT:\n" + "\n\n".join(previous)
+                + ("TIDIGARE RÅDSUNDERLAG:\n" + "\n\n".join(previous)
                    if previous else "Du är först i arbetsordningen.")
             )
             result = generate_reply(handoff, prompts[target], max_tokens=8192)
-            results.append({"target": target, "task": assigned,
-                            "reply": result["reply"], "engine": result["engine"]})
-            previous.append(f"{target} RESULTAT:\n{result['reply'][:9000]}")
+            results.append({
+                "target": target, "task": assigned,
+                "reply": result["reply"], "engine": result["engine"]
+            })
+            previous.append(f"{target} FÖRSTA ANALYS:\n{result['reply'][:7000]}")
 
-        summary_input = "PROJEKT:\n" + task + "\n\n" + "\n\n".join(
-            f"{r['target']}:\n{r['reply'][:9000]}" for r in results)
-        summary_prompt = (
-            "Du är JARVIS, projektledare. Sammanställ de faktiska specialistresultaten "
-            "på svenska. Redovisa vad som är klart, vad som återstår, konflikter och nästa steg. "
-            "Påstå inte att externa åtgärder har utförts."
+        # RÅDSRUNDA 2: specialisterna granskar varandras förslag och förbättrar planen.
+        council_reviews = []
+        if len(ordered) > 1:
+            for target in ordered:
+                peer_material = "\n\n".join(
+                    f"{item['target']}S FÖRSLAG:\n{item['reply'][:6000]}"
+                    for item in results if item["target"] != target
+                )
+                review_prompt = (
+                    "Du är med i JARVIS interna AI-råd. Läs de andra specialisternas "
+                    "förslag och gör en konstruktiv kollegial granskning. "
+                    "Peka ut konflikter, luckor, risker och synergier. Föreslå en bättre "
+                    "gemensam lösning. Var konkret och respektera respektive specialistroll. "
+                    "Ställ inte frågor till användaren om rimliga antaganden räcker. "
+                    "Utför inga köp, publiceringar eller betalda externa åtgärder.\n\n"
+                    f"PROJEKT:\n{task}\n\nDIN FÖRSTA ANALYS:\n"
+                    + next((item["reply"][:6000] for item in results if item["target"] == target), "")
+                    + "\n\nÖVRIGA SPECIALISTERS FÖRSLAG:\n" + peer_material
+                )
+                review = generate_reply(review_prompt, prompts[target], max_tokens=5000)
+                council_reviews.append({
+                    "target": target, "reply": review["reply"], "engine": review["engine"]
+                })
+
+        summary_input = (
+            "PROJEKT:\n" + task + "\n\nFÖRSTA ANALYSER:\n"
+            + "\n\n".join(f"{r['target']}:\n{r['reply'][:7000]}" for r in results)
+            + ("\n\nKOLLEGIAL GRANSKNING:\n"
+               + "\n\n".join(f"{r['target']}:\n{r['reply'][:5000]}" for r in council_reviews)
+               if council_reviews else "")
         )
-        summary = generate_reply(summary_input, summary_prompt, max_tokens=3000)
-        return {"status": "delegated", "target": ordered[0] if len(ordered) == 1 else "MULTI",
-                "targets": ordered, "reason": str(plan.get("reason", "")),
-                "results": results, "reply": summary["reply"],
-                "engine": summary["engine"], "router_engine": decision["engine"]}
+        summary_prompt = (
+            "Du är JARVIS, ordförande och projektledare. Du har lett ett internt råd "
+            "där specialisterna först analyserat självständigt och därefter granskat varandra. "
+            "Sammanställ en gemensam rekommendation och en konkret arbetsplan i rätt ordning. "
+            "Redovisa beslut, motiveringar, antaganden, risker, beroenden, ansvarig specialist "
+            "för varje steg och vad som kräver användarens godkännande. "
+            "Skilj tydligt mellan förslag, producerat material och faktiskt utförda åtgärder. "
+            "Påstå inte att externa åtgärder har utförts. Svara på naturlig svenska."
+        )
+        summary = generate_reply(summary_input, summary_prompt, max_tokens=4000)
+        return {
+            "status": "delegated",
+            "target": ordered[0] if len(ordered) == 1 else "MULTI",
+            "targets": ordered,
+            "reason": str(plan.get("reason", "")),
+            "council_rounds": 2 if council_reviews else 1,
+            "results": results,
+            "reviews": council_reviews,
+            "reply": summary["reply"],
+            "engine": summary["engine"],
+            "router_engine": decision["engine"]
+        }
     except HTTPException:
         raise
     except Exception as error:
-        raise HTTPException(status_code=502,
-                            detail=f"JARVIS kunde inte samordna uppdraget: {str(error)[:1000]}")
+        raise HTTPException(
+            status_code=502,
+            detail=f"JARVIS kunde inte samordna AI-rådet: {str(error)[:1000]}"
+        )
 
 
 @app.post("/api/chat")
