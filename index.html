@@ -527,6 +527,11 @@ main{position:relative;z-index:1;max-width:1400px;margin:auto;padding:20px 15px 
 .web-clear-image{border:1px solid #438f80;background:#071b18;color:#c7fff0;border-radius:10px;padding:10px 12px;font-size:10px;cursor:pointer}
 .web-preview-area{margin-top:14px;padding:14px;border:1px solid #55d9b6;border-radius:12px;background:#08241f;color:#d1fff1}
 .web-preview-link{display:inline-block;margin-top:8px;padding:11px 16px;border-radius:9px;background:#147d68;color:#fff;text-decoration:none;font-weight:700}
+.project-actions{display:flex;flex-wrap:wrap;gap:9px;margin-top:12px;padding-top:10px;border-top:1px solid #ff9b5644}
+.project-action{display:inline-flex;align-items:center;justify-content:center;min-height:42px;padding:11px 16px;border:1px solid #ff9b75;border-radius:9px;background:linear-gradient(90deg,#6e170f,#c43b1d);color:#fff!important;text-decoration:none!important;font-size:11px;font-weight:800;letter-spacing:.8px;box-shadow:0 0 16px #ff4b2e33;overflow-wrap:anywhere}
+.project-action:active{transform:translateY(1px);filter:brightness(1.2)}
+.project-action.secondary{border-color:#55d9b6;background:linear-gradient(90deg,#105448,#147d68)}
+
 .web-preview-note{font-size:11px;color:#a8c9bf;margin-top:8px}
 
 /* ANIMATED AI OFFICE — all three workers in one shared scene */
@@ -1572,7 +1577,8 @@ function saveChatHistory(room){
  const area=$(room+"Messages");if(!area)return;
  const items=Array.from(area.querySelectorAll(".msg")).reverse().map(node=>({
   type:node.classList.contains("user")?"user":node.classList.contains("error")?"error":"ai",
-  text:node.textContent||""
+  text:node.childNodes.length?Array.from(node.childNodes).filter(child=>!(child.nodeType===1&&child.classList?.contains("project-actions"))).map(child=>child.textContent||"").join(""):(node.textContent||""),
+  projectLinks:Array.from(node.querySelectorAll("a.project-action")).map(link=>({href:link.href,label:link.textContent||"ÖPPNA PROJEKTET"}))
  })).slice(-100);
  try{localStorage.setItem(CHAT_HISTORY_KEY+"_"+room,JSON.stringify(items))}catch(e){}
 }
@@ -1586,7 +1592,17 @@ function restoreChatHistory(){
    saved.slice(-100).forEach(item=>{
     const node=document.createElement("div");
     node.className="msg "+(item.type==="user"?"user":item.type==="error"?"error":"ai");
-    node.textContent=String(item.text||"");area.prepend(node);
+    node.textContent=String(item.text||"");
+    if(Array.isArray(item.projectLinks)&&item.projectLinks.length){
+     const panel=document.createElement("div");panel.className="project-actions";panel.setAttribute("aria-label","Länkar till färdiga projekt");
+     item.projectLinks.forEach(savedLink=>{
+      try{const parsed=new URL(String(savedLink.href||""));if(!["http:","https:"].includes(parsed.protocol))return;
+       const link=document.createElement("a");link.className="project-action";link.href=parsed.href;link.target="_blank";link.rel="noopener noreferrer";link.textContent=String(savedLink.label||"ÖPPNA PROJEKTET");panel.appendChild(link);
+      }catch(e){}
+     });
+     if(panel.childElementCount)node.appendChild(panel);
+    }
+    area.prepend(node);
    });
    area.scrollTop=0;
   }catch(e){}
@@ -1646,6 +1662,39 @@ async function webImagesSelected(input){
 }
 function clearWebImages(){
  webmasterImages=[];const input=$("webImageInput");if(input)input.value="";updateWebImageList();
+}
+function appendProjectLinks(element,source){
+ if(!element||!source)return;
+ const text=String(source);
+ const withoutCode=text.replace(/```[\\s\\S]*?```/g," ").replace(/`[^`]*`/g," ");
+ const found=new Map();
+ const add=(url,label)=>{
+  let value=String(url||"").trim().replace(/[.,!?;:]+$/,"");
+  try{
+   const parsed=new URL(value);
+   if(!["http:","https:"].includes(parsed.protocol))return;
+   value=parsed.href;
+   if(!found.has(value))found.set(value,String(label||"").trim());
+  }catch(e){}
+ };
+ let match;
+ const htmlLink=/ <a\\b[^>]*href\\s*=\\s*["'](https?:\\/\\/[^"']+)["'][^>]*>([\\s\\S]*?)<\\/a\\s*>/gi;
+ while((match=htmlLink.exec(withoutCode)))add(match[1],match[2].replace(/<[^>]*>/g," ").replace(/&amp;/g,"&").trim());
+ const markdownLink=/\\[([^\\]]{1,100})\\]\\((https?:\\/\\/[^)\\s]+)\\)/g;
+ while((match=markdownLink.exec(withoutCode)))add(match[2],match[1]);
+ const rawUrl=/https?:\\/\\/[^\\s<>"')\\]]+/gi;
+ while((match=rawUrl.exec(withoutCode)))add(match[0],"");
+ if(!found.size)return;
+ let panel=element.querySelector(":scope > .project-actions");
+ if(!panel){panel=document.createElement("div");panel.className="project-actions";panel.setAttribute("aria-label","Länkar till färdiga projekt");element.appendChild(panel)}
+ found.forEach((label,url)=>{
+  if(Array.from(panel.querySelectorAll("a")).some(link=>link.href===url))return;
+  const link=document.createElement("a");link.className="project-action";
+  const cleanLabel=String(label||"").replace(/<[^>]*>/g,"").trim();
+  link.textContent=(cleanLabel||"ÖPPNA PROJEKTET").slice(0,90).toLocaleUpperCase("sv-SE");
+  link.href=url;link.target="_blank";link.rel="noopener noreferrer";
+  panel.appendChild(link);
+ });
 }
 async function createWebPreview(reply,mountElement=null){
  const source=String(reply||"");
@@ -2030,6 +2079,7 @@ async function sendMessage(event,assistant){
    }
    loading.dataset.speechText=data.reply||"Inget svar mottogs.";
   }
+  appendProjectLinks(loading,loading.textContent||"");
   saveChatHistory(assistant);addSpeechButton(loading,assistant);
   if(isWeb){try{const made=await createWebPreview(data.reply||"");if(!made){const hint=document.createElement("div");hint.className="web-preview-note";hint.textContent="Be WEBMASTER skapa en komplett hemsida i ett enda HTML-kodblock."; $("webPreviewArea").hidden=false;$("webPreviewArea").replaceChildren(hint);}}catch(previewError){addMessage("webMessages","Kunde inte skapa förhandsvisning: "+previewError.message,"error")}}
   if(assistant==="jarvis"&&voiceConversationRoom==="jarvis")speakText(data.reply||"JARVIS har svarat.",assistant);else if(voiceConversationRoom===assistant)speakText(data.reply||"NOVA har skapat ett produktionsunderlag.",assistant);
