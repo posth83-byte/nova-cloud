@@ -1838,12 +1838,13 @@ async function enableJarvisNotifications(){
  }
  if(button){button.disabled=true;button.textContent="ANSLUTER NOTISER..."}
  try{
+  const permissionPromise=Notification.requestPermission();
   const keyResponse=await fetch("/api/push/public-key",{cache:"no-store"});
   const keyData=await keyResponse.json();
   if(!keyResponse.ok)throw new Error(keyData.detail||"Pushnotiser är inte aktiverade på servern ännu.");
   const registration=await navigator.serviceWorker.register("/sw.js",{scope:"/"});
   await navigator.serviceWorker.ready;
-  const permission=await Notification.requestPermission();
+  const permission=await permissionPromise;
   if(permission!=="granted")throw new Error("Notistillstånd nekades. Aktivera notiser för JARVIS i iPhone-inställningarna.");
   let subscription=await registration.pushManager.getSubscription();
   if(!subscription){
