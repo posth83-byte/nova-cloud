@@ -211,16 +211,17 @@ Du leder ett AI-kontor och samarbetar med tre specialiserade medarbetare:
 - GAME DEVELOPER: spelidéer, Roblox, speldesign och Luau-programmering.
 
 Ditt huvudsakliga arbete är att vara användarens samtalspartner och projektledare.
-Diskutera idéer naturligt, ställ relevanta följdfrågor, hjälp användaren väga alternativ
-och sammanfatta beslut, krav och nästa steg. Pressa inte fram en överlämning innan
-idén är tillräckligt tydlig. När ett konkret arbete ska utföras ska du rekommendera
-rätt medarbetare och förklara varför. Behandla användarens tidigare beslut i chatten
-som projektets krav och skicka aldrig iväg ett uppdrag utan att användaren uttryckligen
-startar överlämningen via kontorets delegeringsfunktion.
+Diskutera idéer naturligt, hjälp användaren väga alternativ och sammanfatta beslut,
+krav och nästa steg. Ställ högst en viktig följdfråga åt gången och undvik frågor
+när rimliga antaganden räcker. När användaren ber dig att skapa, bygga, undersöka,
+producera eller på annat sätt utföra ett konkret arbete ska du själv avgöra vilka
+specialister som behövs och kalla till ett internt AI-råd automatiskt. Användaren
+ska inte behöva välja medarbetare eller trycka på en separat delegeringsknapp.
+Vanliga frågor, idébollning och samtal ska däremot stanna i dialogen.
 
-Du kan föreslå samarbete mellan flera medarbetare, exempelvis att NOVA tar fram
-videokoncept och WEBMASTER bygger en kampanjsida, men dela upp arbetet i tydliga steg.
-Du är ansvarig för att sammanställa resultaten och återrapportera till användaren.
+Du kan låta flera medarbetare samarbeta, granska varandras förslag och förbättra
+en gemensam arbetsplan. Du är ansvarig för att sammanställa resultaten och
+återrapportera till användaren.
 Skilj alltid mellan planering, kod som skapats, arbete som faktiskt utförts och
 externa åtgärder som kräver användarens godkännande. Påstå aldrig att en medarbetare
 har utfört något om den inte faktiskt har anropats och returnerat ett resultat.
@@ -1938,28 +1939,72 @@ Delegering ger inte tillstånd att köpa, publicera, betala eller utföra extern
 
 @app.post("/api/chat")
 async def chat(request: ChatRequest):
-
     message = request.message.strip()
-
     if not message:
-        raise HTTPException(
-            status_code=400,
-            detail="Meddelandet får inte vara tomt."
-        )
+        raise HTTPException(status_code=400, detail="Meddelandet får inte vara tomt.")
 
-    message = build_conversation_context(request.history, message, "JARVIS")
-
-    result = generate_reply(
-        message,
-        JARVIS_PROMPT
-    )
-
-    return {
+    contextual_message = build_conversation_context(request.history, message, "JARVIS")
+    result = generate_reply(contextual_message, JARVIS_PROMPT)
+    response = {
         "assistant": "JARVIS",
         "status": "online",
         "engine": result["engine"],
-        "reply": result["reply"]
+        "reply": result["reply"],
+        "council_started": False
     }
+
+    # Endast meddelanden som antyder konkret utförande går vidare till avsiktskontroll.
+    action_hints = (
+        "bygg", "skapa", "gör", "göra", "utför", "producera", "ta fram",
+        "undersök", "analysera", "skriv", "designa", "utveckla", "börja",
+        "fortsätt", "sätt ihop", "fixa", "implementera", "generera",
+        "planera", "ta hand om", "ordna", "hjälp mig att"
+    )
+    lowered = message.lower()
+    likely_action = any(hint in lowered for hint in action_hints)
+
+    if likely_action:
+        intent_prompt = """
+Du är JARVIS uppdragsbedömare. Avgör om användarens senaste meddelande
+innehåller en tydlig begäran om konkret arbete som en eller flera specialister
+kan utföra NU, inte bara prata om.
+STARTA RÅD om användaren ber att skapa, bygga, producera, undersöka,
+analysera, skriva, designa, utveckla, implementera eller fortsätta ett
+konkret arbete. STARTA INTE RÅD för vanlig diskussion, hypotetiska frågor,
+idébollning, önskemål om framtida funktioner som bara ska diskuteras,
+eller om viktig information saknas så att inget meningsfullt arbete kan börja.
+Använd konversationshistoriken för att förstå "det", "den" och "fortsätt".
+Returnera endast JSON: {"start":true,"reason":"kort skäl"} eller
+{"start":false,"reason":"kort skäl"}.
+"""
+        try:
+            intent = generate_reply(
+                contextual_message, intent_prompt, max_tokens=350, json_mode=True
+            )
+            intent_match = re.search(r"\{[\s\S]*?\}", intent["reply"])
+            intent_data = json.loads(intent_match.group(0)) if intent_match else {}
+            if intent_data.get("start") is True:
+                council = await jarvis_delegate(
+                    JarvisDelegateRequest(task=message, history=request.history)
+                )
+                response["council_started"] = council.get("status") == "delegated"
+                response["council"] = council
+                response["reply"] += (
+                    "\n\nJag har även kallat in AI-rådet automatiskt. "
+                    "Här är teamets gemensamma arbetsplan och granskning."
+                    if response["council_started"] else
+                    "\n\nJag bedömde att vi behöver prata igenom uppgiften lite mer "
+                    "innan jag startar specialisterna."
+                )
+        except Exception as error:
+            # Ett misslyckat råd får inte förstöra det vanliga JARVIS-svaret.
+            response["council_error"] = str(error)[:500]
+            response["reply"] += (
+                "\n\nJag kunde inte starta AI-rådet just nu, men vi kan fortsätta "
+                "planera här. Inget specialistarbete har startats."
+            )
+
+    return response
 
 
 # ==========================================
