@@ -223,7 +223,7 @@ def send_jarvis_job_notification(job_id, subscription, outcome):
         from pywebpush import webpush
         payload = {
             "title": "JARVIS – uppdrag klart",
-            "body": str(outcome.get("reply") or "JARVIS har slutfört uppdraget.")[:160],
+            "body": "Ditt uppdrag är färdigt. Öppna JARVIS för att se resultatet.",
             "url": "/"
         }
         temp_path = None
