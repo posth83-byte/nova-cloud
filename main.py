@@ -207,8 +207,13 @@ async def jarvis_job_heartbeat(job_id, stop_event):
             try:
                 await asyncio.to_thread(
                     supabase_jobs_request, "PATCH", "jarvis_jobs",
-                    {"locked_at": datetime.now(timezone.utc).isoformat(),
-                     "updated_at": datetime.now(timezone.utc).isoformat()},
+                    {
+                        "locked_at": datetime.now(timezone.utc).isoformat(),
+                        "updated_at": datetime.now(timezone.utc).isoformat(),
+                        "phase": team_runtime_state.get("phase", "JARVIS arbetar"),
+                        "active": team_runtime_state.get("active", []),
+                        "completed": team_runtime_state.get("completed", [])
+                    },
                     urllib.parse.urlencode({"id": "eq." + str(job_id), "status": "eq.running"}),
                     "return=minimal"
                 )
