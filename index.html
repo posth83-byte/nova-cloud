@@ -1157,9 +1157,9 @@ function startWakeListening(){
   for(let i=event.resultIndex;i<event.results.length;i++){
    if(!event.results[i].isFinal)continue;
    const spoken=event.results[i][0].transcript.trim();
-   const normalized=spoken.toLowerCase().replace(/[.,!?;:]/g," ").replace(/\\s+/g," ").trim();
+   const normalized=spoken.toLowerCase().replace(/[.,!?;:]/g," ").replace(/\s+/g," ").trim();
    if(normalized.includes("avsluta röst")||normalized.includes("stäng av mikrofon")||normalized.includes("sluta lyssna")){stopWakeListening();return}
-   const phrase=normalized.match(/\\b(?:hej|hey)\\s+(jarvis|nova)\\b/);
+   const phrase=normalized.match(/\b(?:hej|hey)\s+(jarvis|nova)\b/);
    if(phrase){
     const room=phrase[1];voiceConversationRoom=room;enterRoom(room);
     const remainder=normalized.replace(phrase[0],"").trim();
