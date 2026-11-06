@@ -624,6 +624,36 @@ header .sub{color:#d6a19a}
 .team-room-link{position:relative;z-index:1;display:block;width:100%;margin:14px 0 0;padding:13px;border:1px solid #f2a16d;border-radius:10px;background:linear-gradient(90deg,#713719,#a94f20);color:#fff4ec;font-weight:800;font-size:10px;letter-spacing:1.5px}
 .home-jarvis-chat .chat-title{color:#ffb29a}
 .activity-actions button[onclick*="enterRoom('nova')"],.activity-actions button[onclick*="enterRoom('jarvis')"]{display:none!important}
+
+/* Shared AI collaboration floor – animated miniature team, orange HQ identity */
+.team-room-stage{position:relative;z-index:1;min-height:174px;margin:10px 0 15px;padding:12px 12px 10px;overflow:hidden;border:1px solid #9c5936;border-radius:14px;background:radial-gradient(ellipse at 50% 72%,#9a4b2670,transparent 44%),linear-gradient(180deg,#21150f,#110d0b 80%);box-shadow:inset 0 0 28px #ff8a3d16}
+.team-stage-topline{display:flex;justify-content:space-between;gap:8px;color:#e6a77f;font-size:8px;letter-spacing:1.5px}
+.team-stage-topline i{display:inline-block;width:6px;height:6px;border-radius:50%;background:#82e3a9;box-shadow:0 0 9px #82e3a9;margin-right:5px}
+.team-stage-display{position:relative;z-index:2;width:min(74%,360px);margin:12px auto 0;padding:7px 9px;border:1px solid #c77b4d88;border-radius:6px;background:linear-gradient(90deg,#321b12,#54301d,#321b12);text-align:center;box-shadow:0 0 16px #ff8a3d22}
+.team-stage-display span,.team-stage-display b{display:block;font-size:7px;letter-spacing:1.4px;color:#f5c3a0}
+.team-stage-display b{margin:4px 0;color:#fff0e5;font-size:8px}
+.team-stage-table{position:relative;z-index:1;width:min(54%,260px);height:34px;margin:0 auto;background:linear-gradient(180deg,#a65a31,#482718 65%,#24140e);border:1px solid #d18b5d;border-radius:50%;box-shadow:0 7px 0 #1a100c,0 10px 20px #0009,0 0 22px #ff8a3d22}
+.team-stage-table span{position:absolute;top:9px;width:6px;height:6px;border-radius:50%;background:#ffd0a8;box-shadow:0 0 9px #ff9b5c}
+.team-stage-table span:nth-child(1){left:28%}.team-stage-table span:nth-child(2){left:49%}.team-stage-table span:nth-child(3){left:70%}
+.team-stage-caption{position:relative;z-index:1;margin-top:15px;text-align:center;color:#c28a68;font-size:7px;letter-spacing:1.5px}
+.team-room-shell .team-workers{gap:9px}
+.team-room-shell .team-worker{position:relative;min-height:104px;padding:8px 5px 9px;border-color:#8d5234;background:linear-gradient(155deg,#382115,#1a110d);overflow:hidden}
+.team-room-shell .team-worker:after{content:"";position:absolute;left:20%;right:20%;bottom:5px;height:1px;background:linear-gradient(90deg,transparent,#d28b5a,transparent);opacity:.65}
+.team-room-shell .team-worker .worker-avatar{position:relative;width:36px;height:42px;margin:0 auto 5px;display:flex;align-items:flex-start;justify-content:center;font-size:0;filter:none}
+.team-room-shell .team-worker .worker-avatar:before{content:"";position:absolute;top:1px;width:15px;height:15px;border:1px solid #ffc08f;border-radius:50%;background:radial-gradient(circle at 35% 30%,#ffe2c5,#a95d37 70%);box-shadow:0 0 9px #ff9b5c66}
+.team-room-shell .team-worker .worker-avatar:after{content:"";position:absolute;top:18px;width:25px;height:21px;border:1px solid #e7a477;border-radius:8px 8px 4px 4px;background:linear-gradient(90deg,#66361f,#d27b48,#66361f);box-shadow:0 0 8px #ff8a3d33}
+.team-room-shell .team-worker strong{color:#ffe4d1;font-size:8px;letter-spacing:.6px}
+.team-room-shell .team-worker small{color:#c69b80;font-size:7px}
+.team-room-shell .team-worker.is-working .worker-avatar:before{animation:miniHeadBob .65s ease-in-out infinite alternate}
+.team-room-shell .team-worker.is-working .worker-avatar:after{animation:miniWork .45s ease-in-out infinite alternate}
+.team-room-shell .team-worker.is-done .worker-avatar:before{box-shadow:0 0 12px #79e6a4}
+.team-room-shell .team-worker.is-error .worker-avatar:before{box-shadow:0 0 12px #ff6577}
+.team-room-shell .team-board{border-color:#9b5a36;background:linear-gradient(145deg,#24150f,#120d0a);box-shadow:inset 0 0 28px #ff8a3d12}
+.team-room-shell .team-board-title{color:#ffc09a}.team-room-shell .team-board-state{color:#f0b38b}
+.team-room-shell .team-task{border-left-color:#ed9258;background:#130d0a;color:#e9c8b2}
+@keyframes miniHeadBob{to{transform:translateY(-3px) rotate(4deg)}}
+@keyframes miniWork{to{transform:translateY(-2px) scale(1.04);filter:brightness(1.25)}}
+@media(max-width:520px){.team-room-stage{min-height:160px;padding:10px 8px}.team-stage-display{width:86%}.team-stage-table{width:66%}.team-stage-caption{font-size:6px}.team-room-shell .team-worker{min-height:100px}}
 </style>
 </head>
 <body>
@@ -885,10 +915,11 @@ ox-spelutvecklare. Från spelidé och värld till Luau-kod, system, testning och
  </section>
  <section class="team-room-shell" id="teamRoomShell">
   <div class="team-room-heading"><div class="eyebrow">COLLABORATION FLOOR / AI TEAM</div><h2>GEMENSAMT AI-RUM</h2><p>Här samlas NOVA, Webmaster, Game Developer och övriga specialister när JARVIS kallar in dem. Du följer samarbetet här – all kommunikation och alla uppdrag går via JARVIS.</p></div>
-  <div class="team-room-stage" aria-hidden="true" style="height:62px;display:flex;align-items:center;justify-content:center;gap:12px;position:relative;z-index:1;margin-bottom:10px">
-   <span style="width:10px;height:10px;border-radius:50%;background:#ffad73;box-shadow:0 0 16px #ff8a3d;animation:pulse 1.8s infinite"></span>
-   <span style="font-size:9px;letter-spacing:2px;color:#f6c3a0">TEAM CONNECTION · READY FOR JARVIS</span>
-   <span style="width:10px;height:10px;border-radius:50%;background:#ffad73;box-shadow:0 0 16px #ff8a3d;animation:pulse 1.8s infinite"></span>
+  <div class="team-room-stage" aria-label="Gemensamt AI-kontor med animerade medarbetare">
+   <div class="team-stage-topline"><span>✦ COLLABORATION FLOOR</span><span><i></i> TEAM NETWORK READY</span></div>
+   <div class="team-stage-display"><span>JARVIS PROJECT TABLE</span><b>SHARED INTELLIGENCE · LIVE WORKSPACE</b><span>UPPDRAG FÖRDELAS AV JARVIS</span></div>
+   <div class="team-stage-table"><span></span><span></span><span></span></div>
+   <div class="team-stage-caption">MEDARBETARNA SAMLAS HÄR NÄR JARVIS KALLAR IN DEM</div>
   </div>
   <div id="teamBoardMount"></div>
   <button type="button" class="team-room-link" onclick="document.getElementById('teamRoomShell').scrollIntoView({behavior:'smooth',block:'start'})">VISA AI-TEAMETS ARBETE ↓</button>
@@ -1135,7 +1166,7 @@ function renderTeamBoard(){
  Object.entries(TEAM_ROLES).forEach(([id,role])=>{
   const isTarget=teamBoard.targets.includes(id),cls=id==="JARVIS"?(active?"is-working":teamBoard.status==="error"?"is-error":"is-done"):isTarget?(teamBoard.status==="error"?"is-error":active?"is-working":"is-done"):"";
   const card=document.createElement("div");card.className="team-worker "+cls;
-  const avatar=document.createElement("span");avatar.className="worker-avatar";avatar.textContent=role.icon;
+  const avatar=document.createElement("span");avatar.className="worker-avatar";avatar.setAttribute("aria-hidden","true");
   const name=document.createElement("strong");name.textContent=id==="GAME_DEVELOPER"?"GAME DEV":id;
   const label=document.createElement("small");label.textContent=id==="JARVIS"?(active?"Samordnar uppdraget":"Projektledare · Redo"):isTarget?(active?"Arbetar med uppdraget":teamBoard.status==="error"?"Avbrutet":"Uppdrag klart"):role.label+" · Redo";
   card.append(avatar,name,label);workers.appendChild(card);
@@ -1610,6 +1641,7 @@ async function sendMessage(event,assistant){
  const shownMessage=message+(isNova&&sceneFiles.length?"\n📎 "+sceneFiles.length+" referens-/scenbild"+(sceneFiles.length===1?" bifogad":"er bifogade"):"");
  addMessage(messages,shownMessage,"user");logActivity(assistant.toUpperCase()+" fick ett nytt meddelande",isWeb?"⌘":isNova?"✧":"✦",message.length>65?message.slice(0,65)+"…":message);
  input.value="";button.disabled=true;button.textContent="...";setRoomState(assistant,"working");
+ if(assistant==="jarvis")updateTeamBoard("working",message,[],"JARVIS analyserar uppdraget och avgör om specialister behövs.");
  const loading=addMessage(messages,isGame?"GAME DEVELOPER bygger spelplan...":isWeb?"WEBMASTER bygger en lösning...":isNova?"NOVA analyserar...":"JARVIS tänker...","ai");
  try{
    videoRequest=/\b(skapa|gör(?:a)?|bygg|producera|framställ|ta fram)\b.{0,55}\b(video|short|film|klipp|avsnitt)\b|\b(video|short|film|klipp|avsnitt)\b.{0,55}\b(skapa|gör(?:a)?|bygg|producera)\b/i.test(message);
@@ -1663,6 +1695,8 @@ async function sendMessage(event,assistant){
    }else if(assistant==="jarvis"&&data.council_error){
     updateTeamBoard("error",message,[],"AI-rådet kunde inte startas.");
     loading.textContent+="\n\nAI-rådet kunde inte startas: "+data.council_error;
+   }else if(assistant==="jarvis"){
+    updateTeamBoard("idle",message,[],"JARVIS hanterade samtalet själv – inget teamarbete behövdes.");
    }
    loading.dataset.speechText=data.reply||"Inget svar mottogs.";
   }
