@@ -22,7 +22,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "22"
-      - name: Check inline JavaScript syntax
+      - name: Check inline JavaScript in app and arcade
         shell: bash
         run: |
           python - <<'PY'
@@ -47,8 +47,12 @@ jobs:
                   if self.in_script:
                       self.parts.append(data)
 
-          parser = ScriptExtractor()
-          parser.feed(Path("index.html").read_text(encoding="utf-8"))
-          Path("/tmp/nova-inline.js").write_text("\n".join(parser.parts), encoding="utf-8")
+          for filename in ("index.html", "arcade.html"):
+              parser = ScriptExtractor()
+              parser.feed(Path(filename).read_text(encoding="utf-8"))
+              if not parser.parts:
+                  raise SystemExit(f"No inline JavaScript found in {filename}")
+              Path(f"/tmp/{Path(filename).stem}.js").write_text("\n".join(parser.parts), encoding="utf-8")
           PY
-          node --check /tmp/nova-inline.js
+          node --check /tmp/index.js
+          node --check /tmp/arcade.js
