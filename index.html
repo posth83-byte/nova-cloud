@@ -5,6 +5,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#030817">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="JARVIS">
+<link rel="manifest" href="/manifest.webmanifest">
 <title>JARVIS × NOVA | AI Headquarters</title>
 <style>
 :root{--blue:#39c8ff;--purple:#bd80ff;--bg:#030713;--muted:#91a9c2;--green:#70f5c6}
@@ -913,7 +916,7 @@ header .sub{color:#d6a19a}
   <div class="chat-title">JARVIS / SECURE AI CONNECTION</div>
   <div class="messages" id="jarvisMessages"><div class="msg ai">God dag. JARVIS är redo. Vad kan jag hjälpa dig med?</div></div>
   
-   <div class="jarvis-holo-voice" id="jarvisHoloVoice"><button class="jarvis-orb-button" id="jarvisVoiceButton" type="button" onclick="toggleJarvisVoice()" aria-label="Tryck för att prata med JARVIS" title="Tryck för att prata med JARVIS"><span class="jarvis-orb-ring"></span><span class="jarvis-orb-ring ring-two"></span><span class="jarvis-orb-ring ring-three"></span><span class="jarvis-holo-ball" id="jarvisHoloBall"><span class="jarvis-orb-core"></span></span></button><div class="jarvis-orb-caption" id="jarvisOrbCaption">JARVIS / STANDBY</div><div class="jarvis-orb-hint" id="jarvisOrbHint">Tryck på den orange holografiska ringen för att starta ett röstsamtal</div></div><form class="input-row jarvis-input-row" onsubmit="sendMessage(event,'jarvis')"><input class="chat-input" id="jarvisInput" placeholder="Eller skriv till JARVIS..." autocomplete="off"><button class="send" id="jarvisSend">SKICKA</button></form>
+   <div class="jarvis-holo-voice" id="jarvisHoloVoice"><button class="jarvis-orb-button" id="jarvisVoiceButton" type="button" onclick="toggleJarvisVoice()" aria-label="Tryck för att prata med JARVIS" title="Tryck för att prata med JARVIS"><span class="jarvis-orb-ring"></span><span class="jarvis-orb-ring ring-two"></span><span class="jarvis-orb-ring ring-three"></span><span class="jarvis-holo-ball" id="jarvisHoloBall"><span class="jarvis-orb-core"></span></span></button><div class="jarvis-orb-caption" id="jarvisOrbCaption">JARVIS / STANDBY</div><div class="jarvis-orb-hint" id="jarvisOrbHint">Tryck på den orange holografiska ringen för att starta ett röstsamtal</div></div><form class="input-row jarvis-input-row" onsubmit="sendMessage(event,'jarvis')"><input class="chat-input" id="jarvisInput" placeholder="Eller skriv till JARVIS..." autocomplete="off"><button class="send" id="jarvisSend">SKICKA</button></form><button type="button" id="jarvisNotificationsButton" onclick="enableJarvisNotifications()" style="margin-top:8px;padding:9px 13px;border:1px solid #39c8ff66;border-radius:9px;background:#0b2440;color:#bfeaff;font-size:10px;letter-spacing:1px">🔔 AKTIVERA KLARMEDDELANDEN</button>
 
   </div>
  </section>
@@ -1809,6 +1812,56 @@ loadDropshipProducts();
 
 /* CHAT CONNECTION – ALL NOVA WORK STARTS HERE */
 
+
+function getSavedJarvisPushSubscription(){
+ try{
+  const value=localStorage.getItem("jarvisPushSubscription");
+  return value?JSON.parse(value):null;
+ }catch(e){return null}
+}
+function base64UrlToBytes(value){
+ const padding="=".repeat((4-value.length%4)%4);
+ const raw=atob((value+padding).replace(/-/g,"+").replace(/_/g,"/"));
+ return Uint8Array.from([...raw].map(char=>char.charCodeAt(0)));
+}
+async function enableJarvisNotifications(){
+ const button=$("jarvisNotificationsButton");
+ if(!("serviceWorker" in navigator)||!("PushManager" in window)||!("Notification" in window)){
+  alert("Den här webbläsaren stöder inte pushnotiser. Öppna JARVIS i Safari på iPhone.");
+  return;
+ }
+ const isStandalone=window.matchMedia("(display-mode: standalone)").matches||window.navigator.standalone===true;
+ const isIOS=/iphone|ipad|ipod/i.test(navigator.userAgent);
+ if(isIOS&&!isStandalone){
+  alert("På iPhone behöver du först lägga till JARVIS på hemskärmen via Safari: Dela → Lägg till på hemskärmen. Öppna sedan JARVIS-ikonen och tryck på knappen igen.");
+  return;
+ }
+ if(button){button.disabled=true;button.textContent="ANSLUTER NOTISER..."}
+ try{
+  const keyResponse=await fetch("/api/push/public-key",{cache:"no-store"});
+  const keyData=await keyResponse.json();
+  if(!keyResponse.ok)throw new Error(keyData.detail||"Pushnotiser är inte aktiverade på servern ännu.");
+  const registration=await navigator.serviceWorker.register("/sw.js",{scope:"/"});
+  await navigator.serviceWorker.ready;
+  const permission=await Notification.requestPermission();
+  if(permission!=="granted")throw new Error("Notistillstånd nekades. Aktivera notiser för JARVIS i iPhone-inställningarna.");
+  let subscription=await registration.pushManager.getSubscription();
+  if(!subscription){
+   subscription=await registration.pushManager.subscribe({
+    userVisibleOnly:true,
+    applicationServerKey:base64UrlToBytes(keyData.public_key)
+   });
+  }
+  localStorage.setItem("jarvisPushSubscription",JSON.stringify(subscription.toJSON()));
+  if(button){button.textContent="✓ NOTISER AKTIVERADE";button.disabled=false}
+  alert("Klart! JARVIS kan nu skicka en notis när ett uppdrag är färdigt.");
+ }catch(error){
+  if(button){button.textContent="🔔 AKTIVERA KLARMEDDELANDEN";button.disabled=false}
+  alert("Kunde inte aktivera notiser: "+error.message);
+ }
+}
+
+
 async function waitForJarvisJob(jobId,token,loading,task){
  const storageKey="jarvisPendingJob";
  try{localStorage.setItem(storageKey,JSON.stringify({jobId,token,task,createdAt:Date.now()}))}catch(e){}
@@ -1871,7 +1924,7 @@ async function sendMessage(event,assistant){
    let webmasterMessage=message;
    if(isWeb&&webmasterImages.length)webmasterMessage+="\n\nANVÄNDARENS BIFOGADE BILDER (använd dessa bildplatshållare i HTML-koden):\n"+webmasterImages.map((item,index)=>"Bild "+(index+1)+": "+item.name+" – använd exakt {{WEBMASTER_IMAGE_"+(index+1)+"}} som img src.").join("\n")+"\nAnvänd bilderna i relevanta delar av designen. Skapa gärna ett bildgalleri om flera bilder passar.";
    if(isWeb&&$("webDropMode")?.checked)webmasterMessage+="\n\n"+dropshipBrief();
-   response=await fetch(isWeb?"/api/webmaster":"/api/chat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({message:webmasterMessage,history:conversationHistory})});
+   response=await fetch(isWeb?"/api/webmaster":"/api/chat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({message:webmasterMessage,history:conversationHistory,push_subscription:assistant==="jarvis"?getSavedJarvisPushSubscription():null})});
   }
   data=await response.json();
   if(!response.ok)throw new Error(typeof data.detail==="string"?data.detail:JSON.stringify(data.detail||data));
@@ -1948,7 +2001,7 @@ async function jarvisDelegateLatest(){
  setRoomState("jarvis","working");
  startTeamRuntimePolling();
  try{
-  const response=await fetch("/api/jarvis/jobs",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({task,history})});
+  const response=await fetch("/api/jarvis/jobs",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({task,history,push_subscription:getSavedJarvisPushSubscription()})});
   let data=await response.json();
   if(!response.ok)throw new Error(typeof data.detail==="string"?data.detail:JSON.stringify(data.detail||data));
   if(data.status==="queued"){
