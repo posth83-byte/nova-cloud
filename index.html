@@ -1766,7 +1766,7 @@ function appendPublishedProjectLinks(element,source){
   const link=document.createElement("a");link.className="project-action";link.href=url;link.target="_blank";link.rel="noopener noreferrer";link.textContent="ÖPPNA PROJEKTET";panel.appendChild(link);
  });
 }
-async function createWebPreview(reply,mountElement=null){
+async function createWebPreview(reply,mountElement=null,projectTitle="Färdigt webbprojekt"){
  const source=String(reply||"");
  const marker=String.fromCharCode(96).repeat(3);
  const fencePattern=new RegExp(marker+"(?:html)?\\s*([\\s\\S]*?)"+marker,"gi");
@@ -1789,7 +1789,7 @@ async function createWebPreview(reply,mountElement=null){
  const card=document.createElement("div");card.className="web-preview-area";card.hidden=false;
  const title=document.createElement("strong");title.textContent="DITT PROJEKT ÄR REDO ATT TESTA";
  const link=document.createElement("a");link.className="web-preview-link";link.href=new URL(data.preview_url,window.location.origin).href;link.target="_blank";link.rel="noopener noreferrer";link.textContent="ÖPPNA OCH TESTA PROJEKTET ↗";
- saveJarvisProject("Webbprojekt – förhandsvisning",new URL(data.preview_url,window.location.origin).href,"FÖRHANDSVISNING");
+ saveJarvisProject(String(projectTitle||"Färdigt webbprojekt").slice(0,100),new URL(data.preview_url,window.location.origin).href,"FÖRHANDSVISNING");
  const note=document.createElement("div");note.className="web-preview-note";note.textContent="Öppnas i en ny flik. Detta är en tillfällig testversion som rensas när servern startas om.";
  card.append(title,document.createElement("br"),link,note);
  if(mountElement)area.appendChild(card);else{area.hidden=false;area.replaceChildren(card)}
@@ -2038,6 +2038,18 @@ async function resumePendingJarvisJob(){
    const names={NOVA:"NOVA",WEBMASTER:"WEBMASTER",GAME_DEVELOPER:"GAME DEVELOPER"};
    const team=(data.targets||[]).map(name=>names[name]||name).join(", ")||"AI-rådet";
    loading.textContent="✓ JARVIS har slutfört ditt bakgrundsuppdrag.\nSamordnade med: "+team+"\n\n"+(data.reply||"Uppdraget är färdigt.")+"\n\nTekniska detaljer och kod har hanterats internt.";
+   const specialistResults=Array.isArray(data.results)?data.results:[];
+   appendPublishedProjectLinks(loading,specialistResults.map(item=>item&&item.reply||"").join("\n"));
+   const projectResult=specialistResults.find(item=>(item.target==="GAME_DEVELOPER"||item.target==="WEBMASTER")&&item.reply&&new RegExp("(?:<!doctype\\s+html|<html\\b|\\x60{3}html)","i").test(item.reply));
+   if(projectResult){
+    try{
+     const previewReady=await createWebPreview(projectResult.reply,loading,task);
+     if(previewReady)logActivity("JARVIS lade ett färdigt bakgrundsprojekt i MINA PROJEKT","📁",task.slice(0,80));
+     else{const note=document.createElement("div");note.className="web-preview-note";note.textContent="Specialisten har levererat projektunderlag, men ingen komplett HTML-version kunde göras öppningsbar.";loading.appendChild(note)}
+    }catch(previewError){
+     const note=document.createElement("div");note.className="web-preview-note";note.textContent="Projektet blev klart men förhandsvisningen kunde inte skapas: "+previewError.message;loading.appendChild(note);
+    }
+   }
    updateTeamBoard("done",task,data.targets||[],"Bakgrundsuppdraget har återhämtats och slutförts.");
    logActivity("JARVIS slutförde ett återupptaget bakgrundsuppdrag","✓",task.slice(0,80));
   }
