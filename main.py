@@ -10,6 +10,7 @@ import urllib.parse
 import time
 import sqlite3
 import hashlib
+import base64
 import tempfile
 import xml.etree.ElementTree as ET
 
@@ -208,6 +209,12 @@ def send_jarvis_job_notification(job_id, subscription, outcome):
     if not isinstance(subscription, dict) or not subscription.get("endpoint"):
         return False
     private_key = os.getenv("VAPID_PRIVATE_KEY", "").strip()
+    private_key_b64 = os.getenv("VAPID_PRIVATE_KEY_B64", "").strip()
+    if private_key_b64:
+        try:
+            private_key = base64.b64decode(private_key_b64).decode("utf-8")
+        except Exception:
+            return False
     public_key = os.getenv("VAPID_PUBLIC_KEY", "").strip()
     subject = os.getenv("VAPID_CLAIMS_EMAIL", "mailto:admin@example.com").strip()
     if not private_key or not public_key:
