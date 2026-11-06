@@ -6,6 +6,8 @@ import uuid
 import urllib.request
 import urllib.error
 import time
+import sqlite3
+import hashlib
 import xml.etree.ElementTree as ET
 
 from pathlib import Path
@@ -60,6 +62,187 @@ def set_team_runtime(status, task=None, phase=None, active=None, completed=None)
 
 BASE_DIR = Path(__file__).resolve().parent
 INDEX_FILE = BASE_DIR / "index.html"
+
+# ==========================================
+# JARVIS MEMORY CORE – GEMENSAMT LÅNGTIDSMINNE
+# ==========================================
+
+# På Render är filsystemet normalt tillfälligt. Sätt JARVIS_MEMORY_DB
+# till en sökväg på en ansluten persistent disk för minne över omstarter.
+MEMORY_DB_PATH = Path(os.getenv(
+    "JARVIS_MEMORY_DB",
+    str(BASE_DIR / "data" / "jarvis_memory.db")
+))
+
+
+def memory_connection():
+    MEMORY_DB_PATH.parent.mkdir(parents=True, exist_ok=True)
+    connection = sqlite3.connect(str(MEMORY_DB_PATH), timeout=15)
+    connection.row_factory = sqlite3.Row
+    return connection
+
+
+def init_memory_core():
+    with memory_connection() as connection:
+        connection.execute("""
+            CREATE TABLE IF NOT EXISTS memory_items (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                fingerprint TEXT NOT NULL UNIQUE,
+                text TEXT NOT NULL,
+                category TEXT NOT NULL DEFAULT 'note',
+                project TEXT NOT NULL DEFAULT '',
+                importance INTEGER NOT NULL DEFAULT 3,
+                source TEXT NOT NULL DEFAULT 'user',
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                access_count INTEGER NOT NULL DEFAULT 0
+            )
+        """)
+        connection.execute("""
+            CREATE INDEX IF NOT EXISTS idx_memory_project
+            ON memory_items(project)
+        """)
+        connection.execute("""
+            CREATE INDEX IF NOT EXISTS idx_memory_updated
+            ON memory_items(updated_at DESC)
+        """)
+
+
+def save_memory_item(text, category="note", project="", importance=3, source="user"):
+    clean_text = re.sub(r"\\s+", " ", str(text or "")).strip()
+    if len(clean_text) < 3:
+        return None
+    clean_category = re.sub(r"[^a-zA-Z0-9_åäöÅÄÖ-]", "", str(category or "note"))[:40] or "note"
+    clean_project = str(project or "").strip()[:120]
+    fingerprint_source = (clean_category + "|" + clean_project + "|" + clean_text).casefold()
+    fingerprint = hashlib.sha256(fingerprint_source.encode("utf-8")).hexdigest()
+    now = datetime.now(timezone.utc).isoformat()
+    with memory_connection() as connection:
+        connection.execute("""
+            INSERT INTO memory_items
+            (fingerprint, text, category, project, importance, source, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(fingerprint) DO UPDATE SET
+                text=excluded.text,
+                importance=MAX(memory_items.importance, excluded.importance),
+                source=excluded.source,
+                updated_at=excluded.updated_at
+        """, (
+            fingerprint, clean_text, clean_category, clean_project,
+            max(1, min(5, int(importance))), str(source or "user")[:40], now, now
+        ))
+        row = connection.execute(
+            "SELECT id FROM memory_items WHERE fingerprint=?", (fingerprint,)
+        ).fetchone()
+        return row["id"] if row else None
+
+
+def search_memory_items(query, limit=6):
+    terms = list(dict.fromkeys(
+        token for token in re.findall(r"[a-zA-ZåäöÅÄÖ0-9]{3,}", str(query or "").casefold())
+        if token not in {"och", "att", "det", "som", "med", "för", "kan", "ska", "vill", "hur", "vad", "den", "dom", "the", "and"}
+    ))[:18]
+    with memory_connection() as connection:
+        rows = connection.execute("""
+            SELECT * FROM memory_items
+            ORDER BY importance DESC, updated_at DESC
+            LIMIT 400
+        """).fetchall()
+        scored = []
+        for row in rows:
+            haystack = (row["text"] + " " + row["category"] + " " + row["project"]).casefold()
+            overlap = sum(1 for term in terms if term in haystack)
+            recency_bonus = 0.15
+            score = overlap * 2 + int(row["importance"]) * 0.25 + recency_bonus
+            if not terms:
+                score = int(row["importance"]) * 0.5 + recency_bonus
+            if overlap or not terms:
+                scored.append((score, row))
+        scored.sort(key=lambda item: (item[0], item[1]["updated_at"]), reverse=True)
+        selected = [item[1] for item in scored[:max(1, min(12, limit))]]
+        for row in selected:
+            connection.execute(
+                "UPDATE memory_items SET access_count=access_count+1 WHERE id=?",
+                (row["id"],)
+            )
+        return [dict(row) for row in selected]
+
+
+def add_relevant_memory(query, message, limit=6):
+    memories = search_memory_items(query, limit=limit)
+    if not memories:
+        return message
+    entries = []
+    for item in memories:
+        project_label = f" | Projekt: {item['project']}" if item["project"] else ""
+        entries.append(
+            f"- [{item['category']}{project_label}; viktighet {item['importance']}/5] {item['text']}"
+        )
+    return (
+        "RELEVANT GEMENSAMT LÅNGTIDSMINNE FRÅN JARVIS MEMORY CORE. "
+        "Använd detta när det är relevant. Nyare uttryckliga instruktioner väger tyngre. "
+        "Om ett minne inte är relevant ska du ignorera det. Hitta inte på saknade detaljer.\n"
+        + "\n".join(entries)
+        + "\n\nAKTUELLT SAMMANHANG:\n" + message
+    )
+
+
+def save_chat_exchange(user_message, assistant_reply, project=""):
+    # Spara konversationsunderlag som sökbart minne; undvik mycket långa svar.
+    combined = (
+        "Användaren: " + str(user_message or "").strip()[:2500]
+        + "\nJARVIS: " + str(assistant_reply or "").strip()[:2500]
+    )
+    if len(combined.strip()) > 40:
+        save_memory_item(
+            combined, category="conversation", project=project,
+            importance=2, source="jarvis_chat"
+        )
+
+
+init_memory_core()
+
+
+@app.get("/api/memory")
+async def list_memory(limit: int = 50):
+    limit = max(1, min(200, limit))
+    with memory_connection() as connection:
+        rows = connection.execute("""
+            SELECT id, text, category, project, importance, source,
+                   created_at, updated_at, access_count
+            FROM memory_items
+            ORDER BY updated_at DESC LIMIT ?
+        """, (limit,)).fetchall()
+    return {"status": "online", "count": len(rows), "items": [dict(row) for row in rows],
+            "storage": "sqlite", "database_path": str(MEMORY_DB_PATH)}
+
+
+@app.get("/api/memory/search")
+async def memory_search(q: str, limit: int = 6):
+    if not q.strip():
+        raise HTTPException(status_code=400, detail="Söktext saknas.")
+    items = search_memory_items(q, limit=limit)
+    return {"status": "online", "query": q, "count": len(items), "items": items}
+
+
+@app.post("/api/memory")
+async def create_memory(request: MemoryCreateRequest):
+    item_id = save_memory_item(
+        request.text, request.category, request.project,
+        request.importance, request.source
+    )
+    return {"status": "saved", "id": item_id, "message": "Minnet har sparats i JARVIS Memory Core."}
+
+
+@app.delete("/api/memory/{memory_id}")
+async def delete_memory(memory_id: int):
+    with memory_connection() as connection:
+        result = connection.execute("DELETE FROM memory_items WHERE id=?", (memory_id,))
+    if result.rowcount == 0:
+        raise HTTPException(status_code=404, detail="Minnet hittades inte.")
+    return {"status": "deleted", "id": memory_id}
+
+
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 GEMINI_MODEL = os.getenv(
@@ -144,6 +327,14 @@ class JarvisDelegateRequest(BaseModel):
 class ChatRequest(BaseModel):
     message: str = Field(min_length=1, max_length=10000)
     history: list[dict] = Field(default_factory=list)
+
+
+class MemoryCreateRequest(BaseModel):
+    text: str = Field(min_length=3, max_length=12000)
+    category: str = Field(default="note", max_length=40)
+    project: str = Field(default="", max_length=120)
+    importance: int = Field(default=3, ge=1, le=5)
+    source: str = Field(default="user", max_length=40)
 
 
 class NovaChatRequest(BaseModel):
@@ -1828,6 +2019,7 @@ async def jarvis_delegate(request: JarvisDelegateRequest):
     """JARVIS leder ett internt AI-råd, låter specialisterna granska varandra och sammanställer en plan."""
     task = request.task.strip()
     context = build_conversation_context(request.history, task, "JARVIS")
+    context = add_relevant_memory(task, context, limit=8)
     set_team_runtime("working", task, "JARVIS analyserar uppdraget och väljer specialister", [], [])
     selector_prompt = """
 Du är JARVIS, projektledare för ett AI-kontor. Välj vilka specialister som behövs:
@@ -1974,6 +2166,7 @@ async def chat(request: ChatRequest):
         raise HTTPException(status_code=400, detail="Meddelandet får inte vara tomt.")
 
     contextual_message = build_conversation_context(request.history, message, "JARVIS")
+    contextual_message = add_relevant_memory(message, contextual_message, limit=8)
     result = generate_reply(contextual_message, JARVIS_PROMPT)
     response = {
         "assistant": "JARVIS",
@@ -2034,6 +2227,12 @@ Returnera endast JSON: {"start":true,"reason":"kort skäl"} eller
                 "planera här. Inget specialistarbete har startats."
             )
 
+    save_chat_exchange(message, response.get("reply", ""), project="JARVIS")
+    if response.get("council_started") and response.get("council", {}).get("reply"):
+        save_memory_item(
+            "Projektresultat från AI-rådet: " + response["council"]["reply"][:5000],
+            category="project_result", project="JARVIS", importance=3, source="ai_council"
+        )
     return response
 
 
@@ -2151,6 +2350,7 @@ async def nova(request: NovaChatRequest):
         )
 
     message = build_conversation_context(history, message, "NOVA")
+    message = add_relevant_memory(message, message, limit=5)
 
     if reference_url:
         message += (
@@ -2201,6 +2401,7 @@ async def game_developer(request: GameDeveloperChatRequest):
     if not message:
         raise HTTPException(status_code=400, detail="Meddelandet får inte vara tomt.")
     message = build_conversation_context(history, message, "GAME DEVELOPER")
+    message = add_relevant_memory(message, message, limit=5)
     if reference_url:
         message += (
             "\n\nREFERENSLÄNK FRÅN ANVÄNDAREN:\n" + reference_url
@@ -2254,6 +2455,7 @@ async def webmaster(request: ChatRequest):
             detail="Meddelandet får inte vara tomt."
         )
     message = build_conversation_context(request.history, message, "WEBMASTER")
+    message = add_relevant_memory(message, message, limit=5)
     result = generate_reply(
         message,
         WEBMASTER_PROMPT,
