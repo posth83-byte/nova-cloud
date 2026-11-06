@@ -1587,7 +1587,7 @@ async function jarvisDelegateLatest(){
    loading.textContent="Jag rekommenderar att vi diskuterar vidare innan jag lämnar över uppdraget.\n"+(data.reason||"");
   }else{
    const names={NOVA:"NOVA",WEBMASTER:"WEBMASTER",GAME_DEVELOPER:"GAME DEVELOPER"};
-   const team=(data.targets||[data.target]).map(name=>names[name]||name).join(", ");\n   const detail=(data.results||[]).map(item=>"\n\n"+(names[item.target]||item.target)+" – DELRESULTAT:\n"+(item.reply||"Inget resultat mottogs.")).join("");\n   loading.textContent="✓ JARVIS samordnade: "+team+".\\nVarför: "+(data.reason||"Flera specialistroller behövs för uppgiften.")+"\\n\\nJARVIS SAMMANSTÄLLNING:\\n"+(data.reply||"Inget sammanställt resultat.")+detail+"\\n\\nAI-motor: "+(data.engine||"Okänd");
+   const team=(data.targets||[data.target]).map(name=>names[name]||name).join(", ");\n   const detail=(data.results||[]).map(item=>"\n\n"+(names[item.target]||item.target)+" – FÖRSTA ANALYS:\n"+(item.reply||"Inget resultat mottogs.")).join("");\n   const reviews=(data.reviews||[]).map(item=>"\n\n"+(names[item.target]||item.target)+" – KOLLEGIAL GRANSKNING:\n"+(item.reply||"Ingen granskning returnerades.")).join("");\n   loading.textContent="✓ JARVIS samordnade: "+team+".\nRådsrundor: "+(data.council_rounds||1)+"\nVarför: "+(data.reason||"Flera specialistroller behövs för uppgiften.")+"\n\nJARVIS GEMENSAMMA BESLUT OCH ARBETSPLAN:\n"+(data.reply||"Inget sammanställt resultat.")+detail+reviews+"\n\nAI-motor: "+(data.engine||"Okänd");
    loading.dataset.speechText="Jag har lämnat över uppdraget till "+(names[data.target]||data.target)+".";
    logActivity("JARVIS delegerade till "+data.target,"↗",task.slice(0,80));
   }
