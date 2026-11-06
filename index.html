@@ -1808,6 +1808,32 @@ function webmasterDropshipResearch(){
 loadDropshipProducts();
 
 /* CHAT CONNECTION – ALL NOVA WORK STARTS HERE */
+
+async function waitForJarvisJob(jobId,token,loading,task){
+ const storageKey="jarvisPendingJob";
+ try{localStorage.setItem(storageKey,JSON.stringify({jobId,token,task,createdAt:Date.now()}))}catch(e){}
+ const started=Date.now();
+ while(Date.now()-started<12*60*60*1000){
+  const response=await fetch("/api/jarvis/jobs/"+encodeURIComponent(jobId)+"?token="+encodeURIComponent(token),{cache:"no-store"});
+  const data=await response.json();
+  if(!response.ok)throw new Error(data.detail||"Kunde inte läsa JARVIS uppdragsstatus.");
+  if(data.status==="completed"){
+   try{localStorage.removeItem(storageKey)}catch(e){}
+   return data.result||{};
+  }
+  if(data.status==="failed"||data.status==="cancelled"){
+   try{localStorage.removeItem(storageKey)}catch(e){}
+   throw new Error(data.error||data.phase||"JARVIS kunde inte slutföra uppdraget.");
+  }
+  const phase=data.phase||"JARVIS arbetar i bakgrunden";
+  loading.textContent="✓ Uppdraget är sparat på servern.\n\n"+phase+"\n\nDu kan låsa mobilen. JARVIS fortsätter arbeta och resultatet hämtas när anslutningen är tillbaka.";
+  updateTeamBoard("working",task,data.active||[],phase);
+  await new Promise(resolve=>setTimeout(resolve,4000));
+ }
+ throw new Error("Uppdraget fortsätter på servern, men chatten väntar inte längre på status. Öppna JARVIS igen senare.");
+}
+
+
 async function sendMessage(event,assistant){
  event.preventDefault();
  const isNova=assistant==="nova",isWeb=assistant==="web",isGame=assistant==="game",input=$(assistant+"Input"),messages=assistant+"Messages",button=$(assistant+"Send");
@@ -1849,6 +1875,13 @@ async function sendMessage(event,assistant){
   }
   data=await response.json();
   if(!response.ok)throw new Error(typeof data.detail==="string"?data.detail:JSON.stringify(data.detail||data));
+  if(assistant==="jarvis"&&data.job_queued){
+   loading.textContent=data.reply||"Uppdraget är sparat på servern.";
+   const jobResult=await waitForJarvisJob(data.job_id,data.job_access_token,loading,message);
+   data.council=jobResult;
+   data.council_started=jobResult.status==="delegated";
+   data.council_error=jobResult.status==="needs_discussion"?"JARVIS rekommenderar fortsatt diskussion.":null;
+  }
   if(isNova){
    window.novaRunwayReferenceImageData=imageData;
    window.novaChatImageData="";
