@@ -1275,7 +1275,7 @@ function startTeamRuntimePolling(){
  if(teamRuntimePoll)clearInterval(teamRuntimePoll);
  refreshTeamRuntime();teamRuntimePoll=setInterval(refreshTeamRuntime,1800);
 }
-function stopTeamRuntimePolling(){if(teamRuntimePoll){clearInterval(teamRuntimePoll);teamRuntimePoll=null;}refreshTeamRuntime();}
+function stopTeamRuntimePolling(){refreshTeamRuntime();} // Keep the shared room live even when this chat request has finished.
 function renderTeamBoard(){
  const workers=$("teamWorkers"),state=$("teamBoardState"),task=$("teamTask");if(!workers||!state||!task)return;
  const active=teamBoard.status==="working";
@@ -1690,6 +1690,22 @@ function appendProjectLinks(element,source){
   link.href=url;link.target="_blank";link.rel="noopener noreferrer";panel.appendChild(link);
  });
 }
+function appendPublishedProjectLinks(element,source){
+ if(!element||!source)return;
+ const text=String(source),pattern=/(?:PUBLICERAD(?:\\s+PROJEKT)?LÄNK|LIVE[- ]?LÄNK|ÖPPNA PROJEKTET|PUBLIC URL)\\s*[:：-]\\s*(https?:\\/\\/[^\\s<>"')\\]]+)/gi;
+ let match;const found=new Map();
+ while((match=pattern.exec(text))!==null){
+  const url=String(match[1]||"").replace(/[.,!?;:]+$/,"");
+  try{const parsed=new URL(url);if(["http:","https:"].includes(parsed.protocol))found.set(parsed.href,true)}catch(e){}
+ }
+ if(!found.size)return;
+ let panel=element.querySelector(":scope > .project-actions");
+ if(!panel){panel=document.createElement("div");panel.className="project-actions";panel.setAttribute("aria-label","Länkar till publicerade projekt");element.appendChild(panel)}
+ found.forEach((_,url)=>{
+  if(Array.from(panel.querySelectorAll("a")).some(link=>link.href===url))return;
+  const link=document.createElement("a");link.className="project-action";link.href=url;link.target="_blank";link.rel="noopener noreferrer";link.textContent="ÖPPNA PROJEKTET";panel.appendChild(link);
+ });
+}
 async function createWebPreview(reply,mountElement=null){
  const source=String(reply||"");
  const marker=String.fromCharCode(96).repeat(3);
@@ -2070,6 +2086,9 @@ async function sendMessage(event,assistant){
    loading.dataset.speechText=data.reply||"Inget svar mottogs.";
   }
   appendProjectLinks(loading,loading.textContent||"");
+  if(assistant==="jarvis"&&data.council&&Array.isArray(data.council.results)){
+   appendPublishedProjectLinks(loading,data.council.results.map(item=>item&&item.reply||"").join("\n"));
+  }
   saveChatHistory(assistant);addSpeechButton(loading,assistant);
   if(isWeb){try{const made=await createWebPreview(data.reply||"");if(!made){const hint=document.createElement("div");hint.className="web-preview-note";hint.textContent="Be WEBMASTER skapa en komplett hemsida i ett enda HTML-kodblock."; $("webPreviewArea").hidden=false;$("webPreviewArea").replaceChildren(hint);}}catch(previewError){addMessage("webMessages","Kunde inte skapa förhandsvisning: "+previewError.message,"error")}}
   if(assistant==="jarvis"&&voiceConversationRoom==="jarvis")speakText(data.reply||"JARVIS har svarat.",assistant);else if(voiceConversationRoom===assistant)speakText(data.reply||"NOVA har skapat ett produktionsunderlag.",assistant);
@@ -2487,7 +2506,7 @@ async function checkCloud(){
   if(previousCloudState!=="offline")logActivity("NOVA Cloud kunde inte nås","⚠","Kontrollera server och internet");previousCloudState="offline";
  }
 }
-window.addEventListener("load",()=>{refreshJarvisNotificationButton();setTimeout(resumePendingJarvisJob,900)});
+window.addEventListener("load",()=>{refreshJarvisNotificationButton();startTeamRuntimePolling();setTimeout(resumePendingJarvisJob,900)});
 checkCloud();setInterval(checkCloud,30000);
 </script>
 </body>
