@@ -1444,8 +1444,23 @@ function startWakeListening(){
  };
  wakeRecognition.onend=()=>{
   if(wakeListening&&!wakePausedForSpeech){
-   try{wakeRecognition.start()}
-   catch(e){wakeStatus("Webbläsaren stoppade lyssningen. Tryck på aktivera igen.");stopWakeListening()}
+   const endedRecognition=wakeRecognition;
+   wakeStatus(voiceConversationRoom?"JARVIS lyssnar vidare…":"Mikrofonen är aktiv. Säg ”Hej JARVIS” eller ”Hej NOVA” …");
+   setTimeout(()=>{
+    if(!wakeListening||wakePausedForSpeech||wakeRecognition!==endedRecognition)return;
+    try{endedRecognition.start()}
+    catch(e){
+     // iOS Safari kan behöva en kort paus innan samma igenkänningssession kan startas om.
+     setTimeout(()=>{
+      if(!wakeListening||wakePausedForSpeech||wakeRecognition!==endedRecognition)return;
+      try{endedRecognition.start()}
+      catch(retryError){
+       wakeStatus("Taligenkänningen kunde inte starta om. Tryck på röstknappen och försök igen.");
+       stopWakeListening();
+      }
+     },500);
+    }
+   },300);
   }
  };
  try{wakeRecognition.start()}
