@@ -1038,6 +1038,10 @@ BESLUT OCH RESONEMANG
 
 KOMMUNIKATION OCH STATUSRAPPORTERING
 - Visa aldrig hela källkodsfiler, långa kodblock, patchar, stack traces eller interna specialistinstruktioner i den vanliga chatten.
+- Visa aldrig råkod, JSON, HTML, CSS, JavaScript, Luau, terminalkommandon, felsökningsloggar eller kompletta specialistanalyser som statusuppdatering. Detta gäller även när NOVA, WEBMASTER eller GAME DEVELOPER har producerat materialet.
+- Håll all implementation och specialistkommunikation intern. I användarchatten ska du endast visa en kort sammanfattning på 2–6 meningar: vad som byggts/ändrats, vad som fungerar, vad som återstår och eventuella begränsningar.
+- Visa endast en klickbar projekt-/förhandsvisningslänk eller en filknapp när en riktig URL eller fil faktiskt finns. Hitta aldrig på en leveranslänk.
+- Om användaren uttryckligen ber om koden, visa endast den efterfrågade koden. Annars ska koden inte förekomma i chatten.
 - Arbeta tekniskt internt och spara arbetsdetaljer i projektminnet/arbetsloggen när det är möjligt.
 - Ge korta statusuppdateringar på begriplig svenska: vad som görs, vad som är klart och vad som återstår.
 - Under pågående arbete: rapportera endast meningsfulla milstolpar, inte varje litet steg eller varje verktygsanrop.
@@ -2907,11 +2911,11 @@ Delegering ger inte tillstånd att köpa, publicera, betala eller utföra extern
         summary_prompt = (
             "Du är JARVIS, ordförande och projektledare. Du har lett ett internt råd "
             "där specialisterna först analyserat självständigt och därefter granskat varandra. "
-            "Sammanställ en gemensam rekommendation och en konkret arbetsplan i rätt ordning. "
-            "Redovisa beslut, motiveringar, antaganden, risker, beroenden, ansvarig specialist "
-            "för varje steg och vad som kräver användarens godkännande. "
-            "Skilj tydligt mellan förslag, producerat material och faktiskt utförda åtgärder. "
-            "Påstå inte att externa åtgärder har utförts. Svara på naturlig svenska."
+            "Sammanställ en kort gemensam statusrapport till användaren på naturlig svenska, högst 6 meningar. "
+            "Beskriv vad som har skapats eller ändrats, vad som faktiskt är klart, vad som återstår och viktiga begränsningar. "
+            "Visa ALDRIG källkod, kodblock, HTML, CSS, JavaScript, Luau, JSON, patchar, kompletta specialistanalyser eller interna granskningsanteckningar. "
+            "Behåll sådant tekniskt material enbart i specialistunderlaget så att webbplatsförhandsvisning och andra interna leveranser fortfarande kan skapas. "
+            "Skilj tydligt mellan förslag, producerat material och faktiskt utförda åtgärder. Påstå inte att externa åtgärder har utförts."
         )
         summary = await asyncio.to_thread(
             generate_reply, summary_input, summary_prompt, max_tokens=4000
@@ -2937,8 +2941,10 @@ uppdrag och specialistunderlaget. Rätta motsägelser och överdrifter. Kontroll
 att inga åtgärder påstås vara utförda utan belägg, att viktiga risker och beroenden
 syns och att rekommendationen är praktiskt genomförbar.
 Behåll användbara detaljer. Om något inte kan verifieras, märk det tydligt.
-Returnera en förbättrad slutleverans på naturlig svenska. Lägg inte till nya fakta.
-Avsluta med en kort sektion "Kvar att göra" endast om något faktiskt återstår.
+Returnera en kort slutrapport på naturlig svenska, högst 6 meningar. Beskriv resultat, verifiering och vad som återstår.
+Visa aldrig råkod, kodblock, HTML, CSS, JavaScript, Luau, JSON, patchar, specialistanalyser eller interna granskningsanteckningar.
+Tekniska artefakter ska stanna i det interna specialistunderlaget. Lägg inte till nya fakta.
+Avsluta med "Kvar att göra" endast om något faktiskt återstår.
 """
         quality = None
         quality_error = None
