@@ -304,17 +304,6 @@ async def jarvis_job_worker_loop():
                     JarvisDelegateRequest(task=task, history=history)
                 )
                 completed = outcome.get("status") in ("delegated", "needs_discussion")
-                if completed and job.get("push_subscription"):
-                    sent = await asyncio.to_thread(
-                        send_jarvis_job_notification, job_id, job.get("push_subscription"), outcome
-                    )
-                    if sent:
-                        await asyncio.to_thread(
-                            supabase_jobs_request, "PATCH", "jarvis_jobs",
-                            {"notification_sent_at": datetime.now(timezone.utc).isoformat()},
-                            urllib.parse.urlencode({"id": "eq." + str(job_id)}),
-                            "return=minimal"
-                        )
                 await asyncio.to_thread(
                     supabase_jobs_request, "PATCH", "jarvis_jobs",
                     {
@@ -332,6 +321,17 @@ async def jarvis_job_worker_loop():
                     urllib.parse.urlencode({"id": "eq." + str(job_id)}),
                     "return=minimal"
                 )
+                if completed and job.get("push_subscription"):
+                    sent = await asyncio.to_thread(
+                        send_jarvis_job_notification, job_id, job.get("push_subscription"), outcome
+                    )
+                    if sent:
+                        await asyncio.to_thread(
+                            supabase_jobs_request, "PATCH", "jarvis_jobs",
+                            {"notification_sent_at": datetime.now(timezone.utc).isoformat()},
+                            urllib.parse.urlencode({"id": "eq." + str(job_id)}),
+                            "return=minimal"
+                        )
             except Exception as error:
                 await asyncio.to_thread(
                     supabase_jobs_request, "PATCH", "jarvis_jobs",
@@ -2427,7 +2427,7 @@ async def create_jarvis_job(request: JarvisDelegateRequest):
             "status": "queued",
             "job_id": job["id"],
             "access_token": job["access_token"],
-            "reply": "Uppdraget är sparat på servern. JARVIS fortsätter även om du låser mobilen."
+            "reply": "Uppdraget är sparat i serverns jobbkö. Arbetet fortsätter medan tjänsten är igång och resultatet sparas i Supabase."
         }
     except Exception as error:
         raise HTTPException(status_code=503, detail=f"Kunde inte spara uppdraget: {str(error)[:500]}")
@@ -3042,7 +3042,7 @@ Returnera endast JSON: {"start":true,"reason":"kort skäl"} eller
                 response["job_access_token"] = job["access_token"]
                 response["reply"] += (
                     "\n\nJag har sparat uppdraget på servern och startat bakgrundsarbetet. "
-                    "Du kan låsa mobilen – JARVIS fortsätter arbeta och resultatet sparas."
+                    "Resultatet sparas i Supabase. Serverns kostnadsfria instans kan pausas efter inaktivitet; kön återupptas när tjänsten startar igen."
                 )
         except Exception as error:
             # Ett misslyckat råd får inte förstöra det vanliga JARVIS-svaret.
