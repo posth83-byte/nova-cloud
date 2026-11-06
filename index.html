@@ -2080,7 +2080,7 @@ async function sendMessage(event,assistant){
        if(previewReady)logActivity("JARVIS levererade en klickbar projektförhandsvisning","⌘",message.slice(0,90));
        else{const note=document.createElement("div");note.className="web-preview-note";note.textContent="Specialisten har ännu inte lämnat en komplett HTML-version som kan öppnas. Be JARVIS färdigställa en körbar HTML-fil innan leveransen räknas som testbar.";loading.appendChild(note)}
       }catch(previewError){const note=document.createElement("div");note.className="web-preview-note";note.textContent="Projektets testversion kunde inte skapas: "+previewError.message;loading.appendChild(note)}
-     }else if(assistant==="jarvis"&&data.council_needs_discussion){
+     }}else if(assistant==="jarvis"&&data.council_needs_discussion){
     updateTeamBoard("idle",message,[],"JARVIS rekommenderar fortsatt diskussion innan specialistarbete startas.");
     loading.textContent+="\n\nJARVIS rekommenderar fortsatt diskussion innan specialisterna får en arbetsorder.";
    }else if(assistant==="jarvis"&&data.council_error){
