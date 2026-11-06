@@ -1536,6 +1536,7 @@ function setRoomState(room,state){
  else{if(live)live.textContent="● "+room.toUpperCase()+" ONLINE";if(monitor)monitor.textContent=room==="nova"?"● PRODUCTION ACTIVE":"● SYSTEM ACTIVE"}
 }
 function enterRoom(room){
+ stopTeamRuntimePolling();
  activeRoom=room;$("homeView").classList.add("hidden");$("jarvisView").classList.add("hidden");$("novaView").classList.add("hidden");$("webView").classList.add("hidden");$("gameView").classList.add("hidden");
  $(room+"View").classList.remove("hidden");window.scrollTo({top:0,behavior:"smooth"});loadVoices();
  if(room==="nova")refreshYouTubeCenter();
@@ -1545,6 +1546,7 @@ function enterRoom(room){
 }
 function openTeamRoom(){
  goHome();
+ startTeamRuntimePolling();
  setTimeout(()=>{const room=$("teamRoomShell");if(room)room.scrollIntoView({behavior:"smooth",block:"start"})},90);
 }
 function restartJarvisLandingAnimations(){
@@ -1555,6 +1557,7 @@ function restartJarvisLandingAnimations(){
  animated.forEach(el=>{el.style.animation=""});
 }
 function goHome(){
+ stopTeamRuntimePolling();
  stopSpeech();activeRoom=null;$("jarvisView").classList.add("hidden");$("novaView").classList.add("hidden");$("webView").classList.add("hidden");$("gameView").classList.add("hidden");$("homeView").classList.remove("hidden");
  restartJarvisLandingAnimations();
  window.scrollTo({top:0,behavior:"smooth"});
