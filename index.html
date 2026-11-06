@@ -2019,7 +2019,7 @@ async function waitForJarvisJob(jobId,token,loading,task){
    throw new Error(data.error||data.phase||"JARVIS kunde inte slutföra uppdraget.");
   }
   const phase=data.phase||"JARVIS arbetar i bakgrunden";
-  loading.textContent="✓ Uppdraget är sparat på servern.\n\n"+phase+"\n\nDu kan låsa mobilen, men Render Free kan pausa tjänsten efter 15 minuter utan inkommande trafik. Om det händer återupptas kön när JARVIS öppnas igen.";
+  loading.textContent="✓ Uppdraget är sparat i Supabase.\n\n"+phase+"\n\nDu kan låsa mobilen. En schemalagd hälsokontroll håller Render aktivt medan ett jobb ligger i kön eller körs. Om tjänsten ändå blir otillgänglig kan kön återupptas när servern startar igen.";
   updateTeamBoard("working",task,data.active||[],phase);
   await new Promise(resolve=>setTimeout(resolve,4000));
  }
@@ -2044,7 +2044,7 @@ async function resumePendingJarvisJob(){
   }else{
    const names={NOVA:"NOVA",WEBMASTER:"WEBMASTER",GAME_DEVELOPER:"GAME DEVELOPER"};
    const team=(data.targets||[]).map(name=>names[name]||name).join(", ")||"AI-rådet";
-   loading.textContent="✓ JARVIS har slutfört ditt bakgrundsuppdrag.\nSamordnade med: "+team+"\n\n"+(data.reply||"Uppdraget är färdigt.")+"\n\nTekniska detaljer och kod har hanterats internt.";
+   loading.textContent="✓ JARVIS har slutfört AI-rådets arbetsomgång.\nSamordnade med: "+team+"\n\n"+(data.reply||"Resultatet är sammanställt.")+"\n\nViktigt: detta är ett AI-genererat underlag eller en förhandsvisning. Ändringar i GitHub och publicering är inte automatiskt utförda eller verifierade.";
    const specialistResults=Array.isArray(data.results)?data.results:[];
    appendPublishedProjectLinks(loading,specialistResults.map(item=>item&&item.reply||"").join("\n"));
    const projectResult=specialistResults.find(item=>(item.target==="GAME_DEVELOPER"||item.target==="WEBMASTER")&&item.reply&&new RegExp("(?:<!doctype\\s+html|<html\\b|\\x60{3}html)","i").test(item.reply));
@@ -2143,7 +2143,7 @@ async function sendMessage(event,assistant){
     const council=data.council;
     const names={NOVA:"NOVA",WEBMASTER:"WEBMASTER",GAME_DEVELOPER:"GAME DEVELOPER"};
     const team=(council.targets||[]).map(name=>names[name]||name).join(", ");
-    loading.textContent+="\n\nJARVIS SAMORDNADE: "+team+".\n"+(council.reply||"Arbetet har samordnats och sammanställts.")+"\n\nSpecialisternas kod och arbetsanteckningar hålls utanför chatten.";
+    loading.textContent+="\n\nJARVIS SAMORDNADE: "+team+".\n"+(council.reply||"AI-rådets resultat har sammanställts.")+"\n\nDetta är ett AI-genererat underlag eller en förhandsvisning. Ingen ändring i GitHub eller publicering har automatiskt utförts eller verifierats.";
     logActivity("JARVIS kallade automatiskt AI-rådet","✦",team+" · "+(council.council_rounds||1)+" rådsrundor");
     updateTeamBoard("done",message,council.targets||[],(council.council_rounds||1)+" rådsrundor genomförda");
     const projectResult=(council.results||[]).find(item=>(item.target==="GAME_DEVELOPER"||item.target==="WEBMASTER")&&item.reply&&/(?:<!doctype\s+html|<html\b|```html)/i.test(item.reply));
