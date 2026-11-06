@@ -1734,9 +1734,9 @@ async function createWebPreview(reply,mountElement=null){
  const data=await response.json();if(!response.ok)throw new Error(data.detail||"Kunde inte skapa förhandsvisningen.");
  const area=mountElement||$("webPreviewArea");if(!area)return false;
  const card=document.createElement("div");card.className="web-preview-area";card.hidden=false;
- const title=document.createElement("strong");title.textContent="DIN HEMSIDA ÄR REDO ATT FÖRHANDSVISA";
- const link=document.createElement("a");link.className="web-preview-link";link.href=new URL(data.preview_url,window.location.origin).href;link.target="_blank";link.rel="noopener noreferrer";link.textContent="ÖPPNA HEMSIDAN ↗";
- const note=document.createElement("div");note.className="web-preview-note";note.textContent="Detta är en tillfällig förhandsvisning, inte en permanent publicering.";
+ const title=document.createElement("strong");title.textContent="DITT PROJEKT ÄR REDO ATT TESTA";
+ const link=document.createElement("a");link.className="web-preview-link";link.href=new URL(data.preview_url,window.location.origin).href;link.target="_blank";link.rel="noopener noreferrer";link.textContent="ÖPPNA OCH TESTA PROJEKTET ↗";
+ const note=document.createElement("div");note.className="web-preview-note";note.textContent="Öppnas i en ny flik. Detta är en tillfällig testversion som rensas när servern startas om.";
  card.append(title,document.createElement("br"),link,note);
  if(mountElement)area.appendChild(card);else{area.hidden=false;area.replaceChildren(card)}
  return true;
@@ -2073,15 +2073,14 @@ async function sendMessage(event,assistant){
     loading.textContent+="\n\nJARVIS SAMORDNADE: "+team+".\n"+(council.reply||"Arbetet har samordnats och sammanställts.")+"\n\nSpecialisternas kod och arbetsanteckningar hålls utanför chatten.";
     logActivity("JARVIS kallade automatiskt AI-rådet","✦",team+" · "+(council.council_rounds||1)+" rådsrundor");
     updateTeamBoard("done",message,council.targets||[],(council.council_rounds||1)+" rådsrundor genomförda");
-    const webmasterResult=(council.results||[]).find(item=>item.target==="WEBMASTER"&&item.reply);
-    if(webmasterResult){
-     try{
-      const previewReady=await createWebPreview(webmasterResult.reply,loading);
-      if(previewReady)logActivity("WEBMASTER levererade en klickbar hemsideförhandsvisning","⌘",message.slice(0,90));
-      else{const note=document.createElement("div");note.className="web-preview-note";note.textContent="Webmaster lämnade ingen komplett HTML-sida ännu. JARVIS ska be om en komplett uppdaterad fil innan leveransen räknas som klar.";loading.appendChild(note)}
-     }catch(previewError){const note=document.createElement("div");note.className="web-preview-note";note.textContent="Hemsidans förhandsvisning kunde inte skapas: "+previewError.message;loading.appendChild(note)}
-    }
-   }else if(assistant==="jarvis"&&data.council_needs_discussion){
+    const projectResult=(council.results||[]).find(item=>(item.target==="GAME_DEVELOPER"||item.target==="WEBMASTER")&&item.reply);
+     if(projectResult){
+      try{
+       const previewReady=await createWebPreview(projectResult.reply,loading);
+       if(previewReady)logActivity("JARVIS levererade en klickbar projektförhandsvisning","⌘",message.slice(0,90));
+       else{const note=document.createElement("div");note.className="web-preview-note";note.textContent="Specialisten har ännu inte lämnat en komplett HTML-version som kan öppnas. Be JARVIS färdigställa en körbar HTML-fil innan leveransen räknas som testbar.";loading.appendChild(note)}
+      }catch(previewError){const note=document.createElement("div");note.className="web-preview-note";note.textContent="Projektets testversion kunde inte skapas: "+previewError.message;loading.appendChild(note)}
+     }else if(assistant==="jarvis"&&data.council_needs_discussion){
     updateTeamBoard("idle",message,[],"JARVIS rekommenderar fortsatt diskussion innan specialistarbete startas.");
     loading.textContent+="\n\nJARVIS rekommenderar fortsatt diskussion innan specialisterna får en arbetsorder.";
    }else if(assistant==="jarvis"&&data.council_error){
@@ -2131,9 +2130,9 @@ async function jarvisDelegateLatest(){
    const names={NOVA:"NOVA",WEBMASTER:"WEBMASTER",GAME_DEVELOPER:"GAME DEVELOPER"};
    const team=(data.targets||[data.target]).map(name=>names[name]||name).join(", ");
    loading.textContent="✓ JARVIS samordnade: "+team+".\n"+(data.reply||"Arbetet har sammanställts.")+"\n\nKod, specialistanalyser och interna arbetsanteckningar visas inte i chatten.";
-   const webmasterResult=(data.results||[]).find(item=>item.target==="WEBMASTER"&&item.reply);
-   if(webmasterResult){try{await createWebPreview(webmasterResult.reply,loading)}catch(previewError){const note=document.createElement("div");note.className="web-preview-note";note.textContent="Förhandsvisningen kunde inte skapas: "+previewError.message;loading.appendChild(note)}}
-   loading.dataset.speechText="Jag har lämnat över uppdraget till "+(names[data.target]||data.target)+".";
+   const projectResult=(data.results||[]).find(item=>(item.target==="GAME_DEVELOPER"||item.target==="WEBMASTER")&&item.reply);
+    if(projectResult){try{const previewReady=await createWebPreview(projectResult.reply,loading);if(!previewReady){const note=document.createElement("div");note.className="web-preview-note";note.textContent="Specialisten har ännu inte lämnat en komplett HTML-version som kan öppnas och testas.";loading.appendChild(note)}}catch(previewError){const note=document.createElement("div");note.className="web-preview-note";note.textContent="Projektets testversion kunde inte skapas: "+previewError.message;loading.appendChild(note)}}
+    loading.dataset.speechText="Jag har lämnat över uppdraget till "+(names[data.target]||data.target)+".";
    logActivity("JARVIS delegerade till "+data.target,"↗",task.slice(0,80));
    updateTeamBoard("done",task,data.targets||[data.target],"Uppdraget analyserat och sammanställt.");
   }
