@@ -1960,9 +1960,7 @@ async function resumePendingJarvisJob(){
   }else{
    const names={NOVA:"NOVA",WEBMASTER:"WEBMASTER",GAME_DEVELOPER:"GAME DEVELOPER"};
    const team=(data.targets||[]).map(name=>names[name]||name).join(", ")||"AI-rådet";
-   const detail=(data.results||[]).map(item=>"\n\n"+(names[item.target]||item.target)+" – ANALYS:\n"+(item.reply||"Inget resultat mottogs.")).join("");
-   const reviews=(data.reviews||[]).map(item=>"\n\n"+(names[item.target]||item.target)+" – GRANSKNING:\n"+(item.reply||"Ingen granskning returnerades.")).join("");
-   loading.textContent="✓ JARVIS har slutfört ditt bakgrundsuppdrag.\nSamordnade med: "+team+"\n\nJARVIS BESLUT OCH RESULTAT:\n"+(data.reply||"Uppdraget är färdigt.")+detail+reviews+"\n\nAI-motor: "+(data.engine||"Okänd");
+   loading.textContent="✓ JARVIS har slutfört ditt bakgrundsuppdrag.\nSamordnade med: "+team+"\n\n"+(data.reply||"Uppdraget är färdigt.")+"\n\nTekniska detaljer och kod har hanterats internt.";
    updateTeamBoard("done",task,data.targets||[],"Bakgrundsuppdraget har återhämtats och slutförts.");
    logActivity("JARVIS slutförde ett återupptaget bakgrundsuppdrag","✓",task.slice(0,80));
   }
@@ -2049,9 +2047,7 @@ async function sendMessage(event,assistant){
     const council=data.council;
     const names={NOVA:"NOVA",WEBMASTER:"WEBMASTER",GAME_DEVELOPER:"GAME DEVELOPER"};
     const team=(council.targets||[]).map(name=>names[name]||name).join(", ");
-    const analyses=(council.results||[]).map(item=>"\n\n"+(names[item.target]||item.target)+" – FÖRSTA ANALYS:\n"+(item.reply||"Inget resultat mottogs.")).join("");
-    const reviews=(council.reviews||[]).map(item=>"\n\n"+(names[item.target]||item.target)+" – KOLLEGIAL GRANSKNING:\n"+(item.reply||"Ingen granskning returnerades.")).join("");
-    loading.textContent+="\n\n════════ AI-RÅD AUTOMATISKT SAMMANKALLAT ════════\nTeam: "+team+"\nJARVIS GEMENSAMMA ARBETSPLAN:\n"+(council.reply||"Ingen sammanställning mottogs.")+analyses+reviews;
+    loading.textContent+="\n\nJARVIS SAMORDNADE: "+team+".\n"+(council.reply||"Arbetet har samordnats och sammanställts.")+"\n\nSpecialisternas kod och arbetsanteckningar hålls utanför chatten.";
     logActivity("JARVIS kallade automatiskt AI-rådet","✦",team+" · "+(council.council_rounds||1)+" rådsrundor");
     updateTeamBoard("done",message,council.targets||[],(council.council_rounds||1)+" rådsrundor genomförda");
     const webmasterResult=(council.results||[]).find(item=>item.target==="WEBMASTER"&&item.reply);
@@ -2108,9 +2104,7 @@ async function jarvisDelegateLatest(){
   }else{
    const names={NOVA:"NOVA",WEBMASTER:"WEBMASTER",GAME_DEVELOPER:"GAME DEVELOPER"};
    const team=(data.targets||[data.target]).map(name=>names[name]||name).join(", ");
-   const detail=(data.results||[]).map(item=>"\n\n"+(names[item.target]||item.target)+" – FÖRSTA ANALYS:\n"+(item.reply||"Inget resultat mottogs.")).join("");
-   const reviews=(data.reviews||[]).map(item=>"\n\n"+(names[item.target]||item.target)+" – KOLLEGIAL GRANSKNING:\n"+(item.reply||"Ingen granskning returnerades.")).join("");
-   loading.textContent="✓ JARVIS samordnade: "+team+".\nRådsrundor: "+(data.council_rounds||1)+"\nVarför: "+(data.reason||"Flera specialistroller behövs för uppgiften.")+"\n\nJARVIS GEMENSAMMA BESLUT OCH ARBETSPLAN:\n"+(data.reply||"Inget sammanställt resultat.")+detail+reviews+"\n\nAI-motor: "+(data.engine||"Okänd");
+   loading.textContent="✓ JARVIS samordnade: "+team+".\n"+(data.reply||"Arbetet har sammanställts.")+"\n\nKod, specialistanalyser och interna arbetsanteckningar visas inte i chatten.";
    const webmasterResult=(data.results||[]).find(item=>item.target==="WEBMASTER"&&item.reply);
    if(webmasterResult){try{await createWebPreview(webmasterResult.reply,loading)}catch(previewError){const note=document.createElement("div");note.className="web-preview-note";note.textContent="Förhandsvisningen kunde inte skapas: "+previewError.message;loading.appendChild(note)}}
    loading.dataset.speechText="Jag har lämnat över uppdraget till "+(names[data.target]||data.target)+".";
