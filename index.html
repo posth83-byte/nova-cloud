@@ -1665,24 +1665,19 @@ function clearWebImages(){
 }
 function appendProjectLinks(element,source){
  if(!element||!source)return;
- const text=String(source);
- const withoutCode=text.replace(/```[\\s\\S]*?```/g," ").replace(/`[^`]*`/g," ");
+ const text=String(source),tick=String.fromCharCode(96);
+ const withoutCode=text.replace(new RegExp(tick+tick+tick+"[\\s\\S]*?"+tick+tick+tick,"g")," ").replace(new RegExp(tick+"[^"+tick+"]*"+tick,"g")," ");
  const found=new Map();
  const add=(url,label)=>{
   let value=String(url||"").trim().replace(/[.,!?;:]+$/,"");
-  try{
-   const parsed=new URL(value);
-   if(!["http:","https:"].includes(parsed.protocol))return;
-   value=parsed.href;
-   if(!found.has(value))found.set(value,String(label||"").trim());
-  }catch(e){}
+  try{const parsed=new URL(value);if(!["http:","https:"].includes(parsed.protocol))return;value=parsed.href;if(!found.has(value))found.set(value,String(label||"").trim())}catch(e){}
  };
  let match;
- const htmlLink=/ <a\\b[^>]*href\\s*=\\s*["'](https?:\\/\\/[^"']+)["'][^>]*>([\\s\\S]*?)<\\/a\\s*>/gi;
+ const htmlLink=/<a\b[^>]*href\s*=\s*["'](https?:\/\/[^"']+)["'][^>]*>([\s\S]*?)<\/a\s*>/gi;
  while((match=htmlLink.exec(withoutCode)))add(match[1],match[2].replace(/<[^>]*>/g," ").replace(/&amp;/g,"&").trim());
- const markdownLink=/\\[([^\\]]{1,100})\\]\\((https?:\\/\\/[^)\\s]+)\\)/g;
+ const markdownLink=/\[([^\]]{1,100})\]\((https?:\/\/[^)\s]+)\)/g;
  while((match=markdownLink.exec(withoutCode)))add(match[2],match[1]);
- const rawUrl=/https?:\\/\\/[^\\s<>"')\\]]+/gi;
+ const rawUrl=/https?:\/\/[^\s<>"')\]]+/gi;
  while((match=rawUrl.exec(withoutCode)))add(match[0],"");
  if(!found.size)return;
  let panel=element.querySelector(":scope > .project-actions");
@@ -1692,8 +1687,7 @@ function appendProjectLinks(element,source){
   const link=document.createElement("a");link.className="project-action";
   const cleanLabel=String(label||"").replace(/<[^>]*>/g,"").trim();
   link.textContent=(cleanLabel||"ÖPPNA PROJEKTET").slice(0,90).toLocaleUpperCase("sv-SE");
-  link.href=url;link.target="_blank";link.rel="noopener noreferrer";
-  panel.appendChild(link);
+  link.href=url;link.target="_blank";link.rel="noopener noreferrer";panel.appendChild(link);
  });
 }
 async function createWebPreview(reply,mountElement=null){
