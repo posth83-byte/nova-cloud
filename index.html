@@ -1882,7 +1882,8 @@ async function sendMessage(event,assistant){
    data.reply=jobResult.reply||data.reply;
    data.engine=jobResult.engine||data.engine;
    data.council_started=jobResult.status==="delegated";
-   data.council_error=jobResult.status==="needs_discussion"?"JARVIS rekommenderar fortsatt diskussion.":null;
+   data.council_needs_discussion=jobResult.status==="needs_discussion";
+   data.council_error=null;
   }
   if(isNova){
    window.novaRunwayReferenceImageData=imageData;
@@ -1915,6 +1916,9 @@ async function sendMessage(event,assistant){
       else{const note=document.createElement("div");note.className="web-preview-note";note.textContent="Webmaster lämnade ingen komplett HTML-sida ännu. JARVIS ska be om en komplett uppdaterad fil innan leveransen räknas som klar.";loading.appendChild(note)}
      }catch(previewError){const note=document.createElement("div");note.className="web-preview-note";note.textContent="Hemsidans förhandsvisning kunde inte skapas: "+previewError.message;loading.appendChild(note)}
     }
+   }else if(assistant==="jarvis"&&data.council_needs_discussion){
+    updateTeamBoard("idle",message,[],"JARVIS rekommenderar fortsatt diskussion innan specialistarbete startas.");
+    loading.textContent+="\n\nJARVIS rekommenderar fortsatt diskussion innan specialisterna får en arbetsorder.";
    }else if(assistant==="jarvis"&&data.council_error){
     updateTeamBoard("error",message,[],"AI-rådet kunde inte startas.");
     loading.textContent+="\n\nAI-rådet kunde inte startas: "+data.council_error;
