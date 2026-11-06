@@ -1879,6 +1879,8 @@ async function sendMessage(event,assistant){
    loading.textContent=data.reply||"Uppdraget är sparat på servern.";
    const jobResult=await waitForJarvisJob(data.job_id,data.job_access_token,loading,message);
    data.council=jobResult;
+   data.reply=jobResult.reply||data.reply;
+   data.engine=jobResult.engine||data.engine;
    data.council_started=jobResult.status==="delegated";
    data.council_error=jobResult.status==="needs_discussion"?"JARVIS rekommenderar fortsatt diskussion.":null;
   }
