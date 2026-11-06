@@ -37,6 +37,22 @@ app.include_router(runway_router)
 # Temporary previews are cleared when the service restarts.
 preview_pages = {}
 
+# Live team status for the shared JARVIS workspace (per running server process).
+team_runtime_state = {
+    "status": "idle", "task": "", "phase": "Väntar på uppdrag",
+    "active": [], "completed": [], "updated": datetime.now(timezone.utc).isoformat()
+}
+
+def set_team_runtime(status, task=None, phase=None, active=None, completed=None):
+    team_runtime_state.update({
+        "status": status,
+        "task": task if task is not None else team_runtime_state.get("task", ""),
+        "phase": phase if phase is not None else team_runtime_state.get("phase", ""),
+        "active": list(active if active is not None else team_runtime_state.get("active", [])),
+        "completed": list(completed if completed is not None else team_runtime_state.get("completed", [])),
+        "updated": datetime.now(timezone.utc).isoformat()
+    })
+
 
 # ==========================================
 # INSTÄLLNINGAR
@@ -1540,6 +1556,12 @@ async def status():
     }
 
 
+@app.get("/api/team/status")
+async def team_status():
+    """Current real collaboration stage for the shared team room."""
+    return dict(team_runtime_state)
+
+
 # ==========================================
 # IDÉER – MIKAEL POSTH
 # ==========================================
@@ -1806,6 +1828,7 @@ async def jarvis_delegate(request: JarvisDelegateRequest):
     """JARVIS leder ett internt AI-råd, låter specialisterna granska varandra och sammanställer en plan."""
     task = request.task.strip()
     context = build_conversation_context(request.history, task, "JARVIS")
+    set_team_runtime("working", task, "JARVIS analyserar uppdraget och väljer specialister", [], [])
     selector_prompt = """
 Du är JARVIS, projektledare för ett AI-kontor. Välj vilka specialister som behövs:
 NOVA = YouTube, kreativ produktion, research, manus och videor.
@@ -1857,7 +1880,9 @@ Delegering ger inte tillstånd att köpa, publicera, betala eller utföra extern
 
         # RÅDSRUNDA 1: varje specialist gör sin självständiga analys.
         results, previous = [], []
+        set_team_runtime("working", task, "Specialisterna gör sina första analyser", [ordered[0]], [])
         for target in ordered:
+            set_team_runtime("working", task, f"{target} arbetar med sin specialistanalys", [target], [r["target"] for r in results])
             assigned = str(tasks.get(target, "")).strip() or f"Bidra till projektet: {task}"
             handoff = (
                 "DU DELTAR I JARVIS INTERNA AI-RÅD. Gör en självständig första analys "
@@ -1879,6 +1904,7 @@ Delegering ger inte tillstånd att köpa, publicera, betala eller utföra extern
         council_reviews = []
         if len(ordered) > 1:
             for target in ordered:
+                set_team_runtime("working", task, f"{target} granskar kollegornas förslag", [target], [r["target"] for r in results])
                 peer_material = "\n\n".join(
                     f"{item['target']}S FÖRSLAG:\n{item['reply'][:6000]}"
                     for item in results if item["target"] != target
@@ -1899,6 +1925,7 @@ Delegering ger inte tillstånd att köpa, publicera, betala eller utföra extern
                     "target": target, "reply": review["reply"], "engine": review["engine"]
                 })
 
+        set_team_runtime("working", task, "JARVIS sammanställer rådets gemensamma beslut", ["JARVIS"], ordered)
         summary_input = (
             "PROJEKT:\n" + task + "\n\nFÖRSTA ANALYSER:\n"
             + "\n\n".join(f"{r['target']}:\n{r['reply'][:7000]}" for r in results)
@@ -1916,6 +1943,7 @@ Delegering ger inte tillstånd att köpa, publicera, betala eller utföra extern
             "Påstå inte att externa åtgärder har utförts. Svara på naturlig svenska."
         )
         summary = generate_reply(summary_input, summary_prompt, max_tokens=4000)
+        set_team_runtime("done", task, "Rådet är klart – JARVIS har sammanställt resultatet", [], ordered)
         return {
             "status": "delegated",
             "target": ordered[0] if len(ordered) == 1 else "MULTI",
@@ -1931,6 +1959,7 @@ Delegering ger inte tillstånd att köpa, publicera, betala eller utföra extern
     except HTTPException:
         raise
     except Exception as error:
+        set_team_runtime("error", task, f"Rådet avbröts: {str(error)[:180]}", [], team_runtime_state.get("completed", []))
         raise HTTPException(
             status_code=502,
             detail=f"JARVIS kunde inte samordna AI-rådet: {str(error)[:1000]}"
