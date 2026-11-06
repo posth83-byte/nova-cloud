@@ -1558,6 +1558,7 @@ const CHAT_HISTORY_KEY="jarvis_nova_chat_history_v1";
 function getConversationHistory(room,limit=14){
  const area=$(room+"Messages");if(!area)return [];
  return Array.from(area.querySelectorAll(".msg"))
+  .reverse()
   .filter(node=>node.classList.contains("user")||node.classList.contains("ai"))
   .map(node=>{
    let content=(node.textContent||"").trim();
@@ -1569,7 +1570,7 @@ function getConversationHistory(room,limit=14){
 }
 function saveChatHistory(room){
  const area=$(room+"Messages");if(!area)return;
- const items=Array.from(area.querySelectorAll(".msg")).map(node=>({
+ const items=Array.from(area.querySelectorAll(".msg")).reverse().map(node=>({
   type:node.classList.contains("user")?"user":node.classList.contains("error")?"error":"ai",
   text:node.textContent||""
  })).slice(-100);
@@ -1585,14 +1586,14 @@ function restoreChatHistory(){
    saved.slice(-100).forEach(item=>{
     const node=document.createElement("div");
     node.className="msg "+(item.type==="user"?"user":item.type==="error"?"error":"ai");
-    node.textContent=String(item.text||"");area.appendChild(node);
+    node.textContent=String(item.text||"");area.prepend(node);
    });
-   area.scrollTop=area.scrollHeight;
+   area.scrollTop=0;
   }catch(e){}
  });
 }
 function addMessage(target,text,type="ai"){
- const area=$(target),msg=document.createElement("div");msg.className="msg "+type;msg.textContent=text;area.appendChild(msg);area.scrollTop=area.scrollHeight;
+ const area=$(target),msg=document.createElement("div");msg.className="msg "+type;msg.textContent=text;area.prepend(msg);area.scrollTop=0;
  if(target==="jarvisMessages")saveChatHistory("jarvis");
  if(target==="novaMessages")saveChatHistory("nova");
  if(target==="webMessages")saveChatHistory("web");
