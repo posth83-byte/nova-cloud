@@ -361,7 +361,7 @@ def get_user_authored_memory_text(message):
     if matches:
         return "\n".join(part.strip() for part in matches if part.strip())[-9000:]
     # Agent endpoints may wrap a plain user message after injecting retrieved memories.
-    current_context = re.search(r"AKTUELLT SAMMANHANG:\\s*(.*)$", source, flags=re.DOTALL)
+    current_context = re.search(r"AKTUELLT SAMMANHANG:\s*(.*)$", source, flags=re.DOTALL)
     if current_context:
         return current_context.group(1).strip()[:9000]
     # Raw JARVIS messages arrive without conversation-role labels.
