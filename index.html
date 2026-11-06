@@ -1559,7 +1559,19 @@ async function sendMessage(event,assistant){
   }else{
    if(isNova)window.novaChatSceneFiles=[];
    const reply=(data.reply||"Inget svar mottogs.")+"\n\nAI-motor: "+(data.engine||"Okänd");
-   loading.textContent=reply;loading.dataset.speechText=data.reply||"Inget svar mottogs.";
+   loading.textContent=reply;
+   if(assistant==="jarvis"&&data.council_started&&data.council){
+    const council=data.council;
+    const names={NOVA:"NOVA",WEBMASTER:"WEBMASTER",GAME_DEVELOPER:"GAME DEVELOPER"};
+    const team=(council.targets||[]).map(name=>names[name]||name).join(", ");
+    const analyses=(council.results||[]).map(item=>"\n\n"+(names[item.target]||item.target)+" – FÖRSTA ANALYS:\n"+(item.reply||"Inget resultat mottogs.")).join("");
+    const reviews=(council.reviews||[]).map(item=>"\n\n"+(names[item.target]||item.target)+" – KOLLEGIAL GRANSKNING:\n"+(item.reply||"Ingen granskning returnerades.")).join("");
+    loading.textContent+="\n\n════════ AI-RÅD AUTOMATISKT SAMMANKALLAT ════════\nTeam: "+team+"\nJARVIS GEMENSAMMA ARBETSPLAN:\n"+(council.reply||"Ingen sammanställning mottogs.")+analyses+reviews;
+    logActivity("JARVIS kallade automatiskt AI-rådet","✦",team+" · "+(council.council_rounds||1)+" rådsrundor");
+   }else if(assistant==="jarvis"&&data.council_error){
+    loading.textContent+="\n\nAI-rådet kunde inte startas: "+data.council_error;
+   }
+   loading.dataset.speechText=data.reply||"Inget svar mottogs.";
   }
   saveChatHistory(assistant);addSpeechButton(loading,assistant);
   if(isWeb){try{const made=await createWebPreview(data.reply||"");if(!made){const hint=document.createElement("div");hint.className="web-preview-note";hint.textContent="Be WEBMASTER skapa en komplett hemsida i ett enda HTML-kodblock."; $("webPreviewArea").hidden=false;$("webPreviewArea").replaceChildren(hint);}}catch(previewError){addMessage("webMessages","Kunde inte skapa förhandsvisning: "+previewError.message,"error")}}
