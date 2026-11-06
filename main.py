@@ -2422,15 +2422,15 @@ Delegering ger inte tillstånd att köpa, publicera, betala eller utföra extern
         # SISTA KVALITETSGRINDEN: även en ensam specialist får sitt resultat granskat.
         set_team_runtime("working", task, "JARVIS gör slutlig kvalitetskontroll", ["JARVIS"], ordered)
         quality_input = (
-            "UPPDRAG:\\n" + task + "\\n\\n"
-            "JARVIS FÖRSLAG:\\n" + summary["reply"][:9000] + "\\n\\n"
-            "SPECIALISTERNAS UNDERLAG:\\n"
-            + "\\n\\n".join(
-                f"{item['target']}:\\n{item['reply'][:5000]}" for item in results
+            "UPPDRAG:\n" + task + "\n\n"
+            "JARVIS FÖRSLAG:\n" + summary["reply"][:9000] + "\n\n"
+            "SPECIALISTERNAS UNDERLAG:\n"
+            + "\n\n".join(
+                f"{item['target']}:\n{item['reply'][:5000]}" for item in results
             )
-            + ("\\n\\nKOLLEGIAL GRANSKNING:\\n"
-               + "\\n\\n".join(
-                   f"{item['target']}:\\n{item['reply'][:3500]}" for item in council_reviews
+            + ("\n\nKOLLEGIAL GRANSKNING:\n"
+               + "\n\n".join(
+                   f"{item['target']}:\n{item['reply'][:3500]}" for item in council_reviews
                ) if council_reviews else "")
         )
         quality_prompt = """
@@ -2451,7 +2451,7 @@ Avsluta med en kort sektion "Kvar att göra" endast om något faktiskt återstå
             "targets": ordered,
             "reason": str(plan.get("reason", "")),
             "council_rounds": 2 if council_reviews else 1,
-            "quality_gate": "passed",
+            "quality_gate": "reviewed",
             "workflow": ["routing", "specialist_analysis", "peer_review" if council_reviews else "self_review", "synthesis", "final_quality_check"],
             "results": results,
             "reviews": council_reviews,
