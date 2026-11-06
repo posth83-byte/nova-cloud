@@ -827,17 +827,14 @@ header .sub{color:#d6a19a}
  </section>
 
  <section class="home-jarvis-chat" style="max-width:760px;margin:16px auto 28px;padding:0 12px">
-  <div class="chat-title" style="font-size:12px;letter-spacing:2px;margin:0 0 9px;color:#ffb29a">JARVIS / DIREKTKONTAKT FRÅN HUVUDSIDAN</div>
+  <div class="chat-title" style="font-size:12px;letter-spacing:2px;margin:0 0 9px;color:#ffb29a">JARVIS / DIN DIREKTA KOMMANDOLINJE</div>
   <div class="chatbox">
   <div class="chat-title">JARVIS / SECURE AI CONNECTION</div>
   <div class="messages" id="jarvisMessages"><div class="msg ai">God dag. JARVIS är redo. Vad kan jag hjälpa dig med?</div></div>
   <div class="voice-panel"><div class="voice-heading">JARVIS / RÖSTINSTÄLLNINGAR</div><div class="voice-row"><select class="voice-select" id="jarvisVoiceSelect" aria-label="Välj JARVIS-röst"><option value="">Laddar tillgängliga röster...</option></select><button class="voice-test" type="button" onclick="testVoice('jarvis')">TESTA RÖST</button></div><div class="voice-row" style="margin-top:12px"><label style="flex:1;min-width:145px;font-size:10px">TALHASTIGHET <strong id="jarvisRateValue">0,95×</strong><input id="jarvisRate" type="range" min="0.7" max="1.2" step="0.05" value="0.95" style="display:block;width:100%;margin-top:7px"></label><label style="flex:1;min-width:145px;font-size:10px">TONLÄGE <strong id="jarvisPitchValue">0,92</strong><input id="jarvisPitch" type="range" min="0.7" max="1.3" step="0.05" value="0.92" style="display:block;width:100%;margin-top:7px"></label></div><div class="voice-note" style="margin-top:12px">Automatisk uppläsning är avstängd. Aktivera samtalsläge eller tryck på ”LÄS UPP SVARET” när du själv vill höra JARVIS.</div><div class="voice-note">Röstlistan visar de röster som Safari faktiskt gör tillgängliga. En nedladdad Siri-röst kan saknas om iOS inte exponerar den för webbsidor.</div><div class="voice-status" id="jarvisVoiceStatus">Röstsystem redo.</div></div>
-  <div class="voice-panel" style="margin-top:10px"><div class="voice-heading">JARVIS / SAMTALSLÄGE</div><div class="voice-row"><button type="button" class="voice-test" id="jarvisTalkStart" onclick="startJarvisVoiceConversation()">🎙 STARTA SAMTAL MED JARVIS</button><button type="button" class="voice-test" id="jarvisTalkStop" onclick="stopWakeListening()" disabled>STOPPA</button></div><div class="voice-note">Tryck en gång för att börja prata. JARVIS lyssnar på svenska och svarar med vald röst. Du kan också skriva i chatten nedanför.</div></div>
+  <div class="voice-panel" style="margin-top:10px"><div class="voice-heading">JARVIS / SAMTALSLÄGE</div><div class="voice-row"><button type="button" class="voice-test" id="jarvisTalkStart" onclick="startJarvisVoiceConversation()">🎙 STARTA SAMTAL MED JARVIS</button><button type="button" class="voice-test" id="jarvisTalkStop" onclick="stopWakeListening()" disabled>STOPPA</button></div><div class="voice-note">Tryck en gång för att börja prata. JARVIS lyssnar på svenska och svarar med vald röst. Skriv till mig när som helst. Röstläget startar bara när du själv trycker på knappen.</div></div>
   <form class="input-row" onsubmit="sendMessage(event,'jarvis')"><input class="chat-input" id="jarvisInput" placeholder="Skriv till JARVIS..." autocomplete="off"><button class="send" id="jarvisSend">SKICKA</button></form>
-  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:9px">
-   <button type="button" id="jarvisDelegateButton" onclick="jarvisDelegateLatest()" style="width:100%;padding:11px;border:1px solid #39c8ff88;border-radius:9px;background:linear-gradient(135deg,#0b2941,#172044);color:#eaf8ff;font-weight:800">✦ LÅT JARVIS VÄLJA MEDARBETARE OCH UTFÖRA JOBBET</button>
-  </div>
-  <div style="font-size:11px;color:#91a9c2;margin-top:6px;line-height:1.45">Diskutera först med JARVIS. När ni är överens trycker du här för att lämna över den senaste uppgiften till rätt medarbetare.</div>
+
   </div>
  </section>
 
@@ -928,7 +925,7 @@ ox-spelutvecklare. Från spelidé och värld till Luau-kod, system, testning och
 
 <!-- JARVIS ROOM -->
 <section class="room-view hidden" id="jarvisView">
- <div class="room-topbar"><button class="back-btn" onclick="goHome()">← TILL HUVUDCENTRALEN</button><div class="room-live" id="jarvisLive">● JARVIS ONLINE</div></div>
+ <div class="room-topbar"><button class="back-btn" onclick="goHome()">← TILL HUVUDCENTRALEN</button><button class="back-btn" type="button" onclick="openTeamRoom()">AI-TEAMETS RUM →</button><div class="room-live" id="jarvisLive">● JARVIS ONLINE</div></div>
  <div class="room-heading"><div class="eyebrow">01 / MAIN CONTROL ROOM</div><h2>JARVIS</h2><p>Personlig AI-assistent. Redo att hjälpa dig med teknik, vardag, research och planering.</p></div>
  <div class="workstation-stage">
   <div class="holo-grid"></div><div class="projection-beam"></div><div class="ai-scan"></div>
@@ -945,7 +942,7 @@ ox-spelutvecklare. Från spelidé och värld till Luau-kod, system, testning och
   <div class="ai-monitor"><div class="monitor-top"><span>JARVIS / MAIN CONTROL</span><span id="jarvisMonitorStatus">● SYSTEM ACTIVE</span></div><div class="monitor-content"><div class="monitor-panel"><div class="monitor-line"></div><div class="monitor-line"></div><div class="monitor-line"></div></div><div class="monitor-panel"><div class="monitor-graph"><span></span><span></span><span></span><span></span><span></span><span></span></div></div><div class="monitor-panel"><div class="monitor-line"></div><div class="monitor-line"></div><div class="monitor-line"></div></div></div></div>
   <div class="ai-desk"></div><div class="ai-floor"></div>
  </div>
- <div class="room-content"><p class="voice-note">JARVIS huvudsamtal finns på startsidan under hologrammet. Gå tillbaka till huvudcentralen för att fortsätta chatta.</p></div>
+ <div class="room-content" id="jarvisChatMount"><div class="voice-note">JARVIS säkra kommandolinje laddas...</div></div>
 </section>
 
 <!-- NOVA ROOM -->
@@ -1349,6 +1346,8 @@ function stopWakeListening(){
 (function mountSharedTeamRoom(){
  const board=document.querySelector(".team-board"),mount=document.getElementById("teamBoardMount");
  if(board&&mount)mount.appendChild(board);
+ const chat=document.querySelector(".home-jarvis-chat"),chatMount=document.getElementById("jarvisChatMount");
+ if(chat&&chatMount){chatMount.replaceChildren(chat);chat.style.maxWidth="100%";chat.style.margin="12px 0 24px";chat.style.padding="0";}
  const hint=document.querySelector(".office-hint");if(hint)hint.textContent="JARVIS ÄR DIN ENDA KONTAKTPUNKT · TEAMET ARBETAR I BAKGRUNDEN";
  const live=document.querySelector(".office-live");if(live)live.textContent="● JARVIS + AI-TEAM";
 })();
@@ -1369,6 +1368,10 @@ function enterRoom(room){
  logActivity(room.toUpperCase()+"-rummet öppnades",room==="nova"?"✧":"✦","AI-rum aktiverat");
  if(room==="nova")setTimeout(()=>{if($("novaView").classList.contains("hidden"))return;window.scrollTo({top:0,behavior:"smooth"})},100);
  setTimeout(()=>$(room+"Input").focus(),450);
+}
+function openTeamRoom(){
+ goHome();
+ setTimeout(()=>{const room=$("teamRoomShell");if(room)room.scrollIntoView({behavior:"smooth",block:"start"})},90);
 }
 function restartJarvisLandingAnimations(){
  const root=$("jarvisLandingCore");if(!root)return;
