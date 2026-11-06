@@ -1655,7 +1655,7 @@ async function createWebPreview(reply,mountElement=null){
   if(start>=0)page=source.slice(start).trim();
  }
  if(!page)return false;
- if(!/<html\\b/i.test(page))page="<!doctype html><html><head><meta charset=\"utf-8\"></head><body>"+page+"</body></html>";
+  if(!new RegExp("<html\\b","i").test(page))page="<!doctype html><html><head><meta charset=\"utf-8\"></head><body>"+page+"</body></html>";
  const placeholder="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%27800%27 height=%27450%27 viewBox=%270 0 800 450%27%3E%3Crect width=%27800%27 height=%27450%27 fill=%27%23102233%27/%3E%3Ctext x=%27400%27 y=%27225%27 fill=%27%23ffffff%27 font-size=%2728%27 text-anchor=%27middle%27%3ELagg till en egen bild%3C/text%3E%3C/svg%3E";
  webmasterImages.forEach((item,index)=>{page=page.split("{{WEBMASTER_IMAGE_"+(index+1)+"}}").join(item.data)});
  page=page.split("{{WEBMASTER_IMAGE}}").join(webmasterImages.length?webmasterImages[0].data:placeholder);
