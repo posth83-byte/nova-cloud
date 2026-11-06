@@ -109,7 +109,7 @@ def init_memory_core():
 
 
 def save_memory_item(text, category="note", project="", importance=3, source="user"):
-    clean_text = re.sub(r"\\s+", " ", str(text or "")).strip()
+    clean_text = re.sub(r"\s+", " ", str(text or "")).strip()
     if len(clean_text) < 3:
         return None
     clean_category = re.sub(r"[^a-zA-Z0-9_åäöÅÄÖ-]", "", str(category or "note"))[:40] or "note"
