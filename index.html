@@ -607,6 +607,23 @@ header .sub{color:#d6a19a}
  .jarvis-open{margin-top:7px;padding:10px 13px}
 }
 
+
+/* JARVIS-first navigation: keep the existing orange identity */
+.rooms,.wake-panel{display:none!important}
+.team-room-shell{position:relative;overflow:hidden;margin:22px 0 0;padding:22px 16px;border:1px solid #f28a52;border-radius:20px;background:radial-gradient(ellipse at 50% 0%,#63351f66,transparent 62%),linear-gradient(145deg,#24150f,#100d0b 75%);box-shadow:0 0 28px #ff8a3d20,inset 0 0 35px #ff8a3d0d}
+.team-room-shell:before{content:"";position:absolute;inset:0;pointer-events:none;opacity:.12;background-image:linear-gradient(#ff9b5c44 1px,transparent 1px),linear-gradient(90deg,#ff9b5c44 1px,transparent 1px);background-size:34px 34px}
+.team-room-heading{position:relative;z-index:1;text-align:center;margin-bottom:16px}
+.team-room-heading .eyebrow{font-size:9px;letter-spacing:3px;color:#ffb27d}
+.team-room-heading h2{margin:9px 0;color:#fff0e5;font-size:clamp(20px,5vw,30px);letter-spacing:3px;text-shadow:0 0 18px #ff8a3d55}
+.team-room-heading p{max-width:560px;margin:0 auto;color:#c9a995;font-size:11px;line-height:1.6}
+.team-room-shell .team-board{position:relative;z-index:1;margin:0;border-color:#b86b3d;background:#1a120fdd;box-shadow:0 0 22px #ff8a3d18}
+.team-room-shell .team-board-title{color:#ffb27d}
+.team-room-shell .team-worker{border-color:#9b5a36;background:linear-gradient(145deg,#392116,#1b120e)}
+.team-room-shell .worker-avatar{color:#ffc08f}
+.team-room-shell .team-task{color:#e9c8b2}
+.team-room-link{position:relative;z-index:1;display:block;width:100%;margin:14px 0 0;padding:13px;border:1px solid #f2a16d;border-radius:10px;background:linear-gradient(90deg,#713719,#a94f20);color:#fff4ec;font-weight:800;font-size:10px;letter-spacing:1.5px}
+.home-jarvis-chat .chat-title{color:#ffb29a}
+.activity-actions button[onclick*="enterRoom('nova')"],.activity-actions button[onclick*="enterRoom('jarvis')"]{display:none!important}
 </style>
 </head>
 <body>
@@ -865,6 +882,16 @@ ox-spelutvecklare. Från spelidé och värld till Luau-kod, system, testning och
   <div class="activity-count" id="activityCount">0 REGISTRERADE HÄNDELSER</div>
   <div class="activity-list" id="activityList"><div class="activity-empty">Aktiviteter visas här när du börjar använda systemen.</div></div>
   <div class="activity-actions"><button class="activity-btn clear-btn" onclick="clearActivity()">RENSA AKTIVITETSLOGG</button></div>
+ </section>
+ <section class="team-room-shell" id="teamRoomShell">
+  <div class="team-room-heading"><div class="eyebrow">COLLABORATION FLOOR / AI TEAM</div><h2>GEMENSAMT AI-RUM</h2><p>Här samlas NOVA, Webmaster, Game Developer och övriga specialister när JARVIS kallar in dem. Du följer samarbetet här – all kommunikation och alla uppdrag går via JARVIS.</p></div>
+  <div class="team-room-stage" aria-hidden="true" style="height:62px;display:flex;align-items:center;justify-content:center;gap:12px;position:relative;z-index:1;margin-bottom:10px">
+   <span style="width:10px;height:10px;border-radius:50%;background:#ffad73;box-shadow:0 0 16px #ff8a3d;animation:pulse 1.8s infinite"></span>
+   <span style="font-size:9px;letter-spacing:2px;color:#f6c3a0">TEAM CONNECTION · READY FOR JARVIS</span>
+   <span style="width:10px;height:10px;border-radius:50%;background:#ffad73;box-shadow:0 0 16px #ff8a3d;animation:pulse 1.8s infinite"></span>
+  </div>
+  <div id="teamBoardMount"></div>
+  <button type="button" class="team-room-link" onclick="document.getElementById('teamRoomShell').scrollIntoView({behavior:'smooth',block:'start'})">VISA AI-TEAMETS ARBETE ↓</button>
  </section>
 </div>
 
@@ -1286,6 +1313,14 @@ function stopWakeListening(){
  const jarvisStart=$("jarvisTalkStart"),jarvisStop=$("jarvisTalkStop");if(jarvisStart)jarvisStart.disabled=false;if(jarvisStop)jarvisStop.disabled=true;
  wakeStatus("Mikrofonen är avstängd.");
 }
+
+/* JARVIS-FIRST CONTROL ROOM: move the existing live team board into the shared collaboration room */
+(function mountSharedTeamRoom(){
+ const board=document.querySelector(".team-board"),mount=document.getElementById("teamBoardMount");
+ if(board&&mount)mount.appendChild(board);
+ const hint=document.querySelector(".office-hint");if(hint)hint.textContent="JARVIS ÄR DIN ENDA KONTAKTPUNKT · TEAMET ARBETAR I BAKGRUNDEN";
+ const live=document.querySelector(".office-live");if(live)live.textContent="● JARVIS + AI-TEAM";
+})();
 
 /* ROOM STATES */
 function setRoomState(room,state){
