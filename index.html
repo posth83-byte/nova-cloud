@@ -198,6 +198,20 @@ main{position:relative;z-index:1;max-width:1400px;margin:auto;padding:20px 15px 
 .jarvis-orb-button.active .jarvis-orb-ring{border-color:#ffbd91;box-shadow:0 0 22px #ff762e,inset 0 0 18px #ff762e88}
 .jarvis-orb-button.listening .jarvis-holo-ball{box-shadow:0 0 24px #54d9ff,0 0 58px #ff812f88}
 .jarvis-orb-button.speaking .jarvis-holo-ball{animation:jarvisBallSpeak .48s ease-in-out infinite alternate;box-shadow:0 0 30px #b6f6ff,0 0 70px #ff812fbb}
+.jarvis-orb-button.speaking .jarvis-orb-ring{animation-duration:1.15s;border-width:3px}
+.jarvis-orb-button.speaking .ring-two{animation-duration:1.8s}
+.jarvis-orb-button.listening .jarvis-orb-ring{animation-duration:2.2s}
+.jarvis-orb-button.listening .ring-two{animation-duration:3.4s}
+.jarvis-orb-button.speaking .jarvis-holo-ball:before{animation:jarvisCoreWave .36s ease-in-out infinite alternate}
+.jarvis-orb-button.speaking .jarvis-holo-ball:after{animation:jarvisCoreWave .52s ease-in-out infinite alternate-reverse}
+.jarvis-orb-button.listening .jarvis-holo-ball:before{animation:jarvisCoreWave .8s ease-in-out infinite alternate}
+.jarvis-orb-button.listening .jarvis-holo-ball:after{animation:jarvisCoreWave 1.1s ease-in-out infinite alternate-reverse}
+.jarvis-orb-button.speaking:before,.jarvis-orb-button.listening:before{content:"";position:absolute;inset:-8px;border:1px solid #ffad76aa;border-radius:50%;animation:jarvisEnergyWave 1.4s ease-out infinite}
+.jarvis-orb-button.speaking:after,.jarvis-orb-button.listening:after{content:"";position:absolute;inset:-8px;border:1px solid #72dfff88;border-radius:50%;animation:jarvisEnergyWave 1.4s ease-out infinite .7s}
+.jarvis-orb-button.speaking .jarvis-holo-ball{filter:brightness(1.25) saturate(1.2)}
+@keyframes jarvisCoreWave{from{transform:rotateX(65deg) scale(.86);opacity:.45}to{transform:rotateX(65deg) scale(1.14);opacity:1}}
+@keyframes jarvisEnergyWave{0%{transform:scale(.82);opacity:.9}100%{transform:scale(1.42);opacity:0}}
+
 .jarvis-orb-caption{position:relative;z-index:1;color:#ffc39f;font-size:9px;letter-spacing:3px;text-align:center;text-shadow:0 0 12px #ff8b45}
 .jarvis-orb-hint{position:relative;z-index:1;color:#8ea9c2;font-size:9px;text-align:center;line-height:1.5}
 @keyframes jarvisOrangeOrbit{to{transform:rotate(360deg)}}
@@ -899,7 +913,7 @@ header .sub{color:#d6a19a}
   <div class="chat-title">JARVIS / SECURE AI CONNECTION</div>
   <div class="messages" id="jarvisMessages"><div class="msg ai">God dag. JARVIS är redo. Vad kan jag hjälpa dig med?</div></div>
   
-   <div class="jarvis-holo-voice" id="jarvisHoloVoice"><button class="jarvis-orb-button" id="jarvisVoiceButton" type="button" onclick="toggleJarvisVoice()" aria-label="Tryck för att prata med JARVIS" title="Tryck för att prata med JARVIS"><span class="jarvis-orb-ring"></span><span class="jarvis-orb-ring ring-two"></span><span class="jarvis-orb-ring ring-three"></span><span class="jarvis-holo-ball" id="jarvisHoloBall"></span></button><div class="jarvis-orb-caption" id="jarvisOrbCaption">JARVIS / STANDBY</div><div class="jarvis-orb-hint" id="jarvisOrbHint">Tryck på den orange holografiska ringen för att starta ett röstsamtal</div></div><form class="input-row jarvis-input-row" onsubmit="sendMessage(event,'jarvis')"><input class="chat-input" id="jarvisInput" placeholder="Eller skriv till JARVIS..." autocomplete="off"><button class="send" id="jarvisSend">SKICKA</button></form>
+   <div class="jarvis-holo-voice" id="jarvisHoloVoice"><button class="jarvis-orb-button" id="jarvisVoiceButton" type="button" onclick="toggleJarvisVoice()" aria-label="Tryck för att prata med JARVIS" title="Tryck för att prata med JARVIS"><span class="jarvis-orb-ring"></span><span class="jarvis-orb-ring ring-two"></span><span class="jarvis-orb-ring ring-three"></span><span class="jarvis-holo-ball" id="jarvisHoloBall"><span class="jarvis-orb-core"></span></span></button><div class="jarvis-orb-caption" id="jarvisOrbCaption">JARVIS / STANDBY</div><div class="jarvis-orb-hint" id="jarvisOrbHint">Tryck på den orange holografiska ringen för att starta ett röstsamtal</div></div><form class="input-row jarvis-input-row" onsubmit="sendMessage(event,'jarvis')"><input class="chat-input" id="jarvisInput" placeholder="Eller skriv till JARVIS..." autocomplete="off"><button class="send" id="jarvisSend">SKICKA</button></form>
 
   </div>
  </section>
@@ -1358,7 +1372,7 @@ function stopSpeech(){
  if("speechSynthesis" in window)window.speechSynthesis.cancel();
  if(activeSpeechButton){activeSpeechButton.textContent="▶ LÄS UPP SVARET";activeSpeechButton.classList.remove("speaking")}
  if(activeSpeechRoom){const status=$(activeSpeechRoom+"VoiceStatus");if(status)status.textContent="Uppläsningen stoppad.";setRoomState(activeSpeechRoom,"idle")}
- activeUtterance=null;activeSpeechButton=null;activeSpeechRoom=null;
+ activeUtterance=null;activeSpeechButton=null;activeSpeechRoom=null;if(typeof wakeListening!=="undefined"&&wakeListening&&typeof setJarvisOrbState==="function")setJarvisOrbState("listening");else if(typeof setJarvisOrbState==="function")setJarvisOrbState("idle");
 }
 function speakText(text,room,button=null){
  if(!("speechSynthesis" in window)){const status=$(room+"VoiceStatus");if(status)status.textContent="Rösten stöds inte i den här webbläsaren.";return}
@@ -1367,6 +1381,7 @@ function speakText(text,room,button=null){
  const settings=room==="jarvis"?getJarvisVoiceSettings():{rate:.95,pitch:.92};utterance.lang=voice?voice.lang:"sv-SE";utterance.rate=settings.rate;utterance.pitch=settings.pitch;utterance.volume=1;if(voice)utterance.voice=voice;
  activeUtterance=utterance;activeSpeechButton=button;activeSpeechRoom=room;const status=$(room+"VoiceStatus");
  utterance.onstart=()=>{if(button){button.textContent="■ STOPPA UPPLÄSNING";button.classList.add("speaking")}if(status)status.textContent="AI-rösten läser upp svaret...";setRoomState(room,"responding");if(room==="jarvis")setJarvisOrbState("speaking")};
+ utterance.onboundary=(event)=>{if(room!=="jarvis")return;const ball=$("jarvisHoloBall");if(!ball||!window.speechSynthesis.speaking)return;const pulse=1+Math.min(.12,((event.charLength||2)/40));ball.style.transform="scale("+pulse.toFixed(3)+")";};
  utterance.onend=()=>{if(button){button.textContent="▶ LÄS UPP SVARET";button.classList.remove("speaking")}if(status)status.textContent="Uppläsningen klar.";setRoomState(room,"idle");if(room==="jarvis")setJarvisOrbState(wakeListening?"listening":"idle");activeUtterance=null;activeSpeechButton=null;activeSpeechRoom=null;if(wakeListening&&wakeRecognition&&wakePausedForSpeech){wakePausedForSpeech=false;try{wakeRecognition.start()}catch(e){wakeStatus("Tryck på aktivera igen för att fortsätta lyssna.")}}};
  utterance.onerror=()=>{if(button){button.textContent="▶ LÄS UPP SVARET";button.classList.remove("speaking")}if(status)status.textContent="Kunde inte spela upp rösten.";setRoomState(room,"idle");if(room==="jarvis")setJarvisOrbState(wakeListening?"listening":"idle");activeUtterance=null;activeSpeechButton=null;activeSpeechRoom=null;if(wakeListening&&wakeRecognition&&wakePausedForSpeech){wakePausedForSpeech=false;try{wakeRecognition.start()}catch(e){wakeStatus("Tryck på aktivera igen för att fortsätta lyssna.")}}};
  window.speechSynthesis.speak(utterance);
