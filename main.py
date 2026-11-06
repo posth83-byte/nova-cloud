@@ -45,6 +45,11 @@ preview_pages = {}
 
 # Live team status for the shared JARVIS workspace (per running server process).
 jarvis_worker_task = None
+jarvis_worker_state = {
+    "status": "starting", "worker_id": None, "started_at": None,
+    "last_poll_at": None, "last_job_id": None, "last_job_status": None,
+    "last_error": None
+}
 
 team_runtime_state = {
     "status": "idle", "task": "", "phase": "Väntar på uppdrag",
@@ -223,8 +228,8 @@ def send_jarvis_job_notification(job_id, subscription, outcome):
     try:
         from pywebpush import webpush
         payload = {
-            "title": "JARVIS – uppdrag klart",
-            "body": "Ditt uppdrag är färdigt. Öppna JARVIS för att se resultatet.",
+            "title": "JARVIS – arbetsresultat klart",
+            "body": "AI-rådet har sammanställt sitt resultat. Öppna JARVIS och granska leveransen.",
             "url": "/"
         }
         temp_path = None
@@ -273,8 +278,14 @@ async def jarvis_job_heartbeat(job_id, stop_event):
 
 async def jarvis_job_worker_loop():
     worker_id = "render-" + uuid.uuid4().hex[:12]
+    jarvis_worker_state.update({
+        "status": "running", "worker_id": worker_id,
+        "started_at": datetime.now(timezone.utc).isoformat(),
+        "last_error": None
+    })
     while True:
         try:
+            jarvis_worker_state["last_poll_at"] = datetime.now(timezone.utc).isoformat()
             await asyncio.to_thread(
                 supabase_jobs_request, "POST",
                 "rpc/recover_stale_jarvis_jobs", {"p_stale_seconds": 180}
@@ -284,11 +295,16 @@ async def jarvis_job_worker_loop():
                 "rpc/claim_jarvis_job", {"p_worker_id": worker_id}
             )
             if not claimed:
+                jarvis_worker_state.update({"status": "idle", "last_job_status": jarvis_worker_state.get("last_job_status")})
                 await asyncio.sleep(3)
                 continue
 
             job = claimed[0]
             job_id = job["id"]
+            jarvis_worker_state.update({
+                "status": "working", "last_job_id": str(job_id),
+                "last_job_status": "running", "last_error": None
+            })
             task = str(job.get("task") or "").strip()
             history = job.get("history") if isinstance(job.get("history"), list) else []
             stop_event = asyncio.Event()
@@ -305,11 +321,15 @@ async def jarvis_job_worker_loop():
                     JarvisDelegateRequest(task=task, history=history)
                 )
                 completed = outcome.get("status") in ("delegated", "needs_discussion")
+                result_phase = (
+                    "AI-rådet är klart – resultatet är sparat; ingen publicering eller GitHub-ändring har verifierats"
+                    if completed else "AI-rådet kunde inte slutföra arbetsomgången"
+                )
                 await asyncio.to_thread(
                     supabase_jobs_request, "PATCH", "jarvis_jobs",
                     {
                         "status": "completed" if completed else "failed",
-                        "phase": "Uppdraget är färdigt" if completed else "Uppdraget kunde inte slutföras",
+                        "phase": result_phase,
                         "result": outcome,
                         "error": None if completed else str(outcome.get("reply", ""))[:1000],
                         "active": [],
@@ -322,6 +342,12 @@ async def jarvis_job_worker_loop():
                     urllib.parse.urlencode({"id": "eq." + str(job_id)}),
                     "return=minimal"
                 )
+                jarvis_worker_state.update({
+                    "status": "idle" if completed else "error",
+                    "last_job_status": "completed" if completed else "failed",
+                    "last_poll_at": datetime.now(timezone.utc).isoformat(),
+                    "last_error": None if completed else str(outcome.get("reply", ""))[:500]
+                })
                 if completed and job.get("push_subscription"):
                     sent = await asyncio.to_thread(
                         send_jarvis_job_notification, job_id, job.get("push_subscription"), outcome
@@ -334,6 +360,11 @@ async def jarvis_job_worker_loop():
                             "return=minimal"
                         )
             except Exception as error:
+                jarvis_worker_state.update({
+                    "status": "error", "last_job_status": "failed",
+                    "last_error": str(error)[:700],
+                    "last_poll_at": datetime.now(timezone.utc).isoformat()
+                })
                 await asyncio.to_thread(
                     supabase_jobs_request, "PATCH", "jarvis_jobs",
                     {
@@ -356,8 +387,13 @@ async def jarvis_job_worker_loop():
                 except asyncio.CancelledError:
                     pass
         except asyncio.CancelledError:
+            jarvis_worker_state.update({"status": "stopping"})
             raise
-        except Exception:
+        except Exception as error:
+            jarvis_worker_state.update({
+                "status": "degraded", "last_error": str(error)[:700],
+                "last_poll_at": datetime.now(timezone.utc).isoformat()
+            })
             await asyncio.sleep(5)
 
 
@@ -366,6 +402,8 @@ async def start_jarvis_background_worker():
     global jarvis_worker_task
     if USE_SUPABASE_MEMORY and (jarvis_worker_task is None or jarvis_worker_task.done()):
         jarvis_worker_task = asyncio.create_task(jarvis_job_worker_loop())
+    elif not USE_SUPABASE_MEMORY:
+        jarvis_worker_state.update({"status": "disabled", "last_error": "Supabase-anslutning saknas"})
 
 
 @app.on_event("shutdown")
@@ -377,6 +415,7 @@ async def stop_jarvis_background_worker():
             await jarvis_worker_task
         except asyncio.CancelledError:
             pass
+    jarvis_worker_state.update({"status": "stopped"})
 
 
 def jarvis_project_key(project_name, task):
@@ -419,7 +458,7 @@ def get_jarvis_project_context(project_name, task, limit=10):
 
 
 def persist_jarvis_project(task, plan, results, final_reply, quality_status):
-    """Persist one completed council execution as a project and specialist tasks."""
+    """Persist AI-generated work proposals; implementation remains pending verification."""
     if not USE_SUPABASE_MEMORY:
         return {"status": "unavailable", "reason": "Supabase saknas."}
     project_name = re.sub(
@@ -439,6 +478,7 @@ def persist_jarvis_project(task, plan, results, final_reply, quality_status):
             "metadata": {
                 "last_execution_id": execution_id,
                 "last_quality_gate": quality_status,
+                "delivery_state": "generated_not_applied",
                 "last_result_excerpt": str(final_reply or "")[:1200]
             },
             "updated_at": now
@@ -460,14 +500,14 @@ def persist_jarvis_project(task, plan, results, final_reply, quality_status):
                 "title": description[:160] or f"Arbetsuppgift för {assignee}",
                 "description": description,
                 "assignee": assignee,
-                "status": "completed",
+                "status": "planned",
                 "priority": 3,
                 "result": str(item.get("reply") or "")[:12000],
                 "metadata": {
                     "engine": item.get("engine"),
-                    "quality_gate": quality_status
-                },
-                "completed_at": now
+                    "quality_gate": quality_status,
+                    "delivery_state": "generated_not_applied"
+                }
             },
             prefer="return=representation"
         )
@@ -481,11 +521,13 @@ def persist_jarvis_project(task, plan, results, final_reply, quality_status):
             "title": "JARVIS: samordning och slutleverans",
             "description": str(plan.get("reason") or task)[:4000],
             "assignee": "JARVIS",
-            "status": "completed",
+            "status": "planned",
             "priority": 3,
             "result": str(final_reply or "")[:12000],
-            "metadata": {"quality_gate": quality_status},
-            "completed_at": now
+            "metadata": {
+                "quality_gate": quality_status,
+                "delivery_state": "generated_not_applied"
+            }
         },
         prefer="return=representation"
     )
@@ -2510,6 +2552,22 @@ async def web_manifest_file():
     return FileResponse(manifest_file, media_type="application/manifest+json")
 
 
+@app.get("/api/worker/status")
+async def jarvis_worker_status():
+    """Operational diagnostics for the durable background worker; never returns secrets."""
+    return {
+        **dict(jarvis_worker_state),
+        "worker_running": bool(jarvis_worker_task and not jarvis_worker_task.done()),
+        "supabase_configured": USE_SUPABASE_MEMORY,
+        "push_configured": bool(
+            os.getenv("VAPID_PUBLIC_KEY", "").strip()
+            and (os.getenv("VAPID_PRIVATE_KEY", "").strip()
+                 or os.getenv("VAPID_PRIVATE_KEY_B64", "").strip())
+        ),
+        "queue_storage": "supabase" if USE_SUPABASE_MEMORY else "unavailable"
+    }
+
+
 @app.get("/api/team/status")
 async def team_status():
     """Durable shared-room status: Supabase job queue is the source of truth."""
@@ -3049,13 +3107,17 @@ Avsluta med "Kvar att göra" endast om något faktiskt återstår.
             registry_error = str(error)[:500]
 
         final_phase = (
-            "Rådet är klart – JARVIS har kvalitetsgranskat leveransen"
+            "AI-rådet är klart – underlaget är kvalitetsgranskat, men kodändringar/publicering är inte automatiskt utförda"
             if quality_status == "reviewed"
-            else "Rådet är klart – slutgranskningen kunde inte köras"
+            else "AI-rådet är klart – slutgranskningen kunde inte köras; underlaget behöver granskas"
         )
         set_team_runtime("done", task, final_phase, [], ordered)
         return {
             "status": "delegated",
+            "delivery_level": "ai_generated_proposal_or_preview",
+            "implementation_verified": False,
+            "repository_changes": False,
+            "published": False,
             "target": ordered[0] if len(ordered) == 1 else "MULTI",
             "targets": ordered,
             "reason": str(plan.get("reason", "")),
