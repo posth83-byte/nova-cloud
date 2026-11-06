@@ -88,6 +88,13 @@ SUPABASE_SECRET_KEY = (
 )
 USE_SUPABASE_MEMORY = bool(SUPABASE_URL and SUPABASE_SECRET_KEY)
 
+# GitHub integration is server-side only. Store the fine-grained token in Render,
+# never in browser code, Supabase rows, logs, or Git commits.
+GITHUB_TOKEN = os.getenv("GITHUB_TOKEN", "").strip()
+GITHUB_REPOSITORY = os.getenv("GITHUB_REPOSITORY", "posth83-byte/nova-cloud").strip()
+GITHUB_BASE_BRANCH = os.getenv("GITHUB_BASE_BRANCH", "main").strip() or "main"
+GITHUB_ALLOWED_ARTIFACTS = {"arcade.html"}
+
 MEMORY_DB_PATH = Path(os.getenv(
     "JARVIS_MEMORY_DB",
     str(BASE_DIR / "data" / "jarvis_memory.db")
@@ -210,6 +217,154 @@ def enqueue_jarvis_job(task, history=None, push_subscription=None):
 
 
 
+def github_api_request(method, path, payload=None):
+    """Call GitHub REST API with a server-side fine-grained token."""
+    if not GITHUB_TOKEN:
+        raise RuntimeError("GITHUB_TOKEN saknas i Render Environment.")
+    url = "https://api.github.com" + path
+    body = None if payload is None else json.dumps(payload, ensure_ascii=False).encode("utf-8")
+    headers = {
+        "Accept": "application/vnd.github+json",
+        "Authorization": "Bearer " + GITHUB_TOKEN,
+        "X-GitHub-Api-Version": "2022-11-28",
+        "User-Agent": "JARVIS-NOVA-Cloud"
+    }
+    if body is not None:
+        headers["Content-Type"] = "application/json"
+    request = urllib.request.Request(url, data=body, headers=headers, method=method)
+    try:
+        with urllib.request.urlopen(request, timeout=35) as response:
+            raw = response.read().decode("utf-8")
+            return json.loads(raw) if raw else {}
+    except urllib.error.HTTPError as error:
+        detail = error.read().decode("utf-8", errors="replace")[:1200]
+        raise RuntimeError(f"GitHub API HTTP {error.code}: {detail}") from error
+
+
+def create_game_portal_pull_request(task, outcome, job_id):
+    """
+    Turn GAME_DEVELOPER's reviewed proposal into a complete arcade.html update
+    on an isolated branch and open a draft PR. Never writes directly to main.
+    """
+    if not GITHUB_TOKEN:
+        return {
+            "status": "blocked",
+            "reason": "GitHub saknar servernyckeln GITHUB_TOKEN i Render Environment.",
+            "repository_changes": False,
+            "published": False
+        }
+    if not isinstance(outcome, dict) or "GAME_DEVELOPER" not in (outcome.get("targets") or []):
+        return {"status": "skipped", "reason": "Uppdraget innehöll inget GAME_DEVELOPER-arbete."}
+
+    specialist = next(
+        (item for item in outcome.get("results", [])
+         if item.get("target") == "GAME_DEVELOPER"),
+        None
+    )
+    if not specialist or not str(specialist.get("reply") or "").strip():
+        return {"status": "blocked", "reason": "GAME_DEVELOPER lämnade inget användbart underlag."}
+
+    repo = GITHUB_REPOSITORY
+    if not re.fullmatch(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", repo):
+        return {"status": "blocked", "reason": "GITHUB_REPOSITORY har ett ogiltigt format."}
+    encoded_repo = urllib.parse.quote(repo, safe="/")
+    file_path = "arcade.html"
+    try:
+        base_ref = github_api_request(
+            "GET", f"/repos/{encoded_repo}/git/ref/heads/{urllib.parse.quote(GITHUB_BASE_BRANCH, safe='')}"
+        )
+        base_sha = base_ref["object"]["sha"]
+        current_file = github_api_request(
+            "GET",
+            f"/repos/{encoded_repo}/contents/{file_path}?ref={urllib.parse.quote(GITHUB_BASE_BRANCH, safe='')}"
+        )
+        current_content = base64.b64decode(current_file["content"]).decode("utf-8")
+        current_sha = current_file["sha"]
+
+        artifact_prompt = (
+            "Du är en strikt kodimplementerare. Du får nu det faktiska innehållet i arcade.html "
+            "från GitHub och specialistens förslag. Skapa en komplett uppdaterad arcade.html "
+            "som genomför användarens konkreta uppdrag och bevarar alla fungerande befintliga spel "
+            "och funktioner. Ändra endast sådant som behövs för uppdraget. "
+            "Returnera ENDAST JSON med exakt fälten path, content, summary. "
+            "path måste vara exakt arcade.html. content måste innehålla hela HTML-dokumentet "
+            "från <!doctype html> till </html>, inte en patch eller förkortning. "
+            "Inga markdown-staket, inga förklaringar utanför JSON. Om du inte kan slutföra "
+            "en fullständig fil utan att förstöra funktioner, returnera JSON med content tom sträng "
+            "och summary som förklarar blockeraren. Gissa inte att tester har körts.\n\n"
+            f"ANVÄNDARENS UPPDRAG:\n{task[:8000]}\n\n"
+            f"GAME_DEVELOPER UNDERLAG:\n{str(specialist.get('reply') or '')[:14000]}\n\n"
+            f"NUVARANDE GITHUB-FIL ({file_path}):\n{current_content[:90000]}"
+        )
+        generated = generate_reply(
+            artifact_prompt,
+            "Du producerar endast komplett och säker webb-HTML i begärt JSON-format.",
+            max_tokens=12000,
+            json_mode=True
+        )
+        artifact = extract_json(generated["reply"])
+        if not isinstance(artifact, dict) or artifact.get("path") not in GITHUB_ALLOWED_ARTIFACTS:
+            raise RuntimeError("Kodgeneratorn returnerade inte den tillåtna filen arcade.html.")
+        new_content = str(artifact.get("content") or "").strip()
+        if len(new_content) < 1200 or "<html" not in new_content.lower() or "</html>" not in new_content.lower():
+            raise RuntimeError("Den genererade HTML-filen är ofullständig eller för kort; inget sparades.")
+        if len(new_content) > 1500000:
+            raise RuntimeError("Den genererade HTML-filen överskrider säkerhetsgränsen.")
+        if new_content.count("<script") < 1 or new_content.count("</script>") < 1:
+            raise RuntimeError("HTML-filen saknar förväntat JavaScript-innehåll.")
+
+        branch = "jarvis/arcade-" + re.sub(r"[^a-f0-9]", "", str(job_id).lower())[:12]
+        github_api_request(
+            "POST", f"/repos/{encoded_repo}/git/refs",
+            {"ref": "refs/heads/" + branch, "sha": base_sha}
+        )
+        commit = github_api_request(
+            "PUT", f"/repos/{encoded_repo}/contents/{file_path}",
+            {
+                "message": "JARVIS: " + str(artifact.get("summary") or task)[:100],
+                "content": base64.b64encode(new_content.encode("utf-8")).decode("ascii"),
+                "branch": branch,
+                "sha": current_sha
+            }
+        )
+        pr = github_api_request(
+            "POST", f"/repos/{encoded_repo}/pulls",
+            {
+                "title": ("JARVIS: " + str(artifact.get("summary") or "uppdatera spelportalen"))[:240],
+                "head": branch,
+                "base": GITHUB_BASE_BRANCH,
+                "draft": True,
+                "body": (
+                    "Automatiskt skapat av JARVIS på en separat arbetsgren.\n\n"
+                    f"Uppdrag: {task[:1500]}\n\n"
+                    f"Sammanfattning: {str(artifact.get('summary') or '')[:2000]}\n\n"
+                    "GitHub Actions ska köra syntaxkontroller. Granska ändringen och testerna "
+                    "innan PR:en mergas. JARVIS har inte publicerat direkt till produktionsgrenen."
+                )
+            }
+        )
+        return {
+            "status": "pull_request_created",
+            "repository": repo,
+            "path": file_path,
+            "branch": branch,
+            "commit_sha": (commit.get("commit") or {}).get("sha"),
+            "pull_request_number": pr.get("number"),
+            "pull_request_url": pr.get("html_url"),
+            "summary": str(artifact.get("summary") or "")[:1000],
+            "repository_changes": True,
+            "published": False,
+            "verification": "GitHub-fil sparad på separat gren; CI och mänsklig granskning inväntas."
+        }
+    except Exception as error:
+        return {
+            "status": "blocked",
+            "reason": str(error)[:1200],
+            "repository_changes": False,
+            "published": False
+        }
+
+
 def send_jarvis_job_notification(job_id, subscription, outcome):
     """Send one standards-based Web Push notification when a queued task completes."""
     if not isinstance(subscription, dict) or not subscription.get("endpoint"):
@@ -228,10 +383,12 @@ def send_jarvis_job_notification(job_id, subscription, outcome):
     try:
         from pywebpush import webpush
         failed = isinstance(outcome, dict) and outcome.get("status") in ("failed", "error")
+        is_test = str(job_id) == "test"
         payload = {
-            "title": "JARVIS – uppdraget behöver åtgärd" if failed else "JARVIS – arbetsresultat klart",
-            "body": "Ett bakgrundsjobb misslyckades. Öppna JARVIS för felstatus." if failed else "AI-rådet har sammanställt sitt resultat. Öppna JARVIS och granska leveransen.",
-            "url": "/"
+            "title": "JARVIS – testnotis" if is_test else ("JARVIS – uppdraget behöver åtgärd" if failed else "JARVIS – arbetsresultat klart"),
+            "body": "Pushnotiser fungerar på den här enheten." if is_test else ("Ett bakgrundsjobb misslyckades. Öppna JARVIS för felstatus." if failed else "JARVIS har sammanställt ett resultat. Öppna kontrollcentralen för detaljer."),
+            "url": "/",
+            "tag": "jarvis-test" if is_test else ("jarvis-job-failed" if failed else "jarvis-job-complete")
         }
         temp_path = None
         try:
@@ -321,11 +478,41 @@ async def jarvis_job_worker_loop():
                 outcome = await jarvis_delegate(
                     JarvisDelegateRequest(task=task, history=history)
                 )
+                if outcome.get("status") == "delegated" and "GAME_DEVELOPER" in (outcome.get("targets") or []):
+                    delivery = await asyncio.to_thread(
+                        create_game_portal_pull_request, task, outcome, job_id
+                    )
+                    outcome["github_delivery"] = delivery
+                    if delivery.get("status") == "pull_request_created":
+                        outcome["delivery_level"] = "github_pull_request_created"
+                        outcome["repository_changes"] = True
+                        outcome["implementation_verified"] = False
+                        outcome["published"] = False
+                        outcome["reply"] = (
+                            str(outcome.get("reply") or "")
+                            + "\\n\\nJARVIS har sparat en ändring av arcade.html på en separat GitHub-gren "
+                            + "och skapat en utkast-PR. CI och granskning återstår innan publicering."
+                        )
+                    elif delivery.get("status") == "blocked":
+                        outcome["delivery_level"] = "proposal_only_github_blocked"
+                        outcome["repository_changes"] = False
+                        outcome["published"] = False
+                        outcome["reply"] = (
+                            str(outcome.get("reply") or "")
+                            + "\\n\\nGitHub-implementeringen är blockerad: "
+                            + str(delivery.get("reason") or "GitHub-anslutningen är inte klar.")
+                        )
                 completed = outcome.get("status") in ("delegated", "needs_discussion")
-                result_phase = (
-                    "AI-rådet är klart – resultatet är sparat; ingen publicering eller GitHub-ändring har verifierats"
-                    if completed else "AI-rådet kunde inte slutföra arbetsomgången"
-                )
+                delivery_status = (outcome.get("github_delivery") or {}).get("status")
+                if delivery_status == "pull_request_created":
+                    result_phase = "Kodändring sparad på separat GitHub-gren – utkast-PR skapad; CI och granskning återstår"
+                elif delivery_status == "blocked":
+                    result_phase = "AI-rådet är klart, men GitHub-ändringen är blockerad – se resultatet"
+                else:
+                    result_phase = (
+                        "AI-rådet är klart – resultatet är sparat; ingen publicering eller GitHub-ändring har verifierats"
+                        if completed else "AI-rådet kunde inte slutföra arbetsomgången"
+                    )
                 await asyncio.to_thread(
                     supabase_jobs_request, "PATCH", "jarvis_jobs",
                     {
@@ -992,6 +1179,10 @@ class ChatRequest(BaseModel):
     message: str = Field(min_length=1, max_length=10000)
     history: list[dict] = Field(default_factory=list)
     push_subscription: dict | None = None
+
+
+class PushTestRequest(BaseModel):
+    subscription: dict
 
 
 class MemoryCreateRequest(BaseModel):
@@ -2546,6 +2737,23 @@ async def get_jarvis_job(job_id: str, token: str):
 
 
 
+@app.post("/api/push/test")
+async def test_jarvis_push(request: PushTestRequest):
+    subscription = request.subscription
+    if not isinstance(subscription, dict) or not subscription.get("endpoint"):
+        raise HTTPException(status_code=400, detail="Ingen giltig pushprenumeration skickades.")
+    if not os.getenv("VAPID_PUBLIC_KEY", "").strip() or not (
+        os.getenv("VAPID_PRIVATE_KEY", "").strip() or os.getenv("VAPID_PRIVATE_KEY_B64", "").strip()
+    ):
+        raise HTTPException(status_code=503, detail="VAPID-nycklar saknas på servern.")
+    sent = await asyncio.to_thread(
+        send_jarvis_job_notification, "test", subscription, {"status": "test"}
+    )
+    if not sent:
+        raise HTTPException(status_code=502, detail="Pushleverantören kunde inte leverera testnotisen. Kontrollera prenumerationen och VAPID-nycklarna.")
+    return {"status": "sent", "message": "Testnotisen har skickats till den här enheten."}
+
+
 @app.get("/api/push/public-key")
 async def get_push_public_key():
     public_key = os.getenv("VAPID_PUBLIC_KEY", "").strip()
@@ -2582,7 +2790,23 @@ async def jarvis_worker_status():
             and (os.getenv("VAPID_PRIVATE_KEY", "").strip()
                  or os.getenv("VAPID_PRIVATE_KEY_B64", "").strip())
         ),
-        "queue_storage": "supabase" if USE_SUPABASE_MEMORY else "unavailable"
+        "queue_storage": "supabase" if USE_SUPABASE_MEMORY else "unavailable",
+        "github_configured": bool(GITHUB_TOKEN),
+        "github_repository": GITHUB_REPOSITORY,
+        "github_delivery_mode": "draft_pull_request_only"
+    }
+
+
+@app.get("/api/github/status")
+async def github_integration_status():
+    return {
+        "configured": bool(GITHUB_TOKEN),
+        "repository": GITHUB_REPOSITORY,
+        "base_branch": GITHUB_BASE_BRANCH,
+        "allowed_artifacts": sorted(GITHUB_ALLOWED_ARTIFACTS),
+        "mode": "draft_pull_request_only",
+        "direct_push_to_main": False,
+        "note": "En GITHUB_TOKEN med Contents och Pull requests skrivbehörighet krävs."
     }
 
 
