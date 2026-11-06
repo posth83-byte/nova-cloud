@@ -2073,7 +2073,7 @@ async function sendMessage(event,assistant){
     loading.textContent+="\n\nJARVIS SAMORDNADE: "+team+".\n"+(council.reply||"Arbetet har samordnats och sammanställts.")+"\n\nSpecialisternas kod och arbetsanteckningar hålls utanför chatten.";
     logActivity("JARVIS kallade automatiskt AI-rådet","✦",team+" · "+(council.council_rounds||1)+" rådsrundor");
     updateTeamBoard("done",message,council.targets||[],(council.council_rounds||1)+" rådsrundor genomförda");
-    const projectResult=(council.results||[]).find(item=>(item.target==="GAME_DEVELOPER"||item.target==="WEBMASTER")&&item.reply);
+    const projectResult=(council.results||[]).find(item=>(item.target==="GAME_DEVELOPER"||item.target==="WEBMASTER")&&item.reply&&/(?:<!doctype\\s+html|<html\\b|```html)/i.test(item.reply));
      if(projectResult){
       try{
        const previewReady=await createWebPreview(projectResult.reply,loading);
@@ -2130,7 +2130,7 @@ async function jarvisDelegateLatest(){
    const names={NOVA:"NOVA",WEBMASTER:"WEBMASTER",GAME_DEVELOPER:"GAME DEVELOPER"};
    const team=(data.targets||[data.target]).map(name=>names[name]||name).join(", ");
    loading.textContent="✓ JARVIS samordnade: "+team+".\n"+(data.reply||"Arbetet har sammanställts.")+"\n\nKod, specialistanalyser och interna arbetsanteckningar visas inte i chatten.";
-   const projectResult=(data.results||[]).find(item=>(item.target==="GAME_DEVELOPER"||item.target==="WEBMASTER")&&item.reply);
+   const projectResult=(data.results||[]).find(item=>(item.target==="GAME_DEVELOPER"||item.target==="WEBMASTER")&&item.reply&&/(?:<!doctype\\s+html|<html\\b|```html)/i.test(item.reply));
     if(projectResult){try{const previewReady=await createWebPreview(projectResult.reply,loading);if(!previewReady){const note=document.createElement("div");note.className="web-preview-note";note.textContent="Specialisten har ännu inte lämnat en komplett HTML-version som kan öppnas och testas.";loading.appendChild(note)}}catch(previewError){const note=document.createElement("div");note.className="web-preview-note";note.textContent="Projektets testversion kunde inte skapas: "+previewError.message;loading.appendChild(note)}}
     loading.dataset.speechText="Jag har lämnat över uppdraget till "+(names[data.target]||data.target)+".";
    logActivity("JARVIS delegerade till "+data.target,"↗",task.slice(0,80));
