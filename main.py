@@ -189,9 +189,9 @@ def add_relevant_memory(query, message, limit=6, project=""):
     return (
         "RELEVANT LÅNGTIDSMINNE FRÅN JARVIS MEMORY CORE. "
         "Projektmatchande minnen prioriteras, men använd endast sådant som är relevant. "
-        "Nyare uttryckliga instruktioner väger tyngre. Hitta inte på saknade detaljer.\\n"
-        + "\\n".join(entries)
-        + "\\n\\nAKTUELLT SAMMANHANG:\\n" + message
+        "Nyare uttryckliga instruktioner väger tyngre. Hitta inte på saknade detaljer.\n"
+        + "\n".join(entries)
+        + "\n\nAKTUELLT SAMMANHANG:\n" + message
     )
 
 def save_chat_exchange(user_message, assistant_reply, project=""):
