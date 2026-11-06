@@ -1858,6 +1858,7 @@ Delegering ger inte tillstånd att köpa, publicera, betala eller utföra extern
         if any(x not in allowed for x in targets):
             raise ValueError("JARVIS valde en okänd medarbetare.")
         if not targets:
+            set_team_runtime("idle", task, "JARVIS rekommenderar fortsatt diskussion – inget specialistarbete startat", [], [])
             return {
                 "status": "needs_discussion", "target": "NONE", "targets": [],
                 "reason": str(plan.get("reason", "Uppgiften behöver diskuteras mer.")),
