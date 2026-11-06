@@ -1819,6 +1819,17 @@ function getSavedJarvisPushSubscription(){
   return value?JSON.parse(value):null;
  }catch(e){return null}
 }
+
+function refreshJarvisNotificationButton(){
+ const button=$("jarvisNotificationsButton");
+ if(!button)return;
+ const saved=getSavedJarvisPushSubscription();
+ if(saved&&saved.endpoint&&"Notification" in window&&Notification.permission==="granted"){
+  button.textContent="✓ NOTISER AKTIVERADE";
+  button.disabled=false;
+ }
+}
+
 function base64UrlToBytes(value){
  const padding="=".repeat((4-value.length%4)%4);
  const raw=atob((value+padding).replace(/-/g,"+").replace(/_/g,"/"));
@@ -2437,7 +2448,7 @@ async function checkCloud(){
   if(previousCloudState!=="offline")logActivity("NOVA Cloud kunde inte nås","⚠","Kontrollera server och internet");previousCloudState="offline";
  }
 }
-window.addEventListener("load",()=>setTimeout(resumePendingJarvisJob,900));
+window.addEventListener("load",()=>{refreshJarvisNotificationButton();setTimeout(resumePendingJarvisJob,900)});
 checkCloud();setInterval(checkCloud,30000);
 </script>
 </body>
