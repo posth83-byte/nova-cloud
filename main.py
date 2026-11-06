@@ -42,6 +42,8 @@ app.include_router(runway_router)
 preview_pages = {}
 
 # Live team status for the shared JARVIS workspace (per running server process).
+jarvis_worker_task = None
+
 team_runtime_state = {
     "status": "idle", "task": "", "phase": "Väntar på uppdrag",
     "active": [], "completed": [], "updated": datetime.now(timezone.utc).isoformat()
@@ -149,6 +151,166 @@ def supabase_table_request(table, method, query="", payload=None, prefer=""):
         raise RuntimeError(
             f"JARVIS projektregister svarade med HTTP {error.code}: {detail}"
         ) from error
+
+
+
+def supabase_jobs_request(method, path, payload=None, query="", prefer=""):
+    """Private durable job queue API; never expose the Supabase service key to clients."""
+    if not USE_SUPABASE_MEMORY:
+        raise RuntimeError("Supabase jobbkön är inte konfigurerad.")
+    base = SUPABASE_URL + "/rest/v1/"
+    url = base + path
+    if query:
+        url += "?" + query
+    body = None if payload is None else json.dumps(payload, ensure_ascii=False).encode("utf-8")
+    headers = {
+        "apikey": SUPABASE_SECRET_KEY,
+        "Authorization": "Bearer " + SUPABASE_SECRET_KEY,
+        "Accept": "application/json"
+    }
+    if body is not None:
+        headers["Content-Type"] = "application/json"
+    if prefer:
+        headers["Prefer"] = prefer
+    request = urllib.request.Request(url, data=body, headers=headers, method=method)
+    try:
+        with urllib.request.urlopen(request, timeout=25) as response:
+            raw = response.read().decode("utf-8")
+            return json.loads(raw) if raw else [], dict(response.headers)
+    except urllib.error.HTTPError as error:
+        detail = error.read().decode("utf-8", errors="replace")[:1200]
+        raise RuntimeError(f"JARVIS jobbkö svarade med HTTP {error.code}: {detail}") from error
+
+
+def enqueue_jarvis_job(task, history=None):
+    access_token = uuid.uuid4().hex + uuid.uuid4().hex
+    row = {
+        "task": str(task).strip(),
+        "history": history if isinstance(history, list) else [],
+        "status": "queued",
+        "phase": "Sparat – väntar på bakgrundsarbetare",
+        "access_token_hash": hashlib.sha256(access_token.encode("utf-8")).hexdigest()
+    }
+    rows, _ = supabase_jobs_request(
+        "POST", "jarvis_jobs", row, prefer="return=representation"
+    )
+    if not rows:
+        raise RuntimeError("Supabase sparade inte JARVIS-uppdraget.")
+    return {"id": rows[0]["id"], "access_token": access_token, "status": rows[0]["status"]}
+
+
+async def jarvis_job_heartbeat(job_id, stop_event):
+    while not stop_event.is_set():
+        try:
+            await asyncio.wait_for(stop_event.wait(), timeout=30)
+        except asyncio.TimeoutError:
+            try:
+                await asyncio.to_thread(
+                    supabase_jobs_request, "PATCH", "jarvis_jobs",
+                    {"locked_at": datetime.now(timezone.utc).isoformat(),
+                     "updated_at": datetime.now(timezone.utc).isoformat()},
+                    urllib.parse.urlencode({"id": "eq." + str(job_id), "status": "eq.running"}),
+                    "return=minimal"
+                )
+            except Exception:
+                pass
+
+
+async def jarvis_job_worker_loop():
+    worker_id = "render-" + uuid.uuid4().hex[:12]
+    while True:
+        try:
+            await asyncio.to_thread(
+                supabase_jobs_request, "POST",
+                "rpc/recover_stale_jarvis_jobs", {"p_stale_seconds": 180}
+            )
+            claimed, _ = await asyncio.to_thread(
+                supabase_jobs_request, "POST",
+                "rpc/claim_jarvis_job", {"p_worker_id": worker_id}
+            )
+            if not claimed:
+                await asyncio.sleep(3)
+                continue
+
+            job = claimed[0]
+            job_id = job["id"]
+            task = str(job.get("task") or "").strip()
+            history = job.get("history") if isinstance(job.get("history"), list) else []
+            stop_event = asyncio.Event()
+            heartbeat = asyncio.create_task(jarvis_job_heartbeat(job_id, stop_event))
+            try:
+                await asyncio.to_thread(
+                    supabase_jobs_request, "PATCH", "jarvis_jobs",
+                    {"phase": "JARVIS startar specialistarbetet",
+                     "updated_at": datetime.now(timezone.utc).isoformat()},
+                    urllib.parse.urlencode({"id": "eq." + str(job_id)}),
+                    "return=minimal"
+                )
+                outcome = await jarvis_delegate(
+                    JarvisDelegateRequest(task=task, history=history)
+                )
+                completed = outcome.get("status") in ("delegated", "needs_discussion")
+                await asyncio.to_thread(
+                    supabase_jobs_request, "PATCH", "jarvis_jobs",
+                    {
+                        "status": "completed" if completed else "failed",
+                        "phase": "Uppdraget är färdigt" if completed else "Uppdraget kunde inte slutföras",
+                        "result": outcome,
+                        "error": None if completed else str(outcome.get("reply", ""))[:1000],
+                        "active": [],
+                        "completed": outcome.get("targets", []),
+                        "locked_at": None,
+                        "worker_id": None,
+                        "completed_at": datetime.now(timezone.utc).isoformat(),
+                        "updated_at": datetime.now(timezone.utc).isoformat()
+                    },
+                    urllib.parse.urlencode({"id": "eq." + str(job_id)}),
+                    "return=minimal"
+                )
+            except Exception as error:
+                await asyncio.to_thread(
+                    supabase_jobs_request, "PATCH", "jarvis_jobs",
+                    {
+                        "status": "failed",
+                        "phase": "Bakgrundsarbetet avbröts",
+                        "error": str(error)[:1500],
+                        "locked_at": None,
+                        "worker_id": None,
+                        "completed_at": datetime.now(timezone.utc).isoformat(),
+                        "updated_at": datetime.now(timezone.utc).isoformat()
+                    },
+                    urllib.parse.urlencode({"id": "eq." + str(job_id)}),
+                    "return=minimal"
+                )
+            finally:
+                stop_event.set()
+                heartbeat.cancel()
+                try:
+                    await heartbeat
+                except asyncio.CancelledError:
+                    pass
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            await asyncio.sleep(5)
+
+
+@app.on_event("startup")
+async def start_jarvis_background_worker():
+    global jarvis_worker_task
+    if USE_SUPABASE_MEMORY and (jarvis_worker_task is None or jarvis_worker_task.done()):
+        jarvis_worker_task = asyncio.create_task(jarvis_job_worker_loop())
+
+
+@app.on_event("shutdown")
+async def stop_jarvis_background_worker():
+    global jarvis_worker_task
+    if jarvis_worker_task and not jarvis_worker_task.done():
+        jarvis_worker_task.cancel()
+        try:
+            await jarvis_worker_task
+        except asyncio.CancelledError:
+            pass
 
 
 def jarvis_project_key(project_name, task):
@@ -2185,6 +2347,52 @@ async def jarvis_intelligence():
             "The AI model can make mistakes; important outputs must be verified."
         ]
     }
+
+
+
+@app.post("/api/jarvis/jobs")
+async def create_jarvis_job(request: JarvisDelegateRequest):
+    if not USE_SUPABASE_MEMORY:
+        raise HTTPException(status_code=503, detail="Den permanenta jobbköen är inte tillgänglig.")
+    try:
+        job = await asyncio.to_thread(enqueue_jarvis_job, request.task, request.history)
+        return {
+            "status": "queued",
+            "job_id": job["id"],
+            "access_token": job["access_token"],
+            "reply": "Uppdraget är sparat på servern. JARVIS fortsätter även om du låser mobilen."
+        }
+    except Exception as error:
+        raise HTTPException(status_code=503, detail=f"Kunde inte spara uppdraget: {str(error)[:500]}")
+
+
+@app.get("/api/jarvis/jobs/{job_id}")
+async def get_jarvis_job(job_id: str, token: str):
+    if not USE_SUPABASE_MEMORY:
+        raise HTTPException(status_code=503, detail="Jobbstatus är inte tillgänglig.")
+    try:
+        rows, _ = await asyncio.to_thread(
+            supabase_jobs_request, "GET", "jarvis_jobs",
+            None,
+            urllib.parse.urlencode({
+                "id": "eq." + job_id,
+                "select": "id,status,phase,active,completed,result,error,created_at,updated_at,completed_at,access_token_hash",
+                "limit": "1"
+            })
+        )
+        if not rows:
+            raise HTTPException(status_code=404, detail="Uppdraget hittades inte.")
+        expected = rows[0].get("access_token_hash") or ""
+        supplied = hashlib.sha256(str(token).encode("utf-8")).hexdigest()
+        if not expected or not __import__("hmac").compare_digest(expected, supplied):
+            raise HTTPException(status_code=403, detail="Ogiltig åtkomst till uppdraget.")
+        row = rows[0]
+        row.pop("access_token_hash", None)
+        return row
+    except HTTPException:
+        raise
+    except Exception as error:
+        raise HTTPException(status_code=503, detail=f"Kunde inte läsa jobbstatus: {str(error)[:500]}")
 
 
 @app.get("/api/team/status")
