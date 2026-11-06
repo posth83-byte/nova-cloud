@@ -1273,8 +1273,14 @@ async function refreshTeamRuntime(){
 }
 function startTeamRuntimePolling(){
  if(teamRuntimePoll)clearInterval(teamRuntimePoll);
- refreshTeamRuntime();teamRuntimePoll=setInterval(refreshTeamRuntime,1800);
+ teamRuntimePoll=null;
+ if(document.visibilityState!=="visible")return;
+ refreshTeamRuntime();teamRuntimePoll=setInterval(refreshTeamRuntime,5000);
 }
+document.addEventListener("visibilitychange",()=>{
+ if(document.visibilityState==="visible")startTeamRuntimePolling();
+ else if(teamRuntimePoll){clearInterval(teamRuntimePoll);teamRuntimePoll=null;}
+});
 function stopTeamRuntimePolling(){refreshTeamRuntime();} // Keep the shared room live even when this chat request has finished.
 function renderTeamBoard(){
  const workers=$("teamWorkers"),state=$("teamBoardState"),task=$("teamTask");if(!workers||!state||!task)return;
