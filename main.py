@@ -276,7 +276,8 @@ def get_memory_status():
             "select=id&limit=1",
             prefer="count=exact"
         )
-        content_range = headers.get("Content-Range", "*/0")
+        normalized_headers = {str(key).lower(): value for key, value in headers.items()}
+        content_range = normalized_headers.get("content-range", "*/0")
         try:
             count = int(content_range.rsplit("/", 1)[1])
         except (ValueError, IndexError):
