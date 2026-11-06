@@ -246,6 +246,17 @@ def create_game_portal_pull_request(task, outcome, job_id):
     Turn GAME_DEVELOPER's reviewed proposal into a complete arcade.html update
     on an isolated branch and open a draft PR. Never writes directly to main.
     """
+    task_lower = str(task or "").casefold()
+    portal_terms = (
+        "spelportal", "spelportalen", "arcade", "minispel", "småspel",
+        "webbspel", "spelsida", "spelhemsida", "spel på hemsidan",
+        "nya spel", "lägg till spel", "lägga till spel"
+    )
+    action_terms = ("bygg", "skapa", "lägg till", "förbättra", "ändra", "fixa", "fortsätt", "implementera", "utveckla")
+    if not any(term in task_lower for term in portal_terms) or not any(term in task_lower for term in action_terms):
+        return {"status": "skipped", "reason": "Uppdraget gäller inte en konkret ändring av spelportalen."}
+    if not isinstance(outcome, dict) or "GAME_DEVELOPER" not in (outcome.get("targets") or []):
+        return {"status": "skipped", "reason": "Uppdraget innehöll inget GAME_DEVELOPER-arbete."}
     if not GITHUB_TOKEN:
         return {
             "status": "blocked",
@@ -253,8 +264,6 @@ def create_game_portal_pull_request(task, outcome, job_id):
             "repository_changes": False,
             "published": False
         }
-    if not isinstance(outcome, dict) or "GAME_DEVELOPER" not in (outcome.get("targets") or []):
-        return {"status": "skipped", "reason": "Uppdraget innehöll inget GAME_DEVELOPER-arbete."}
 
     specialist = next(
         (item for item in outcome.get("results", [])
@@ -491,7 +500,8 @@ async def jarvis_job_worker_loop():
                         outcome["reply"] = (
                             str(outcome.get("reply") or "")
                             + "\\n\\nJARVIS har sparat en ändring av arcade.html på en separat GitHub-gren "
-                            + "och skapat en utkast-PR. CI och granskning återstår innan publicering."
+                            + "och skapat en utkast-PR. CI och granskning återstår innan publicering. "
+                            + "PR-länk: " + str(delivery.get("pull_request_url") or "länken kunde inte hämtas.")
                         )
                     elif delivery.get("status") == "blocked":
                         outcome["delivery_level"] = "proposal_only_github_blocked"
