@@ -2512,7 +2512,11 @@ Delegering ger inte tillstånd att köpa, publicera, betala eller utföra extern
 
         # Hämta tidigare projektresultat innan nya arbetsorder skickas ut.
         project_name = str(plan.get("project_name") or task[:100])
-        prior_project_context = get_jarvis_project_context(project_name, task)
+        try:
+            prior_project_context = get_jarvis_project_context(project_name, task)
+        except Exception:
+            # A temporary history lookup issue must not prevent new specialist work.
+            prior_project_context = ""
         # RÅDSRUNDA 1: varje specialist gör sin självständiga analys.
         results, previous = [], []
         shared_project_memory = add_relevant_memory(task, "", limit=8, project="JARVIS")
