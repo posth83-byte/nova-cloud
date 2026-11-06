@@ -68,6 +68,7 @@ def set_team_runtime(status, task=None, phase=None, active=None, completed=None)
 
 BASE_DIR = Path(__file__).resolve().parent
 INDEX_FILE = BASE_DIR / "index.html"
+ARCADE_FILE = BASE_DIR / "arcade.html"
 
 # ==========================================
 # JARVIS MEMORY CORE – SUPABASE + SQLITE FALLBACK
@@ -2247,6 +2248,13 @@ def collect_trends():
 # ==========================================
 # HEMSIDA
 # ==========================================
+
+@app.get("/arcade")
+async def arcade_home():
+    if not ARCADE_FILE.exists():
+        raise HTTPException(status_code=404, detail="arcade.html kunde inte hittas.")
+    return FileResponse(ARCADE_FILE, headers={"Cache-Control": "no-cache"})
+
 
 @app.get("/")
 async def home():
