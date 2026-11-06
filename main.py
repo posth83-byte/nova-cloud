@@ -2512,8 +2512,77 @@ async def web_manifest_file():
 
 @app.get("/api/team/status")
 async def team_status():
-    """Current real collaboration stage for the shared team room."""
-    return dict(team_runtime_state)
+    """Durable shared-room status: Supabase job queue is the source of truth."""
+    if USE_SUPABASE_MEMORY:
+        try:
+            active_rows, _ = await asyncio.to_thread(
+                supabase_jobs_request, "GET", "jarvis_jobs", None,
+                urllib.parse.urlencode({
+                    "status": "in.(queued,running)",
+                    "select": "id,task,status,phase,active,completed,created_at,updated_at,started_at,completed_at,error",
+                    "order": "created_at.desc",
+                    "limit": "1"
+                })
+            )
+            rows = active_rows
+            if not rows:
+                rows, _ = await asyncio.to_thread(
+                    supabase_jobs_request, "GET", "jarvis_jobs", None,
+                    urllib.parse.urlencode({
+                        "select": "id,task,status,phase,active,completed,created_at,updated_at,started_at,completed_at,error",
+                        "order": "created_at.desc",
+                        "limit": "1"
+                    })
+                )
+            if rows:
+                job = rows[0]
+                status = job.get("status", "idle")
+                active = job.get("active") or []
+                completed = job.get("completed") or []
+                if status in ("queued", "running"):
+                    room_status = "working"
+                    phase = job.get("phase") or (
+                        "Uppdraget ligger i kön" if status == "queued" else "Specialisterna arbetar"
+                    )
+                elif status == "completed":
+                    room_status = "done"
+                    phase = job.get("phase") or "Uppdraget är färdigt"
+                elif status == "failed":
+                    room_status = "error"
+                    phase = job.get("error") or job.get("phase") or "Uppdraget misslyckades"
+                else:
+                    room_status = "idle"
+                    phase = job.get("phase") or "Uppdraget är avslutat"
+                return {
+                    "status": room_status,
+                    "job_status": status,
+                    "job_id": job.get("id"),
+                    "task": job.get("task") or "",
+                    "phase": phase,
+                    "active": active,
+                    "completed": completed,
+                    "created": job.get("created_at"),
+                    "started": job.get("started_at"),
+                    "completed_at": job.get("completed_at"),
+                    "updated": job.get("updated_at") or job.get("created_at"),
+                    "source": "supabase"
+                }
+            return {
+                "status": "idle", "job_status": "empty", "task": "",
+                "phase": "Inga registrerade uppdrag", "active": [], "completed": [],
+                "updated": datetime.now(timezone.utc).isoformat(), "source": "supabase"
+            }
+        except Exception as error:
+            return {
+                **dict(team_runtime_state),
+                "source": "memory_fallback",
+                "warning": "Kunde inte läsa jobbregistret: " + str(error)[:240]
+            }
+    return {
+        **dict(team_runtime_state),
+        "source": "memory_only",
+        "warning": "Supabase-jobbkön är inte konfigurerad."
+    }
 
 
 # ==========================================
