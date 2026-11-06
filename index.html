@@ -223,7 +223,19 @@ main{position:relative;z-index:1;max-width:1400px;margin:auto;padding:20px 15px 
 @keyframes jarvisBallSpeak{from{transform:scale(.94)}to{transform:scale(1.17)}}
 @media(max-width:420px){.jarvis-holo-voice{min-height:174px}.jarvis-orb-button{width:128px;height:128px}.jarvis-holo-ball{width:66px;height:66px}}
 
-.jarvis-input-row{align-items:center}
+.jarvis-input-row{align-items:center;gap:7px}
+.jarvis-projects-button{flex:0 0 auto;min-height:42px;padding:0 10px;border:1px solid #39c8ff88;border-radius:10px;background:linear-gradient(145deg,#102c48,#07182b);color:#bfeaff;font-size:9px;letter-spacing:.5px;display:flex;align-items:center;gap:6px;white-space:nowrap;box-shadow:0 0 12px #20baff18}
+.jarvis-projects-button b{display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;padding:0 4px;border-radius:10px;background:#1a6385;color:#fff;font-size:10px}
+.jarvis-project-shelf{margin-top:10px;padding:12px;border:1px solid #39c8ff66;border-radius:12px;background:linear-gradient(145deg,#081d31,#061322);box-shadow:0 8px 25px #0005}
+.jarvis-project-shelf-head{display:flex;align-items:center;justify-content:space-between;gap:8px;color:#bfeaff;font-size:10px;letter-spacing:1px;margin-bottom:10px}
+.jarvis-project-shelf-head button{border:1px solid #39739b;border-radius:7px;padding:6px 9px;background:#10283e;color:#b9e6ff;font-size:9px}
+.jarvis-project-list{display:grid;gap:8px}
+.jarvis-project-item{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px;border:1px solid #234d69;border-radius:9px;background:#0a2033}
+.jarvis-project-item strong{display:block;color:#e4f6ff;font-size:11px;overflow-wrap:anywhere}
+.jarvis-project-item small{display:block;color:#8daec4;font-size:9px;margin-top:4px}
+.jarvis-project-item a{flex:0 0 auto;padding:8px 10px;border:1px solid #39c8ff88;border-radius:8px;background:#103653;color:#c8f1ff;text-decoration:none;font-size:9px;font-weight:700}
+.jarvis-project-empty{margin:0;color:#8daec4;font-size:10px;line-height:1.5}
+@media(max-width:420px){.jarvis-projects-button{padding:0 7px;font-size:8px}.jarvis-input-row{gap:5px}.jarvis-input-row .send{padding:0 10px}}
 .voice-toggle{flex:0 0 46px;width:46px;height:46px;border:1px solid #ff9a70;border-radius:50%;background:linear-gradient(145deg,#3a1b13,#1d1010);color:#ffd0b8;font-size:20px;box-shadow:0 0 14px #ff8a3d35}
 .voice-toggle.active{background:#5b2418;color:#fff;border-color:#ffb08a;box-shadow:0 0 18px #ff713f88}
 @media(max-width:420px){.voice-toggle{flex-basis:42px;width:42px;height:42px}.jarvis-input-row{gap:6px}.jarvis-input-row .send{padding:0 12px}}
@@ -921,7 +933,7 @@ header .sub{color:#d6a19a}
   <div class="chat-title">JARVIS / SECURE AI CONNECTION</div>
   <div class="messages" id="jarvisMessages"><div class="msg ai">God dag. JARVIS är redo. Vad kan jag hjälpa dig med?</div></div>
   
-   <div class="jarvis-holo-voice" id="jarvisHoloVoice"><button class="jarvis-orb-button" id="jarvisVoiceButton" type="button" onclick="toggleJarvisVoice()" aria-label="Tryck för att prata med JARVIS" title="Tryck för att prata med JARVIS"><span class="jarvis-orb-ring"></span><span class="jarvis-orb-ring ring-two"></span><span class="jarvis-orb-ring ring-three"></span><span class="jarvis-holo-ball" id="jarvisHoloBall"><span class="jarvis-orb-core"></span></span></button><div class="jarvis-orb-caption" id="jarvisOrbCaption">JARVIS / STANDBY</div><div class="jarvis-orb-hint" id="jarvisOrbHint">Tryck på den orange holografiska ringen för att starta ett röstsamtal</div></div><form class="input-row jarvis-input-row" onsubmit="sendMessage(event,'jarvis')"><input class="chat-input" id="jarvisInput" placeholder="Eller skriv till JARVIS..." autocomplete="off"><button class="send" id="jarvisSend">SKICKA</button></form><button type="button" id="jarvisNotificationsButton" onclick="enableJarvisNotifications()" style="margin-top:8px;padding:9px 13px;border:1px solid #39c8ff66;border-radius:9px;background:#0b2440;color:#bfeaff;font-size:10px;letter-spacing:1px">🔔 AKTIVERA KLARMEDDELANDEN</button>
+   <div class="jarvis-holo-voice" id="jarvisHoloVoice"><button class="jarvis-orb-button" id="jarvisVoiceButton" type="button" onclick="toggleJarvisVoice()" aria-label="Tryck för att prata med JARVIS" title="Tryck för att prata med JARVIS"><span class="jarvis-orb-ring"></span><span class="jarvis-orb-ring ring-two"></span><span class="jarvis-orb-ring ring-three"></span><span class="jarvis-holo-ball" id="jarvisHoloBall"><span class="jarvis-orb-core"></span></span></button><div class="jarvis-orb-caption" id="jarvisOrbCaption">JARVIS / STANDBY</div><div class="jarvis-orb-hint" id="jarvisOrbHint">Tryck på den orange holografiska ringen för att starta ett röstsamtal</div></div><form class="input-row jarvis-input-row" onsubmit="sendMessage(event,'jarvis')"><button class="jarvis-projects-button" type="button" id="jarvisProjectsButton" onclick="toggleJarvisProjects()" aria-expanded="false">📁 <span>MINA PROJEKT</span><b id="jarvisProjectCount">0</b></button><input class="chat-input" id="jarvisInput" placeholder="Eller skriv till JARVIS..." autocomplete="off"><button class="send" id="jarvisSend">SKICKA</button></form><div id="jarvisProjectShelf" class="jarvis-project-shelf" hidden><div class="jarvis-project-shelf-head"><strong>MINA FÄRDIGA PROJEKT</strong><button type="button" onclick="toggleJarvisProjects(false)">STÄNG ×</button></div><div id="jarvisProjectList" class="jarvis-project-list"><p>Inga färdiga projekt ännu.</p></div></div><button type="button" id="jarvisNotificationsButton" onclick="enableJarvisNotifications()" style="margin-top:8px;padding:9px 13px;border:1px solid #39c8ff66;border-radius:9px;background:#0b2440;color:#bfeaff;font-size:10px;letter-spacing:1px">🔔 AKTIVERA KLARMEDDELANDEN</button>
 
   </div>
  </section>
@@ -1669,6 +1681,47 @@ async function webImagesSelected(input){
 function clearWebImages(){
  webmasterImages=[];const input=$("webImageInput");if(input)input.value="";updateWebImageList();
 }
+const JARVIS_PROJECTS_KEY="jarvis_completed_projects_v1";
+let jarvisCompletedProjects=[];
+function loadJarvisProjects(){
+ try{const saved=JSON.parse(localStorage.getItem(JARVIS_PROJECTS_KEY)||"[]");jarvisCompletedProjects=Array.isArray(saved)?saved:[]}catch(e){jarvisCompletedProjects=[]}
+ renderJarvisProjects();
+}
+function saveJarvisProject(title,url,type="WEBBPROJEKT"){
+ try{
+  const parsed=new URL(String(url||""),window.location.origin);
+  if(!["http:","https:"].includes(parsed.protocol))return;
+  const href=parsed.href;
+  const existing=jarvisCompletedProjects.find(item=>item.url===href);
+  if(existing){if(title&&title!=="ÖPPNA PROJEKTET")existing.title=String(title).slice(0,100);existing.updated=Date.now()}
+  else jarvisCompletedProjects.unshift({id:Date.now()+"-"+Math.random().toString(36).slice(2,7),title:String(title||"Färdigt projekt").slice(0,100),url:href,type:String(type||"WEBBPROJEKT").slice(0,30),updated:Date.now()});
+  jarvisCompletedProjects=jarvisCompletedProjects.slice(0,100);
+  localStorage.setItem(JARVIS_PROJECTS_KEY,JSON.stringify(jarvisCompletedProjects));
+ }catch(e){}
+ renderJarvisProjects();
+}
+function renderJarvisProjects(){
+ const list=$("jarvisProjectList"),count=$("jarvisProjectCount");
+ if(count)count.textContent=String(jarvisCompletedProjects.length);
+ if(!list)return;
+ list.replaceChildren();
+ if(!jarvisCompletedProjects.length){const p=document.createElement("p");p.className="jarvis-project-empty";p.textContent="Inga färdiga projekt ännu. När JARVIS eller en specialist levererar en riktig webblänk hamnar den här automatiskt.";list.appendChild(p);return}
+ jarvisCompletedProjects.forEach(item=>{
+  const row=document.createElement("div");row.className="jarvis-project-item";
+  const info=document.createElement("div");const title=document.createElement("strong");title.textContent=item.title;
+  const meta=document.createElement("small");meta.textContent=item.type+" · "+new Date(item.updated||Date.now()).toLocaleDateString("sv-SE");
+  info.append(title,meta);
+  const link=document.createElement("a");link.href=item.url;link.target="_blank";link.rel="noopener noreferrer";link.textContent="ÖPPNA ↗";
+  row.append(info,link);list.appendChild(row);
+ });
+}
+function toggleJarvisProjects(force){
+ const panel=$("jarvisProjectShelf"),button=$("jarvisProjectsButton");if(!panel)return;
+ const show=typeof force==="boolean"?force:panel.hidden;
+ panel.hidden=!show;if(button)button.setAttribute("aria-expanded",String(show));
+ if(show)renderJarvisProjects();
+}
+loadJarvisProjects();
 function appendProjectLinks(element,source){
  if(!element||!source)return;
  const text=String(source),tick=String.fromCharCode(96);
@@ -1676,7 +1729,7 @@ function appendProjectLinks(element,source){
  const found=new Map();
  const add=(url,label)=>{
   let value=String(url||"").trim().replace(/[.,!?;:]+$/,"");
-  try{const parsed=new URL(value);if(!["http:","https:"].includes(parsed.protocol))return;value=parsed.href;if(!found.has(value))found.set(value,String(label||"").trim())}catch(e){}
+  try{const parsed=new URL(value);if(!["http:","https:"].includes(parsed.protocol))return;value=parsed.href;if(!found.has(value))found.set(value,String(label||"").trim());saveJarvisProject(String(label||"Färdigt webbprojekt").replace(/<[^>]*>/g," ").trim()||"Färdigt webbprojekt",value,"WEBBPROJEKT")}catch(e){}
  };
  let match;
  const htmlLink=/<a\b[^>]*href\s*=\s*["'](https?:\/\/[^"']+)["'][^>]*>([\s\S]*?)<\/a\s*>/gi;
@@ -1736,6 +1789,7 @@ async function createWebPreview(reply,mountElement=null){
  const card=document.createElement("div");card.className="web-preview-area";card.hidden=false;
  const title=document.createElement("strong");title.textContent="DITT PROJEKT ÄR REDO ATT TESTA";
  const link=document.createElement("a");link.className="web-preview-link";link.href=new URL(data.preview_url,window.location.origin).href;link.target="_blank";link.rel="noopener noreferrer";link.textContent="ÖPPNA OCH TESTA PROJEKTET ↗";
+ saveJarvisProject("Webbprojekt – förhandsvisning",new URL(data.preview_url,window.location.origin).href,"FÖRHANDSVISNING");
  const note=document.createElement("div");note.className="web-preview-note";note.textContent="Öppnas i en ny flik. Detta är en tillfällig testversion som rensas när servern startas om.";
  card.append(title,document.createElement("br"),link,note);
  if(mountElement)area.appendChild(card);else{area.hidden=false;area.replaceChildren(card)}
