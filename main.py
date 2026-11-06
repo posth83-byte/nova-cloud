@@ -2442,22 +2442,38 @@ Behåll användbara detaljer. Om något inte kan verifieras, märk det tydligt.
 Returnera en förbättrad slutleverans på naturlig svenska. Lägg inte till nya fakta.
 Avsluta med en kort sektion "Kvar att göra" endast om något faktiskt återstår.
 """
-        quality = generate_reply(quality_input, quality_prompt, max_tokens=3500)
-        final_reply = quality["reply"].strip() or summary["reply"]
-        set_team_runtime("done", task, "Rådet är klart – JARVIS har kvalitetsgranskat leveransen", [], ordered)
+        quality = None
+        quality_error = None
+        try:
+            quality = generate_reply(quality_input, quality_prompt, max_tokens=3500)
+            final_reply = quality["reply"].strip() or summary["reply"]
+            quality_status = "reviewed"
+        except Exception as error:
+            # Ett fel i slutgranskningen ska inte kasta bort redan färdigt specialistarbete.
+            final_reply = summary["reply"]
+            quality_status = "unavailable"
+            quality_error = str(error)[:400]
+
+        final_phase = (
+            "Rådet är klart – JARVIS har kvalitetsgranskat leveransen"
+            if quality_status == "reviewed"
+            else "Rådet är klart – slutgranskningen kunde inte köras"
+        )
+        set_team_runtime("done", task, final_phase, [], ordered)
         return {
             "status": "delegated",
             "target": ordered[0] if len(ordered) == 1 else "MULTI",
             "targets": ordered,
             "reason": str(plan.get("reason", "")),
             "council_rounds": 2 if council_reviews else 1,
-            "quality_gate": "reviewed",
-            "workflow": ["routing", "specialist_analysis", "peer_review" if council_reviews else "self_review", "synthesis", "final_quality_check"],
+            "quality_gate": quality_status,
+            "quality_error": quality_error,
+            "workflow": ["routing", "specialist_analysis", "peer_review" if council_reviews else "self_review", "synthesis"] + (["final_quality_check"] if quality_status == "reviewed" else []),
             "results": results,
             "reviews": council_reviews,
             "reply": final_reply,
             "engine": summary["engine"],
-            "quality_engine": quality["engine"],
+            "quality_engine": quality["engine"] if quality else None,
             "router_engine": decision["engine"]
         }
     except HTTPException:
