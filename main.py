@@ -2504,8 +2504,45 @@ async def web_manifest_file():
 
 @app.get("/api/team/status")
 async def team_status():
-    """Current real collaboration stage for the shared team room."""
-    return dict(team_runtime_state)
+    """Return live runtime state, recovering active work from the durable queue after reconnects."""
+    runtime = dict(team_runtime_state)
+
+    # Prefer the live in-process state while a specialist council is actively running.
+    if runtime.get("status") == "working":
+        return runtime
+
+    # If the page or Render process was refreshed, recover the latest active job
+    # from Supabase without exposing its access token or internal credentials.
+    if USE_SUPABASE_MEMORY:
+        try:
+            rows, _ = await asyncio.to_thread(
+                supabase_jobs_request,
+                "GET",
+                "jarvis_jobs",
+                None,
+                urllib.parse.urlencode({
+                    "select": "task,status,phase,active,completed,updated_at",
+                    "status": "in.(queued,running)",
+                    "order": "created_at.desc",
+                    "limit": "1"
+                })
+            )
+            if rows:
+                job = rows[0]
+                return {
+                    "status": "working",
+                    "task": job.get("task") or "JARVIS arbetar med ett uppdrag",
+                    "phase": job.get("phase") or "Bakgrundsarbetet fortsätter",
+                    "active": job.get("active") or [],
+                    "completed": job.get("completed") or [],
+                    "updated": job.get("updated_at") or runtime.get("updated"),
+                    "source": "persistent_job_queue"
+                }
+        except Exception:
+            # Keep the room available even if the status database is temporarily unreachable.
+            pass
+
+    return runtime
 
 
 # ==========================================
