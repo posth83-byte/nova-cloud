@@ -25,7 +25,7 @@ from runway_engine import router as runway_router
 # NOVA CLOUD – VERSION 2.2.0
 # ==========================================
 
-APP_VERSION = "3.1.0"
+APP_VERSION = "3.2.0"
 
 app = FastAPI(
     title="NOVA Cloud",
@@ -137,11 +137,12 @@ def save_memory_item(text, category="note", project="", importance=3, source="us
         return row["id"] if row else None
 
 
-def search_memory_items(query, limit=6):
+def search_memory_items(query, limit=6, project=""):
     terms = list(dict.fromkeys(
         token for token in re.findall(r"[a-zA-ZåäöÅÄÖ0-9]{3,}", str(query or "").casefold())
         if token not in {"och", "att", "det", "som", "med", "för", "kan", "ska", "vill", "hur", "vad", "den", "dom", "the", "and"}
     ))[:18]
+    requested_project = str(project or "").strip().casefold()
     with memory_connection() as connection:
         rows = connection.execute("""
             SELECT * FROM memory_items
@@ -150,14 +151,21 @@ def search_memory_items(query, limit=6):
         """).fetchall()
         scored = []
         for row in rows:
-            haystack = (row["text"] + " " + row["category"] + " " + row["project"]).casefold()
+            row_project = str(row["project"] or "").strip().casefold()
+            haystack = (row["text"] + " " + row["category"] + " " + row_project).casefold()
             overlap = sum(1 for term in terms if term in haystack)
-            recency_bonus = 0.15
-            score = overlap * 2 + int(row["importance"]) * 0.25 + recency_bonus
-            if not terms:
-                score = int(row["importance"]) * 0.5 + recency_bonus
-            if overlap or not terms:
-                scored.append((score, row))
+            project_match = bool(requested_project and (
+                row_project == requested_project
+                or requested_project in row_project
+                or row_project in requested_project
+            ))
+            # Project context is a relevance bonus, not permission to inject unrelated memories.
+            if not overlap and not (project_match and terms):
+                continue
+            score = overlap * 2.0 + int(row["importance"]) * 0.25 + 0.15
+            if project_match:
+                score += 3.0
+            scored.append((score, row))
         scored.sort(key=lambda item: (item[0], item[1]["updated_at"]), reverse=True)
         selected = [item[1] for item in scored[:max(1, min(12, limit))]]
         for row in selected:
@@ -168,8 +176,8 @@ def search_memory_items(query, limit=6):
         return [dict(row) for row in selected]
 
 
-def add_relevant_memory(query, message, limit=6):
-    memories = search_memory_items(query, limit=limit)
+def add_relevant_memory(query, message, limit=6, project=""):
+    memories = search_memory_items(query, limit=limit, project=project)
     if not memories:
         return message
     entries = []
@@ -179,13 +187,12 @@ def add_relevant_memory(query, message, limit=6):
             f"- [{item['category']}{project_label}; viktighet {item['importance']}/5] {item['text']}"
         )
     return (
-        "RELEVANT GEMENSAMT LÅNGTIDSMINNE FRÅN JARVIS MEMORY CORE. "
-        "Använd detta när det är relevant. Nyare uttryckliga instruktioner väger tyngre. "
-        "Om ett minne inte är relevant ska du ignorera det. Hitta inte på saknade detaljer.\n"
-        + "\n".join(entries)
-        + "\n\nAKTUELLT SAMMANHANG:\n" + message
+        "RELEVANT LÅNGTIDSMINNE FRÅN JARVIS MEMORY CORE. "
+        "Projektmatchande minnen prioriteras, men använd endast sådant som är relevant. "
+        "Nyare uttryckliga instruktioner väger tyngre. Hitta inte på saknade detaljer.\\n"
+        + "\\n".join(entries)
+        + "\\n\\nAKTUELLT SAMMANHANG:\\n" + message
     )
-
 
 def save_chat_exchange(user_message, assistant_reply, project=""):
     # Spara konversationsunderlag som sökbart minne; undvik mycket långa svar.
@@ -2153,7 +2160,7 @@ async def chat(request: ChatRequest):
         raise HTTPException(status_code=400, detail="Meddelandet får inte vara tomt.")
 
     contextual_message = build_conversation_context(request.history, message, "JARVIS")
-    contextual_message = add_relevant_memory(message, contextual_message, limit=8)
+    contextual_message = add_relevant_memory(message, contextual_message, limit=8, project="JARVIS")
     result = generate_reply(contextual_message, JARVIS_PROMPT)
     response = {
         "assistant": "JARVIS",
@@ -2337,7 +2344,7 @@ async def nova(request: NovaChatRequest):
         )
 
     message = build_conversation_context(history, message, "NOVA")
-    message = add_relevant_memory(message, message, limit=5)
+    message = add_relevant_memory(message, message, limit=5, project="NOVA")
 
     if reference_url:
         message += (
@@ -2389,7 +2396,7 @@ async def game_developer(request: GameDeveloperChatRequest):
     if not message:
         raise HTTPException(status_code=400, detail="Meddelandet får inte vara tomt.")
     message = build_conversation_context(history, message, "GAME DEVELOPER")
-    message = add_relevant_memory(message, message, limit=5)
+    message = add_relevant_memory(message, message, limit=5, project="GAME DEVELOPER")
     if reference_url:
         message += (
             "\n\nREFERENSLÄNK FRÅN ANVÄNDAREN:\n" + reference_url
@@ -2444,7 +2451,7 @@ async def webmaster(request: ChatRequest):
             detail="Meddelandet får inte vara tomt."
         )
     message = build_conversation_context(request.history, message, "WEBMASTER")
-    message = add_relevant_memory(message, message, limit=5)
+    message = add_relevant_memory(message, message, limit=5, project="WEBMASTER")
     result = generate_reply(
         message,
         WEBMASTER_PROMPT,
