@@ -10,6 +10,7 @@ import urllib.parse
 import time
 import sqlite3
 import hashlib
+import tempfile
 import xml.etree.ElementTree as ET
 
 from pathlib import Path
@@ -182,14 +183,15 @@ def supabase_jobs_request(method, path, payload=None, query="", prefer=""):
         raise RuntimeError(f"JARVIS jobbkö svarade med HTTP {error.code}: {detail}") from error
 
 
-def enqueue_jarvis_job(task, history=None):
+def enqueue_jarvis_job(task, history=None, push_subscription=None):
     access_token = uuid.uuid4().hex + uuid.uuid4().hex
     row = {
         "task": str(task).strip(),
         "history": history if isinstance(history, list) else [],
         "status": "queued",
         "phase": "Sparat – väntar på bakgrundsarbetare",
-        "access_token_hash": hashlib.sha256(access_token.encode("utf-8")).hexdigest()
+        "access_token_hash": hashlib.sha256(access_token.encode("utf-8")).hexdigest(),
+        "push_subscription": push_subscription if isinstance(push_subscription, dict) else None
     }
     rows, _ = supabase_jobs_request(
         "POST", "jarvis_jobs", row, prefer="return=representation"
@@ -197,6 +199,46 @@ def enqueue_jarvis_job(task, history=None):
     if not rows:
         raise RuntimeError("Supabase sparade inte JARVIS-uppdraget.")
     return {"id": rows[0]["id"], "access_token": access_token, "status": rows[0]["status"]}
+
+
+
+
+def send_jarvis_job_notification(job_id, subscription, outcome):
+    """Send one standards-based Web Push notification when a queued task completes."""
+    if not isinstance(subscription, dict) or not subscription.get("endpoint"):
+        return False
+    private_key = os.getenv("VAPID_PRIVATE_KEY", "").strip()
+    public_key = os.getenv("VAPID_PUBLIC_KEY", "").strip()
+    subject = os.getenv("VAPID_CLAIMS_EMAIL", "mailto:admin@example.com").strip()
+    if not private_key or not public_key:
+        return False
+    try:
+        from pywebpush import webpush
+        payload = {
+            "title": "JARVIS – uppdrag klart",
+            "body": str(outcome.get("reply") or "JARVIS har slutfört uppdraget.")[:160],
+            "url": "/"
+        }
+        temp_path = None
+        try:
+            with tempfile.NamedTemporaryFile(mode="w", suffix=".pem", encoding="utf-8", delete=False) as key_file:
+                key_file.write(private_key)
+                temp_path = key_file.name
+            webpush(
+                subscription_info=subscription,
+                data=json.dumps(payload, ensure_ascii=False),
+                vapid_private_key=temp_path,
+                vapid_claims={"sub": subject}
+            )
+            return True
+        finally:
+            if temp_path:
+                try:
+                    os.unlink(temp_path)
+                except OSError:
+                    pass
+    except Exception:
+        return False
 
 
 async def jarvis_job_heartbeat(job_id, stop_event):
@@ -255,6 +297,17 @@ async def jarvis_job_worker_loop():
                     JarvisDelegateRequest(task=task, history=history)
                 )
                 completed = outcome.get("status") in ("delegated", "needs_discussion")
+                if completed and job.get("push_subscription"):
+                    sent = await asyncio.to_thread(
+                        send_jarvis_job_notification, job_id, job.get("push_subscription"), outcome
+                    )
+                    if sent:
+                        await asyncio.to_thread(
+                            supabase_jobs_request, "PATCH", "jarvis_jobs",
+                            {"notification_sent_at": datetime.now(timezone.utc).isoformat()},
+                            urllib.parse.urlencode({"id": "eq." + str(job_id)}),
+                            "return=minimal"
+                        )
                 await asyncio.to_thread(
                     supabase_jobs_request, "PATCH", "jarvis_jobs",
                     {
@@ -864,11 +917,13 @@ def resolve_youtube_channel_ids():
 class JarvisDelegateRequest(BaseModel):
     task: str = Field(min_length=3, max_length=10000)
     history: list[dict] = Field(default_factory=list)
+    push_subscription: dict | None = None
 
 
 class ChatRequest(BaseModel):
     message: str = Field(min_length=1, max_length=10000)
     history: list[dict] = Field(default_factory=list)
+    push_subscription: dict | None = None
 
 
 class MemoryCreateRequest(BaseModel):
@@ -2360,7 +2415,7 @@ async def create_jarvis_job(request: JarvisDelegateRequest):
     if not USE_SUPABASE_MEMORY:
         raise HTTPException(status_code=503, detail="Den permanenta jobbköen är inte tillgänglig.")
     try:
-        job = await asyncio.to_thread(enqueue_jarvis_job, request.task, request.history)
+        job = await asyncio.to_thread(enqueue_jarvis_job, request.task, request.history, request.push_subscription)
         return {
             "status": "queued",
             "job_id": job["id"],
@@ -2398,6 +2453,31 @@ async def get_jarvis_job(job_id: str, token: str):
         raise
     except Exception as error:
         raise HTTPException(status_code=503, detail=f"Kunde inte läsa jobbstatus: {str(error)[:500]}")
+
+
+
+@app.get("/api/push/public-key")
+async def get_push_public_key():
+    public_key = os.getenv("VAPID_PUBLIC_KEY", "").strip()
+    if not public_key:
+        raise HTTPException(status_code=503, detail="Pushnotiser är inte konfigurerade på servern ännu.")
+    return {"public_key": public_key}
+
+
+@app.get("/sw.js")
+async def service_worker_file():
+    worker_file = BASE_DIR / "sw.js"
+    if not worker_file.exists():
+        raise HTTPException(status_code=404, detail="Service worker saknas.")
+    return FileResponse(worker_file, media_type="application/javascript", headers={"Service-Worker-Allowed": "/"})
+
+
+@app.get("/manifest.webmanifest")
+async def web_manifest_file():
+    manifest_file = BASE_DIR / "manifest.webmanifest"
+    if not manifest_file.exists():
+        raise HTTPException(status_code=404, detail="Webbappens manifest saknas.")
+    return FileResponse(manifest_file, media_type="application/manifest+json")
 
 
 @app.get("/api/team/status")
@@ -2949,7 +3029,7 @@ Returnera endast JSON: {"start":true,"reason":"kort skäl"} eller
             intent_match = re.search(r"\{[\s\S]*?\}", intent["reply"])
             intent_data = json.loads(intent_match.group(0)) if intent_match else {}
             if intent_data.get("start") is True:
-                job = await asyncio.to_thread(enqueue_jarvis_job, message, request.history)
+                job = await asyncio.to_thread(enqueue_jarvis_job, message, request.history, request.push_subscription)
                 response["job_queued"] = True
                 response["job_id"] = job["id"]
                 response["job_access_token"] = job["access_token"]
