@@ -1587,7 +1587,7 @@ async function jarvisDelegateLatest(){
    loading.textContent="Jag rekommenderar att vi diskuterar vidare innan jag lämnar över uppdraget.\n"+(data.reason||"");
   }else{
    const names={NOVA:"NOVA",WEBMASTER:"WEBMASTER",GAME_DEVELOPER:"GAME DEVELOPER"};
-   loading.textContent="✓ JARVIS skickade uppdraget till "+(names[data.target]||data.target)+".\nVarför: "+(data.reason||"Rätt specialist för uppgiften.")+"\n\nMEDARBETARENS RESULTAT:\n"+(data.reply||"Inget resultat mottogs.")+"\n\nAI-motor: "+(data.engine||"Okänd");
+   const team=(data.targets||[data.target]).map(name=>names[name]||name).join(", ");\n   const detail=(data.results||[]).map(item=>"\n\n"+(names[item.target]||item.target)+" – DELRESULTAT:\n"+(item.reply||"Inget resultat mottogs.")).join("");\n   loading.textContent="✓ JARVIS samordnade: "+team+".\\nVarför: "+(data.reason||"Flera specialistroller behövs för uppgiften.")+"\\n\\nJARVIS SAMMANSTÄLLNING:\\n"+(data.reply||"Inget sammanställt resultat.")+detail+"\\n\\nAI-motor: "+(data.engine||"Okänd");
    loading.dataset.speechText="Jag har lämnat över uppdraget till "+(names[data.target]||data.target)+".";
    logActivity("JARVIS delegerade till "+data.target,"↗",task.slice(0,80));
   }
