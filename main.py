@@ -5,6 +5,7 @@ import re
 import uuid
 import urllib.request
 import urllib.error
+import urllib.parse
 import time
 import sqlite3
 import hashlib
@@ -64,11 +65,18 @@ BASE_DIR = Path(__file__).resolve().parent
 INDEX_FILE = BASE_DIR / "index.html"
 
 # ==========================================
-# JARVIS MEMORY CORE – GEMENSAMT LÅNGTIDSMINNE
+# JARVIS MEMORY CORE – SUPABASE + SQLITE FALLBACK
 # ==========================================
 
-# På Render är filsystemet normalt tillfälligt. Sätt JARVIS_MEMORY_DB
-# till en sökväg på en ansluten persistent disk för minne över omstarter.
+# Supabase används när båda serverhemligheterna finns i Render.
+# SQLite finns kvar som automatisk reserv om Supabase inte är konfigurerat.
+SUPABASE_URL = os.getenv("SUPABASE_URL", "").strip().rstrip("/")
+SUPABASE_SECRET_KEY = (
+    os.getenv("SUPABASE_SECRET_KEY", "").strip()
+    or os.getenv("SUPABASE_SERVICE_ROLE_KEY", "").strip()
+)
+USE_SUPABASE_MEMORY = bool(SUPABASE_URL and SUPABASE_SECRET_KEY)
+
 MEMORY_DB_PATH = Path(os.getenv(
     "JARVIS_MEMORY_DB",
     str(BASE_DIR / "data" / "jarvis_memory.db")
@@ -82,7 +90,37 @@ def memory_connection():
     return connection
 
 
+def supabase_memory_request(method, query="", payload=None, prefer=""):
+    if not USE_SUPABASE_MEMORY:
+        raise RuntimeError("Supabase Memory är inte konfigurerat.")
+    url = SUPABASE_URL + "/rest/v1/jarvis_memory_items"
+    if query:
+        url += "?" + query
+    body = None if payload is None else json.dumps(payload, ensure_ascii=False).encode("utf-8")
+    headers = {
+        "apikey": SUPABASE_SECRET_KEY,
+        "Authorization": "Bearer " + SUPABASE_SECRET_KEY,
+        "Accept": "application/json"
+    }
+    if body is not None:
+        headers["Content-Type"] = "application/json"
+    if prefer:
+        headers["Prefer"] = prefer
+    request = urllib.request.Request(url, data=body, headers=headers, method=method)
+    try:
+        with urllib.request.urlopen(request, timeout=20) as response:
+            raw = response.read().decode("utf-8")
+            return json.loads(raw) if raw else [], dict(response.headers)
+    except urllib.error.HTTPError as error:
+        detail = error.read().decode("utf-8", errors="replace")[:1200]
+        raise RuntimeError(
+            f"Supabase Memory svarade med HTTP {error.code}: {detail}"
+        ) from error
+
+
 def init_memory_core():
+    if USE_SUPABASE_MEMORY:
+        return
     with memory_connection() as connection:
         connection.execute("""
             CREATE TABLE IF NOT EXISTS memory_items (
@@ -117,6 +155,37 @@ def save_memory_item(text, category="note", project="", importance=3, source="us
     fingerprint_source = (clean_category + "|" + clean_project + "|" + clean_text).casefold()
     fingerprint = hashlib.sha256(fingerprint_source.encode("utf-8")).hexdigest()
     now = datetime.now(timezone.utc).isoformat()
+    clean_importance = max(1, min(5, int(importance)))
+    clean_source = str(source or "user")[:40]
+
+    if USE_SUPABASE_MEMORY:
+        existing, _ = supabase_memory_request(
+            "GET",
+            urllib.parse.urlencode({
+                "select": "id,importance",
+                "fingerprint": "eq." + fingerprint,
+                "limit": "1"
+            })
+        )
+        if existing:
+            clean_importance = max(clean_importance, int(existing[0].get("importance", 3)))
+        rows, _ = supabase_memory_request(
+            "POST",
+            "on_conflict=fingerprint",
+            {
+                "fingerprint": fingerprint,
+                "text": clean_text,
+                "category": clean_category,
+                "project": clean_project,
+                "importance": clean_importance,
+                "source": clean_source,
+                "created_at": now,
+                "updated_at": now
+            },
+            "resolution=merge-duplicates,return=representation"
+        )
+        return rows[0].get("id") if rows else None
+
     with memory_connection() as connection:
         connection.execute("""
             INSERT INTO memory_items
@@ -129,7 +198,7 @@ def save_memory_item(text, category="note", project="", importance=3, source="us
                 updated_at=excluded.updated_at
         """, (
             fingerprint, clean_text, clean_category, clean_project,
-            max(1, min(5, int(importance))), str(source or "user")[:40], now, now
+            clean_importance, clean_source, now, now
         ))
         row = connection.execute(
             "SELECT id FROM memory_items WHERE fingerprint=?", (fingerprint,)
@@ -143,39 +212,101 @@ def search_memory_items(query, limit=6, project=""):
         if token not in {"och", "att", "det", "som", "med", "för", "kan", "ska", "vill", "hur", "vad", "den", "dom", "the", "and"}
     ))[:18]
     requested_project = str(project or "").strip().casefold()
-    with memory_connection() as connection:
-        rows = connection.execute("""
-            SELECT * FROM memory_items
-            ORDER BY importance DESC, updated_at DESC
-            LIMIT 400
-        """).fetchall()
-        scored = []
-        for row in rows:
-            row_project = str(row["project"] or "").strip().casefold()
-            haystack = (row["text"] + " " + row["category"] + " " + row_project).casefold()
-            overlap = sum(1 for term in terms if term in haystack)
-            project_match = bool(requested_project and (
-                row_project and (
-                    row_project == requested_project
-                    or requested_project in row_project
-                    or row_project in requested_project
-                )
-            ))
-            # Project context is a relevance bonus, not permission to inject unrelated memories.
-            if not overlap and not (project_match and terms):
-                continue
-            score = overlap * 2.0 + int(row["importance"]) * 0.25 + 0.15
-            if project_match:
-                score += 3.0
-            scored.append((score, row))
-        scored.sort(key=lambda item: (item[0], item[1]["updated_at"]), reverse=True)
-        selected = [item[1] for item in scored[:max(1, min(12, limit))]]
+
+    if USE_SUPABASE_MEMORY:
+        rows, _ = supabase_memory_request(
+            "GET",
+            urllib.parse.urlencode({
+                "select": "*",
+                "order": "importance.desc,updated_at.desc",
+                "limit": "400"
+            })
+        )
+    else:
+        with memory_connection() as connection:
+            rows = [dict(row) for row in connection.execute("""
+                SELECT * FROM memory_items
+                ORDER BY importance DESC, updated_at DESC
+                LIMIT 400
+            """).fetchall()]
+
+    scored = []
+    for row in rows:
+        row_project = str(row.get("project") or "").strip().casefold()
+        haystack = (str(row.get("text") or "") + " " + str(row.get("category") or "") + " " + row_project).casefold()
+        overlap = sum(1 for term in terms if term in haystack)
+        project_match = bool(requested_project and row_project and (
+            row_project == requested_project
+            or requested_project in row_project
+            or row_project in requested_project
+        ))
+        if not overlap and not (project_match and terms):
+            continue
+        score = overlap * 2.0 + int(row.get("importance", 3)) * 0.25 + 0.15
+        if project_match:
+            score += 3.0
+        scored.append((score, row))
+
+    scored.sort(key=lambda item: (item[0], str(item[1].get("updated_at", ""))), reverse=True)
+    selected = [item[1] for item in scored[:max(1, min(12, limit))]]
+
+    if USE_SUPABASE_MEMORY:
         for row in selected:
-            connection.execute(
-                "UPDATE memory_items SET access_count=access_count+1 WHERE id=?",
-                (row["id"],)
+            supabase_memory_request(
+                "PATCH",
+                urllib.parse.urlencode({"id": "eq." + str(row["id"])}),
+                {"access_count": int(row.get("access_count", 0)) + 1},
+                "return=minimal"
             )
-        return [dict(row) for row in selected]
+    elif selected:
+        with memory_connection() as connection:
+            for row in selected:
+                connection.execute(
+                    "UPDATE memory_items SET access_count=access_count+1 WHERE id=?",
+                    (row["id"],)
+                )
+
+    return selected
+
+
+def get_memory_status():
+    if USE_SUPABASE_MEMORY:
+        _, headers = supabase_memory_request(
+            "GET",
+            "select=id&limit=1",
+            prefer="count=exact"
+        )
+        content_range = headers.get("Content-Range", "*/0")
+        try:
+            count = int(content_range.rsplit("/", 1)[1])
+        except (ValueError, IndexError):
+            count = 0
+        latest, _ = supabase_memory_request(
+            "GET",
+            "select=updated_at&order=updated_at.desc&limit=1"
+        )
+        return {
+            "status": "online",
+            "items": count,
+            "last_updated": latest[0].get("updated_at") if latest else None,
+            "storage": "supabase"
+        }
+
+    with memory_connection() as connection:
+        count = connection.execute("SELECT COUNT(*) AS total FROM memory_items").fetchone()["total"]
+        latest = connection.execute(
+            "SELECT updated_at FROM memory_items ORDER BY updated_at DESC LIMIT 1"
+        ).fetchone()
+    return {
+        "status": "online",
+        "items": count,
+        "last_updated": latest["updated_at"] if latest else None,
+        "storage": "sqlite",
+        "persistence_note": (
+            "Använd en sökväg på persistent disk via JARVIS_MEMORY_DB "
+            "för att behålla minnet efter omstarter."
+        )
+    }
 
 
 def add_relevant_memory(query, message, limit=6, project=""):
@@ -196,8 +327,8 @@ def add_relevant_memory(query, message, limit=6, project=""):
         + "\n\nAKTUELLT SAMMANHANG:\n" + message
     )
 
+
 def save_chat_exchange(user_message, assistant_reply, project=""):
-    # Spara konversationsunderlag som sökbart minne; undvik mycket långa svar.
     combined = (
         "Användaren: " + str(user_message or "").strip()[:2500]
         + "\nJARVIS: " + str(assistant_reply or "").strip()[:2500]
@@ -214,21 +345,13 @@ init_memory_core()
 
 @app.get("/api/memory/status")
 async def memory_status():
-    with memory_connection() as connection:
-        count = connection.execute("SELECT COUNT(*) AS total FROM memory_items").fetchone()["total"]
-        latest = connection.execute(
-            "SELECT updated_at FROM memory_items ORDER BY updated_at DESC LIMIT 1"
-        ).fetchone()
-    return {
-        "status": "online",
-        "items": count,
-        "last_updated": latest["updated_at"] if latest else None,
-        "storage": "sqlite",
-        "persistence_note": (
-            "Använd en sökväg på persistent disk via JARVIS_MEMORY_DB "
-            "för att behålla minnet efter omstarter."
+    try:
+        return get_memory_status()
+    except Exception as error:
+        raise HTTPException(
+            status_code=503,
+            detail=f"JARVIS Memory kunde inte läsa lagringen: {str(error)[:500]}"
         )
-    }
 
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
@@ -1729,10 +1852,8 @@ async def status():
         "video_planner": "online",
         "video_renderer": "online",
         "memory_core": "online",
-        "memory_items": memory_connection().execute(
-            "SELECT COUNT(*) FROM memory_items"
-        ).fetchone()[0],
-        "memory_storage": "sqlite",
+        "memory_items": get_memory_status()["items"],
+        "memory_storage": "supabase" if USE_SUPABASE_MEMORY else "sqlite",
         "runway_video_generation": bool(RUNWAY_API_KEY),
         "version": APP_VERSION,
         "time": datetime.now(timezone.utc).isoformat()
