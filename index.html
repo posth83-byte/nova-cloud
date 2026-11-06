@@ -766,7 +766,7 @@ header .sub{color:#d6a19a}
   <div class="chatbox">
   <div class="chat-title">JARVIS / SECURE AI CONNECTION</div>
   <div class="messages" id="jarvisMessages"><div class="msg ai">God dag. JARVIS är redo. Vad kan jag hjälpa dig med?</div></div>
-  <div class="voice-panel"><div class="voice-heading">JARVIS / RÖSTINSTÄLLNINGAR</div><div class="voice-row"><select class="voice-select" id="jarvisVoiceSelect" aria-label="Välj JARVIS-röst"><option value="">Laddar tillgängliga röster...</option></select><button class="voice-test" onclick="testVoice('jarvis')">TESTA RÖST</button></div><div class="voice-note">Välj en svensk röst om en sådan finns tillgänglig på din enhet.</div><div class="voice-status" id="jarvisVoiceStatus">Röstsystem redo.</div></div>
+  <div class="voice-panel"><div class="voice-heading">JARVIS / RÖSTINSTÄLLNINGAR</div><div class="voice-row"><select class="voice-select" id="jarvisVoiceSelect" aria-label="Välj JARVIS-röst"><option value="">Laddar tillgängliga röster...</option></select><button class="voice-test" type="button" onclick="testVoice('jarvis')">TESTA RÖST</button></div><div class="voice-row" style="margin-top:12px"><label style="flex:1;min-width:145px;font-size:10px">TALHASTIGHET <strong id="jarvisRateValue">0,95×</strong><input id="jarvisRate" type="range" min="0.7" max="1.2" step="0.05" value="0.95" style="display:block;width:100%;margin-top:7px"></label><label style="flex:1;min-width:145px;font-size:10px">TONLÄGE <strong id="jarvisPitchValue">0,92</strong><input id="jarvisPitch" type="range" min="0.7" max="1.3" step="0.05" value="0.92" style="display:block;width:100%;margin-top:7px"></label></div><label style="display:flex;gap:9px;align-items:center;margin-top:12px;font-size:10px"><input id="jarvisAutoSpeak" type="checkbox" checked> Läs upp JARVIS svar automatiskt</label><div class="voice-note">Röstlistan visar de röster som Safari faktiskt gör tillgängliga. En nedladdad Siri-röst kan saknas om iOS inte exponerar den för webbsidor.</div><div class="voice-status" id="jarvisVoiceStatus">Röstsystem redo.</div></div>
   <div class="voice-panel" style="margin-top:10px"><div class="voice-heading">JARVIS / SAMTALSLÄGE</div><div class="voice-row"><button type="button" class="voice-test" id="jarvisTalkStart" onclick="startJarvisVoiceConversation()">🎙 STARTA SAMTAL MED JARVIS</button><button type="button" class="voice-test" id="jarvisTalkStop" onclick="stopWakeListening()" disabled>STOPPA</button></div><div class="voice-note">Tryck en gång för att börja prata. JARVIS lyssnar på svenska och svarar med vald röst. Du kan också skriva i chatten nedanför.</div></div>
   <form class="input-row" onsubmit="sendMessage(event,'jarvis')"><input class="chat-input" id="jarvisInput" placeholder="Skriv till JARVIS..." autocomplete="off"><button class="send" id="jarvisSend">SKICKA</button></form>
   <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:9px">
@@ -1115,6 +1115,26 @@ function getSelectedVoice(room){
  const select=$(room+"VoiceSelect");if(!select||!select.value)return null;
  return availableVoices.find(v=>v.voiceURI===select.value)||null;
 }
+function getJarvisVoiceSettings(){
+ return {rate:Number($("jarvisRate")?.value||0.95),pitch:Number($("jarvisPitch")?.value||0.92),autoSpeak:$("jarvisAutoSpeak")?$("jarvisAutoSpeak").checked:true};
+}
+function saveJarvisVoiceSettings(){
+ const settings=getJarvisVoiceSettings();
+ try{localStorage.setItem("novaJarvisVoiceSettings",JSON.stringify({...settings,voiceURI:$("jarvisVoiceSelect")?.value||""}));}catch(e){}
+ if($("jarvisRateValue"))$("jarvisRateValue").textContent=settings.rate.toFixed(2).replace(".",",")+"×";
+ if($("jarvisPitchValue"))$("jarvisPitchValue").textContent=settings.pitch.toFixed(2).replace(".",",");
+}
+function restoreJarvisVoiceSettings(){
+ try{const saved=JSON.parse(localStorage.getItem("novaJarvisVoiceSettings")||"{}");
+  if($("jarvisRate")&&saved.rate)$("jarvisRate").value=saved.rate;
+  if($("jarvisPitch")&&saved.pitch)$("jarvisPitch").value=saved.pitch;
+  if($("jarvisAutoSpeak"))$("jarvisAutoSpeak").checked=saved.autoSpeak!==false;
+  if($("jarvisVoiceSelect")&&saved.voiceURI)$("jarvisVoiceSelect").value=saved.voiceURI;
+ }catch(e){}
+ saveJarvisVoiceSettings();
+}
+["jarvisRate","jarvisPitch","jarvisAutoSpeak","jarvisVoiceSelect"].forEach(id=>{const el=$(id);if(el)el.addEventListener("input",saveJarvisVoiceSettings);if(el&&id==="jarvisVoiceSelect")el.addEventListener("change",saveJarvisVoiceSettings)});
+restoreJarvisVoiceSettings();
 function stopSpeech(){
  if("speechSynthesis" in window)window.speechSynthesis.cancel();
  if(activeSpeechButton){activeSpeechButton.textContent="▶ LÄS UPP SVARET";activeSpeechButton.classList.remove("speaking")}
@@ -1125,7 +1145,7 @@ function speakText(text,room,button=null){
  if(!("speechSynthesis" in window)){const status=$(room+"VoiceStatus");if(status)status.textContent="Rösten stöds inte i den här webbläsaren.";return}
  if(!text||!text.trim())return;
  stopSpeech();if(wakeListening&&wakeRecognition){wakePausedForSpeech=true;try{wakeRecognition.stop()}catch(e){}}const utterance=new SpeechSynthesisUtterance(text.trim());const voice=getSelectedVoice(room);
- utterance.lang=voice?voice.lang:"sv-SE";utterance.rate=.95;utterance.pitch=.92;utterance.volume=1;if(voice)utterance.voice=voice;
+ const settings=room==="jarvis"?getJarvisVoiceSettings():{rate:.95,pitch:.92};utterance.lang=voice?voice.lang:"sv-SE";utterance.rate=settings.rate;utterance.pitch=settings.pitch;utterance.volume=1;if(voice)utterance.voice=voice;
  activeUtterance=utterance;activeSpeechButton=button;activeSpeechRoom=room;const status=$(room+"VoiceStatus");
  utterance.onstart=()=>{if(button){button.textContent="■ STOPPA UPPLÄSNING";button.classList.add("speaking")}if(status)status.textContent="AI-rösten läser upp svaret...";setRoomState(room,"responding")};
  utterance.onend=()=>{if(button){button.textContent="▶ LÄS UPP SVARET";button.classList.remove("speaking")}if(status)status.textContent="Uppläsningen klar.";setRoomState(room,"idle");activeUtterance=null;activeSpeechButton=null;activeSpeechRoom=null;if(wakeListening&&wakeRecognition&&wakePausedForSpeech){wakePausedForSpeech=false;try{wakeRecognition.start()}catch(e){wakeStatus("Tryck på aktivera igen för att fortsätta lyssna.")}}};
@@ -1543,7 +1563,7 @@ async function sendMessage(event,assistant){
   }
   saveChatHistory(assistant);addSpeechButton(loading,assistant);
   if(isWeb){try{const made=await createWebPreview(data.reply||"");if(!made){const hint=document.createElement("div");hint.className="web-preview-note";hint.textContent="Be WEBMASTER skapa en komplett hemsida i ett enda HTML-kodblock."; $("webPreviewArea").hidden=false;$("webPreviewArea").replaceChildren(hint);}}catch(previewError){addMessage("webMessages","Kunde inte skapa förhandsvisning: "+previewError.message,"error")}}
-  if(voiceConversationRoom===assistant)speakText(data.reply||"NOVA har skapat ett produktionsunderlag.",assistant);
+  if(assistant==="jarvis"&&(voiceConversationRoom==="jarvis"||getJarvisVoiceSettings().autoSpeak))speakText(data.reply||"JARVIS har svarat.",assistant);else if(voiceConversationRoom===assistant)speakText(data.reply||"NOVA har skapat ett produktionsunderlag.",assistant);
   setRoomState(assistant,"responding");logActivity(assistant.toUpperCase()+" svarade","✓","AI-motor: "+(data.engine||"Okänd"));
  }catch(error){loading.className="msg error";loading.textContent="Anslutningsfel: "+error.message;saveChatHistory(assistant);logActivity(assistant.toUpperCase()+" – anslutningsfel","⚠",error.message)}
  finally{button.disabled=false;button.textContent="SKICKA";if(!activeSpeechRoom||activeSpeechRoom!==assistant)setTimeout(()=>setRoomState(assistant,"idle"),1800);input.focus()}
