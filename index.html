@@ -1756,7 +1756,7 @@ function appendPublishedProjectLinks(element,source){
  let match;const found=new Map();
  while((match=pattern.exec(text))!==null){
   const url=String(match[1]||"").replace(/[.,!?;:]+$/,"");
-  try{const parsed=new URL(url);if(["http:","https:"].includes(parsed.protocol))found.set(parsed.href,true)}catch(e){}
+  try{const parsed=new URL(url);if(["http:","https:"].includes(parsed.protocol)){found.set(parsed.href,true);saveJarvisProject("Färdigt specialistprojekt",parsed.href,"SPECIALISTLEVERANS")}}catch(e){}
  }
  if(!found.size)return;
  let panel=element.querySelector(":scope > .project-actions");
