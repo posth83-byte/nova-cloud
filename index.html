@@ -847,6 +847,7 @@ header .sub{color:#d6a19a}
   <div class="chat-title">JARVIS / SECURE AI CONNECTION</div>
   <div class="messages" id="jarvisMessages"><div class="msg ai">God dag. JARVIS är redo. Vad kan jag hjälpa dig med?</div></div>
   <div class="voice-panel"><div class="voice-heading">JARVIS / RÖSTINSTÄLLNINGAR</div><div class="voice-row"><select class="voice-select" id="jarvisVoiceSelect" aria-label="Välj JARVIS-röst"><option value="">Laddar tillgängliga röster...</option></select><button class="voice-test" onclick="testVoice('jarvis')">TESTA RÖST</button></div><div class="voice-note">Välj en svensk röst om en sådan finns tillgänglig på din enhet.</div><div class="voice-status" id="jarvisVoiceStatus">Röstsystem redo.</div></div>
+  <div class="voice-panel" style="margin-top:10px"><div class="voice-heading">JARVIS / SAMTALSLÄGE</div><div class="voice-row"><button type="button" class="voice-test" id="jarvisTalkStart" onclick="startJarvisVoiceConversation()">🎙 STARTA SAMTAL MED JARVIS</button><button type="button" class="voice-test" id="jarvisTalkStop" onclick="stopWakeListening()" disabled>STOPPA</button></div><div class="voice-note">Tryck en gång för att börja prata. JARVIS lyssnar på svenska och svarar med vald röst. Du kan också skriva i chatten nedanför.</div></div>
   <form class="input-row" onsubmit="sendMessage(event,'jarvis')"><input class="chat-input" id="jarvisInput" placeholder="Skriv till JARVIS..." autocomplete="off"><button class="send" id="jarvisSend">SKICKA</button></form>
   <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:9px">
    <button type="button" id="jarvisDelegateButton" onclick="jarvisDelegateLatest()" style="width:100%;padding:11px;border:1px solid #39c8ff88;border-radius:9px;background:linear-gradient(135deg,#0b2941,#172044);color:#eaf8ff;font-weight:800">✦ LÅT JARVIS VÄLJA MEDARBETARE OCH UTFÖRA JOBBET</button>
@@ -1191,10 +1192,17 @@ function startWakeListening(){
  try{wakeRecognition.start()}
  catch(e){wakeStatus("Kunde inte starta mikrofonen. Kontrollera mikrofontillståndet.");stopWakeListening()}
 }
+function startJarvisVoiceConversation(){
+ startWakeListening();
+ voiceConversationRoom="jarvis";
+ const start=$("jarvisTalkStart"),stop=$("jarvisTalkStop");if(start)start.disabled=true;if(stop)stop.disabled=false;
+ wakeStatus("JARVIS-samtal aktivt. Prata nu – säg ”avsluta röst” när du vill stänga av.");
+}
 function stopWakeListening(){
  wakeListening=false;wakePausedForSpeech=false;voiceConversationRoom=null;
  if(wakeRecognition){try{wakeRecognition.onend=null;wakeRecognition.stop()}catch(e){}wakeRecognition=null}
  const start=$("wakeStart"),stop=$("wakeStop");if(start)start.disabled=false;if(stop)stop.disabled=true;
+ const jarvisStart=$("jarvisTalkStart"),jarvisStop=$("jarvisTalkStop");if(jarvisStart)jarvisStart.disabled=false;if(jarvisStop)jarvisStop.disabled=true;
  wakeStatus("Mikrofonen är avstängd.");
 }
 
