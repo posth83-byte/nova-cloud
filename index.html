@@ -214,6 +214,24 @@ main{position:relative;z-index:1;max-width:1400px;margin:auto;padding:20px 15px 
 .activity-time{font-size:9px;color:#7898b2;margin-top:4px}
 .activity-empty{padding:20px;text-align:center;color:#7898b2;font-size:11px;border:1px dashed #31516b;border-radius:9px}
 .activity-count{font-size:9px;color:#7ea4c2;letter-spacing:1px}
+.team-board{margin:14px 0 16px;padding:14px;border:1px solid #2c6285;border-radius:14px;background:linear-gradient(145deg,#091b2d,#07111f);box-shadow:inset 0 0 28px #168cff12}
+.team-board-head{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:11px}
+.team-board-title{font-size:10px;letter-spacing:2px;color:#9be5ff;font-weight:800}
+.team-board-state{font-size:9px;color:#7df0c4;letter-spacing:1px}
+.team-workers{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.team-worker{min-width:0;padding:11px 7px;border:1px solid #234766;border-radius:10px;background:#0b2034;text-align:center}
+.team-worker .worker-avatar{font-size:23px;display:block;margin-bottom:5px;filter:drop-shadow(0 0 7px #35bfff55)}
+.team-worker strong{display:block;font-size:9px;color:#dff5ff;overflow-wrap:anywhere}
+.team-worker small{display:block;font-size:8px;color:#7f9db7;margin-top:5px;line-height:1.35}
+.team-worker.is-working{border-color:#3bc8ff;box-shadow:0 0 15px #168cff30}
+.team-worker.is-working .worker-avatar{animation:workerPulse 1.1s ease-in-out infinite}
+.team-worker.is-done{border-color:#38bb91;background:#0b2a28}
+.team-worker.is-done small{color:#7df0c4}
+.team-worker.is-error{border-color:#d56d76;background:#30171e}
+.team-task{margin-top:10px;padding:9px 10px;border-left:2px solid #39c8ff;background:#071321;border-radius:0 8px 8px 0;font-size:9px;line-height:1.55;color:#a9c5dc;overflow-wrap:anywhere}
+@keyframes workerPulse{50%{transform:translateY(-3px);filter:drop-shadow(0 0 12px #39c8ff)}}
+@media(max-width:520px){.team-workers{grid-template-columns:repeat(2,minmax(0,1fr))}.team-worker{padding:10px 6px}}
+
 
 /* NOVA VIDEO STUDIO */
 .video-studio{margin-top:18px;border:1px solid #9a66c7;border-radius:16px;padding:16px;background:linear-gradient(145deg,#21152fef,#100b1b);box-shadow:0 0 25px #a44dff17;scroll-margin-top:18px}
@@ -813,7 +831,18 @@ header .sub{color:#d6a19a}
   </section>
   <section class="room-card game-developer">
    <div class="room-code">04 / ROBLOX GAME DEVELOPMENT</div><h2>GAME DEVELOPER</h2>
-   <div class="room-desc">Din Roblox-spelutvecklare. Från spelidé och värld till Luau-kod, system, testning och publiceringsförberedelser.</div>
+   <div class="room-desc">Din Robl
+  <section class="team-board" aria-live="polite">
+   <div class="team-board-head"><div class="team-board-title">JARVIS / TEAM CONTROL</div><div class="team-board-state" id="teamBoardState">● TEAMET REDO</div></div>
+   <div class="team-workers" id="teamWorkers">
+    <div class="team-worker"><span class="worker-avatar">✦</span><strong>JARVIS</strong><small>Projektledare · Redo</small></div>
+    <div class="team-worker"><span class="worker-avatar">🎬</span><strong>NOVA</strong><small>Kreativ produktion · Redo</small></div>
+    <div class="team-worker"><span class="worker-avatar">⌘</span><strong>WEBMASTER</strong><small>Webb & design · Redo</small></div>
+    <div class="team-worker"><span class="worker-avatar">🎮</span><strong>GAME DEV</strong><small>Spelutveckling · Redo</small></div>
+   </div>
+   <div class="team-task" id="teamTask">Inget aktivt uppdrag. När JARVIS samlar teamet visas ansvariga medarbetare och uppdragsstatus här.</div>
+  </section>
+ox-spelutvecklare. Från spelidé och värld till Luau-kod, system, testning och publiceringsförberedelser.</div>
    <div class="room-visual"><div class="orbit"></div><div class="avatar"><svg viewBox="0 0 145 195"><rect x="25" y="24" width="95" height="95" rx="18"/><path d="M49 54 H96 M72 40 V87 M45 102 H100 M54 119 V146 M91 119 V146 M42 146 H103"/><circle cx="48" cy="72" r="7"/><circle cx="97" cy="72" r="7"/></svg></div><div class="room-floor"></div></div>
    <div class="room-features"><span class="feature">ROBLOX STUDIO</span><span class="feature">LUAU</span><span class="feature">SPELDESIGN</span><span class="feature">TESTNING</span><span class="feature">ALLA GENRER</span></div>
    <button class="launch" onclick="enterRoom('game')">ÖPPNA GAME DEVELOPER →</button>
@@ -1061,6 +1090,32 @@ function loadActivity(){
  try{const saved=localStorage.getItem(ACTIVITY_KEY);activityLog=saved?JSON.parse(saved):[];if(!Array.isArray(activityLog))activityLog=[]}catch(e){activityLog=[]}
  renderActivity();
 }
+
+const TEAM_BOARD_KEY="novaTeamBoardV1";
+const TEAM_ROLES={JARVIS:{label:"Projektledare",icon:"✦"},NOVA:{label:"Kreativ produktion",icon:"🎬"},WEBMASTER:{label:"Webb & design",icon:"⌘"},GAME_DEVELOPER:{label:"Spelutveckling",icon:"🎮"}};
+let teamBoard={status:"idle",task:"Inget aktivt uppdrag.",targets:[],updated:new Date().toISOString()};
+function updateTeamBoard(status,task,targets=[],detail=""){
+ teamBoard={status,task:String(task||"").slice(0,220),targets:Array.isArray(targets)?targets:[],detail:String(detail||""),updated:new Date().toISOString()};
+ try{localStorage.setItem(TEAM_BOARD_KEY,JSON.stringify(teamBoard))}catch(e){}
+ renderTeamBoard();
+}
+function renderTeamBoard(){
+ const workers=$("teamWorkers"),state=$("teamBoardState"),task=$("teamTask");if(!workers||!state||!task)return;
+ const active=teamBoard.status==="working";
+ state.textContent=active?"● JARVIS SAMORDNAR":teamBoard.status==="error"?"● UPPDRAGET AVBRÖTS":teamBoard.targets.length?"● SENASTE UPPDRAG KLART":"● TEAMET REDO";
+ state.style.color=teamBoard.status==="error"?"#ff9aa5":active?"#7bdfff":"#7df0c4";
+ workers.replaceChildren();
+ Object.entries(TEAM_ROLES).forEach(([id,role])=>{
+  const isTarget=teamBoard.targets.includes(id),cls=id==="JARVIS"?(active?"is-working":teamBoard.status==="error"?"is-error":"is-done"):isTarget?(teamBoard.status==="error"?"is-error":active?"is-working":"is-done"):"";
+  const card=document.createElement("div");card.className="team-worker "+cls;
+  const avatar=document.createElement("span");avatar.className="worker-avatar";avatar.textContent=role.icon;
+  const name=document.createElement("strong");name.textContent=id==="GAME_DEVELOPER"?"GAME DEV":id;
+  const label=document.createElement("small");label.textContent=id==="JARVIS"?(active?"Samordnar uppdraget":"Projektledare · Redo"):isTarget?(active?"Arbetar med uppdraget":teamBoard.status==="error"?"Avbrutet":"Uppdrag klart"):role.label+" · Redo";
+  card.append(avatar,name,label);workers.appendChild(card);
+ });
+ task.textContent=teamBoard.task+(teamBoard.detail?" · "+teamBoard.detail:"");
+}
+try{const saved=JSON.parse(localStorage.getItem(TEAM_BOARD_KEY)||"null");if(saved&&typeof saved==="object")teamBoard=saved}catch(e){}
 function logActivity(title,icon="✦",detail=""){
  activityLog.unshift({id:Date.now()+"-"+Math.random().toString(36).slice(2,7),title:String(title),icon:String(icon),detail:String(detail),time:new Date().toISOString()});
  activityLog=activityLog.slice(0,20);
@@ -1086,6 +1141,7 @@ function clearActivity(){
  activityLog=[];try{localStorage.removeItem(ACTIVITY_KEY)}catch(e){}renderActivity();
 }
 loadActivity();
+renderTeamBoard();
 
 /* VIDEO STUDIO NAVIGATION */
 function openVideoStudio(){
@@ -1568,7 +1624,9 @@ async function sendMessage(event,assistant){
     const reviews=(council.reviews||[]).map(item=>"\n\n"+(names[item.target]||item.target)+" – KOLLEGIAL GRANSKNING:\n"+(item.reply||"Ingen granskning returnerades.")).join("");
     loading.textContent+="\n\n════════ AI-RÅD AUTOMATISKT SAMMANKALLAT ════════\nTeam: "+team+"\nJARVIS GEMENSAMMA ARBETSPLAN:\n"+(council.reply||"Ingen sammanställning mottogs.")+analyses+reviews;
     logActivity("JARVIS kallade automatiskt AI-rådet","✦",team+" · "+(council.council_rounds||1)+" rådsrundor");
+    updateTeamBoard("done",message,council.targets||[],(council.council_rounds||1)+" rådsrundor genomförda");
    }else if(assistant==="jarvis"&&data.council_error){
+    updateTeamBoard("error",message,[],"AI-rådet kunde inte startas.");
     loading.textContent+="\n\nAI-rådet kunde inte startas: "+data.council_error;
    }
    loading.dataset.speechText=data.reply||"Inget svar mottogs.";
@@ -1590,6 +1648,7 @@ async function jarvisDelegateLatest(){
  if(!confirm("Vill du att JARVIS väljer rätt medarbetare och skickar den senaste uppgiften för utförande?"))return;
  button.disabled=true;button.textContent="JARVIS FÖRDELAR UPPDRAGET...";
  const loading=addMessage("jarvisMessages","JARVIS analyserar uppgiften och väljer rätt medarbetare...","ai");
+ updateTeamBoard("working",task,[],"JARVIS väljer vilka specialister som behövs.");
  setRoomState("jarvis","working");
  try{
   const response=await fetch("/api/jarvis/delegate",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({task,history})});
@@ -1597,6 +1656,7 @@ async function jarvisDelegateLatest(){
   if(!response.ok)throw new Error(typeof data.detail==="string"?data.detail:JSON.stringify(data.detail||data));
   if(data.status==="needs_discussion"){
    loading.textContent="Jag rekommenderar att vi diskuterar vidare innan jag lämnar över uppdraget.\n"+(data.reason||"");
+   updateTeamBoard("idle",task,[],"JARVIS rekommenderar fortsatt diskussion.");
   }else{
    const names={NOVA:"NOVA",WEBMASTER:"WEBMASTER",GAME_DEVELOPER:"GAME DEVELOPER"};
    const team=(data.targets||[data.target]).map(name=>names[name]||name).join(", ");
@@ -1605,11 +1665,13 @@ async function jarvisDelegateLatest(){
    loading.textContent="✓ JARVIS samordnade: "+team+".\nRådsrundor: "+(data.council_rounds||1)+"\nVarför: "+(data.reason||"Flera specialistroller behövs för uppgiften.")+"\n\nJARVIS GEMENSAMMA BESLUT OCH ARBETSPLAN:\n"+(data.reply||"Inget sammanställt resultat.")+detail+reviews+"\n\nAI-motor: "+(data.engine||"Okänd");
    loading.dataset.speechText="Jag har lämnat över uppdraget till "+(names[data.target]||data.target)+".";
    logActivity("JARVIS delegerade till "+data.target,"↗",task.slice(0,80));
+   updateTeamBoard("done",task,data.targets||[data.target],"Uppdraget analyserat och sammanställt.");
   }
   saveChatHistory("jarvis");addSpeechButton(loading,"jarvis");
   if(voiceConversationRoom==="jarvis")speakText(loading.dataset.speechText||loading.textContent,"jarvis");
  }catch(error){
   loading.className="msg error";loading.textContent="Kunde inte delegera uppdraget: "+error.message;saveChatHistory("jarvis");
+  updateTeamBoard("error",task,[],"Delegeringen misslyckades.");
  }finally{
   button.disabled=false;button.textContent="✦ LÅT JARVIS VÄLJA MEDARBETARE OCH UTFÖRA JOBBET";setRoomState("jarvis","idle");
  }
