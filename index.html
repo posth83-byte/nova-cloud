@@ -1945,8 +1945,12 @@ async function jarvisDelegateLatest(){
  startTeamRuntimePolling();
  try{
   const response=await fetch("/api/jarvis/jobs",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({task,history})});
-  const data=await response.json();
+  let data=await response.json();
   if(!response.ok)throw new Error(typeof data.detail==="string"?data.detail:JSON.stringify(data.detail||data));
+  if(data.status==="queued"){
+   loading.textContent="Uppdraget är sparat på servern. JARVIS startar bakgrundsarbetet...";
+   data=await waitForJarvisJob(data.job_id,data.access_token,loading,task);
+  }
   if(data.status==="needs_discussion"){
    loading.textContent="Jag rekommenderar att vi diskuterar vidare innan jag lämnar över uppdraget.\n"+(data.reason||"");
    updateTeamBoard("idle",task,[],"JARVIS rekommenderar fortsatt diskussion.");
