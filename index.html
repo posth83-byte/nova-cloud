@@ -1692,7 +1692,8 @@ function appendProjectLinks(element,source){
 }
 function appendPublishedProjectLinks(element,source){
  if(!element||!source)return;
- const text=String(source),pattern=/(?:PUBLICERAD(?:\\s+PROJEKT)?LÄNK|LIVE[- ]?LÄNK|ÖPPNA PROJEKTET|PUBLIC URL)\\s*[:：-]\\s*(https?:\\/\\/[^\\s<>"')\\]]+)/gi;
+ const text=String(source);
+ const pattern=/(?:PUBLICERAD(?:\s+PROJEKT)?LÄNK|LIVE[- ]?LÄNK|ÖPPNA PROJEKTET|PUBLIC URL)\s*[:：-]\s*(https?:\/\/[^\s<>"')\]]+)/gi;
  let match;const found=new Map();
  while((match=pattern.exec(text))!==null){
   const url=String(match[1]||"").replace(/[.,!?;:]+$/,"");
