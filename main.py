@@ -227,9 +227,10 @@ def send_jarvis_job_notification(job_id, subscription, outcome):
         return False
     try:
         from pywebpush import webpush
+        failed = isinstance(outcome, dict) and outcome.get("status") in ("failed", "error")
         payload = {
-            "title": "JARVIS – arbetsresultat klart",
-            "body": "AI-rådet har sammanställt sitt resultat. Öppna JARVIS och granska leveransen.",
+            "title": "JARVIS – uppdraget behöver åtgärd" if failed else "JARVIS – arbetsresultat klart",
+            "body": "Ett bakgrundsjobb misslyckades. Öppna JARVIS för felstatus." if failed else "AI-rådet har sammanställt sitt resultat. Öppna JARVIS och granska leveransen.",
             "url": "/"
         }
         temp_path = None
@@ -360,25 +361,42 @@ async def jarvis_job_worker_loop():
                             "return=minimal"
                         )
             except Exception as error:
+                attempts = int(job.get("attempts") or 1)
+                max_attempts = int(job.get("max_attempts") or 3)
+                retrying = attempts < max_attempts
+                final_error = str(error)[:1500]
                 jarvis_worker_state.update({
-                    "status": "error", "last_job_status": "failed",
-                    "last_error": str(error)[:700],
+                    "status": "idle" if retrying else "error",
+                    "last_job_status": "queued" if retrying else "failed",
+                    "last_error": final_error,
                     "last_poll_at": datetime.now(timezone.utc).isoformat()
                 })
                 await asyncio.to_thread(
                     supabase_jobs_request, "PATCH", "jarvis_jobs",
                     {
-                        "status": "failed",
-                        "phase": "Bakgrundsarbetet avbröts",
-                        "error": str(error)[:1500],
+                        "status": "queued" if retrying else "failed",
+                        "phase": f"Automatiskt nytt försök {attempts + 1}/{max_attempts}" if retrying else "Bakgrundsarbetet misslyckades efter flera försök",
+                        "error": final_error,
                         "locked_at": None,
                         "worker_id": None,
-                        "completed_at": datetime.now(timezone.utc).isoformat(),
+                        "completed_at": None if retrying else datetime.now(timezone.utc).isoformat(),
                         "updated_at": datetime.now(timezone.utc).isoformat()
                     },
                     urllib.parse.urlencode({"id": "eq." + str(job_id)}),
                     "return=minimal"
                 )
+                if not retrying and job.get("push_subscription"):
+                    sent = await asyncio.to_thread(
+                        send_jarvis_job_notification, job_id, job.get("push_subscription"),
+                        {"status": "failed", "message": final_error}
+                    )
+                    if sent:
+                        await asyncio.to_thread(
+                            supabase_jobs_request, "PATCH", "jarvis_jobs",
+                            {"notification_sent_at": datetime.now(timezone.utc).isoformat()},
+                            urllib.parse.urlencode({"id": "eq." + str(job_id)}),
+                            "return=minimal"
+                        )
             finally:
                 stop_event.set()
                 heartbeat.cancel()
