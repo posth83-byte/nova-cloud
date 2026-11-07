@@ -248,7 +248,7 @@ def create_game_portal_pull_request(task, outcome, job_id):
     """
     task_lower = str(task or "").casefold()
     portal_terms = (
-        "spelportal", "spelportalen", "arcade", "minispel", "småspel",
+        "spelportal", "spelportalen", "spelhall", "spel hall", "spelbibliotek", "ett gäng spel", "flera spel", "många spel", "arcade", "minispel", "småspel",
         "webbspel", "spelsida", "spelhemsida", "spel på hemsidan",
         "nya spel", "lägg till spel", "lägga till spel"
     )
@@ -3274,6 +3274,9 @@ Du är JARVIS, projektledare för ett AI-kontor. Välj vilka specialister som be
 NOVA = YouTube, kreativ produktion, research, manus och videor.
 WEBMASTER = webbplatser, webbutiker och dropshipping.
 GAME_DEVELOPER = spelutveckling, Roblox och Luau.
+Vid uppdrag om flera nya webbläsarspel, minispel, spelportal eller spelhall ska du alltid välja GAME_DEVELOPER.
+Vid sådana batchuppdrag ska du även välja WEBMASTER för spelhallens struktur, navigation, mobilupplevelse och integration.
+Planera då en autonom spelidéverkstad: ta fram flera originella spelidéer, jämför dem och välj en varierad genomförbar uppsättning innan kod byggs.
 Välj EN ELLER FLERA om uppgiften kräver det. Välj inte alla av slentrian.
 Om flera behövs ska du planera ett gemensamt rådsmöte och tydliga beroenden.
 Ge varje specialist en konkret avgränsad arbetsorder.
@@ -3347,6 +3350,64 @@ Delegering ger inte tillstånd att köpa, publicera, betala eller utföra extern
         # RÅDSRUNDA 1: varje specialist gör sin självständiga analys.
         results, previous = [], []
         shared_project_memory = add_relevant_memory(task, "", limit=8, project="JARVIS")
+
+        # AUTONOM SPELIDÉVERKSTAD: generera, utmana och prioritera idéer innan kodarbetet börjar.
+        game_ideation_brief = ""
+        task_lower = task.casefold()
+        game_batch_terms = (
+            "spelhall", "spel hall", "spelportal", "spelportalen", "spelbibliotek",
+            "minispel", "småspel", "webbspel", "flera spel", "nya spel",
+            "ett gäng spel", "många spel", "spel till hemsidan", "lägg till spel"
+        )
+        is_game_batch = "GAME_DEVELOPER" in ordered and any(term in task_lower for term in game_batch_terms)
+        if is_game_batch:
+            set_team_runtime("working", task, "JARVIS leder en autonom spelidéverkstad", ["GAME_IDEA_COUNCIL"], [])
+            idea_roles = [
+                ("KREATIV SPELDESIGNER", "Du är en kreativ speldesigner. Föreslå originella, omedelbart begripliga webbläsarspel med starka spel-loopar. Undvik generiska kloner. Tänk på överraskande mekanik, humor, variation och hög återspelningslust."),
+                ("SPELAR- OCH UX-EXPERT", "Du representerar spelarna. Bedöm vilka spel som är roliga på riktigt, lätta att förstå på några sekunder, tillgängliga, mobilvänliga och tydligt olika varandra. Avvisa idéer som bara låter bra men blir tråkiga efter en minut."),
+                ("TEKNISK SPELARKITEKT", "Du är teknisk spelarkitekt. Föreslå spel som går att bygga robust med HTML, CSS och JavaScript utan externa beroenden. Bedöm omfattning, risk, prestanda, touchkontroller och hur spelet kan testas.")
+            ]
+            async def game_idea_round(role_name, role_prompt):
+                prompt = (
+                    f"UPPDRAG:\n{task[:5000]}\n\n"
+                    f"PROJEKT:\n{project_name}\n\n"
+                    f"TIDIGARE SPELPORTAL/HISTORIK:\n{prior_project_context[:5000]}\n\n"
+                    "Ta fram 5 egna spelidéer. Varje idé ska ha titel, genre, kärnloop, unik twist, "
+                    "kontroller, svårighetsprogression och uppskattad byggkomplexitet (låg/medel/hög). "
+                    "Gör idéerna tydligt olika varandra. Återanvänd inte befintliga spel om historiken visar dem. "
+                    "Avsluta med dina tre starkaste kandidater och motivera dem. Hitta inte på trenddata. "
+                    "Detta är en idégranskning, inte ett påstående om att något spel redan byggts."
+                )
+                return await asyncio.to_thread(generate_reply, prompt, role_prompt, max_tokens=2200)
+            idea_outputs = await asyncio.gather(*[
+                game_idea_round(role_name, role_prompt)
+                for role_name, role_prompt in idea_roles
+            ])
+            idea_material = "\n\n".join(
+                f"{role_name}:\n{result['reply'][:5000]}"
+                for (role_name, _), result in zip(idea_roles, idea_outputs)
+            )
+            synthesis_prompt = (
+                "Du är JARVIS som leder en kreativ designkonferens. Tre perspektiv har tagit fram "
+                "och kritiserat spelidéer. Jämför dem, slå ihop de bästa insikterna och fatta ett "
+                "självständigt designbeslut. Välj en varierad uppsättning spel som passar användarens "
+                "uppdrag. Om användaren inte angav antal: välj 5 spel. Om användaren angav antal: "
+                "respektera det, men prioritera kvalitet framför utfyllnad. Undvik spel som känns "
+                "som samma spel med ny färg. Välj hellre olika genrer och spel-loopar. "
+                "Returnera en tydlig svensk spelplan med: valda spel i byggordning, titel, genre, "
+                "kärnloop, unik mekanik, kontroller, poäng/vinst/förlust, mobilanpassning, "
+                "komplexitet, varför spelet valdes, gemensamma UI-regler och vad som ska återanvändas. "
+                "Avsluta med idéer som valdes bort och varför. Detta är en designplan, inte en "
+                "verifierad implementation.\n\n"
+                f"ANVÄNDARENS UPPDRAG:\n{task[:5000]}\n\n"
+                f"IDÉRÅDETS UNDERLAG:\n{idea_material}"
+            )
+            game_ideation = await asyncio.to_thread(
+                generate_reply, synthesis_prompt,
+                "Du är JARVIS, kreativ spelproducent och beslutsfattare. Var originell, kritisk och konkret.",
+                max_tokens=5000
+            )
+            game_ideation_brief = game_ideation["reply"]
         set_team_runtime("working", task, "Specialisterna gör sina första analyser", [ordered[0]], [])
         for target in ordered:
             set_team_runtime("working", task, f"{target} arbetar med sin specialistanalys", [target], [r["target"] for r in results])
@@ -3365,6 +3426,8 @@ Delegering ger inte tillstånd att köpa, publicera, betala eller utföra extern
                 "säkerhetsregler. "
                 "Du får diskutera och planera, men inte köpa, publicera eller göra betalda externa åtgärder.\n\n"
                 f"HELA PROJEKTET:\n{task}\n\n"
+                + (("AUTONOM SPELIDÉVERKSTAD:\n" + game_ideation_brief + "\n\n")
+                   if game_ideation_brief else "")
                 + (("GEMENSAMT PROJEKTMENNE:\n" + shared_project_memory + "\n\n")
                    if shared_project_memory else "")
                 + (("TIDIGARE SPARAD PROJEKTHISTORIK:\n" + prior_project_context + "\n\n")
@@ -3693,6 +3756,15 @@ KÄRNKRAV:
 9. Kompatibilitet: använd giltiga Roblox API:er och Luau-mönster; hitta inte på API-funktioner.
 10. Fullständighet: inga tomma handlers, döda knappar, saknade moduler, pseudokod eller "TODO"
     i funktioner som påstås vara färdiga.
+
+AUTONOM KREATIVITET OCH SPELIDÉER:
+- När användaren ber om flera spel, ett gäng spel, nya spel eller utveckling av en spelhall ska du själv ta fram flera alternativa idéer innan du börjar bygga.
+- Skapa variation mellan genrer och kärnloopar: exempelvis reflex, strategi, pussel, fysik, precision, minne, racing, arkad och överlevnad. Välj inte alla kategorier slentrianmässigt.
+- Bedöm varje idé efter spelglädje, originalitet, tydlighet, mobilvänlighet, teknisk risk och hur väl den kompletterar befintliga spel.
+- Använd tidigare projektminne och faktisk inventering av befintliga spel för att undvika dubbletter.
+- Om användaren inte anger antal ska du normalt föreslå och bygga fem väl valda spel, inte fråga användaren att namnge dem ett och ett.
+- Om uppdraget är öppet ska du fatta rimliga designbeslut själv och redovisa dem kort. Be bara om förtydligande när en verklig blockerare finns.
+- Låt idéerna utmanas av flera perspektiv innan en slutlig speluppsättning väljs. Skapa inte flera nästan identiska spel för att fylla en kvot.
 
 WEBBSPEL OCH SPELPORTAL:
 - När JARVIS ber dig skapa webbläsarspel ska du leverera komplett körbar HTML/CSS/JavaScript.
