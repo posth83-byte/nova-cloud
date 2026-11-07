@@ -4,7 +4,7 @@ import { chromium } from "playwright";
 
 const root = process.cwd();
 const baseUrl = "http://127.0.0.1:4173";
-const entrypoints = [];
+const entrypoints = ["/"];
 
 function collectHtml(directory) {
   if (!fs.existsSync(directory)) return;
@@ -36,6 +36,34 @@ try {
       { name: "mobile", width: 390, height: 844 }
     ]) {
       const page = await browser.newPage({ viewport: { width: viewport.width, height: viewport.height } });
+
+      // The preview server is static HTML; provide deterministic local API fixtures
+      // so dashboard smoke tests validate the UI rather than requiring live secrets.
+      await page.route("**/api/status", route => route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          version: "browser-qa",
+          gemini_configured: false,
+          youtube_api_configured: false,
+          youtube_channels_configured: 0,
+          youtube_analytics_ready: false,
+          openrouter_configured: false,
+          jarvis: "online",
+          nova: "online"
+        })
+      }));
+      await page.route("**/api/team/status", route => route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          status: "idle",
+          task: "",
+          phase: "Browser QA",
+          active: [],
+          completed: []
+        })
+      }));
       const pageErrors = [];
       const localFailures = [];
 
