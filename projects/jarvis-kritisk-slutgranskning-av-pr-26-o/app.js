@@ -12,6 +12,7 @@ document.addEventListener('DOMContentLoaded', () => {
       panel.classList.toggle('active', active);
       panel.style.display = active ? 'block' : 'none';
     });
+    window.dispatchEvent(new Event('resize'));
     navButtons.forEach(button => {
       const active = button.dataset.target === id;
       button.classList.toggle('active', active);
@@ -119,6 +120,7 @@ document.addEventListener('DOMContentLoaded', () => {
   let game = null;
   if (typeof Game === 'function') {
     game = new Game('gameCanvas');
+    window.__jarvisGame = game;
     $('startGameBtn')?.addEventListener('click', () => game.start());
     document.addEventListener('visibilitychange', () => {
       if (document.hidden && game?.isRunning) game.pause();
