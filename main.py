@@ -3264,7 +3264,7 @@ Delegering ger inte tillstånd att köpa, publicera, betala eller utföra extern
                 + (("TIDIGARE SPARAD PROJEKTHISTORIK:\n" + prior_project_context + "\n\n")
                    if prior_project_context else "")
                 + f"DIN ARBETSORDER:\n{assigned}\n\n"
-                + f"FÖRVÄNTAD LEVERANS:\n{str(deliverables.get(target, "En konkret leverans inom rollen."))[:1800]}\n\n"
+                + f"FÖRVÄNTAD LEVERANS:\n{str(deliverables.get(target, 'En konkret leverans inom rollen.'))[:1800]}\n\n"
                 + "GEMENSAMMA ACCEPTANSKRITERIER:\n"
                 + "\n".join(f"- {criterion}" for criterion in acceptance_criteria)
                 + "\n\nUTFÖRANDEKRAV:\n"
