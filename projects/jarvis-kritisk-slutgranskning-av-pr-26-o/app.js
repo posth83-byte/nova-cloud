@@ -1,154 +1,129 @@
-// app.js - Komplett huvudlogik för JARVIS-systemportalen
-
+// JARVIS systemportal – riktig diagnostik och fungerande gränssnitt.
 document.addEventListener('DOMContentLoaded', () => {
-    // Mobilmenyhantering
-    const menuToggle = document.getElementById('menuToggle');
-    const mainNav = document.getElementById('mainNav');
+  const $ = (id) => document.getElementById(id);
+  const menuToggle = $('menuToggle');
+  const mainNav = $('mainNav');
+  const panels = [...document.querySelectorAll('main .panel')];
+  const navButtons = [...document.querySelectorAll('.nav-btn')];
 
-    if (menuToggle && mainNav) {
-        menuToggle.addEventListener('click', () => {
-            mainNav.classList.toggle('open');
-        });
-
-        // Stäng meny vid klick på länkar/knappar i mobilläge
-        mainNav.querySelectorAll('button').forEach(btn => {
-            btn.addEventListener('click', () => {
-                mainNav.classList.remove('open');
-            });
-        });
-    }
-
-    // Panelväxling (Enkel SPA-vy)
-    const navButtons = document.querySelectorAll('.nav-btn');
-    const panels = document.querySelectorAll('main .panel');
-
-    // Dölj allapaneler utom den första vid start
-    panels.forEach((panel, index) => {
-        if (index !== 0) panel.style.display = 'none';
+  function showPanel(id) {
+    panels.forEach(panel => {
+      const active = panel.id === id;
+      panel.classList.toggle('active', active);
+      panel.style.display = active ? 'block' : 'none';
     });
-
-    navButtons.forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            const targetId = e.target.getAttribute('data-target');
-            panels.forEach(panel => {
-                if (panel.id === targetId) {
-                    panel.style.display = 'block';
-                } else {
-                    panel.style.display = 'none';
-                }
-            });
-        });
+    navButtons.forEach(button => {
+      const active = button.dataset.target === id;
+      button.classList.toggle('active', active);
+      button.setAttribute('aria-current', active ? 'page' : 'false');
     });
+  }
+  navButtons.forEach(button => button.addEventListener('click', () => {
+    showPanel(button.dataset.target);
+    mainNav?.classList.remove('open');
+  }));
+  menuToggle?.addEventListener('click', () => {
+    const open = mainNav.classList.toggle('open');
+    menuToggle.setAttribute('aria-expanded', String(open));
+  });
+  showPanel('panel-tasks');
 
-    // Dynamiska uppgifter
-    const taskInput = document.getElementById('taskInput');
-    const addTaskBtn = document.getElementById('addTaskBtn');
-    const taskList = document.getElementById('taskList');
+  const taskInput = $('taskInput');
+  const taskList = $('taskList');
+  function addTask() {
+    const value = taskInput?.value.trim();
+    if (!value || !taskList) return;
+    const item = document.createElement('li');
+    item.className = 'task-item';
+    item.style.cssText = 'background:#1f2937;padding:.75rem;border-radius:4px;display:flex;justify-content:space-between;align-items:center;gap:1rem';
+    const label = document.createElement('span');
+    label.textContent = value;
+    const done = document.createElement('button');
+    done.className = 'btn';
+    done.type = 'button';
+    done.textContent = 'Klar';
+    done.addEventListener('click', () => item.remove());
+    item.append(label, done);
+    taskList.append(item);
+    taskInput.value = '';
+    taskInput.focus();
+  }
+  $('addTaskBtn')?.addEventListener('click', addTask);
+  taskInput?.addEventListener('keydown', event => {
+    if (event.key === 'Enter') addTask();
+  });
+  taskList?.querySelectorAll('li button').forEach(button => {
+    button.addEventListener('click', () => button.closest('li')?.remove());
+  });
 
-    if (addTaskBtn && taskInput && taskList) {
-        addTaskBtn.addEventListener('click', () => {
-            const taskText = taskInput.value.trim();
-            if (taskText !== '') {
-                const li = document.createElement('li');
-                li.style.cssText = 'background: #1f2937; padding: 0.75rem; border-radius: 4px; display: flex; justify-content: space-between; align-items: center;';
-                
-                const span = document.createElement('span');
-                span.textContent = taskText;
-                
-                const doneBtn = document.createElement('button');
-                doneBtn.className = 'btn';
-                doneBtn.style.cssText = 'padding: 0.25rem 0.5rem; font-size: 0.8rem;';
-                doneBtn.textContent = 'Klar';
-                doneBtn.addEventListener('click', () => {
-                    li.remove();
-                });
-
-                li.appendChild(span);
-                li.appendChild(doneBtn);
-                taskList.appendChild(li);
-                taskInput.value = '';
-            }
+  function setStatus(kind, state, message) {
+    const text = $(`status-${kind}`);
+    const card = $(`card-${kind}`);
+    if (!text || !card) return;
+    text.textContent = message;
+    card.classList.toggle('ok', state === 'ok');
+    card.classList.toggle('error', state === 'error');
+  }
+  async function fetchJson(url, options = {}) {
+    const response = await fetch(url, { cache: 'no-store', ...options });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data.detail || `HTTP ${response.status}`);
+    return data;
+  }
+  $('runDiagBtn')?.addEventListener('click', async () => {
+    const button = $('runDiagBtn');
+    button.disabled = true;
+    button.textContent = 'Testar...';
+    setStatus('gemini', 'pending', 'Kontrollerar NOVA Cloud och gör ett riktigt AI-anrop…');
+    setStatus('supabase', 'pending', 'Kontrollerar serverns minneslagring…');
+    try {
+      const health = await fetchJson('/health');
+      if (health.status !== 'online') throw new Error('Backend rapporterar inte online');
+      const status = await fetchJson('/api/status');
+      if (!status.gemini_configured) {
+        setStatus('gemini', 'error', 'Backend nås, men GEMINI_API_KEY saknas. Ingen AI-test kördes.');
+      } else {
+        const answer = await fetchJson('/api/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message: 'Svara med exakt ordet OK. Detta är ett kort diagnostiskt test.' })
         });
-
-        taskInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                addTaskBtn.click();
-            }
-        });
+        const engine = String(answer.engine || '').toLowerCase();
+        if (answer.status === 'online' && answer.reply && engine.includes('gemini')) {
+          setStatus('gemini', 'ok', `Riktigt Gemini-anrop lyckades via ${answer.engine}.`);
+        } else {
+          setStatus('gemini', 'error', `Backend svarade, men Gemini kunde inte bekräftas. Motor: ${answer.engine || 'okänd'}.`);
+        }
+      }
+    } catch (error) {
+      setStatus('gemini', 'error', `AI/backend-test misslyckades: ${error.message}`);
     }
-
-    // Verklig API- och databasdiagnostik
-    const runDiagBtn = document.getElementById('runDiagBtn');
-    const geminiStatus = document.getElementById('geminiStatus');
-    const supabaseStatus = document.getElementById('supabaseStatus');
-
-    if (runDiagBtn) {
-        runDiagBtn.addEventListener('click', async () => {
-            if (geminiStatus) {
-                geminiStatus.className = 'status-card';
-                geminiStatus.innerHTML = '<strong>Gemini Backend:</strong> Testar anslutning...';
-            }
-            if (supabaseStatus) {
-                supabaseStatus.className = 'status-card';
-                supabaseStatus.innerHTML = '<strong>Supabase DB:</strong> Testar anslutning...';
-            }
-
-            // Testa Gemini / Backend (faktiskt anslutningsförsök via fetch till konfigurerad endpoint eller lokal server)
-            try {
-                const response = await fetch('/api/health', { method: 'GET', mode: 'no-cors' });
-                if (geminiStatus) {
-                    geminiStatus.className = 'status-card ok';
-                    geminiStatus.innerHTML = '<strong>Gemini Backend:</strong> Ansluten (Verklig HTTP verifierad)';
-                }
-            } catch (err) {
-                // Om ingen lokal server körs, testa mot öppen publika endpunkter eller rapportera faktiskt nätverksstatus
-                try {
-                    const fallbackTest = await fetch('https://httpbin.org/status/200', { method: 'GET' });
-                    if (fallbackTest.ok) {
-                        if (geminiStatus) {
-                            geminiStatus.className = 'status-card ok';
-                            geminiStatus.innerHTML = '<strong>Gemini Backend:</strong> API-gateway nås (Live)';
-                        }
-                    } else {
-                        throw new Error('Gateway svarade inte korrekt');
-                    }
-                } catch (innerErr) {
-                    if (geminiStatus) {
-                        geminiStatus.className = 'status-card error';
-                        geminiStatus.innerHTML = `<strong>Gemini Backend:</strong> Anslutningsfel (${innerErr.message})`;
-                    }
-                }
-            }
-
-            // Testa Supabase (faktisk databaskoppling via REST / Auth check)
-            try {
-                // Försök nå Supabase REST API om konfigurerat, annars verifiera mot tillgänglig databas-URL
-                const supabaseUrl = window.SUPABASE_URL || 'https://example.supabase.co';
-                const sbResponse = await fetch(`${supabaseUrl}/rest/v1/`, {
-                    method: 'HEAD',
-                    headers: { 'apikey': window.SUPABASE_ANON_KEY || 'dummy' }
-                });
-                
-                if (supabaseStatus) {
-                    if (sbResponse.status < 500) {
-                        supabaseStatus.className = 'status-card ok';
-                        supabaseStatus.innerHTML = '<strong>Supabase DB:</strong> Databas nås och svarar';
-                    } else {
-                        throw new Error(`Serverfel: ${sbResponse.status}`);
-                    }
-                }
-            } catch (dbErr) {
-                if (supabaseStatus) {
-                    // Om inga nycklar finns satta, rapportera ärligt status för det faktiska anslutningsförsöket
-                    supabaseStatus.className = 'status-card error';
-                    supabaseStatus.innerHTML = '<strong>Supabase DB:</strong> Saknar giltiga anslutningsparametrar eller offline';
-                }
-            }
-        });
+    try {
+      const memory = await fetchJson('/api/memory/status');
+      const storage = String(memory.storage || '').toLowerCase();
+      if (storage === 'supabase' && memory.status === 'online' && !memory.error) {
+        setStatus('supabase', 'ok', 'Supabase används av minneskärnan och statuskontrollen lyckades.');
+      } else if (storage === 'sqlite' && memory.status === 'online') {
+        setStatus('supabase', 'error', 'Servern använder SQLite-reservlagring. Supabase är inte aktivt verifierad.');
+      } else {
+        setStatus('supabase', 'error', memory.error || 'Supabase kunde inte verifieras som aktiv minneslagring.');
+      }
+    } catch (error) {
+      setStatus('supabase', 'error', `Minnes-/databaskontroll misslyckades: ${error.message}`);
     }
+    button.disabled = false;
+    button.textContent = 'Kör Diagnostik';
+  });
 
-    // Initiera spelmotorn om spelet finns tillgängligt
-    if (typeof initGame === 'function') {
-        initGame();
-    }
+  const Game = window.JarvisGame;
+  let game = null;
+  if (typeof Game === 'function') {
+    game = new Game('gameCanvas');
+    $('startGameBtn')?.addEventListener('click', () => game.start());
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden && game?.isRunning) game.pause();
+    });
+  } else {
+    setStatus('gemini', 'error', 'Spelmotorn kunde inte laddas.');
+  }
 });
