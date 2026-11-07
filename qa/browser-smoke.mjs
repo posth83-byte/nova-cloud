@@ -72,6 +72,36 @@ try {
             const scriptPath = path.resolve(path.dirname(path.join(root, route.replace(/^\//, ""))), script.split(/[?#]/)[0]);
             if (!fs.existsSync(scriptPath)) localFailures.push("Missing project script: " + script);
           }
+          if (route.includes("/projects/nexora-store/")) {
+            await page.waitForFunction(() => document.querySelectorAll("#productGrid .product-card").length === 6, null, { timeout: 7000 });
+            const imageResults = await page.locator("#productGrid .product-image").evaluateAll(images => Promise.all(images.map(img => {
+              img.loading = "eager";
+              return img.decode().then(() => ({ src: img.currentSrc || img.src, ok: img.naturalWidth > 0 })).catch(() => ({ src: img.src, ok: false }));
+            })));
+            for (const image of imageResults) if (!image.ok) localFailures.push("Product image failed to load: " + image.src);
+            await page.locator('[data-category="belysning"]').click();
+            if (await page.locator("#productGrid .product-card").count() !== 1) localFailures.push("Category filter did not return the expected product.");
+            await page.locator('[data-category="alla"]').click();
+            await page.locator("#searchInput").fill("ullpläd");
+            if (await page.locator("#productGrid .product-card").count() !== 1) localFailures.push("Product search did not return the expected result.");
+            await page.locator("#searchInput").fill("");
+            await page.locator('[data-add="lamp"]').click();
+            if ((await page.locator("#cartCount").innerText()) !== "1") localFailures.push("Add-to-cart did not update the cart count.");
+            await page.locator("#cartOpen").click();
+            if (!(await page.locator("#cartDrawer").evaluate(el => el.classList.contains("open")))) localFailures.push("Cart drawer did not open.");
+            await page.locator('[data-quantity="1"]').click();
+            if (!(await page.locator("#cartLines").innerText()).includes("2")) localFailures.push("Cart quantity control did not increment.");
+            await page.locator("#checkoutOpen").click();
+            if (!(await page.locator("#checkoutBackdrop").evaluate(el => el.classList.contains("open")))) localFailures.push("Checkout test modal did not open.");
+            await page.locator('#checkoutForm input[name="name"]').fill("Testkund");
+            await page.locator('#checkoutForm input[name="email"]').fill("test@example.com");
+            await page.locator('#checkoutForm input[name="address"]').fill("Testgatan 1");
+            await page.locator('#checkoutForm input[name="postal"]').fill("12345");
+            await page.locator('#checkoutForm input[name="city"]').fill("Stockholm");
+            await page.locator('#checkoutForm button[type="submit"]').click();
+            if (await page.locator("#checkoutSuccess").isHidden()) localFailures.push("Checkout did not show the test-order confirmation.");
+            if ((await page.locator("#cartCount").innerText()) !== "0") localFailures.push("Cart was not cleared after the test order.");
+          }
           if (route.includes("jarvis-kritisk-slutgranskning-av-pr-26-o")) {
             // Functional checks for the generated JARVIS portal, not just page-load smoke tests.
             await page.locator("#taskInput").fill("QA funktionstest");
