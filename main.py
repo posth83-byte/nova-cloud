@@ -3173,8 +3173,11 @@ Om flera behövs ska du planera ett gemensamt rådsmöte och tydliga beroenden.
 Ge varje specialist en konkret avgränsad arbetsorder.
 Om uppgiften är vanlig diskussion eller otydlig, returnera tom lista och förklara varför.
 Undvik onödiga följdfrågor: gör rimliga, tydligt redovisade antaganden när det går.
+Skapa 3–8 konkreta acceptanskriterier som går att kontrollera mot leveransen.
+Beskriv önskade leveranser per specialist och ordna arbetet efter verkliga beroenden.
+Skilj på sådant som kan utföras med systemets befintliga verktyg och sådant som kräver åtkomst som saknas.
 Returnera ENDAST giltig JSON:
-{"project_name":"kort stabilt projektnamn","project_summary":"kort projektbeskrivning","targets":["NOVA","WEBMASTER"],"reason":"motivering","tasks":{"NOVA":"arbetsorder","WEBMASTER":"arbetsorder"},"sequence":["NOVA","WEBMASTER"]}
+{"project_name":"kort stabilt projektnamn","project_summary":"kort projektbeskrivning","targets":["NOVA","WEBMASTER"],"reason":"motivering","tasks":{"NOVA":"arbetsorder","WEBMASTER":"arbetsorder"},"deliverables":{"NOVA":"konkret leverans","WEBMASTER":"konkret leverans"},"acceptance_criteria":["kontrollerbart kriterium"],"sequence":["NOVA","WEBMASTER"]}
 Bevara krav och tidigare beslut. Hitta inte på detaljer.
 Delegering ger inte tillstånd att köpa, publicera, betala eller utföra externa åtgärder.
 """
@@ -3210,6 +3213,18 @@ Delegering ger inte tillstånd att köpa, publicera, betala eller utföra extern
         tasks = plan.get("tasks", {})
         if not isinstance(tasks, dict):
             tasks = {}
+        raw_criteria = plan.get("acceptance_criteria", [])
+        acceptance_criteria = [str(item).strip()[:500] for item in raw_criteria if str(item).strip()][:8] if isinstance(raw_criteria, list) else []
+        if not acceptance_criteria:
+            acceptance_criteria = [
+                "Leveransen ska direkt besvara användarens uttryckliga mål.",
+                "Befintliga fungerande funktioner och tidigare projektbeslut ska bevaras.",
+                "Påståenden om utförande och test ska ha konkret belägg.",
+                "Blockerare och kvarvarande arbete ska redovisas tydligt."
+            ]
+        deliverables = plan.get("deliverables", {})
+        if not isinstance(deliverables, dict):
+            deliverables = {}
         sequence = plan.get("sequence", [])
         if not isinstance(sequence, list):
             sequence = []
@@ -3249,6 +3264,14 @@ Delegering ger inte tillstånd att köpa, publicera, betala eller utföra extern
                 + (("TIDIGARE SPARAD PROJEKTHISTORIK:\n" + prior_project_context + "\n\n")
                    if prior_project_context else "")
                 + f"DIN ARBETSORDER:\n{assigned}\n\n"
+                + f"FÖRVÄNTAD LEVERANS:\n{str(deliverables.get(target, "En konkret leverans inom rollen."))[:1800]}\n\n"
+                + "GEMENSAMMA ACCEPTANSKRITERIER:\n"
+                + "\n".join(f"- {criterion}" for criterion in acceptance_criteria)
+                + "\n\nUTFÖRANDEKRAV:\n"
+                + "- Gör det faktiska arbete som är möjligt med verktygen som uttryckligen finns i körningen.\n"
+                + "- Leverera färdigt material när uppdraget kräver det; stanna inte vid allmänna råd.\n"
+                + "- Om en nödvändig åtgärd saknar verktyg eller behörighet, isolera blockeraren och lämna bästa kompletta mellanleverans.\n"
+                + "- Märk varje del som genomförd, statiskt kontrollerad, faktiskt testad eller blockerad.\n\n"
                 + ("TIDIGARE RÅDSUNDERLAG:\n" + "\n\n".join(previous)
                    if previous else "Du är först i arbetsordningen.")
             )
