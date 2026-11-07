@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NEXORA | Skandinavisk Design & Hem</title>
+    <meta name="description" content="Curated essentials for the modern Scandinavian home. Timeless design and everyday elegance.">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header>
+        <a href="index.html" class="logo">NEXORA</a>
+        <nav>
+            <a href="index.html" class="active">Hem</a>
+            <a href="#produkter" id="nav-produkter">Produkter</a>
+            <button class="cart-btn" id="cart-toggle-btn" aria-label="Öppna kundvagn">
+                Kundvagn (<span id="cart-count">0</span>)
+            </button>
+        </nav>
+    </header>
+
+    <main>
+        <section class="hero">
+            <h1>Tidlös skandinavisk design för hemmet</h1>
+            <p>Utforska vår kurerade kollektion av noggrant utvalda detaljer som lyfter din vardagsmiljö med naturliga material och avskalad estetik.</p>
+            <button class="btn-primary" id="explore-btn" style="width: auto; padding: 0.75rem 2.5rem;">Utforska kollektion</button>
+        </section>
+
+        <div class="container" id="produkter">
+            <div class="filters" id="filter-container">
+                <button class="filter-btn active" data-category="all">Alla</button>
+                <button class="filter-btn" data-category="Inredning">Inredning</button>
+                <button class="filter-btn" data-category="Belysning">Belysning</button>
+                <button class="filter-btn" data-category="Textil">Textil</button>
+            </div>
+
+            <div class="product-grid" id="product-grid">
+                <!-- Produkter injiceras via app.js -->
+            </div>
+        </div>
+    </main>
+
+    <!-- Sidokorg / Drawer -->
+    <div class="cart-drawer" id="cart-drawer">
+        <div class="cart-header">
+            <h3>Din kundvagn</h3>
+            <button class="close-cart" id="close-cart-btn">&times;</button>
+        </div>
+        <div class="cart-items" id="cart-items">
+            <!-- Kundvagnsobjekt injiceras här -->
+        </div>
+        <div class="cart-footer">
+            <div class="cart-total">
+                <span>Totalt:</span>
+                <strong id="cart-total-price">0 SEK</strong>
+            </div>
+            <button class="btn-primary" id="checkout-btn">Gå till kassa</button>
+        </div>
+    </div>
+    <div class="cart-overlay" id="cart-overlay"></div>
+
+    <!-- Kassa Modal -->
+    <div class="checkout-modal" id="checkout-modal">
+        <div class="checkout-content">
+            <button class="close-checkout" id="close-checkout-btn">&times;</button>
+            <h2>Kassa</h2>
+            <form id="checkout-form">
+                <div class="form-group">
+                    <label for="name">Fullständigt namn</label>
+                    <input type="text" id="name" required placeholder="Anna Andersson">
+                </div>
+                <div class="form-group">
+                    <label for="email">E-postadress</label>
+                    <input type="email" id="email" required placeholder="anna@example.com">
+                </div>
+                <div class="form-group">
+                    <label for="address">Leveransadress</label>
+                    <input type="text" id="address" required placeholder="Storgatan 12">
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="city">Ort</label>
+                        <input type="text" id="city" required placeholder="Stockholm">
+                    </div>
+                    <div class="form-group">
+                        <label for="zip">Postnummer</label>
+                        <input type="text" id="zip" required placeholder="12345">
+                    </div>
+                </div>
+                <button type="submit" class="btn-primary" style="margin-top: 1rem;">Slutför beställning</button>
+            </form>
+            <div id="order-success" class="order-success hidden">
+                <h3>Tack för din beställning!</h3>
+                <p>En orderbekräftelse har skickats till din e-post. Ditt paket skickas inom kort.</p>
+                <button class="btn-primary" id="reset-shop-btn" style="margin-top: 1.5rem;">Tillbaka till butiken</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
