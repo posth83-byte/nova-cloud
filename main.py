@@ -2847,7 +2847,7 @@ async def jarvis_intelligence():
             "final_quality_gate": True,
             "independent_qa_specialist": True,
             "project_result_memory": memory.get("status") == "online",
-            "live_team_status": True,
+            "live_team_status": bool(jarvis_worker_task and not jarvis_worker_task.done()),
             "persistent_project_registry": USE_SUPABASE_MEMORY and memory.get("status") == "online",
             "specialist_task_tracking": USE_SUPABASE_MEMORY and memory.get("status") == "online"
         },
