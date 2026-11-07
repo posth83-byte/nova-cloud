@@ -4,7 +4,7 @@ import { chromium } from "playwright";
 
 const root = process.cwd();
 const baseUrl = "http://127.0.0.1:4173";
-const entrypoints = [];
+const entrypoints = ["/"];
 
 function collectHtml(directory) {
   if (!fs.existsSync(directory)) return;
