@@ -1,6 +1,8 @@
 name: JARVIS Runtime Health
 
 on:
+  push:
+    branches: [main]
   schedule:
     - cron: "15 7 * * *"
   workflow_dispatch:
