@@ -234,6 +234,7 @@ main{position:relative;z-index:1;max-width:1400px;margin:auto;padding:20px 15px 
 .jarvis-project-item strong{display:block;color:#e4f6ff;font-size:11px;overflow-wrap:anywhere}
 .jarvis-project-item small{display:block;color:#8daec4;font-size:9px;margin-top:4px}
 .jarvis-project-item a{flex:0 0 auto;padding:8px 10px;border:1px solid #39c8ff88;border-radius:8px;background:#103653;color:#c8f1ff;text-decoration:none;font-size:9px;font-weight:700}
+.jarvis-project-delete{flex:0 0 auto;padding:8px 9px;border:1px solid #a94c5b;border-radius:8px;background:#351923;color:#ffc4cc;font-size:9px;font-weight:700;cursor:pointer}
 .jarvis-project-empty{margin:0;color:#8daec4;font-size:10px;line-height:1.5}
 @media(max-width:420px){.jarvis-projects-button{padding:0 7px;font-size:8px}.jarvis-input-row{gap:5px}.jarvis-input-row .send{padding:0 10px}}
 .voice-toggle{flex:0 0 46px;width:46px;height:46px;border:1px solid #ff9a70;border-radius:50%;background:linear-gradient(145deg,#3a1b13,#1d1010);color:#ffd0b8;font-size:20px;box-shadow:0 0 14px #ff8a3d35}
@@ -1717,9 +1718,20 @@ function renderJarvisProjects(){
   const info=document.createElement("div");const title=document.createElement("strong");title.textContent=item.title;
   const meta=document.createElement("small");meta.textContent=item.type+" · "+new Date(item.updated||Date.now()).toLocaleDateString("sv-SE");
   info.append(title,meta);
+  const actions=document.createElement("div");actions.className="jarvis-project-actions";actions.style.cssText="display:flex;align-items:center;gap:6px;flex:0 0 auto";
   const link=document.createElement("a");link.href=item.url;link.target="_blank";link.rel="noopener noreferrer";link.textContent="ÖPPNA ↗";
-  row.append(info,link);list.appendChild(row);
+  const remove=document.createElement("button");remove.type="button";remove.className="jarvis-project-delete";remove.textContent="TA BORT";remove.setAttribute("aria-label","Ta bort "+String(item.title||"projekt"));
+  remove.addEventListener("click",()=>deleteJarvisProject(item.id));
+  actions.append(link,remove);row.append(info,actions);list.appendChild(row);
  });
+}
+function deleteJarvisProject(projectId){
+ const project=jarvisCompletedProjects.find(item=>item.id===projectId);
+ if(!project)return;
+ if(!window.confirm("Ta bort \""+String(project.title||"projekt").replace(/[\"\\]/g,"")+"\" från listan Mina projekt? Själva projektfilerna på GitHub påverkas inte."))return;
+ jarvisCompletedProjects=jarvisCompletedProjects.filter(item=>item.id!==projectId);
+ try{localStorage.setItem(JARVIS_PROJECTS_KEY,JSON.stringify(jarvisCompletedProjects))}catch(e){alert("Kunde inte spara ändringen på den här enheten.");return}
+ renderJarvisProjects();
 }
 function toggleJarvisProjects(force){
  const panel=$("jarvisProjectShelf"),button=$("jarvisProjectsButton");if(!panel)return;
