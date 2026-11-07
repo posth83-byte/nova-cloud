@@ -85,7 +85,7 @@ try {
               if (!(await page.locator("#mainNav").evaluate(el => el.classList.contains("open")))) localFailures.push("Mobile menu did not open.");
             }
             await page.locator('[data-target="panel-game"]').click();
-            await page.waitForFunction(() => document.querySelector("#gameCanvas")?.width > 280);
+            await page.waitForFunction(() => { const panel = document.querySelector("#panel-game"); const canvas = document.querySelector("#gameCanvas"); const container = document.querySelector("#game-container"); return panel?.classList.contains("active") && canvas && canvas.width >= 280 && container?.clientWidth > 0; }, null, { timeout: 5000 });
             await page.locator("#startGameBtn").click();
             if ((await page.locator("#gameOverlay").evaluate(el => getComputedStyle(el).display)) !== "none") localFailures.push("Game overlay did not close after Start.");
             const beforeX = await page.evaluate(() => window.__jarvisGame?.player.x);
