@@ -55,7 +55,7 @@ jobs:
               parser.feed(Path(filename).read_text(encoding="utf-8"))
               if not parser.parts:
                   raise SystemExit(f"No inline JavaScript found in {filename}")
-              Path(f"/tmp/{Path(filename).stem}.js").write_text("\\n".join(parser.parts), encoding="utf-8")
+              Path(f"/tmp/{Path(filename).stem}.js").write_text("\n".join(parser.parts), encoding="utf-8")
           PY
           node --check /tmp/index.js
           node --check /tmp/arcade.js
