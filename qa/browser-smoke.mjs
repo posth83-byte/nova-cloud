@@ -88,12 +88,20 @@ try {
             await page.waitForFunction(() => document.querySelector("#gameCanvas")?.width > 280);
             await page.locator("#startGameBtn").click();
             if ((await page.locator("#gameOverlay").evaluate(el => getComputedStyle(el).display)) !== "none") localFailures.push("Game overlay did not close after Start.");
-            const before = await page.locator("#gameCanvas").evaluate(el => el.width);
-            await page.locator("#btnRight").dispatchEvent("pointerdown", { pointerId: 1, pointerType: "touch", isPrimary: true });
-            await page.waitForTimeout(100);
-            await page.locator("#btnRight").dispatchEvent("pointerup", { pointerId: 1, pointerType: "touch", isPrimary: true });
+            const beforeX = await page.evaluate(() => window.__jarvisGame?.player.x);
+            if (viewport.name === "mobile") {
+              await page.locator("#btnRight").dispatchEvent("pointerdown", { pointerId: 1, pointerType: "touch", isPrimary: true });
+              await page.waitForTimeout(160);
+              await page.locator("#btnRight").dispatchEvent("pointerup", { pointerId: 1, pointerType: "touch", isPrimary: true });
+            } else {
+              await page.keyboard.down("ArrowRight");
+              await page.waitForTimeout(160);
+              await page.keyboard.up("ArrowRight");
+            }
+            const afterX = await page.evaluate(() => window.__jarvisGame?.player.x);
             const gameRunning = await page.evaluate(() => window.__jarvisGame?.isRunning);
-            if (gameRunning === false) localFailures.push("Game stopped unexpectedly after start.");
+            if (gameRunning !== true) localFailures.push("Game is not running after Start.");
+            if (!(afterX > beforeX)) localFailures.push("Right movement control did not move the player.");
 
             await page.locator('[data-target="panel-diag"]').click();
             await page.route("**/health", route => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ status: "online" }) }));
