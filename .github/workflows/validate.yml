@@ -62,33 +62,32 @@ jobs:
           if [ -d projects ]; then
             while IFS= read -r -d '' file; do node --check "$file"; done < <(find projects -type f -name '*.js' -print0)
             python - <<'PY'
-            from html.parser import HTMLParser
-            from pathlib import Path
+          from html.parser import HTMLParser
+          from pathlib import Path
 
-            class LocalAssetChecker(HTMLParser):
-                def __init__(self, page):
-                    super().__init__()
-                    self.page = page
-                    self.missing = []
+          class LocalAssetChecker(HTMLParser):
+              def __init__(self, page):
+                  super().__init__()
+                  self.page = page
+                  self.missing = []
 
-                def handle_starttag(self, tag, attrs):
-                    values = dict(attrs)
-                    for key in ("src", "href"):
-                        value = values.get(key, "")
-                        if not value or value.startswith(("http://", "https://", "//", "data:", "mailto:", "#")):
-                            continue
-                        target = (self.page.parent / value.split("?", 1)[0].split("#", 1)[0]).resolve()
-                        if not target.is_file():
-                            self.missing.append(value)
+              def handle_starttag(self, tag, attrs):
+                  values = dict(attrs)
+                  for key in ("src", "href"):
+                      value = values.get(key, "")
+                      if not value or value.startswith(("http://", "https://", "//", "data:", "mailto:", "#")):
+                          continue
+                      target = (self.page.parent / value.split("?", 1)[0].split("#", 1)[0]).resolve()
+                      if not target.is_file():
+                          self.missing.append(value)
 
-            pages = list(Path("projects").glob("*/index.html"))
-            for page in pages:
-                source = page.read_text(encoding="utf-8")
-                if "<html" not in source.lower() or "</html>" not in source.lower():
-                    raise SystemExit(f"Incomplete HTML document: {page}")
-                checker = LocalAssetChecker(page)
-                checker.feed(source)
-                if checker.missing:
-                    raise SystemExit(f"Missing local assets in {page}: {checker.missing}")
-            PY
+          for page in Path("projects").glob("*/index.html"):
+              source = page.read_text(encoding="utf-8")
+              if "<html" not in source.lower() or "</html>" not in source.lower():
+                  raise SystemExit(f"Incomplete HTML document: {page}")
+              checker = LocalAssetChecker(page)
+              checker.feed(source)
+              if checker.missing:
+                  raise SystemExit(f"Missing local assets in {page}: {checker.missing}")
+          PY
           fi
