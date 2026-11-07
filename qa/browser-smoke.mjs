@@ -72,6 +72,38 @@ try {
             const scriptPath = path.resolve(path.dirname(path.join(root, route.replace(/^\//, ""))), script.split(/[?#]/)[0]);
             if (!fs.existsSync(scriptPath)) localFailures.push("Missing project script: " + script);
           }
+          if (route.includes("jarvis-kritisk-slutgranskning-av-pr-26-o")) {
+            // Functional checks for the generated JARVIS portal, not just page-load smoke tests.
+            await page.locator("#taskInput").fill("QA funktionstest");
+            await page.locator("#addTaskBtn").click();
+            if (await page.locator("#taskList").getByText("QA funktionstest").count() !== 1) localFailures.push("Task add did not create a visible task.");
+            await page.locator("#taskList").getByRole("button", { name: "Klar" }).last().click();
+            if (await page.locator("#taskList").getByText("QA funktionstest").count() !== 0) localFailures.push("Task completion did not remove the task.");
+
+            if (viewport.name === "mobile") {
+              await page.locator("#menuToggle").click();
+              if (!(await page.locator("#mainNav").evaluate(el => el.classList.contains("open")))) localFailures.push("Mobile menu did not open.");
+            }
+            await page.locator('[data-target="panel-game"]').click();
+            await page.waitForFunction(() => document.querySelector("#gameCanvas")?.width > 280);
+            await page.locator("#startGameBtn").click();
+            if ((await page.locator("#gameOverlay").evaluate(el => getComputedStyle(el).display)) !== "none") localFailures.push("Game overlay did not close after Start.");
+            const before = await page.locator("#gameCanvas").evaluate(el => el.width);
+            await page.locator("#btnRight").dispatchEvent("pointerdown", { pointerId: 1, pointerType: "touch", isPrimary: true });
+            await page.waitForTimeout(100);
+            await page.locator("#btnRight").dispatchEvent("pointerup", { pointerId: 1, pointerType: "touch", isPrimary: true });
+            const gameRunning = await page.evaluate(() => window.__jarvisGame?.isRunning);
+            if (gameRunning === false) localFailures.push("Game stopped unexpectedly after start.");
+
+            await page.locator('[data-target="panel-diag"]').click();
+            await page.route("**/health", route => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ status: "online" }) }));
+            await page.route("**/api/status", route => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ gemini_configured: true }) }));
+            await page.route("**/api/chat", route => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ status: "online", engine: "Gemini", reply: "OK" }) }));
+            await page.route("**/api/memory/status", route => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ status: "online", storage: "supabase" }) }));
+            await page.locator("#runDiagBtn").click();
+            await page.waitForFunction(() => document.querySelector("#status-gemini")?.textContent.includes("Gemini-anrop lyckades"), null, { timeout: 5000 });
+            await page.waitForFunction(() => document.querySelector("#status-supabase")?.textContent.includes("Supabase används"), null, { timeout: 5000 });
+          }
           if (await page.locator("canvas#wf-canvas").count()) {
             await page.locator("#wf-start-btn").click();
             await page.waitForFunction(() => document.querySelector("#wf-overlay")?.classList.contains("hidden"), null, { timeout: 3000 });
