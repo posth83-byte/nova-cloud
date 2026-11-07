@@ -3314,6 +3314,7 @@ Delegering ger inte tillstånd att köpa, publicera, betala eller utföra extern
         set_team_runtime("working", task, "JARVIS sammanställer rådets gemensamma beslut", ["JARVIS"], ordered)
         summary_input = (
             "PROJEKT:\n" + task + "\n\n"
+            + "ACCEPTANSKRITERIER:\n" + "\n".join("- " + item for item in acceptance_criteria) + "\n\n"
             + ("TIDIGARE SPARAD PROJEKTHISTORIK:\n" + prior_project_context + "\n\n"
                if prior_project_context else "")
             + "FÖRSTA ANALYSER:\n"
@@ -3351,33 +3352,68 @@ Delegering ger inte tillstånd att köpa, publicera, betala eller utföra extern
                ) if council_reviews else "")
         )
         quality_prompt = """
-Du är JARVIS oberoende kvalitetsansvarige. Granska leveransen mot användarens
-uppdrag och specialistunderlaget. Rätta motsägelser och överdrifter. Kontrollera
-att inga åtgärder påstås vara utförda utan belägg, att viktiga risker och beroenden
-syns och att rekommendationen är praktiskt genomförbar.
+Du är JARVIS oberoende kvalitetsansvarige. Granska leveransen mot uppdraget
+och varje acceptanskriterium. Var strikt och försök hitta verkliga brister.
 ABSOLUT BEVISKRAV:
 - Specialisternas egna påståenden om att de testat eller verifierat något är inte bevis.
-- Endast konkreta verktygsresultat, körloggar eller faktiska fil-/HTTP-resultat som finns i
+- Endast konkreta verktygsresultat, körloggar eller faktiska fil-/HTTP-resultat i
   underlaget räknas som verifiering. Modelltext och tidigare minnen räknas aldrig.
-- Om inga sådana bevis finns ska du uttryckligen skriva "ej kört test" och "ej verifierat".
-- Påstå aldrig att CDN, lokal sandbox, webbläsare, filsystem, GitHub eller Studio har använts
-  om det inte finns ett faktiskt verktygsresultat från samma körning.
+- Om sådana bevis saknas ska du skriva "ej kört test" och "ej verifierat".
 - AI-genererad kod eller plan är inte implementerad kod. Förhandsvisning är inte publicering.
-Behåll användbara detaljer. Om något inte kan verifieras, märk det tydligt.
-Returnera en kort slutrapport på naturlig svenska, högst 6 meningar. Beskriv resultat, verifiering och vad som återstår.
-Om en specialist faktiskt har publicerat en webbplats eller ett spel och lämnat dess riktiga liveadress, ta med exakt adress på en egen rad märkt PUBLICERAD PROJEKTLÄNK: https://... . Ta aldrig med tillfälliga förhandsvisningar, källor eller exempeladresser som projektlänk.
-Visa aldrig råkod, kodblock, HTML, CSS, JavaScript, Luau, JSON, patchar, specialistanalyser eller interna granskningsanteckningar.
-Tekniska artefakter ska stanna i det interna specialistunderlaget. Lägg inte till nya fakta.
-Avsluta med "Kvar att göra" endast om något faktiskt återstår.
+- Markera kriterier som uppfyllda endast när underlaget visar det.
+- Om en specialist kan rätta en konkret brist i sitt eget material, skriv en kort
+  repair_instruction för den specialisten. Begär inte åtgärder som saknar verktyg.
+Returnera ENDAST giltig JSON:
+{"passed":false,"gaps":["konkret brist"],"repair_instructions":{"NOVA":"specifik rättning","WEBMASTER":"","GAME_DEVELOPER":""},"final_report":"Kort sanningsenlig svensk statusrapport, högst 6 meningar."}
+Sätt passed=true endast när alla kriterier är uppfyllda eller tydligt blockerade av en
+extern begränsning som inte kan lösas i denna körning. Hitta inte på fakta.
+Visa aldrig råkod, kodblock eller interna granskningsanteckningar.
 """
         quality = None
         quality_error = None
+        quality_status = "unavailable"
+        final_reply = summary["reply"]
         try:
             quality = await asyncio.to_thread(
-                generate_reply, quality_input, quality_prompt, max_tokens=3500
+                generate_reply, quality_input, quality_prompt,
+                max_tokens=3500, json_mode=True
             )
-            final_reply = quality["reply"].strip() or summary["reply"]
-            quality_status = "reviewed"
+            quality_data = extract_json(quality["reply"])
+            # En enda självrättningsrunda: återöppna endast leveranser där QA hittat en konkret brist.
+            repair_instructions = quality_data.get("repair_instructions", {})
+            if not quality_data.get("passed") and isinstance(repair_instructions, dict):
+                for item in results:
+                    target = item["target"]
+                    instruction = str(repair_instructions.get(target) or "").strip()
+                    if not instruction:
+                        continue
+                    repair_message = (
+                        "KVALITETSGRANSKNINGEN HAR HITTAT EN KONKRET BRIST. "
+                        "Rätta den och lämna en komplett förbättrad leverans. "
+                        "Hitta inte på testresultat eller externa åtgärder.\n\n"
+                        f"UPPDRAG:\n{task}\n\n"
+                        "ACCEPTANSKRITERIER:\n"
+                        + "\n".join("- " + item for item in acceptance_criteria)
+                        + f"\n\nDIN TIDIGARE LEVERANS:\n{item['reply'][:12000]}"
+                        + f"\n\nRÄTTNING ATT GENOMFÖRA:\n{instruction[:3000]}"
+                    )
+                    repaired = await asyncio.to_thread(
+                        generate_reply, repair_message, prompts[target], max_tokens=8192
+                    )
+                    item["reply"] = repaired["reply"]
+                    item["repair_engine"] = repaired["engine"]
+                    item["repair_round"] = 1
+                repaired_input = (
+                    quality_input + "\n\nLEVERANSER EFTER SJÄLVRÄTTNING:\n"
+                    + "\n\n".join(f"{item['target']}:\n{item['reply'][:6500]}" for item in results)
+                )
+                quality = await asyncio.to_thread(
+                    generate_reply, repaired_input, quality_prompt,
+                    max_tokens=3500, json_mode=True
+                )
+                quality_data = extract_json(quality["reply"])
+            final_reply = str(quality_data.get("final_report") or "").strip() or summary["reply"]
+            quality_status = "passed" if quality_data.get("passed") else "needs_changes"
         except Exception as error:
             # Ett fel i slutgranskningen ska inte kasta bort redan färdigt specialistarbete.
             final_reply = summary["reply"]
@@ -3395,8 +3431,10 @@ Avsluta med "Kvar att göra" endast om något faktiskt återstår.
             registry_error = str(error)[:500]
 
         final_phase = (
-            "AI-rådet är klart – underlaget är kvalitetsgranskat, men kodändringar/publicering är inte automatiskt utförda"
-            if quality_status == "reviewed"
+            "AI-rådet är klart – kvalitetsgranskning godkänd"
+            if quality_status == "passed"
+            else "AI-rådet är klart – brister kvarstår efter självrättningsrundan"
+            if quality_status == "needs_changes"
             else "AI-rådet är klart – slutgranskningen kunde inte köras; underlaget behöver granskas"
         )
         set_team_runtime("done", task, final_phase, [], ordered)
@@ -3414,7 +3452,9 @@ Avsluta med "Kvar att göra" endast om något faktiskt återstår.
             "quality_error": quality_error,
             "project_registry": registry,
             "project_registry_error": registry_error,
-            "workflow": ["routing", "specialist_analysis", "peer_review" if council_reviews else "self_review", "synthesis"] + (["final_quality_check"] if quality_status == "reviewed" else []),
+            "acceptance_criteria": acceptance_criteria,
+            "deliverables": deliverables,
+            "workflow": ["routing", "specialist_analysis", "peer_review" if council_reviews else "self_review", "synthesis", "quality_gate"] + (["specialist_repair", "quality_recheck"] if any(item.get("repair_round") for item in results) else []),
             "results": results,
             "reviews": council_reviews,
             "reply": final_reply,
