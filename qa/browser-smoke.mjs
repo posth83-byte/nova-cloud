@@ -103,6 +103,10 @@ try {
             if (gameRunning !== true) localFailures.push("Game is not running after Start.");
             if (!(afterX > beforeX)) localFailures.push("Right movement control did not move the player.");
 
+            if (viewport.name === "mobile") {
+              await page.locator("#menuToggle").click();
+              if (!(await page.locator("#mainNav").evaluate(el => el.classList.contains("open")))) localFailures.push("Mobile menu did not reopen before Diagnostics navigation.");
+            }
             await page.locator('[data-target="panel-diag"]').click();
             await page.route("**/health", route => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ status: "online" }) }));
             await page.route("**/api/status", route => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ gemini_configured: true }) }));
