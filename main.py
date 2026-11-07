@@ -1211,7 +1211,7 @@ VIKTIGA REGLER:
         )
         raw = str(result.get("reply", "")).strip()
         match = re.search(r"\{[\s\S]*\}", raw)
-        data = json.loads(match.group(0)) if match else {}
+        data = parse_model_json(raw) if match else {}
         memories = data.get("memories", [])
         if not isinstance(memories, list):
             return []
@@ -1963,6 +1963,70 @@ def generate_reply(
 # ==========================================
 # VIDEO – JSON HANTERING
 # ==========================================
+
+def parse_model_json(text):
+    """Parse model-generated JSON and safely repair invalid backslash escapes."""
+    cleaned = str(text or "").strip()
+    fence = chr(96) * 3
+    if cleaned.startswith(fence):
+        cleaned = cleaned.split("\n", 1)[1] if "\n" in cleaned else cleaned[len(fence):]
+    if cleaned.rstrip().endswith(fence):
+        cleaned = cleaned.rstrip()[:-len(fence)].strip()
+    start = cleaned.find("{")
+    if start < 0:
+        raise ValueError("AI-svaret innehöll inget JSON-objekt.")
+
+    candidate = cleaned[start:]
+    decoder = json.JSONDecoder()
+    try:
+        value, _ = decoder.raw_decode(candidate)
+    except json.JSONDecodeError:
+        # Model text may contain Windows paths or literal sequences such as \\u
+        # without four hex digits. Repair only invalid escapes inside strings.
+        repaired = []
+        in_string = False
+        index = 0
+        while index < len(candidate):
+            char = candidate[index]
+            if not in_string:
+                repaired.append(char)
+                if char == '"':
+                    in_string = True
+                index += 1
+                continue
+
+            if char == '"':
+                repaired.append(char)
+                in_string = False
+                index += 1
+                continue
+
+            if char != "\\":
+                repaired.append(char)
+                index += 1
+                continue
+
+            next_char = candidate[index + 1] if index + 1 < len(candidate) else ""
+            if next_char in ('"', "\\", "/", "b", "f", "n", "r", "t"):
+                repaired.append("\\" + next_char)
+                index += 2
+                continue
+            if next_char == "u":
+                digits = candidate[index + 2:index + 6]
+                if len(digits) == 4 and all(c in "0123456789abcdefABCDEF" for c in digits):
+                    repaired.append(candidate[index:index + 6])
+                    index += 6
+                    continue
+
+            repaired.append("\\\\")
+            index += 1
+
+        value, _ = decoder.raw_decode("".join(repaired))
+
+    if not isinstance(value, dict):
+        raise ValueError("AI-svaret måste vara ett JSON-objekt.")
+    return value
+
 
 def extract_json(text):
 
@@ -3362,7 +3426,7 @@ Delegering ger inte tillstånd att köpa, publicera, betala eller utföra extern
         match = re.search(r"\{[\s\S]*\}", decision["reply"].strip())
         if not match:
             raise ValueError("JARVIS returnerade ingen giltig samarbetsplan.")
-        plan = json.loads(match.group(0))
+        plan = parse_model_json(decision["reply"])
         allowed = {"NOVA", "WEBMASTER", "GAME_DEVELOPER", "QA_ENGINEER"}
         targets = plan.get("targets", [])
         if not isinstance(targets, list):
