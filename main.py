@@ -2827,6 +2827,7 @@ async def jarvis_intelligence():
             "multi_agent_collaboration": True,
             "peer_review": True,
             "final_quality_gate": True,
+            "independent_qa_specialist": True,
             "project_result_memory": True,
             "live_team_status": True,
             "persistent_project_registry": USE_SUPABASE_MEMORY,
