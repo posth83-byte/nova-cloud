@@ -47,6 +47,7 @@ jobs:
           paths = (
               "/health",
               "/api/status",
+              "/api/jarvis/intelligence",
               "/api/worker/status",
               "/api/github/status",
               "/api/memory/status",
@@ -77,6 +78,7 @@ jobs:
           results = {path: get_json(path) for path in paths}
           health = results["/health"]
           api = results["/api/status"]
+          intelligence = results["/api/jarvis/intelligence"]
           worker = results["/api/worker/status"]
           github = results["/api/github/status"]
           memory = results["/api/memory/status"]
@@ -85,6 +87,8 @@ jobs:
           checks = {
               "service_online": health.get("status") == "online",
               "api_online": api.get("status") == "online",
+              "qa_specialist_registered": "QA_ENGINEER" in intelligence.get("specialists", []),
+              "independent_qa_enabled": intelligence.get("capabilities", {}).get("independent_qa_specialist") is True,
               "ai_engine_configured": bool(
                   api.get("gemini_configured") or api.get("openrouter_configured")
               ),
