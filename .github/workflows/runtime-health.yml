@@ -1,6 +1,8 @@
 name: JARVIS Runtime Health
 
 on:
+  push:
+    branches: [main]
   schedule:
     - cron: "15 7 * * *"
   workflow_dispatch:
@@ -20,6 +22,8 @@ jobs:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
       - name: Validate workflow structure
         run: |
           ruby -e 'require "yaml"; data = YAML.load_file(".github/workflows/runtime-health.yml"); abort "Invalid workflow structure" unless data.is_a?(Hash) && data["jobs"].is_a?(Hash) && data["jobs"].key?("runtime-health"); puts "Runtime health workflow structure validated."'

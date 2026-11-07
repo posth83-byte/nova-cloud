@@ -3378,6 +3378,30 @@ Delegering ger inte tillstånd att köpa, publicera, betala eller utföra extern
                 "reply": "Jag rekommenderar att vi pratar igenom detta lite mer innan jag lämnar över något."
             }
 
+        # En oberoende QA-specialist är obligatorisk när tekniska byggare arbetar.
+        # Detta är deterministiskt så att kvalitetsgranskningen inte hänger på modellens val.
+        if {"WEBMASTER", "GAME_DEVELOPER"}.intersection(targets):
+            if "QA_ENGINEER" not in targets:
+                targets.append("QA_ENGINEER")
+            plan["targets"] = targets
+            planned_tasks = plan.get("tasks")
+            if not isinstance(planned_tasks, dict):
+                planned_tasks = {}
+            planned_tasks.setdefault(
+                "QA_ENGINEER",
+                "Granska utvecklarnas leveranser oberoende mot acceptanskriterierna. "
+                "Hitta konkreta fel, risker och saknade krav samt föreslå testfall."
+            )
+            plan["tasks"] = planned_tasks
+            planned_deliverables = plan.get("deliverables")
+            if not isinstance(planned_deliverables, dict):
+                planned_deliverables = {}
+            planned_deliverables.setdefault(
+                "QA_ENGINEER",
+                "Oberoende riskbedömning, testmatris och konkreta rättningsinstruktioner."
+            )
+            plan["deliverables"] = planned_deliverables
+
         prompts = {
             "NOVA": NOVA_PROMPT,
             "WEBMASTER": WEBMASTER_PROMPT,
