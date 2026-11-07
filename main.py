@@ -1117,6 +1117,22 @@ def get_memory_status():
     }
 
 
+def safe_get_memory_status():
+    """Return honest degraded diagnostics instead of taking the whole status API down."""
+    try:
+        return get_memory_status()
+    except Exception:
+        return {
+            "status": "degraded",
+            "items": None,
+            "last_updated": None,
+            "storage": "supabase" if USE_SUPABASE_MEMORY else "sqlite",
+            "memory_intelligence": "unavailable",
+            "retrieval": "unavailable",
+            "error": "Minneslagringen kunde inte nås."
+        }
+
+
 def add_relevant_memory(query, message, limit=6, project=""):
     memories = search_memory_items(query, limit=limit, project=project)
     if not memories:
@@ -2760,6 +2776,7 @@ async def health():
 @app.get("/api/status")
 async def status():
 
+    memory_state = safe_get_memory_status()
     valid_channels = [
         item for item in YOUTUBE_CHANNEL_IDS
         if item.startswith("UC") and len(item) == 24
@@ -2789,9 +2806,10 @@ async def status():
         "youtube_channel_url": "https://www.youtube.com/@mikaelposth",
         "video_planner": "online",
         "video_renderer": "online",
-        "memory_core": "online",
-        "memory_items": get_memory_status()["items"],
-        "memory_storage": "supabase" if USE_SUPABASE_MEMORY else "sqlite",
+        "memory_core": memory_state["status"],
+        "memory_items": memory_state.get("items"),
+        "memory_storage": memory_state.get("storage", "supabase" if USE_SUPABASE_MEMORY else "sqlite"),
+        "memory_error": memory_state.get("error"),
         "intelligence_core": {
             "status": "online",
             "version": APP_VERSION,
@@ -2813,7 +2831,7 @@ async def status():
 @app.get("/api/jarvis/intelligence")
 async def jarvis_intelligence():
     """Expose the real, currently enabled JARVIS intelligence capabilities."""
-    memory = get_memory_status()
+    memory = safe_get_memory_status()
     return {
         "assistant": "JARVIS",
         "status": "online",
@@ -2822,21 +2840,21 @@ async def jarvis_intelligence():
         "capabilities": {
             "contextual_reasoning": True,
             "project_aware_long_term_memory": memory.get("status") == "online",
-            "ai_curated_memory": True,
+            "ai_curated_memory": memory.get("status") == "online",
             "automatic_specialist_selection": True,
             "multi_agent_collaboration": True,
             "peer_review": True,
             "final_quality_gate": True,
             "independent_qa_specialist": True,
-            "project_result_memory": True,
+            "project_result_memory": memory.get("status") == "online",
             "live_team_status": True,
-            "persistent_project_registry": USE_SUPABASE_MEMORY,
-            "specialist_task_tracking": USE_SUPABASE_MEMORY
+            "persistent_project_registry": USE_SUPABASE_MEMORY and memory.get("status") == "online",
+            "specialist_task_tracking": USE_SUPABASE_MEMORY and memory.get("status") == "online"
         },
         "specialists": ["NOVA", "WEBMASTER", "GAME_DEVELOPER", "QA_ENGINEER"],
         "project_registry": {
-            "status": "online" if USE_SUPABASE_MEMORY else "unavailable",
-            "persistent": True,
+            "status": "online" if memory.get("status") == "online" else ("degraded" if USE_SUPABASE_MEMORY else "unavailable"),
+            "persistent": USE_SUPABASE_MEMORY and memory.get("status") == "online",
             "retrieval": "automatic_project_context",
             "read_access": "server_only"
         },
