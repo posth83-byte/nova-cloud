@@ -24,6 +24,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 from video_engine import router as video_router
 from runway_engine import router as runway_router
+from kling_engine import router as kling_router
 
 
 # ==========================================
@@ -40,6 +41,7 @@ app = FastAPI(
 
 app.include_router(video_router)
 app.include_router(runway_router)
+app.include_router(kling_router)
 
 # Temporary previews are cleared when the service restarts.
 preview_pages = {}
