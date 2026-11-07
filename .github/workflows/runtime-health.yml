@@ -54,6 +54,16 @@ jobs:
               "/api/team/status",
           )
 
+          def get_text(path):
+              request = urllib.request.Request(
+                  base + path,
+                  headers={"User-Agent": "JARVIS-Runtime-Health/2.1"},
+              )
+              with urllib.request.urlopen(request, timeout=20) as response:
+                  if response.status != 200:
+                      raise RuntimeError(f"{path} returned HTTP {response.status}")
+                  return response.read().decode("utf-8", errors="replace")
+
           def get_json(path):
               last_error = None
               for attempt in range(12):
@@ -76,6 +86,7 @@ jobs:
               raise RuntimeError(f"{path} failed after retries: {last_error}")
 
           results = {path: get_json(path) for path in paths}
+          dashboard_html = get_text("/")
           health = results["/health"]
           api = results["/api/status"]
           intelligence = results["/api/jarvis/intelligence"]
@@ -85,6 +96,9 @@ jobs:
           team = results["/api/team/status"]
 
           checks = {
+              "dashboard_http_ok": "<title>JARVIS" in dashboard_html,
+              "dashboard_mobile_viewport": 'name="viewport"' in dashboard_html,
+              "deployed_version_reported": bool(health.get("version")),
               "service_online": health.get("status") == "online",
               "api_online": api.get("status") == "online",
               "qa_specialist_registered": "QA_ENGINEER" in intelligence.get("specialists", []),
@@ -100,6 +114,7 @@ jobs:
               "team_status_available": team.get("status") in {"idle", "working", "done", "error"},
           }
 
+          print(f"Live Render application version: {health.get('version', 'missing')}")
           for name, passed in checks.items():
               print(f"{'PASS' if passed else 'FAIL'} {name}")
 
