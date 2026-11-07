@@ -20,6 +20,7 @@ from urllib.parse import quote
 
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse, HTMLResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 from video_engine import router as video_router
 from runway_engine import router as runway_router
@@ -74,6 +75,12 @@ def set_team_runtime(status, task=None, phase=None, active=None, completed=None)
 BASE_DIR = Path(__file__).resolve().parent
 INDEX_FILE = BASE_DIR / "index.html"
 ARCADE_FILE = BASE_DIR / "arcade.html"
+PROJECTS_DIR = BASE_DIR / "projects"
+
+# Serve committed multi-file web projects (HTML/CSS/JS) as real static pages.
+# This is required for project previews to load linked stylesheets and scripts.
+if PROJECTS_DIR.is_dir():
+    app.mount("/projects", StaticFiles(directory=str(PROJECTS_DIR), html=True), name="projects")
 
 # ==========================================
 # JARVIS MEMORY CORE – SUPABASE + SQLITE FALLBACK
