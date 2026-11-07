@@ -280,7 +280,7 @@ main{position:relative;z-index:1;max-width:1400px;margin:auto;padding:20px 15px 
 .team-board-head{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:11px}
 .team-board-title{font-size:10px;letter-spacing:2px;color:#9be5ff;font-weight:800}
 .team-board-state{font-size:9px;color:#7df0c4;letter-spacing:1px}
-.team-workers{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.team-workers{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px}
 .team-worker{min-width:0;padding:11px 7px;border:1px solid #234766;border-radius:10px;background:#0b2034;text-align:center}
 .team-worker .worker-avatar{font-size:23px;display:block;margin-bottom:5px;filter:drop-shadow(0 0 7px #35bfff55)}
 .team-worker strong{display:block;font-size:9px;color:#dff5ff;overflow-wrap:anywhere}
@@ -770,7 +770,7 @@ header .sub{color:#d6a19a}
  <section class="headquarters">
   <div class="hq-caption">NOVA CLOUD / CENTRAL AI HEADQUARTERS</div>
   <div class="hq-room-scene crew-scene premium-office" aria-label="AI-högkvarter med fyra arbetsstationer">
-   <div class="office-topline"><span>✦ NOVA CLOUD CAMPUS</span><span class="office-live"><i></i> LIVE · 4 AGENTER</span></div>
+   <div class="office-topline"><span>✦ NOVA CLOUD CAMPUS</span><span class="office-live"><i></i> LIVE · 5 AGENTER</span></div>
    <div class="office-hint">TRYCK PÅ EN AI-ARBETARE FÖR ATT ÖPPNA DESS RUM</div>
    <div class="jarvis-landing" id="jarvisLandingCore" role="group" aria-label="JARVIS huvudkontrollrum">
     <div class="jarvis-status-panels">
@@ -983,6 +983,7 @@ header .sub{color:#d6a19a}
     <div class="team-worker"><span class="worker-avatar">🎬</span><strong>NOVA</strong><small>Kreativ produktion · Redo</small></div>
     <div class="team-worker"><span class="worker-avatar">⌘</span><strong>WEBMASTER</strong><small>Webb & design · Redo</small></div>
     <div class="team-worker"><span class="worker-avatar">🎮</span><strong>GAME DEV</strong><small>Spelutveckling · Redo</small></div>
+    <div class="team-worker"><span class="worker-avatar">🔍</span><strong>QA_ENGINEER</strong><small>Oberoende kvalitetssäkring · Redo</small></div>
    </div>
    <div class="team-task" id="teamTask">Inget aktivt uppdrag. När JARVIS samlar teamet visas ansvariga medarbetare och uppdragsstatus här.</div>
   </section>
@@ -1260,7 +1261,7 @@ function loadActivity(){
 }
 
 const TEAM_BOARD_KEY="novaTeamBoardV1";
-const TEAM_ROLES={JARVIS:{label:"Projektledare",icon:"✦"},NOVA:{label:"Kreativ produktion",icon:"🎬"},WEBMASTER:{label:"Webb & design",icon:"⌘"},GAME_DEVELOPER:{label:"Spelutveckling",icon:"🎮"}};
+const TEAM_ROLES={JARVIS:{label:"Projektledare",icon:"✦"},NOVA:{label:"Kreativ produktion",icon:"🎬"},WEBMASTER:{label:"Webb & design",icon:"⌘"},GAME_DEVELOPER:{label:"Spelutveckling",icon:"🎮"},QA_ENGINEER:{label:"Oberoende kvalitetssäkring",icon:"🔍"}};
 let teamBoard={status:"idle",task:"Inget aktivt uppdrag.",targets:[],updated:new Date().toISOString()};
 function updateTeamBoard(status,task,targets=[],detail=""){
  teamBoard={status,task:String(task||"").slice(0,220),targets:Array.isArray(targets)?targets:[],detail:String(detail||""),updated:new Date().toISOString()};
