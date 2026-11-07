@@ -66,9 +66,9 @@ try {
 
         if (projectEntrypoints.includes(route)) {
           const html = fs.readFileSync(path.join(root, route.replace(/^\//, "")), "utf8");
-          const scripts = [...html.matchAll(/<script\\b[^>]*src=["']([^"']+)["'][^>]*>/gi)].map(match => match[1]);
+          const scripts = [...html.matchAll(/<script\b[^>]*src=["']([^"']+)["'][^>]*>/gi)].map(match => match[1]);
           for (const script of scripts) {
-            if (/^(https?:)?\\/\\//i.test(script)) continue;
+            if (/^(https?:)?\/\//i.test(script)) continue;
             const scriptPath = path.resolve(path.dirname(path.join(root, route.replace(/^\//, ""))), script.split(/[?#]/)[0]);
             if (!fs.existsSync(scriptPath)) localFailures.push("Missing project script: " + script);
           }
@@ -96,9 +96,9 @@ try {
   await browser.close();
 }
 for (const result of results) console.log(result.status + " " + result.route + " (" + result.viewport + ")");
-console.log("\\nJARVIS QA: " + results.filter(item => item.status === "PASS").length + "/" + results.length + " viewport checks passed across " + entrypoints.length + " page(s).");
+console.log("\nJARVIS QA: " + results.filter(item => item.status === "PASS").length + "/" + results.length + " viewport checks passed across " + entrypoints.length + " page(s).");
 if (failures.length) {
-  console.error("\\nFailures:");
+  console.error("\nFailures:");
   for (const failure of failures) console.error("- " + failure);
   process.exit(1);
 }

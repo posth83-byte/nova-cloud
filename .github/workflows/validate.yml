@@ -52,7 +52,7 @@ jobs:
               parser.feed(Path(filename).read_text(encoding="utf-8"))
               if not parser.parts:
                   raise SystemExit(f"No inline JavaScript found in {filename}")
-              Path(f"/tmp/{Path(filename).stem}.js").write_text("\\n".join(parser.parts), encoding="utf-8")
+              Path(f"/tmp/{Path(filename).stem}.js").write_text("\n".join(parser.parts), encoding="utf-8")
           PY
           node --check /tmp/index.js
           node --check /tmp/arcade.js
@@ -106,9 +106,9 @@ jobs:
               if total > 650000:
                   raise SystemExit(f"Project exceeds 650 KB: {root}")
               source = page.read_text(encoding="utf-8")
-              if not re.search(r"<!doctype\\s+html", source, re.I) or not re.search(r"<html\\b", source, re.I) or not re.search(r"</html\\s*>", source, re.I):
+              if not re.search(r"<!doctype\s+html", source, re.I) or not re.search(r"<html\b", source, re.I) or not re.search(r"</html\s*>", source, re.I):
                   raise SystemExit(f"Incomplete HTML5 document: {page}")
-              if not re.search(r"<body\\b", source, re.I) or not re.search(r"</body\\s*>", source, re.I) or not re.search(r"<title\\b", source, re.I):
+              if not re.search(r"<body\b", source, re.I) or not re.search(r"</body\s*>", source, re.I) or not re.search(r"<title\b", source, re.I):
                   raise SystemExit(f"HTML document missing title or body: {page}")
               checker = AssetChecker(page)
               checker.feed(source)

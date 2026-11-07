@@ -429,7 +429,7 @@ def validate_generated_project(files):
             raise RuntimeError("Filen är tom eller ofullständig: " + name)
         if len(content.encode("utf-8")) > 220000:
             raise RuntimeError("Filen överskrider 220 KB: " + name)
-        if re.search(r"(?im)^\\s*(TODO|FIXME|INSERT CODE HERE|PLACEHOLDER)\\b", content):
+        if re.search(r"(?im)^\s*(TODO|FIXME|INSERT CODE HERE|PLACEHOLDER)\b", content):
             raise RuntimeError("Filen innehåller en ofärdig platshållare: " + name)
         by_name[name] = content
         total += len(content.encode("utf-8"))
@@ -438,13 +438,13 @@ def validate_generated_project(files):
     if total > 650000:
         raise RuntimeError("Projektet överskrider totalgränsen 650 KB.")
     html = by_name["index.html"]
-    if not re.search(r"<!doctype\\s+html", html, re.I) or not re.search(r"<html\\b", html, re.I) or not re.search(r"</html\\s*>", html, re.I):
+    if not re.search(r"<!doctype\s+html", html, re.I) or not re.search(r"<html\b", html, re.I) or not re.search(r"</html\s*>", html, re.I):
         raise RuntimeError("index.html är inte ett komplett HTML5-dokument.")
-    if not re.search(r"<body\\b", html, re.I) or not re.search(r"</body\\s*>", html, re.I):
+    if not re.search(r"<body\b", html, re.I) or not re.search(r"</body\s*>", html, re.I):
         raise RuntimeError("index.html saknar komplett body.")
-    if not re.search(r"<title\\b", html, re.I):
+    if not re.search(r"<title\b", html, re.I):
         raise RuntimeError("index.html saknar sidtitel.")
-    refs = re.findall(r"""(?:src|href)\\s*=\\s*["']([^"']+)["']""", html, re.I)
+    refs = re.findall(r"""(?:src|href)\s*=\s*["']([^"']+)["']""", html, re.I)
     for ref in refs:
         if ref.startswith(("https://", "http://", "//", "data:", "mailto:", "#", "javascript:")):
             continue
@@ -453,7 +453,7 @@ def validate_generated_project(files):
             raise RuntimeError("index.html hänvisar till saknad stödfil: " + ref)
     for name, content in by_name.items():
         if name.lower().endswith(".html") and (
-            not re.search(r"<html\\b", content, re.I) or not re.search(r"</html\\s*>", content, re.I)
+            not re.search(r"<html\b", content, re.I) or not re.search(r"</html\s*>", content, re.I)
         ):
             raise RuntimeError("Ofullständigt HTML-dokument: " + name)
         if name.lower().endswith(".json"):
@@ -481,13 +481,13 @@ def create_multi_file_project_pull_request(task, outcome, job_id):
     slug = re.sub(r"[^a-z0-9]+", "-", str(task[:60]).casefold()).strip("-")[:40] or "jarvis-project"
     root = "projects/" + slug
     encoded_repo = urllib.parse.quote(repo, safe="/")
-    specialist_text = "\\n\\n".join(str(x["target"]) + ":\\n" + str(x["reply"])[:7000] for x in specialists)
+    specialist_text = "\n\n".join(str(x["target"]) + ":\n" + str(x["reply"])[:7000] for x in specialists)
     try:
         plan_result = generate_reply(
             "Planera ett körbart webbläsarprojekt. Returnera ENDAST JSON med files-lista och name/purpose för varje fil. "
             "2-5 filer, index.html obligatorisk och minst en stödfil (game.js, app.js, style.css eller liknande). "
-            "Filnamn ska ligga direkt i projektmappen. Inga hemligheter eller externa lokala beroenden.\\n\\n"
-            "UPPDRAG:\\n" + str(task)[:6000] + "\\n\\nSPECIALISTUNDERLAG:\\n" + specialist_text,
+            "Filnamn ska ligga direkt i projektmappen. Inga hemligheter eller externa lokala beroenden.\n\n"
+            "UPPDRAG:\n" + str(task)[:6000] + "\n\nSPECIALISTUNDERLAG:\n" + specialist_text,
             "Du är teknisk arkitekt. Planera ett minimalt men komplett webbprojekt.",
             max_tokens=1800, json_mode=True
         )
@@ -515,24 +515,24 @@ def create_multi_file_project_pull_request(task, outcome, job_id):
             last_error = "Filen saknar innehåll."
             for attempt in range(2):
                 repair_context = (
-                    "\\n\\nFÖREGÅENDE VALIDERINGSFEL SOM MÅSTE RÄTTAS: " + last_error
+                    "\n\nFÖREGÅENDE VALIDERINGSFEL SOM MÅSTE RÄTTAS: " + last_error
                     if attempt else ""
                 )
                 result = generate_reply(
                     "Skriv hela filen, inte en patch. Returnera endast råtext utan Markdown-staket. "
                     "Inga TODO eller pseudokod. Använd relativa länkar till de här projektfilerna: "
                     + ", ".join(sorted(names)) + ". Alla centrala knappar och funktioner ska fungera. "
-                    "Filen måste vara komplett och kunna användas direkt.\\n\\n"
-                    "Fil: " + item["name"] + "\\nSyfte: " + item["purpose"] +
-                    "\\nUppdrag:\\n" + str(task)[:6000] +
-                    "\\n\\nSpecialistunderlag:\\n" + specialist_text + repair_context,
+                    "Filen måste vara komplett och kunna användas direkt.\n\n"
+                    "Fil: " + item["name"] + "\nSyfte: " + item["purpose"] +
+                    "\nUppdrag:\n" + str(task)[:6000] +
+                    "\n\nSpecialistunderlag:\n" + specialist_text + repair_context,
                     "Du är senior webbutvecklare. Leverera komplett och körbar filtext.",
                     max_tokens=10000
                 )
                 content = str(result.get("reply") or "").strip()
                 fence = chr(96) * 3
                 if content.startswith(fence):
-                    content = content.split("\\n", 1)[1] if "\\n" in content else content[len(fence):]
+                    content = content.split("\n", 1)[1] if "\n" in content else content[len(fence):]
                     if content.rstrip().endswith(fence):
                         content = content.rstrip()[:-len(fence)].strip()
                 try:
@@ -575,10 +575,10 @@ def create_multi_file_project_pull_request(task, outcome, job_id):
             "POST", "/repos/" + encoded_repo + "/pulls",
             {"title": ("JARVIS project: " + slug)[:240], "head": branch_name,
              "base": GITHUB_BASE_BRANCH, "draft": True,
-             "body": "JARVIS skapade ett flerfilsprojekt på separat gren.\\n\\nUppdrag:\\n" +
-                     str(task)[:1200] + "\\n\\nFiler:\\n" +
-                     "\\n".join("- " + root + "/" + x["name"] for x in artifacts) +
-                     "\\n\\nFörkontroll: GODKÄND (" + str(validation["file_count"]) + " filer, " +
+             "body": "JARVIS skapade ett flerfilsprojekt på separat gren.\n\nUppdrag:\n" +
+                     str(task)[:1200] + "\n\nFiler:\n" +
+                     "\n".join("- " + root + "/" + x["name"] for x in artifacts) +
+                     "\n\nFörkontroll: GODKÄND (" + str(validation["file_count"]) + " filer, " +
                      str(validation["bytes"]) + " byte). GitHub Actions måste fortfarande godkänna syntax och webbläsartest. "
                      "Ingen merge eller publicering har skett."}
         )
@@ -726,7 +726,7 @@ async def jarvis_job_worker_loop():
                         outcome["published"] = False
                         outcome["reply"] = (
                             str(outcome.get("reply") or "")
-                            + "\\n\\nJARVIS har sparat en ändring av arcade.html på en separat GitHub-gren "
+                            + "\n\nJARVIS har sparat en ändring av arcade.html på en separat GitHub-gren "
                             + "och skapat en utkast-PR. CI och granskning återstår innan publicering. "
                             + "PR-länk: " + str(delivery.get("pull_request_url") or "länken kunde inte hämtas.")
                         )
@@ -736,7 +736,7 @@ async def jarvis_job_worker_loop():
                         outcome["published"] = False
                         outcome["reply"] = (
                             str(outcome.get("reply") or "")
-                            + "\\n\\nGitHub-implementeringen är blockerad: "
+                            + "\n\nGitHub-implementeringen är blockerad: "
                             + str(delivery.get("reason") or "GitHub-anslutningen är inte klar.")
                         )
                 completed = outcome.get("status") in ("delegated", "needs_discussion")
