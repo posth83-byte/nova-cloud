@@ -93,7 +93,7 @@ USE_SUPABASE_MEMORY = bool(SUPABASE_URL and SUPABASE_SECRET_KEY)
 GITHUB_TOKEN = os.getenv("GITHUB_TOKEN", "").strip()
 GITHUB_REPOSITORY = os.getenv("GITHUB_REPOSITORY", "posth83-byte/nova-cloud").strip()
 GITHUB_BASE_BRANCH = os.getenv("GITHUB_BASE_BRANCH", "main").strip() or "main"
-GITHUB_ALLOWED_ARTIFACTS = {"arcade.html"}
+GITHUB_ALLOWED_ARTIFACTS = {"arcade.html", "projects/*"}
 
 MEMORY_DB_PATH = Path(os.getenv(
     "JARVIS_MEMORY_DB",
@@ -427,7 +427,11 @@ def create_multi_file_project_pull_request(task, outcome, job_id):
                 max_tokens=10000
             )
             content = str(result.get("reply") or "").strip()
-            content = content.strip()
+            fence = chr(96) * 3
+            if content.startswith(fence):
+                content = content.split("\n", 1)[1] if "\n" in content else content[len(fence):]
+                if content.rstrip().endswith(fence):
+                    content = content.rstrip()[:-len(fence)].strip()
             if len(content) < 20 or len(content) > 220000:
                 raise RuntimeError("Tom eller för stor fil: " + item["name"])
             if item["name"].lower().endswith(".html") and ("<html" not in content.lower() or "</html>" not in content.lower()):
