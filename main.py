@@ -241,6 +241,41 @@ def github_api_request(method, path, payload=None):
         raise RuntimeError(f"GitHub API HTTP {error.code}: {detail}") from error
 
 
+def find_existing_github_pull_request(branch):
+    """Recover an earlier delivery when a worker retries after creating its PR."""
+    owner = GITHUB_REPOSITORY.split("/", 1)[0]
+    encoded_repo = urllib.parse.quote(GITHUB_REPOSITORY, safe="/")
+    head_filter = urllib.parse.quote(owner + ":" + branch, safe="")
+    base_filter = urllib.parse.quote(GITHUB_BASE_BRANCH, safe="")
+    matches = github_api_request(
+        "GET",
+        f"/repos/{encoded_repo}/pulls?state=all&head={head_filter}&base={base_filter}&per_page=10"
+    )
+    if not isinstance(matches, list):
+        return None
+    for pull in matches:
+        head = pull.get("head") or {}
+        if head.get("ref") != branch:
+            continue
+        return {
+            "status": "pull_request_created",
+            "repository": GITHUB_REPOSITORY,
+            "branch": branch,
+            "pull_request_number": pull.get("number"),
+            "pull_request_url": pull.get("html_url"),
+            "pull_request_state": pull.get("state"),
+            "merged": bool(pull.get("merged_at")),
+            "existing": True,
+            "repository_changes": True,
+            "published": False,
+            "verification": (
+                "Återanvände en redan skapad Pull Request efter ett omförsök. "
+                "Driftsättning är inte verifierad."
+            )
+        }
+    return None
+
+
 def create_game_portal_pull_request(task, outcome, job_id):
     """
     Turn GAME_DEVELOPER's reviewed proposal into a complete arcade.html update
@@ -323,6 +358,9 @@ def create_game_portal_pull_request(task, outcome, job_id):
             raise RuntimeError("HTML-filen saknar förväntat JavaScript-innehåll.")
 
         branch = "jarvis/arcade-" + re.sub(r"[^a-f0-9]", "", str(job_id).lower())[:12]
+        existing_delivery = find_existing_github_pull_request(branch)
+        if existing_delivery:
+            return existing_delivery
         github_api_request(
             "POST", f"/repos/{encoded_repo}/git/refs",
             {"ref": "refs/heads/" + branch, "sha": base_sha}
@@ -442,6 +480,10 @@ def create_multi_file_project_pull_request(task, outcome, job_id):
             artifacts.append({"path": root + "/" + item["name"], "content": content})
         base = github_api_request("GET", "/repos/" + encoded_repo + "/git/ref/heads/" + urllib.parse.quote(GITHUB_BASE_BRANCH, safe=""))
         branch_name = "jarvis/project-" + re.sub(r"[^a-f0-9]", "", str(job_id).lower())[:12]
+        existing_delivery = find_existing_github_pull_request(branch_name)
+        if existing_delivery:
+            existing_delivery["project_path"] = root
+            return existing_delivery
         github_api_request("POST", "/repos/" + encoded_repo + "/git/refs", {"ref": "refs/heads/" + branch_name, "sha": base["object"]["sha"]})
         commit_sha = None
         for artifact in artifacts:
