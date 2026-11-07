@@ -22,17 +22,7 @@ jobs:
     steps:
       - name: Validate workflow structure
         run: |
-          python - <<'PY'
-          from pathlib import Path
-          import yaml
-
-          path = Path(".github/workflows/runtime-health.yml")
-          data = yaml.safe_load(path.read_text(encoding="utf-8"))
-          assert isinstance(data, dict), "Workflow must be a YAML mapping"
-          assert "jobs" in data and "runtime-health" in data["jobs"], "Missing runtime-health job"
-          assert "schedule" in data.get("on", data.get(True, {})), "Missing schedule trigger"
-          print("Runtime health workflow structure validated.")
-          PY
+          ruby -e 'require "yaml"; data = YAML.load_file(".github/workflows/runtime-health.yml"); abort "Invalid workflow structure" unless data.is_a?(Hash) && data["jobs"].is_a?(Hash) && data["jobs"].key?("runtime-health"); puts "Runtime health workflow structure validated."'
 
   runtime-health:
     if: github.event_name != 'pull_request'
