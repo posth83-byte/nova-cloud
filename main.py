@@ -374,6 +374,99 @@ def create_game_portal_pull_request(task, outcome, job_id):
         }
 
 
+def create_multi_file_project_pull_request(task, outcome, job_id):
+    """Create a bounded multi-file browser project on a dedicated branch and draft PR."""
+    if not isinstance(outcome, dict):
+        return {"status": "skipped", "reason": "Ogiltigt arbetsresultat."}
+    specialists = [x for x in outcome.get("results", []) if x.get("target") in ("WEBMASTER", "GAME_DEVELOPER") and str(x.get("reply") or "").strip()]
+    if not specialists:
+        return {"status": "skipped", "reason": "Ingen utvecklarspecialist levererade underlag."}
+    if not GITHUB_TOKEN:
+        return {"status": "blocked", "reason": "GITHUB_TOKEN saknas i Render.", "repository_changes": False, "published": False}
+    repo = GITHUB_REPOSITORY
+    if not re.fullmatch(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", repo):
+        return {"status": "blocked", "reason": "Ogiltigt GitHub-repository."}
+    slug = re.sub(r"[^a-z0-9]+", "-", str(task[:60]).casefold()).strip("-")[:40] or "jarvis-project"
+    root = "projects/" + slug
+    encoded_repo = urllib.parse.quote(repo, safe="/")
+    specialist_text = "\n\n".join(str(x["target"]) + ":\n" + str(x["reply"])[:7000] for x in specialists)
+    try:
+        plan_result = generate_reply(
+            "Planera ett körbart webbläsarprojekt. Returnera ENDAST JSON med files-lista och name/purpose för varje fil. "
+            "2-5 filer, index.html obligatorisk, filnamn direkt i projektmappen, inga hemligheter.\n\n"
+            "UPPDRAG:\n" + str(task)[:6000] + "\n\nSPECIALISTUNDERLAG:\n" + specialist_text,
+            "Du är teknisk arkitekt. Planera ett minimalt men komplett webbprojekt.",
+            max_tokens=1600, json_mode=True
+        )
+        plan = extract_json(plan_result["reply"])
+        specs = plan.get("files") if isinstance(plan, dict) else None
+        if not isinstance(specs, list):
+            raise RuntimeError("Ogiltig filplan.")
+        files, names = [], set()
+        for item in specs[:5]:
+            if not isinstance(item, dict):
+                continue
+            name = str(item.get("name") or "").strip()
+            if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.-]{0,79}", name):
+                raise RuntimeError("Otillåtet filnamn i filplanen.")
+            if name in names:
+                raise RuntimeError("Dubbelt filnamn i filplanen.")
+            names.add(name)
+            files.append({"name": name, "purpose": str(item.get("purpose") or "")[:300]})
+        if "index.html" not in names or len(files) < 2:
+            raise RuntimeError("Projektplanen måste ha index.html och minst en stödfil.")
+        artifacts, total = [], 0
+        for item in files:
+            result = generate_reply(
+                "Skriv hela filen, inte en patch. Returnera endast råtext utan Markdown. "
+                "Inga TODO eller pseudokod. Använd relativa länkar till projektets övriga filer. "
+                "Alla centrala knappar och funktioner ska fungera.\n\n"
+                "Fil: " + item["name"] + "\nSyfte: " + item["purpose"] +
+                "\nUppdrag:\n" + str(task)[:6000] + "\n\nSpecialistunderlag:\n" + specialist_text,
+                "Du är senior webbutvecklare. Leverera komplett och körbar filtext.",
+                max_tokens=10000
+            )
+            content = str(result.get("reply") or "").strip()
+            content = content.strip()
+            if len(content) < 20 or len(content) > 220000:
+                raise RuntimeError("Tom eller för stor fil: " + item["name"])
+            if item["name"].lower().endswith(".html") and ("<html" not in content.lower() or "</html>" not in content.lower()):
+                raise RuntimeError("Ofullständigt HTML-dokument: " + item["name"])
+            total += len(content.encode("utf-8"))
+            if total > 650000:
+                raise RuntimeError("Projektet överskrider storleksgränsen.")
+            artifacts.append({"path": root + "/" + item["name"], "content": content})
+        base = github_api_request("GET", "/repos/" + encoded_repo + "/git/ref/heads/" + urllib.parse.quote(GITHUB_BASE_BRANCH, safe=""))
+        branch_name = "jarvis/project-" + re.sub(r"[^a-f0-9]", "", str(job_id).lower())[:12]
+        github_api_request("POST", "/repos/" + encoded_repo + "/git/refs", {"ref": "refs/heads/" + branch_name, "sha": base["object"]["sha"]})
+        commit_sha = None
+        for artifact in artifacts:
+            commit = github_api_request(
+                "PUT", "/repos/" + encoded_repo + "/contents/" + urllib.parse.quote(artifact["path"], safe="/"),
+                {"message": "JARVIS: create project file " + artifact["path"].split("/")[-1],
+                 "content": base64.b64encode(artifact["content"].encode("utf-8")).decode("ascii"),
+                 "branch": branch_name}
+            )
+            commit_sha = (commit.get("commit") or {}).get("sha") or commit_sha
+        pr = github_api_request(
+            "POST", "/repos/" + encoded_repo + "/pulls",
+            {"title": ("JARVIS project: " + slug)[:240], "head": branch_name,
+             "base": GITHUB_BASE_BRANCH, "draft": True,
+             "body": "JARVIS skapade ett flerfilsprojekt på separat gren.\n\nUppdrag:\n" +
+                     str(task)[:1200] + "\n\nFiler:\n" +
+                     "\n".join("- " + x["path"] for x in artifacts) +
+                     "\n\nUtkast-PR. Ingen merge eller publicering har skett. Testning och granskning krävs."}
+        )
+        return {"status": "pull_request_created", "repository": repo, "project_path": root,
+                "files": [x["path"] for x in artifacts], "branch": branch_name,
+                "commit_sha": commit_sha, "pull_request_number": pr.get("number"),
+                "pull_request_url": pr.get("html_url"), "repository_changes": True,
+                "published": False, "verification": "Filer sparade på separat gren; CI och granskning återstår."}
+    except Exception as error:
+        return {"status": "blocked", "reason": str(error)[:1000],
+                "repository_changes": False, "published": False}
+
+
 def send_jarvis_job_notification(job_id, subscription, outcome):
     """Send one standards-based Web Push notification when a queued task completes."""
     if not isinstance(subscription, dict) or not subscription.get("endpoint"):
@@ -487,10 +580,19 @@ async def jarvis_job_worker_loop():
                 outcome = await jarvis_delegate(
                     JarvisDelegateRequest(task=task, history=history)
                 )
-                if outcome.get("status") == "delegated" and "GAME_DEVELOPER" in (outcome.get("targets") or []):
-                    delivery = await asyncio.to_thread(
-                        create_game_portal_pull_request, task, outcome, job_id
-                    )
+                if outcome.get("status") == "delegated" and (
+                    "GAME_DEVELOPER" in (outcome.get("targets") or [])
+                    or "WEBMASTER" in (outcome.get("targets") or [])
+                ):
+                    delivery = None
+                    if "GAME_DEVELOPER" in (outcome.get("targets") or []):
+                        delivery = await asyncio.to_thread(
+                            create_game_portal_pull_request, task, outcome, job_id
+                        )
+                    if not delivery or delivery.get("status") == "skipped":
+                        delivery = await asyncio.to_thread(
+                            create_multi_file_project_pull_request, task, outcome, job_id
+                        )
                     outcome["github_delivery"] = delivery
                     if delivery.get("status") == "pull_request_created":
                         outcome["delivery_level"] = "github_pull_request_created"
