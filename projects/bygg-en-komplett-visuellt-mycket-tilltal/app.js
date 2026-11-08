@@ -339,6 +339,27 @@ document.addEventListener('DOMContentLoaded', async () => {
     updateCartUI();
     setupEventListeners();
     checkCookies();
+
+    // Handle the return from the hosted payment page.
+    const checkoutState = new URLSearchParams(window.location.search).get('checkout');
+    if (checkoutState === 'success') {
+        cart = [];
+        saveCart();
+        updateCartUI();
+        if (checkoutModal && checkoutForm && checkoutSuccess) {
+            checkoutModal.classList.remove('hidden');
+            checkoutForm.classList.add('hidden');
+            checkoutSuccess.classList.remove('hidden');
+            const message = checkoutSuccess.querySelector('p');
+            const orderNumber = new URLSearchParams(window.location.search).get('order');
+            if (message) message.textContent = orderNumber
+                ? `Din betalning är genomförd. Ordernummer: ${orderNumber}.`
+                : 'Din betalning är genomförd och ordern har registrerats.';
+        }
+        window.history.replaceState({}, document.title, window.location.pathname);
+    } else if (checkoutState === 'cancelled') {
+        window.history.replaceState({}, document.title, window.location.pathname);
+    }
 });
 
 function setupEventListeners() {
@@ -412,20 +433,44 @@ function setupEventListeners() {
         document.getElementById('checkout-reset-btn').addEventListener('click', closeCheckout);
     }
 
-    // Checkout form submit
+    // Secure checkout: prices and product availability are always verified server-side.
     if (checkoutForm) {
-        checkoutForm.addEventListener('submit', (e) => {
+        checkoutForm.addEventListener('submit', async (e) => {
             e.preventDefault();
-            // HTML required fields are validated by the browser. This is a local-only demo; no order is sent.
-            
-            checkoutForm.classList.add('hidden');
-            checkoutSuccess.classList.remove('hidden');
+            const button = checkoutForm.querySelector('button[type="submit"]');
+            const errorEl = document.getElementById('checkout-error');
+            const firstName = document.getElementById('checkout-first-name')?.value.trim();
+            const lastName = document.getElementById('checkout-last-name')?.value.trim();
+            const email = document.getElementById('checkout-email')?.value.trim();
+            if (errorEl) { errorEl.textContent = ''; errorEl.classList.add('hidden'); }
+            if (button) { button.disabled = true; button.textContent = 'Förbereder säker betalning...'; }
 
-            // Clear cart
-            cart = [];
-            saveCart();
-            updateCartUI();
-            checkoutForm.reset();
+            try {
+                const response = await fetch(`${SUPABASE_URL}/functions/v1/create-checkout-session`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'apikey': SUPABASE_PUBLISHABLE_KEY
+                    },
+                    body: JSON.stringify({
+                        first_name: firstName,
+                        last_name: lastName,
+                        email,
+                        items: cart.map(item => ({ product_id: String(item.id), quantity: item.quantity }))
+                    })
+                });
+                const data = await response.json().catch(() => ({}));
+                if (!response.ok) throw new Error(data.error || 'Betalningen kunde inte startas.');
+                if (!data.checkout_url) throw new Error('Betalningslänken saknas. Försök igen.');
+                window.location.assign(data.checkout_url);
+            } catch (error) {
+                if (errorEl) {
+                    errorEl.textContent = error.message || 'Ett fel uppstod. Försök igen senare.';
+                    errorEl.classList.remove('hidden');
+                }
+            } finally {
+                if (button) { button.disabled = false; button.textContent = 'Fortsätt till säker betalning'; }
+            }
         });
     }
 
