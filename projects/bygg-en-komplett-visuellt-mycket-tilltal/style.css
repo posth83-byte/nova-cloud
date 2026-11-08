@@ -56,3 +56,7 @@ body {
     transform: translateY(-3px);
     box-shadow: 0 10px 25px -5px rgba(28, 30, 33, 0.08), 0 8px 10px -6px rgba(28, 30, 33, 0.08);
 }
+html, body { max-width: 100%; overflow-x: hidden; }
+img { max-width: 100%; }
+button, input, select, textarea { min-width: 0; }
+@media (max-width: 480px) { .product-card:hover { transform: none; } }
