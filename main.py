@@ -212,7 +212,7 @@ def find_recent_duplicate_jarvis_job(task, dedupe_key):
     cutoff = (datetime.now(timezone.utc) - timedelta(days=30)).isoformat()
     query = urllib.parse.urlencode({
         "status": "in.(queued,running,completed,failed)",
-        "created_at": "gte." + cutoff,
+        "updated_at": "gte." + cutoff,
         "select": "id,task,status,dedupe_key,access_token_hash,access_token_hashes",
         "order": "updated_at.desc",
         "limit": "100"
