@@ -6,7 +6,7 @@ const products = [
         price: 699,
         sku: "NV-BIL-01",
         stock: 14,
-        image: "https://images.unsplash.com/photo-1507473885765-e6ed057f782c?auto=format&fit=crop&w=800&q=80",
+        image: "https://sakringt.com/cdn/shop/files/95.png?v=1768472208",
         shortDesc: "Uppladdningsbar och dimbar bordslampa i aluminium med mjukt varmvitt ljus.",
         longDesc: "Lumina är skapad för flexibilitet i hemmet. Med steglös dimring, lång batteritid och IP54-klassning fungerar den lika bra på nattduksbordet som på den vindskyddade balkongen. Stilren skandinavisk formgivning som smälter in i alla miljöer."
     },
@@ -17,7 +17,7 @@ const products = [
         price: 449,
         sku: "NV-INN-02",
         stock: 22,
-        image: "https://images.unsplash.com/photo-1608571423902-eed4a5ad8108?auto=format&fit=crop&w=800&q=80",
+        image: "https://web1.wd-plus.de/ebay/A/303751/1.jpg",
         shortDesc: "Ultraljudsdriven aromadiffusor i äkta träfinish med dämpad LED-belysning.",
         longDesc: "Skapa en harmonisk atmosfär med Aura. Den sprider dina favoritoljor tyst och effektivt samtidigt som den tillför diskret fuktighet till torr inomhusluft. Stängs av automatiskt när tanken är tom."
     },
@@ -28,7 +28,7 @@ const products = [
         price: 899,
         sku: "NV-KOK-03",
         stock: 8,
-        image: "https://images.unsplash.com/photo-1594213728135-e1026a27e3ff?auto=format&fit=crop&w=800&q=80",
+        image: "https://jo-cell.com/cdn/shop/files/1887_selectionwk_2200_ambiente01_1400px.jpg.thumb.jpg?v=1717924858&width=1400",
         shortDesc: "Precisionstemperatur i borstat stål med appstyrning och varmhållningsläge.",
         longDesc: "För te- och kaffeälskaren. Krona låter dig ställa in exakt vattentemperatur (från 40 till 100 grader) beroende på bryggmetod. Håll-varm-funktionen bibehåller temperaturen i upp till 60 minuter."
     },
@@ -39,7 +39,7 @@ const products = [
         price: 349,
         sku: "NV-INN-04",
         stock: 19,
-        image: "https://images.unsplash.com/photo-1563861826100-9cb868fdbe1c?auto=format&fit=crop&w=800&q=80",
+        image: "https://assets.wfcdn.com/im/35579336/resize-h800-w800%5Ecompr-r85/2987/298754158/Lemnos%2BCARVED%2B-%2BC%2BClock.jpg",
         shortDesc: "Tystgående väggklocka med urtavla i mattlackerad stål och trädetaljer.",
         longDesc: "Inga tickande ljud som stör ron. Terra har ett tyst kvartsurverk och en ren, avskalad design som hyllar den skandinaviska designtraditionen. Passar perfekt i kök, hall eller arbetsrum."
     },
@@ -50,7 +50,7 @@ const products = [
         price: 599,
         sku: "NV-SMA-05",
         stock: 30,
-        image: "https://images.unsplash.com/photo-1616440347437-b1c73416efc2?auto=format&fit=crop&w=800&q=80",
+        image: "https://i5.walmartimages.com/seo/15W-3-in-1-Wireless-Charging-Station-IPhone-Apple-Watch-AirPods-Magnetic-Adjustable-Angle-Foldable-Design-Night-Light-Overcharge-Protection-White_a1edbaa6-88d3-4e8e-aeff-822b43dd57fd.b898ccbe8f0f0137da4caf5d96301ed9.jpeg",
         shortDesc: "Trådlös 3-i-1 laddstation för telefon, hörlurar och smartwatch i ekdesign.",
         longDesc: "Bli kvitt trassel på skrivbordet eller nattduksbordet. Nexus laddar alla dina dagliga enheter samtidigt med snabb Qi-laddning och överhettningsskydd. Klädd i slitstark ek och mjukt tyg."
     },
@@ -61,7 +61,7 @@ const products = [
         price: 799,
         sku: "NV-SMA-06",
         stock: 11,
-        image: "https://images.unsplash.com/photo-1568605117036-5fe5e7bab0b7?auto=format&fit=crop&w=800&q=80",
+        image: "https://img.muji.com.cn/img/item/4550512851127_07_1260.jpg",
         shortDesc: "Tyst och oscillerande bordsfläkt med läderhandtag och USB-C-laddning.",
         longDesc: "Svalt och snyggt under varma sommardagar eller instängda kontorskvällar. Nordic Breeze erbjuder fyra hastighetslägen, extremt tyst drift och ett elegant bärhandtag i vegetabiliskt garvat läder."
     },
@@ -72,7 +72,7 @@ const products = [
         price: 399,
         sku: "NV-KOK-07",
         stock: 25,
-        image: "https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=800&q=80",
+        image: "https://images.nexusapp.co/assets/b0/d9/0b/172211644.jpg",
         shortDesc: "Pour-over drifta i handgjord stengods-keramik med matchande serveringskanna.",
         longDesc: "Upptäck konsten att brygga handgjort kaffe. Vera-kannan och filtret i glaserad stengods håller värmen optimalt under extraktionen och ger en ren, fyllig smakprofil till morgonkoppen."
     },
@@ -83,7 +83,7 @@ const products = [
         price: 849,
         sku: "NV-BIL-08",
         stock: 16,
-        image: "https://images.unsplash.com/photo-1513506003901-1e6a229e2d15?auto=format&fit=crop&w=800&q=80",
+        image: "https://www.saatva.com/blog/wp-content/uploads/2025/03/circadian-lighting-mom-cozy-sunrise-alarm-clock-733x800.jpg",
         shortDesc: "Simulerar soluppgång för ett naturligt och behagligt uppvaknande med naturljud.",
         longDesc: "Vakna utvilad utan stressande pipljud. Solros ökar ljusstyrkan gradvis under 30 minuter innan alarmet ringer, kompletterat med lugnande naturimitationer som fågelkvitter eller vågskvalp."
     },
@@ -94,7 +94,7 @@ const products = [
         price: 299,
         sku: "NV-KOK-09",
         stock: 40,
-        image: "https://images.unsplash.com/photo-1602143407151-7111542de6e8?auto=format&fit=crop&w=800&q=80",
+        image: "https://www.fluidbranding.ie/media/catalog/product/cache/5d8e184087b91b8c6788f82b1ec6b2b1/1/0/10069381_2.jpg",
         shortDesc: "Dubbelväggig vakuumflaska i rostfritt stål som håller kyla i 24h och värme i 12h.",
         longDesc: "Fjord följer med dig till jobbet, gymmet eller fjällvandringen. 100% läckagesäker, kondensfri yta och pulverlackerad utsida som ger ett säkert grepp i alla väder."
     },
@@ -105,7 +105,7 @@ const products = [
         price: 349,
         sku: "NV-SMA-10",
         stock: 18,
-        image: "https://images.unsplash.com/photo-1558002038-1055907df827?auto=format&fit=crop&w=800&q=80",
+        image: "https://ikeagreece.akamaized.net/images/1860x1860/variantimages/00498231/0.JPG",
         shortDesc: "Trådlös mätare för temperatur, luftfuktighet och koldioxid med e-paper-skärm.",
         longDesc: "Ha full koll på inomhusklimatet. Echo drivs av lågenergi-teknik, visar data tydligt på skärmen och skickar notiser till din telefon om ventilationen behöver ses över."
     },
@@ -116,7 +116,7 @@ const products = [
         price: 499,
         sku: "NV-KOK-11",
         stock: 15,
-        image: "https://images.unsplash.com/photo-1588854337236-6889d631faa8?auto=format&fit=crop&w=800&q=80",
+        image: "https://images.thdstatic.com/productImages/1106f884ec504424be799d9fe368a79f/svn/silver-jfvkaf-salt-pepper-mills-sa1129e227-64_600.jpg",
         shortDesc: "Enhandsbetjänt kvarn med keramiskt malverk och inbyggd LED-belysning.",
         longDesc: "Kvalitet i varje måltid. Hugin har ett ställbart keramiskt malverk som klarar både grovt havssalt och torkade kryddor. Drivs av batterier och tänds automatiskt i botten när du lutar den över tallriken."
     },
@@ -127,7 +127,7 @@ const products = [
         price: 999,
         sku: "NV-INN-12",
         stock: 9,
-        image: "https://images.unsplash.com/photo-1584100936595-c0654b55a2e2?auto=format&fit=crop&w=800&q=80",
+        image: "https://reactual.com/wp-content/uploads/2021/10/warmest-throw-blankets.jpg",
         shortDesc: "Handvävd pläd i 100% lammull med klassiskt mönster och fransar.",
         longDesc: "Värm dig under kyliga kvällar med en exklusiv ullpläd från Nordic Leaf. Lammullen är naturligt smutsavvisande, otroligt mjuk mot huden och skapar en ombonad känsla i soffan eller fåtöljen."
     },
@@ -138,7 +138,7 @@ const products = [
         price: 1499,
         sku: "NV-BIL-13",
         stock: 5,
-        image: "https://images.unsplash.com/photo-1513506003901-1e6a229e2d15?auto=format&fit=crop&w=800&q=80",
+        image: "https://lampsdepot.com/cdn/shop/files/Anglepoise-Original-1227-Dove-Grey-Floor-Lamp.jpg?v=1685876300",
         shortDesc: "Elegant läslampa med riktbart huvud och fot i tung marmor.",
         longDesc: "Zenith är belysning när den är som mest skulptural. Den tunga marmorfoten ger stabilitet åt den slanka armen som kan vinklas exakt dit du behöver läsljus i läshörnan."
     },
@@ -149,7 +149,7 @@ const products = [
         price: 279,
         sku: "NV-INN-14",
         stock: 28,
-        image: "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?auto=format&fit=crop&w=800&q=80",
+        image: "https://1.bonami.cz/images/fit-crop-fill/9c/4b/9c4b3282570d5ff0288ac168e0e75f0e628ee7af-1000x1000.jpeg",
         shortDesc: "Tvålpump med rostfri pumpmekanism och tillhörande litet fat i keramik.",
         longDesc: "Lyft detaljerna i badrummet eller köket. Kust-serien i oglaserad stengods har en behaglig naturkänsla och står stabilt på handfatet utan att glida."
     },
@@ -160,7 +160,7 @@ const products = [
         price: 249,
         sku: "NV-SMA-15",
         stock: 35,
-        image: "https://images.unsplash.com/photo-1558002038-1055907df827?auto=format&fit=crop&w=800&q=80",
+        image: "https://mi-store.pl/hpeciai/b29755f3aa3db4c39a8276d52369c279/pol_pl_Gniazdko-Mi-Smart-Wi-Fi-Power-Plug-673_1.webp",
         shortDesc: "Styr dina apparater via app och håll koll på strömförbrukningen i realtid.",
         longDesc: "Minska energislöseriet i hemmet. Nova kopplas upp direkt till ditt Wi-Fi utan hubb. Sätt timers, schemalägg kaffebryggaren eller stäng av glömda strykjärn direkt från mobilen."
     },
@@ -171,7 +171,7 @@ const products = [
         price: 549,
         sku: "NV-KOK-16",
         stock: 12,
-        image: "https://images.unsplash.com/photo-1590736969955-71cc94901055?auto=format&fit=crop&w=800&q=80",
+        image: "https://dowoodworks.se/cdn/shop/files/1744650863207.jpg?v=1744727222&width=1445",
         shortDesc: "Ändträskärbräda i hållbar europeisk ek med saftspår och handtag.",
         longDesc: "En skärbräda som är skonsam mot dina knivseggar och vacker nog att ställa fram som serveringsbricka för ost och chark. Behandlad med livsmedelsgodkänd olja."
     },
@@ -182,7 +182,7 @@ const products = [
         price: 199,
         sku: "NV-BIL-17",
         stock: 24,
-        image: "https://images.unsplash.com/photo-1507473885765-e6ed057f782c?auto=format&fit=crop&w=800&q=80",
+        image: "https://videx.ua/files/products/52ccb6c3-f5eb-11f0-8512-78e7d1920002.1600x1340w.jpeg",
         shortDesc: "Magnetisk vägglampa i trä med mjukt sken för hall och trapphus.",
         longDesc: "Smidigt nattljus som tänds automatiskt när rörelse detekteras i mörker. Fästs enkelt med medföljande magnetfäste så att du kan ta loss lampan och använda som ficklampa vid behov."
     },
@@ -193,7 +193,7 @@ const products = [
         price: 649,
         sku: "NV-INN-18",
         stock: 10,
-        image: "https://images.unsplash.com/photo-1544457070-4cd773b4d71e?auto=format&fit=crop&w=800&q=80",
+        image: "https://thepotlok.com/sys/uploads/2021/01/61qT2rUfWIL._AC_SL1500_.jpg",
         shortDesc: "Tidningsställ i pulverlackerad ståltråd och läderdetaljer.",
         longDesc: "Håll ordning på favorittidningar, böcker eller anteckningsblock. Lager förenar industriell stålkonstruktion med mjuka läderremmar för ett genuint skandinaviskt uttryck."
     },
@@ -204,7 +204,7 @@ const products = [
         price: 329,
         sku: "NV-KOK-19",
         stock: 20,
-        image: "https://images.unsplash.com/photo-1589365278144-c9e705f9cf3ba?auto=format&fit=crop&w=800&q=80",
+        image: "https://www.taylorusa.com/cdn/shop/files/3817WH_TopDown.jpg?v=1746466739&width=700",
         shortDesc: "Tunn köksvåg i härdat glas med LCD-display och hög precision.",
         longDesc: "För ett lyckat bakresultat krävs millimeterprecision. Strata väger upp till 5 kg med 1 grams noggrannhet. Tunn profil som enkelt förvaras i kökslådan."
     },
@@ -215,7 +215,7 @@ const products = [
         price: 1299,
         sku: "NV-SMA-20",
         stock: 7,
-        image: "https://images.unsplash.com/photo-1585771724684-38269d6639fd?auto=format&fit=crop&w=800&q=80",
+        image: "https://image.sofmap.com/images/product/pim/0810043376747_A02.jpg?v=20012001",
         shortDesc: "Kompakt luftrenare med True HEPA-13 filter och tyst nattläge.",
         longDesc: "Andas rent i sovrummet eller hemmakontoret. Nimbus fångar upp 99.97% av damm, pollen och fina partiklar. Utrustad med filterbyteindikator och diskret belysning."
     }
