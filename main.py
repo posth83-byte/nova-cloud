@@ -258,6 +258,10 @@ def enqueue_jarvis_job(task, history=None, push_subscription=None):
                 "result": None,
                 "error": None,
                 "attempts": 0,
+                "started_at": None,
+                "locked_at": None,
+                "worker_id": None,
+                "notification_sent_at": None,
                 "completed_at": None
             })
             if isinstance(push_subscription, dict):
