@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="sv" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nordic Varda – Smarta hem & skandinavisk vardagsdesign</title>
+    <meta name="description" content="Upptäck vår handplockade kollektion av skandinaviska vardagsprodukter och smarta hem-lösningar. Stilrent, hållbart och funktionellt.">
+    <!-- Open Graph -->
+    <meta property="og:title" content="Nordic Varda – Skandinavisk design för det smarta hemmet">
+    <meta property="og:description" content="Stilrena och funktionella produkter för nordiska hem. Upptäck vår kollektion.">
+    <meta property="og:type" content="website">
+    <meta property="og:image" content="https://images.unsplash.com/photo-1513506003901-1e6a229e2d15?auto=format&fit=crop&w=1200&q=80">
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="min-h-screen flex flex-col justify-between selection:bg-[#A95C42] selection:text-white">
+
+    <!-- Top Announcement Bar -->
+    <div class="bg-[#1C1E21] text-[#FBF9F5] text-xs py-2 px-4 text-center tracking-wide">
+        Fri frakt inom Sverige vid köp över 500 SEK • 30 dagars öppet köp • Trygg e-handel (Demo)
+    </div>
+
+    <!-- Header / Navigation -->
+    <header class="sticky top-0 z-40 bg-[#FBF9F5]/90 backdrop-blur-md border-b border-[#EAE5DE]">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
+            <!-- Brand Logo -->
+            <a href="index.html" class="flex items-center space-x-2">
+                <span class="w-3 h-3 rounded-full accent-bg"></span>
+                <span class="font-bold text-xl tracking-wider text-[#1C1E21]">NORDIC VARDA</span>
+            </a>
+
+            <!-- Desktop Nav -->
+            <nav class="hidden md:flex items-center space-x-8 text-sm font-medium">
+                <a href="#catalog" class="hover:text-[#A95C42] transition-colors">Katalog</a>
+                <a href="#about" class="hover:text-[#A95C42] transition-colors">Om oss</a>
+                <a href="#faq" class="hover:text-[#A95C42] transition-colors">FAQ</a>
+                <a href="#terms" class="hover:text-[#A95C42] transition-colors">Villkor</a>
+                <a href="#contact" class="hover:text-[#A95C42] transition-colors">Kontakt</a>
+            </nav>
+
+            <!-- Actions (Search & Cart) -->
+            <div class="flex items-center space-x-4">
+                <button id="cart-toggle-btn" class="relative p-2 rounded-full hover:bg-[#EAE5DE]/50 transition-colors flex items-center space-x-2 cursor-pointer" aria-label="Öppna varukorg">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-[#1C1E21]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+                    </svg>
+                    <span id="cart-badge" class="absolute -top-1 -right-1 accent-bg text-white text-xs w-5 h-5 rounded-full flex items-center justify-center font-bold">0</span>
+                </button>
+                <button id="mobile-menu-btn" class="md:hidden p-2 rounded-lg hover:bg-[#EAE5DE]/50" aria-label="Meny">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <!-- Mobile Menu Dropdown -->
+        <div id="mobile-menu" class="hidden md:hidden bg-[#FBF9F5] border-b border-[#EAE5DE] px-4 pt-2 pb-4 space-y-3">
+            <a href="#catalog" class="mobile-nav-link block py-2 text-sm font-medium hover:text-[#A95C42]">Katalog</a>
+            <a href="#about" class="mobile-nav-link block py-2 text-sm font-medium hover:text-[#A95C42]">Om oss</a>
+            <a href="#faq" class="mobile-nav-link block py-2 text-sm font-medium hover:text-[#A95C42]">FAQ</a>
+            <a href="#terms" class="mobile-nav-link block py-2 text-sm font-medium hover:text-[#A95C42]">Villkor</a>
+            <a href="#contact" class="mobile-nav-link block py-2 text-sm font-medium hover:text-[#A95C42]">Kontakt</a>
+        </div>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="relative bg-[#F3ECE1] py-20 lg:py-32">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+            <div class="space-y-6">
+                <span class="inline-block text-xs uppercase tracking-widest font-semibold px-3 py-1 bg-[#EAE5DE] text-[#1C1E21] rounded-full">Skandinavisk Design & Funktion</span>
+                <h1 class="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight text-[#1C1E21] leading-tight">
+                    Harmoni och intelligens för det moderna hemmet.
+                </h1>
+                <p class="text-lg text-[#5A5E63] max-w-lg">
+                    Utvalda vardagsprodukter och smarta hem-lösningar som förenar estetik med hållbar skandinavisk minimalism.
+                </p>
+                <div class="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-4">
+                    <a href="#catalog" class="accent-bg accent-hover text-white px-8 py-4 rounded-xl font-semibold text-center transition-all shadow-sm">
+                        Utforska kollektionen
+                    </a>
+                    <a href="#about" class="border border-[#1C1E21]/20 hover:border-[#1C1E21] px-8 py-4 rounded-xl font-semibold text-center transition-all">
+                        Vår filosofi
+                    </a>
+                </div>
+            </div>
+            <div class="relative rounded-2xl overflow-hidden shadow-xl aspect-[4/3] bg-[#EAE5DE]">
+                <img src="https://images.unsplash.com/photo-1513506003901-1e6a229e2d15?auto=format&fit=crop&w=1000&q=80" alt="Nordic Varda Interiör" class="w-full h-full object-cover" onerror="this.src='https://images.unsplash.com/photo-1507473885765-e6ed057f782c?auto=format&fit=crop&w=1000&q=80'">
+            </div>
+        </div>
+    </section>
+
+    <!-- Main Catalog Section -->
+    <main id="catalog" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 flex-grow w-full">
+        <div class="flex flex-col md:flex-row md:items-end justify-between mb-10 pb-6 border-b border-[#EAE5DE] gap-6">
+            <div>
+                <h2 class="text-3xl font-bold text-[#1C1E21]">Vår Kollektion</h2>
+                <p class="text-sm text-[#5A5E63] mt-1">Visar <span id="product-count">0</span> noggrant utvalda produkter</p>
+            </div>
+            <!-- Search and Controls -->
+            <div class="flex flex-col sm:flex-row gap-4 w-full md:w-auto">
+                <div class="relative">
+                    <input type="text" id="search-input" placeholder="Sök produkt..." class="w-full sm:w-64 bg-white border border-[#EAE5DE] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-[#A95C42]">
+                </div>
+                <select id="sort-select" class="bg-white border border-[#EAE5DE] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-[#A95C42]">
+                    <option value="default">Sortera efter</option>
+                    <option value="price-asc">Pris: Låg till hög</option>
+                    <option value="price-desc">Pris: Hög till låg</option>
+                    <option value="name">Namn A-Ö</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Category Filters -->
+        <div id="category-filters" class="flex flex-wrap gap-2 mb-10">
+            <!-- Dynamically populated or static buttons -->
+            <button class="category-btn active px-4 py-2 rounded-xl text-sm font-medium transition-colors bg-[#1C1E21] text-white" data-category="all">Alla produkter</button>
+            <button class="category-btn px-4 py-2 rounded-xl text-sm font-medium transition-colors bg-white border border-[#EAE5DE] hover:border-[#1C1E21]" data-category="Smarta Hem">Smarta Hem</button>
+            <button class="category-btn px-4 py-2 rounded-xl text-sm font-medium transition-colors bg-white border border-[#EAE5DE] hover:border-[#1C1E21]" data-category="Belysning">Belysning</button>
+            <button class="category-btn px-4 py-2 rounded-xl text-sm font-medium transition-colors bg-white border border-[#EAE5DE] hover:border-[#1C1E21]" data-category="Kök & Bar">Kök & Bar</button>
+            <button class="category-btn px-4 py-2 rounded-xl text-sm font-medium transition-colors bg-white border border-[#EAE5DE] hover:border-[#1C1E21]" data-category="Inredning">Inredning</button>
+            <button class="category-btn px-4 py-2 rounded-xl text-sm font-medium transition-colors bg-white border border-[#EAE5DE] hover:border-[#1C1E21]" data-category="Vardag">Vardag</button>
+        </div>
+
+        <!-- Product Grid -->
+        <div id="product-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+            <!-- Products injected by app.js -->
+        </div>
+
+        <div id="no-products" class="hidden text-center py-20 text-[#5A5E63]">
+            <p class="text-lg">Inga produkter hittades som matchar din sökning.</p>
+            <button id="reset-filter-btn" class="mt-4 px-6 py-2 bg-[#1C1E21] text-white rounded-xl text-sm font-medium">Visa alla produkter</button>
+        </div>
+    </main>
+
+    <!-- About Section -->
+    <section id="about" class="bg-[#F3ECE1] py-20 border-t border-[#EAE5DE]">
+        <div class="max-w-4xl mx-auto px-4 text-center space-y-6">
+            <span class="text-xs uppercase tracking-widest font-semibold px-3 py-1 bg-[#EAE5DE] text-[#1C1E21] rounded-full">Om Nordic Varda</span>
+            <h2 class="text-3xl sm:text-4xl font-bold text-[#1C1E21]">Skandinavisk minimalism möter modern intelligens</h2>
+            <p class="text-[#5A5E63] leading-relaxed text-base sm:text-lg">
+                Nordic Varda grundades med en enkel vision: att förena tidlös nordisk formgivning med funktionell vardagsteknologi. Vi tror att de föremål vi omger oss med ska vara både vackra att titta på och göra livet lite enklare. Varje produkt i vår kollektion är handplöckt för att passa det moderna, medvetna hemmet.
+            </p>
+        </div>
+    </section>
+
+    <!-- FAQ Section -->
+    <section id="faq" class="max-w-4xl mx-auto px-4 py-20 w-full">
+        <div class="text-center mb-12">
+            <span class="text-xs uppercase tracking-widest font-semibold px-3 py-1 bg-[#EAE5DE] text-[#1C1E21] rounded-full">Vanliga frågor</span>
+            <h2 class="text-3xl font-bold text-[#1C1E21] mt-3">FAQ</h2>
+        </div>
+        <div class="space-y-4">
+            <details class="bg-white border border-[#EAE5DE] rounded-xl p-6 group">
+                <summary class="font-semibold cursor-pointer flex justify-between items-center text-[#1C1E21]">
+                    Hur fungerar leverans och frakt?
+                    <span class="transition-transform group-open:rotate-180">↓</span>
+                </summary>
+                <p class="mt-4 text-sm text-[#5A5E63] leading-relaxed">
+                    Vi skickar alla beställningar inom Sverige med spårbar frakt. Normal leveranstid är 2–4 arbetsdagar. Fri frakt erbjuds på beställningar över 500 SEK.
+                </p>
+            </details>
+            <details class="bg-white border border-[#EAE5DE] rounded-xl p-6 group">
+                <summary class="font-semibold cursor-pointer flex justify-between items-center text-[#1C1E21]">
+                    Vad gäller för öppet köp och returer?
+                    <span class="transition-transform group-open:rotate-180">↓</span>
+                </summary>
+                <p class="mt-4 text-sm text-[#5A5E63] leading-relaxed">
+                    Du har alltid 30 dagars öppet köp enligt svensk e-handelsstandard. Produkten ska returneras i oskadat skick och i originalförpackning. Kontakta vår kundtjänst för retursedel.
+                </p>
+            </details>
+            <details class="bg-white border border-[#EAE5DE] rounded-xl p-6 group">
+                <summary class="font-semibold cursor-pointer flex justify-between items-center text-[#1C1E21]">
+                    Är detta en riktig webbutik?
+                    <span class="transition-transform group-open:rotate-180">↓</span>
+                </summary>
+                <p class="mt-4 text-sm text-[#5A5E63] leading-relaxed">
+                    Nej, detta är en demowebbplats och ett visningsprojekt inom e-handelsdesign och frontend-utveckling. Inga riktiga köp eller betalningar kan genomföras.
+                </p>
+            </details>
+        </div>
+    </section>
+
+    <!-- Terms & Policies Section -->
+    <section id="terms" class="bg-[#F3ECE1] py-20 border-t border-[#EAE5DE]">
+        <div class="max-w-4xl mx-auto px-4 space-y-12">
+            <div class="text-center">
+                <span class="text-xs uppercase tracking-widest font-semibold px-3 py-1 bg-[#EAE5DE] text-[#1C1E21] rounded-full">Trygghet & Villkor</span>
+                <h2 class="text-3xl font-bold text-[#1C1E21] mt-3">Köpvillkor & Integritet</h2>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8 text-sm text-[#5A5E63]">
+                <div class="bg-white p-8 rounded-2xl border border-[#EAE5DE] space-y-3">
+                    <h3 class="font-bold text-[#1C1E21] text-base">Köpvillkor (Demo)</h3>
+                    <p>Alla priser anges i SEK inklusive svensk moms (25%). Eftersom detta är en demobutik ingås inga bindande avtal och inga betalningar debiteras.</p>
+                </div>
+                <div class="bg-white p-8 rounded-2xl border border-[#EAE5DE] space-y-3">
+                    <h3 class="font-bold text-[#1C1E21] text-base">Integritetspolicy (GDPR)</h3>
+                    <p>Vi värnar om din integritet. Information som sparas i varukorgen sparas endast lokalt i din webbläsare (localStorage) och delas aldrig med tredje part.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Contact Section -->
+    <section id="contact" class="max-w-3xl mx-auto px-4 py-20 w-full">
+        <div class="text-center mb-10">
+            <span class="text-xs uppercase tracking-widest font-semibold px-3 py-1 bg-[#EAE5DE] text-[#1C1E21] rounded-full">Hör av dig</span>
+            <h2 class="text-3xl font-bold text-[#1C1E21] mt-3">Kontakta oss</h2>
+        </div>
+        <form id="contact-form" class="bg-white border border-[#EAE5DE] rounded-2xl p-8 space-y-6 shadow-sm">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                <div>
+                    <label class="block text-xs font-semibold uppercase tracking-wider text-[#1C1E21] mb-2">Namn</label>
+                    <input type="text" id="contact-name" required class="w-full bg-[#FBF9F5] border border-[#EAE5DE] rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-[#A95C42]">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold uppercase tracking-wider text-[#1C1E21] mb-2">E-post</label>
+                    <input type="email" id="contact-email" required class="w-full bg-[#FBF9F5] border border-[#EAE5DE] rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-[#A95C42]">
+                </div>
+            </div>
+            <div>
+                <label class="block text-xs font-semibold uppercase tracking-wider text-[#1C1E21] mb-2">Meddelande</label>
+                <textarea id="contact-message" rows="4" required class="w-full bg-[#FBF9F5] border border-[#EAE5DE] rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-[#A95C42]"></textarea>
+            </div>
+            <button type="submit" class="w-full accent-bg accent-hover text-white py-4 rounded-xl font-semibold transition-all">Skicka meddelande</button>
+            <div id="contact-success" class="hidden text-center text-sm font-medium text-emerald-600">Tack för ditt meddelande! Vi återkommer inom kort.</div>
+        </form>
+    </section>
+
+    <!-- Footer -->
+    <footer class="bg-[#1C1E21] text-[#FBF9F5] py-16 border-t border-[#2C2E33]">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 md:grid-cols-4 gap-10">
+            <div class="space-y-4">
+                <div class="flex items-center space-x-2">
+                    <span class="w-3 h-3 rounded-full accent-bg"></span>
+                    <span class="font-bold text-lg tracking-wider">NORDIC VARDA</span>
+                </div>
+                <p class="text-xs text-[#A0A4A8] leading-relaxed">
+                    Skandinavisk vardagsdesign och smarta hem-lösningar för ett mer harmoniskt liv.
+                </p>
+            </div>
+            <div>
+                <h4 class="font-semibold text-sm mb-4 uppercase tracking-wider">Snabblänkar</h4>
+                <ul class="space-y-2 text-xs text-[#A0A4A8]">
+                    <li><a href="#catalog" class="hover:text-white transition-colors">Katalog</a></li>
+                    <li><a href="#about" class="hover:text-white transition-colors">Om oss</a></li>
+                    <li><a href="#faq" class="hover:text-white transition-colors">FAQ</a></li>
+                    <li><a href="#terms" class="hover:text-white transition-colors">Köpvillkor</a></li>
+                </ul>
+            </div>
+            <div>
+                <h4 class="font-semibold text-sm mb-4 uppercase tracking-wider">Kundtjänst</h4>
+                <ul class="space-y-2 text-xs text-[#A0A4A8]">
+                    <li>support@nordicvarda.demo</li>
+                    <li>Öppet måndag–fredag 09:00–17:00</li>
+                    <li>Fri frakt över 500 SEK</li>
+                </ul>
+            </div>
+            <div>
+                <h4 class="font-semibold text-sm mb-4 uppercase tracking-wider">Nyhetsbrev</h4>
+                <p class="text-xs text-[#A0A4A8] mb-3">Prenumerera på vårt nyhetsbrev för inspiration och nyheter.</p>
+                <form id="newsletter-form" class="space-y-2">
+                    <input type="email" id="newsletter-email" placeholder="Din e-postadress" required class="w-full bg-[#2C2E33] border border-[#3C3E43] rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-[#A95C42]">
+                    <button type="submit" class="w-full accent-bg accent-hover text-white py-2.5 rounded-xl text-xs font-semibold transition-all">Prenumerera</button>
+                    <div id="newsletter-success" class="hidden text-xs text-emerald-400">Tack för din prenumeration!</div>
+                </form>
+            </div>
+        </div>
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-12 pt-6 border-t border-[#2C2E33] text-center text-xs text-[#A0A4A8]">
+            &copy; 2025 Nordic Varda. Alla rättigheter reserverade. Detta är en demobutik.
+        </div>
+    </footer>
+
+    <!-- Cart Drawer / Modal -->
+    <div id="cart-drawer" class="fixed inset-0 z-50 overflow-hidden hidden">
+        <div id="cart-backdrop" class="absolute inset-0 bg-black/40 backdrop-blur-xs transition-opacity"></div>
+        <div class="absolute inset-y-0 right-0 max-w-full flex pl-10">
+            <div class="w-screen max-w-md bg-[#FBF9F5] shadow-2xl flex flex-col">
+                <div class="p-6 border-b border-[#EAE5DE] flex items-center justify-between">
+                    <h2 class="font-bold text-lg text-[#1C1E21]">Din Varukorg</h2>
+                    <button id="cart-close-btn" class="p-2 rounded-full hover:bg-[#EAE5DE]/50 cursor-pointer" aria-label="Stäng varukorg">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+                <!-- Cart Items Container -->
+                <div id="cart-items-container" class="flex-1 overflow-y-auto p-6 space-y-4">
+                    <!-- Injected by app.js -->
+                </div>
+                <!-- Cart Footer -->
+                <div class="p-6 border-t border-[#EAE5DE] bg-white space-y-4">
+                    <div class="space-y-2 text-sm">
+                        <div class="flex justify-between text-[#5A5E63]">
+                            <span>Delsumma</span>
+                            <span id="cart-subtotal">0 SEK</span>
+                        </div>
+                        <div class="flex justify-between text-[#5A5E63]">
+                            <span>Frakt</span>
+                            <span id="cart-shipping">Fri frakt</span>
+                        </div>
+                        <div class="flex justify-between font-bold text-base text-[#1C1E21] pt-2 border-t border-[#EAE5DE]">
+                            <span>Totalt</span>
+                            <span id="cart-total">0 SEK</span>
+                        </div>
+                    </div>
+                    <button id="checkout-btn" class="w-full accent-bg accent-hover text-white py-4 rounded-xl font-semibold transition-all cursor-pointer">
+                        Gå till demo-kassa
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Product Details Modal -->
+    <div id="product-modal" class="fixed inset-0 z-50 overflow-y-auto hidden">
+        <div class="min-h-screen px-4 text-center flex items-center justify-center">
+            <div id="modal-backdrop" class="fixed inset-0 bg-black/40 backdrop-blur-xs transition-opacity"></div>
+            <div class="inline-block w-full max-w-2xl bg-white rounded-2xl text-left overflow-hidden shadow-2xl transform transition-all z-10 my-8">
+                <div class="relative bg-[#EAE5DE] aspect-[16/9]">
+                    <img id="modal-img" src="" alt="" class="w-full h-full object-cover">
+                    <button id="modal-close-btn" class="absolute top-4 right-4 bg-white/85 hover:bg-white p-2 rounded-full shadow-md transition-colors cursor-pointer" aria-label="Stäng">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+                <div class="p-8 space-y-6">
+                    <div class="flex items-center justify-between">
+                        <span id="modal-category" class="text-xs font-semibold uppercase tracking-wider px-3 py-1 bg-[#F3ECE1] text-[#1C1E21] rounded-full"></span>
+                        <span id="modal-sku" class="text-xs text-[#5A5E63]"></span>
+                    </div>
+                    <div>
+                        <h3 id="modal-title" class="text-2xl font-bold text-[#1C1E21]"></h3>
+                        <p id="modal-price" class="text-xl font-bold accent-text mt-2"></p>
+                    </div>
+                    <p id="modal-desc" class="text-sm text-[#5A5E63] leading-relaxed"></p>
+                    <div class="flex items-center justify-between pt-4 border-t border-[#EAE5DE]">
+                        <span id="modal-stock" class="text-xs font-medium text-emerald-600"></span>
+                        <button id="modal-add-btn" class="accent-bg accent-hover text-white px-8 py-3 rounded-xl font-semibold text-sm transition-all cursor-pointer">
+                            Lägg i varukorg
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Checkout Modal (Demo) -->
+    <div id="checkout-modal" class="fixed inset-0 z-50 overflow-y-auto hidden">
+        <div class="min-h-screen px-4 text-center flex items-center justify-center">
+            <div id="checkout-backdrop" class="fixed inset-0 bg-black/40 backdrop-blur-xs transition-opacity"></div>
+            <div class="inline-block w-full max-w-xl bg-white rounded-2xl text-left overflow-hidden shadow-2xl transform transition-all z-10 my-8 p-8 space-y-6">
+                <div class="flex items-center justify-between border-b border-[#EAE5DE] pb-4">
+                    <h3 class="text-xl font-bold text-[#1C1E21]">Demo-kassa & Beställning</h3>
+                    <button id="checkout-close-btn" class="p-2 rounded-full hover:bg-[#EAE5DE]/50 cursor-pointer" aria-label="Stäng">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+                <div class="bg-[#F3ECE1] p-4 rounded-xl text-xs text-[#1C1E21] space-y-1">
+                    <p class="font-bold">Detta är en säkert simulerad demo-kassa.</p>
+                    <p>Inga kortuppgifter eller riktiga betalningar hanteras. Integration mot Stripe/Shopify kan enkelt kopplas in här.</p>
+                </div>
+                <form id="checkout-form" class="space-y-4">
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-semibold uppercase tracking-wider text-[#1C1E21] mb-1">Förnamn</label>
+                            <input type="text" required class="w-full bg-[#FBF9F5] border border-[#EAE5DE] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-[#A95C42]">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold uppercase tracking-wider text-[#1C1E21] mb-1">Efternamn</label>
+                            <input type="text" required class="w-full bg-[#FBF9F5] border border-[#EAE5DE] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-[#A95C42]">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold uppercase tracking-wider text-[#1C1E21] mb-1">Leveransadress</label>
+                        <input type="text" required class="w-full bg-[#FBF9F5] border border-[#EAE5DE] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-[#A95C42]">
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-semibold uppercase tracking-wider text-[#1C1E21] mb-1">Postnummer</label>
+                            <input type="text" required class="w-full bg-[#FBF9F5] border border-[#EAE5DE] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-[#A95C42]">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold uppercase tracking-wider text-[#1C1E21] mb-1">Ort</label>
+                            <input type="text" required class="w-full bg-[#FBF9F5] border border-[#EAE5DE] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-[#A95C42]">
+                        </div>
+                    </div>
+                    <button type="submit" class="w-full accent-bg accent-hover text-white py-4 rounded-xl font-semibold transition-all cursor-pointer mt-4">
+                        Slutför demo-beställning
+                    </button>
+                </form>
+                <div id="checkout-success-msg" class="hidden text-center space-y-4 py-6">
+                    <div class="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto font-bold text-2xl">✓</div>
+                    <h4 class="text-xl font-bold text-[#1C1E21]">Tack för din beställning!</h4>
+                    <p class="text-sm text-[#5A5E63]">Detta är en demobeställning. Orderbekräftelse har skapats lokalt.</p>
+                    <button id="checkout-reset-btn" class="px-6 py-2.5 bg-[#1C1E21] text-white rounded-xl text-sm font-medium">Tillbaka till butiken</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Cookie Consent Banner -->
+    <div id="cookie-banner" class="fixed bottom-0 inset-x-0 z-50 bg-[#1C1E21] text-[#FBF9F5] p-4 sm:p-6 shadow-2xl border-t border-[#3C3E43] hidden">
+        <div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
+            <p class="text-xs sm:text-sm text-[#A0A4A8] text-center sm:text-left">
+                Vi använder endast nödvändiga kakor (cookies) för att spara din varukorg lokalt. Läs mer i vår integritetspolicy.
+            </p>
+            <div class="flex items-center space-x-3 shrink-0">
+                <button id="cookie-accept-btn" class="accent-bg accent-hover text-white px-6 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer">
+                    Godkänn
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript Link -->
+    <script src="app.js"></script>
+</body>
+</html>
