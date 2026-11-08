@@ -223,7 +223,10 @@ const products = [
 
 // App State
 let cart = [];
-try { cart = JSON.parse(localStorage.getItem('nordic_varda_cart') || '[]'); } catch (error) { cart = []; }
+try {
+    const storedCart = JSON.parse(localStorage.getItem('nordic_varda_cart') || '[]');
+    cart = Array.isArray(storedCart) ? storedCart.filter(item => item && Number.isInteger(item.id) && Number.isFinite(item.price) && Number.isInteger(item.quantity) && item.quantity > 0) : [];
+} catch (error) { cart = []; }
 let currentCategory = 'all';
 let currentSearch = '';
 let currentSort = 'default';
@@ -359,10 +362,7 @@ function setupEventListeners() {
     if (checkoutForm) {
         checkoutForm.addEventListener('submit', (e) => {
             e.preventDefault();
-            const formData = new FormData(checkoutForm);
-            // Validation check handled by HTML required attributes, simulate success order
-            const orderId = 'NV-' + Math.floor(100000 + Math.random() * 900000);
-            // Demo order ID generated locally; no real order is submitted.
+            // HTML required fields are validated by the browser. This is a local-only demo; no order is sent.
             
             checkoutForm.classList.add('hidden');
             checkoutSuccess.classList.remove('hidden');
