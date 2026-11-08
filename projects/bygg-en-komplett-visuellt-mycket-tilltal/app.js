@@ -1,4 +1,4 @@
-const products = [
+let products = [
     {
         id: 1,
         name: "Lumina Trådlös Bordslampa",
@@ -221,6 +221,59 @@ const products = [
     }
 ];
 
+// Nordic Varda public catalogue API (publishable key only; never put service-role keys in browser code).
+const SUPABASE_URL = 'https://oadjfqrfppckrtzbvlsv.supabase.co';
+const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_UMpzaxkA21uV-MONB7gQ9Q_FgDtWm1_';
+
+async function supabaseRequest(table, options = {}) {
+    const response = await fetch(`${SUPABASE_URL}/rest/v1/${table}`, {
+        method: options.method || 'GET',
+        headers: {
+            'apikey': SUPABASE_PUBLISHABLE_KEY,
+            'Authorization': `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
+            'Content-Type': 'application/json',
+            'Prefer': options.prefer || 'return=minimal'
+        },
+        body: options.body ? JSON.stringify(options.body) : undefined
+    });
+    if (!response.ok) {
+        const detail = await response.text().catch(() => '');
+        throw new Error(`Supabase ${table}: ${response.status} ${detail}`);
+    }
+    if (response.status === 204) return null;
+    return response.json().catch(() => null);
+}
+
+async function loadPublishedProducts() {
+    try {
+        const response = await fetch(`${SUPABASE_URL}/rest/v1/products?select=id,slug,name,description,category,price_sek,image_url,sku,featured,inventory_status&active=eq.true&order=featured.desc,name.asc`, {
+            headers: {
+                'apikey': SUPABASE_PUBLISHABLE_KEY,
+                'Authorization': `Bearer ${SUPABASE_PUBLISHABLE_KEY}`
+            }
+        });
+        if (!response.ok) throw new Error(`Product API returned ${response.status}`);
+        const rows = await response.json();
+        if (Array.isArray(rows) && rows.length) {
+            products = rows.map((p, index) => ({
+                id: p.id,
+                name: p.name,
+                category: p.category,
+                price: p.price_sek,
+                sku: p.sku || p.slug,
+                stock: 0,
+                image: p.image_url || '',
+                shortDesc: (p.description || '').slice(0, 125),
+                longDesc: p.description || '',
+                featured: p.featured,
+                inventoryStatus: p.inventory_status
+            }));
+        }
+    } catch (error) {
+        console.warn('Could not load live catalogue; using local preview catalogue.', error);
+    }
+}
+
 // App State
 let cart = [];
 try {
@@ -280,7 +333,8 @@ const contactForm = document.getElementById('contact-form');
 const newsletterForm = document.getElementById('newsletter-form');
 
 // Initialize App
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+    await loadPublishedProducts();
     renderProducts();
     updateCartUI();
     setupEventListeners();
@@ -383,23 +437,47 @@ function setupEventListeners() {
         });
     }
 
-    // Contact form
+    // Contact form: save messages in the isolated Nordic Varda database.
     if (contactForm) {
-        contactForm.addEventListener('submit', (e) => {
+        contactForm.addEventListener('submit', async (e) => {
             e.preventDefault();
+            const button = contactForm.querySelector('button[type="submit"]');
             const success = document.getElementById('contact-success');
-            if (success) success.classList.remove('hidden');
-            contactForm.reset();
+            const name = document.getElementById('contact-name')?.value.trim();
+            const email = document.getElementById('contact-email')?.value.trim();
+            const message = document.getElementById('contact-message')?.value.trim();
+            if (button) { button.disabled = true; button.textContent = 'Skickar...'; }
+            try {
+                await supabaseRequest('contact_messages', { method: 'POST', body: { name, email, message } });
+                if (success) { success.textContent = 'Tack! Ditt meddelande har skickats.'; success.classList.remove('hidden'); }
+                contactForm.reset();
+            } catch (error) {
+                console.error(error);
+                if (success) { success.textContent = 'Meddelandet kunde inte skickas just nu. Försök igen senare.'; success.classList.remove('hidden'); }
+            } finally {
+                if (button) { button.disabled = false; button.textContent = 'Skicka meddelande'; }
+            }
         });
     }
 
-    // Newsletter form
+    // Newsletter: store consent-backed subscriptions in the isolated database.
     if (newsletterForm) {
-        newsletterForm.addEventListener('submit', (e) => {
+        newsletterForm.addEventListener('submit', async (e) => {
             e.preventDefault();
+            const button = newsletterForm.querySelector('button[type="submit"]');
             const success = document.getElementById('newsletter-success');
-            if (success) success.classList.remove('hidden');
-            newsletterForm.reset();
+            const email = document.getElementById('newsletter-email')?.value.trim();
+            if (button) { button.disabled = true; button.textContent = 'Registrerar...'; }
+            try {
+                await supabaseRequest('newsletter_subscribers', { method: 'POST', body: { email, consent_text_version: 'v1' } });
+                if (success) { success.textContent = 'Tack! Du är nu registrerad för nyhetsbrevet.'; success.classList.remove('hidden'); }
+                newsletterForm.reset();
+            } catch (error) {
+                console.error(error);
+                if (success) { success.textContent = 'Kunde inte registrera e-postadressen. Kontrollera den eller försök igen senare.'; success.classList.remove('hidden'); }
+            } finally {
+                if (button) { button.disabled = false; button.textContent = 'Prenumerera'; }
+            }
         });
     }
 
