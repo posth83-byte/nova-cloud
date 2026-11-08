@@ -55,6 +55,35 @@ Källor:
 - https://help.syncee.com/en/articles/8885830-pricing-and-plans
 - https://www.gallay.eu/
 
+
+### MONDEX / Unihome (Polen) – starkaste konkreta sortimentskandidaten, ej godkänd ännu
+
+Den offentliga dropshipping-sidan anger:
+- Ingen månadsavgift och inget minsta ordervärde.
+- Engångsavgift 50 EUR exkl. moms, återbetalas som kreditnota när inköp når 250 EUR exkl. moms.
+- Packning/material 0,88 EUR exkl. moms per kundorder.
+- Säljaren måste ordna egen transportör/fraktetikett; MONDEX skickar på säljarens etikett. Fraktkostnaden är alltså inte inkluderad i packavgiften.
+- Paket lämnas normalt samma arbetsdag om ordern är betald/får plats inom kreditgränsen före 12:00 CET, annars senast inom 3 arbetsdagar.
+- Grossistpriser i EUR visas först efter inloggning. Produktfeed via XML/CSV eller API innehåller SKU, EAN, mått, vikt, bilder, beskrivningar, lager, pris samt GPSR-data.
+- Bild- och textlicens för EU ingår under avtalstiden.
+- Kundreturer går till Nordic Varda (säljaren), inte direkt till grossisten. Möjlighet finns att returnera osålda fullvärdiga varor inom 30 dagar från faktura, en gång per månad, mot 10 % avgift (minst 0,88 EUR); vissa kategorier undantas.
+- Företagsnamn, EU-momsnummer, försäljningskanal och butikslänk efterfrågas vid ansökan.
+
+**Offentligt synliga produktspår att kontrollera i grossistflödet (inte inköpsgodkända):**
+- MANON keramisk vas, 23,5 × 30 × 34 cm (offentlig konsumentbutik visade 39 EUR).
+- SERENITE glasvas, 18 × 23 cm (22 EUR).
+- ARIA skärbräda i glas, 40 × 30 cm (4 EUR).
+- MARGOT dekorativ ljushållarplatta (5 EUR).
+- MAVE liten dekorationsfigur (3,80 EUR).
+- PETER dubbelväggad mugg, 350 ml (8 EUR).
+
+Priserna ovan är offentliga konsumentpriser från Mondex webbplats, **inte grossistpriser** och får inte användas som inköpskostnad eller marginalunderlag. Exakta SKU/EAN, grossistpris, frakt till Sverige, emballageklass, lager och eventuella transportbegränsningar måste hämtas ur leverantörens inloggade feed. Glas/keramik kan ge högre frakt- och skaderisk; börja hellre med små, okomplicerade inrednings- och köksartiklar.
+
+**Viktig teknisk begränsning:** MONDEX beskriver API/CSV/XML och färdiga kopplingar för andra e-handelsplattformar. Nordic Varda är en egenbyggd butik, så automatisk lager-/pris-/orderkoppling är inte bekräftad. Vi måste få API-dokumentation och testfeed och bygga/testa en egen adapter innan vi lovar automatisk synk. Säljarens egen fraktetikett behöver också lösas i orderflödet.
+
+Källa: https://mondexhome.com/content/42-dropshipping och https://mondexhome.com/
+Kontakt för B2B: b2b@mondexhome.com, +48 89 532 08 14. Dropshippingkontakt anges som office@mondex.pl.
+
 ## Beslut
 
 Behåll samtliga 20 produkter som `active=false`. Byt inte till aktiva produkter förrän dokumentationen ovan är verifierad. Produktnamn och priser i demon är inte bevis på en verklig leverantörsprodukt eller lönsamhet.
