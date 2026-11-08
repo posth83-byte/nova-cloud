@@ -36,6 +36,24 @@ class JobDeduplicationTests(unittest.TestCase):
         self.assertFalse(is_duplicate_job_task("testa igen", "testa den igen"))
         self.assertFalse(is_duplicate_job_task("testa igen", "testa igen"))
 
+    def test_different_numeric_identifiers_are_never_merged(self):
+        self.assertFalse(is_duplicate_job_task(
+            "Granska PR 36 och testa mobilmenyn, knapparna, formuläret och navigeringen",
+            "Granska PR 37 och testa mobilmenyn, knapparna, formuläret och navigeringen"
+        ))
+
+    def test_negated_and_positive_instructions_are_never_merged(self):
+        self.assertFalse(is_duplicate_job_task(
+            "Granska PR 36 och ta bort den gamla jobbposten från databasen permanent",
+            "Granska PR 36 och ta inte bort den gamla jobbposten från databasen permanent"
+        ))
+
+    def test_same_negated_instruction_is_still_detected(self):
+        self.assertTrue(is_duplicate_job_task(
+            "Granska PR 36 och ta inte bort den gamla jobbposten från databasen permanent",
+            "Granska PR 36 och ta inte bort den gamla jobbposten från databasen permanent igen"
+        ))
+
 
 if __name__ == "__main__":
     unittest.main()
