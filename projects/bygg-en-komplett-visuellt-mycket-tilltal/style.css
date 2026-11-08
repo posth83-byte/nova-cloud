@@ -1,0 +1,58 @@
+body {
+    background-color: #FBF9F5;
+    color: #1C1E21;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    margin: 0;
+    padding: 0;
+    -webkit-font-smoothing: antialiased;
+}
+
+.accent-bg {
+    background-color: #A95C42;
+}
+
+.accent-text {
+    color: #A95C42;
+}
+
+.accent-border {
+    border-color: #A95C42;
+}
+
+.accent-hover:hover {
+    background-color: #924e37;
+}
+
+/* Anpassade scrollbars för modal och menyer */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: #F3ECE1;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #D5CEBE;
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #A95C42;
+}
+
+/* Smidiga övergångar */
+.transition-all {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Diskret skugga för kort */
+.product-card {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.product-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 25px -5px rgba(28, 30, 33, 0.08), 0 8px 10px -6px rgba(28, 30, 33, 0.08);
+}
