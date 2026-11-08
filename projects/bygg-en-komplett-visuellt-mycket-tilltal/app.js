@@ -416,8 +416,14 @@ function setupEventListeners() {
 }
 
 function checkCookies() {
-    if (localStorage.getItem('nordic_varda_cookies') === 'accepted') {
-        if (cookieBanner) cookieBanner.classList.add('hidden');
+    try {
+        if (localStorage.getItem('nordic_varda_cookies') === 'accepted') {
+            if (cookieBanner) cookieBanner.classList.add('hidden');
+        } else if (cookieBanner) {
+            cookieBanner.classList.remove('hidden');
+        }
+    } catch (error) {
+        if (cookieBanner) cookieBanner.classList.remove('hidden');
     }
 }
 
