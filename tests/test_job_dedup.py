@@ -32,7 +32,7 @@ class JobDeduplicationTests(unittest.TestCase):
             "Kontrollera Kling API-token och videogenerering"
         ))
 
-    def test_short_generic_prompts_only_match_exactly(self):
+    def test_short_generic_prompts_are_not_fuzzy_merged(self):
         self.assertFalse(is_duplicate_job_task("testa igen", "testa den igen"))
         self.assertFalse(is_duplicate_job_task("testa igen", "testa igen"))
 
