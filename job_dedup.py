@@ -27,13 +27,12 @@ def is_duplicate_job_task(left, right):
     b = normalize_job_task(right)
     if not a or not b:
         return False
-    if a == b:
-        return True
-
     tokens_a = set(a.split())
     tokens_b = set(b.split())
     if min(len(tokens_a), len(tokens_b)) < 6:
         return False
+    if a == b:
+        return True
 
     overlap = len(tokens_a & tokens_b) / min(len(tokens_a), len(tokens_b))
     ratio = SequenceMatcher(None, a, b, autojunk=False).ratio()
