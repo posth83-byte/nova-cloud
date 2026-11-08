@@ -352,7 +352,7 @@
             <div id="checkout-backdrop" class="fixed inset-0 bg-black/40 backdrop-blur-xs transition-opacity"></div>
             <div class="inline-block w-full max-w-xl bg-white rounded-2xl text-left overflow-hidden shadow-2xl transform transition-all z-10 my-8 p-8 space-y-6">
                 <div class="flex items-center justify-between border-b border-[#EAE5DE] pb-4">
-                    <h3 class="text-xl font-bold text-[#1C1E21]">Demo-kassa & Beställning</h3>
+                    <h3 class="text-xl font-bold text-[#1C1E21]">Säker kassa</h3>
                     <button id="checkout-close-btn" class="p-2 rounded-full hover:bg-[#EAE5DE]/50 cursor-pointer" aria-label="Stäng">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -360,42 +360,33 @@
                     </button>
                 </div>
                 <div class="bg-[#F3ECE1] p-4 rounded-xl text-xs text-[#1C1E21] space-y-1">
-                    <p class="font-bold">Detta är en säkert simulerad demo-kassa.</p>
-                    <p>Inga kortuppgifter eller riktiga betalningar hanteras. Integration mot Stripe/Shopify kan enkelt kopplas in här.</p>
+                    <p class="font-bold">Säker kortbetalning</p>
+                    <p>Du skickas vidare till en krypterad betalningssida. Leveransadress och kortuppgifter hanteras där – aldrig direkt i Nordic Varda.</p>
                 </div>
                 <form id="checkout-form" class="space-y-4">
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
                             <label class="block text-xs font-semibold uppercase tracking-wider text-[#1C1E21] mb-1">Förnamn</label>
-                            <input type="text" required class="w-full bg-[#FBF9F5] border border-[#EAE5DE] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-[#A95C42]">
+                            <input id="checkout-first-name" type="text" autocomplete="given-name" required class="w-full bg-[#FBF9F5] border border-[#EAE5DE] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-[#A95C42]">
                         </div>
                         <div>
                             <label class="block text-xs font-semibold uppercase tracking-wider text-[#1C1E21] mb-1">Efternamn</label>
-                            <input type="text" required class="w-full bg-[#FBF9F5] border border-[#EAE5DE] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-[#A95C42]">
+                            <input id="checkout-last-name" type="text" autocomplete="family-name" required class="w-full bg-[#FBF9F5] border border-[#EAE5DE] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-[#A95C42]">
                         </div>
                     </div>
                     <div>
-                        <label class="block text-xs font-semibold uppercase tracking-wider text-[#1C1E21] mb-1">Leveransadress</label>
-                        <input type="text" required class="w-full bg-[#FBF9F5] border border-[#EAE5DE] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-[#A95C42]">
+                        <label class="block text-xs font-semibold uppercase tracking-wider text-[#1C1E21] mb-1">E-postadress</label>
+                        <input id="checkout-email" type="email" autocomplete="email" required class="w-full bg-[#FBF9F5] border border-[#EAE5DE] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-[#A95C42]">
                     </div>
-                    <div class="grid grid-cols-2 gap-4">
-                        <div>
-                            <label class="block text-xs font-semibold uppercase tracking-wider text-[#1C1E21] mb-1">Postnummer</label>
-                            <input type="text" required class="w-full bg-[#FBF9F5] border border-[#EAE5DE] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-[#A95C42]">
-                        </div>
-                        <div>
-                            <label class="block text-xs font-semibold uppercase tracking-wider text-[#1C1E21] mb-1">Ort</label>
-                            <input type="text" required class="w-full bg-[#FBF9F5] border border-[#EAE5DE] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-[#A95C42]">
-                        </div>
-                    </div>
+                    <div id="checkout-error" class="hidden text-sm text-red-700 bg-red-50 border border-red-200 rounded-xl p-3" role="alert"></div>
                     <button type="submit" class="w-full accent-bg accent-hover text-white py-4 rounded-xl font-semibold transition-all cursor-pointer mt-4">
-                        Slutför demo-beställning
+                        Fortsätt till säker betalning
                     </button>
                 </form>
                 <div id="checkout-success-msg" class="hidden text-center space-y-4 py-6">
                     <div class="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto font-bold text-2xl">✓</div>
                     <h4 class="text-xl font-bold text-[#1C1E21]">Tack för din beställning!</h4>
-                    <p class="text-sm text-[#5A5E63]">Detta är en demobeställning. Orderbekräftelse har skapats lokalt.</p>
+                    <p class="text-sm text-[#5A5E63]">Din betalning har genomförts. Ordern har registrerats.</p>
                     <button id="checkout-reset-btn" class="px-6 py-2.5 bg-[#1C1E21] text-white rounded-xl text-sm font-medium">Tillbaka till butiken</button>
                 </div>
             </div>
