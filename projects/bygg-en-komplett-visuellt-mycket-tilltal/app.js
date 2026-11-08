@@ -144,13 +144,13 @@ const products = [
     },
     {
         id: 14,
-        name: "Kust Handtvålpump & Fat i Stengods",
+        name: "Kust Handtvålpump i Stengods",
         category: "Inredning",
         price: 279,
         sku: "NV-INN-14",
         stock: 28,
         image: "https://1.bonami.cz/images/fit-crop-fill/9c/4b/9c4b3282570d5ff0288ac168e0e75f0e628ee7af-1000x1000.jpeg",
-        shortDesc: "Tvålpump med rostfri pumpmekanism och tillhörande litet fat i keramik.",
+        shortDesc: "Tvålpump i glaserat stengods med rostfri pumpmekanism.",
         longDesc: "Lyft detaljerna i badrummet eller köket. Kust-serien i oglaserad stengods har en behaglig naturkänsla och står stabilt på handfatet utan att glida."
     },
     {
