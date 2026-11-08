@@ -1,9 +1,0 @@
-{
-  "name": "Wild Frontier - Survival",
-  "short_name": "WildFrontier",
-  "start_url": "index.html",
-  "display": "standalone",
-  "background_color": "#090d16",
-  "theme_color": "#06b6d4",
-  "description": "Överlev vildmarken i detta retroinspirerade spel direkt i webbläsaren."
-}

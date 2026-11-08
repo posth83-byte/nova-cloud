@@ -1,4 +1,4 @@
--- Prevent duplicate active durable jobs and preserve access tokens when a job is reused.
+-- Atomically deduplicate jobs and preserve every polling access token.
 alter table public.jarvis_jobs
   add column if not exists dedupe_key text,
   add column if not exists access_token_hashes text[] not null default '{}';
@@ -15,3 +15,187 @@ create unique index if not exists jarvis_jobs_active_dedupe_key_uidx
 
 create index if not exists jarvis_jobs_recent_status_updated_idx
   on public.jarvis_jobs (status, updated_at desc);
+
+-- Serialize all enqueue operations in this table. Matching and token updates
+-- occur inside the same transaction, eliminating the previous race window.
+create or replace function public.jarvis_enqueue_job(
+  p_task text,
+  p_dedupe_key text,
+  p_token_hash text,
+  p_history jsonb default '[]'::jsonb,
+  p_push_subscription jsonb default null
+)
+returns jsonb
+language plpgsql
+security invoker
+set search_path = public, pg_temp
+as $$
+declare
+  v_existing public.jarvis_jobs%rowtype;
+  v_tokens text[];
+  v_candidate_tokens text[];
+  v_new_tokens text[];
+  v_old_negated boolean;
+  v_candidate_negated boolean;
+  v_match boolean := false;
+  v_status text;
+begin
+  if nullif(btrim(p_task), '') is null or nullif(p_dedupe_key, '') is null
+     or nullif(p_token_hash, '') is null then
+    raise exception 'Task, dedupe key and token hash are required';
+  end if;
+
+  perform pg_advisory_xact_lock(731942018);
+
+  -- Exact fingerprint wins. Otherwise compare substantial normalized token
+  -- sets, while keeping numeric identifiers and negation semantically safe.
+  select * into v_existing
+  from public.jarvis_jobs j
+  where j.status in ('queued', 'running', 'completed', 'failed')
+    and j.updated_at >= now() - interval '30 days'
+    and j.dedupe_key = p_dedupe_key
+  order by j.updated_at desc
+  limit 1
+  for update;
+
+  if not found then
+    for v_existing in
+      select j.*
+      from public.jarvis_jobs j
+      where j.status in ('queued', 'running', 'completed', 'failed')
+        and j.updated_at >= now() - interval '30 days'
+      order by j.updated_at desc
+      limit 100
+      for update
+    loop
+      select coalesce(array_agg(distinct t order by t), '{}')
+        into v_new_tokens
+      from unnest(regexp_split_to_array(
+        regexp_replace(lower(coalesce(p_task, '')), '[^[:alnum:]_ ]', ' ', 'g'),
+        '\s+'
+      )) t
+      where t <> '';
+
+      select coalesce(array_agg(distinct t order by t), '{}')
+        into v_candidate_tokens
+      from unnest(regexp_split_to_array(
+        regexp_replace(lower(coalesce(v_existing.task, '')), '[^[:alnum:]_ ]', ' ', 'g'),
+        '\s+'
+      )) t
+      where t <> '';
+
+      if cardinality(v_new_tokens) < 6 or cardinality(v_candidate_tokens) < 6 then
+        continue;
+      end if;
+
+      select coalesce(array_agg(t order by t), '{}')
+        into v_tokens
+      from unnest(v_new_tokens) t
+      where t ~ '^[0-9]+([.,][0-9]+)?$';
+
+      select coalesce(array_agg(t order by t), '{}')
+        into v_candidate_tokens
+      from unnest(v_candidate_tokens) t
+      where t ~ '^[0-9]+([.,][0-9]+)?$';
+
+      if v_tokens <> v_candidate_tokens then
+        continue;
+      end if;
+
+      v_old_negated := regexp_split_to_array(
+        lower(coalesce(p_task, '')), '\s+'
+      ) && array['inte','ej','aldrig','inget','ingen','ingenting','utan','not','never','no','without','stoppa','avbryt'];
+      v_candidate_negated := regexp_split_to_array(
+        lower(coalesce(v_existing.task, '')), '\s+'
+      ) && array['inte','ej','aldrig','inget','ingen','ingenting','utan','not','never','no','without','stoppa','avbryt'];
+
+      if v_old_negated <> v_candidate_negated then
+        continue;
+      end if;
+
+      -- Count distinct common words; require >=90% overlap of the smaller set.
+      if (
+        select count(*)::numeric
+        from unnest(regexp_split_to_array(
+          regexp_replace(lower(coalesce(p_task, '')), '[^[:alnum:]_ ]', ' ', 'g'),
+          '\s+'
+        )) a
+        where a <> '' and a = any(regexp_split_to_array(
+          regexp_replace(lower(coalesce(v_existing.task, '')), '[^[:alnum:]_ ]', ' ', 'g'),
+          '\s+'
+        ))
+      ) / least(cardinality(v_new_tokens), cardinality(v_candidate_tokens)) >= 0.90 then
+        v_match := true;
+        exit;
+      end if;
+    end loop;
+    if not v_match then
+      v_existing := null;
+    end if;
+  end if;
+
+  if v_existing.id is not null then
+    v_tokens := coalesce(v_existing.access_token_hashes, '{}');
+    if v_existing.access_token_hash is not null
+       and not (v_existing.access_token_hash = any(v_tokens)) then
+      v_tokens := array_append(v_tokens, v_existing.access_token_hash);
+    end if;
+    if not (p_token_hash = any(v_tokens)) then
+      v_tokens := array_append(v_tokens, p_token_hash);
+    end if;
+
+    if v_existing.status in ('completed', 'failed') then
+      update public.jarvis_jobs
+      set access_token_hashes = v_tokens,
+          dedupe_key = p_dedupe_key,
+          status = 'queued',
+          phase = 'Återupptaget efter en ny begäran – väntar på bakgrundsarbetare',
+          history = coalesce(p_history, '[]'::jsonb),
+          result = null,
+          error = null,
+          attempts = 0,
+          started_at = null,
+          locked_at = null,
+          worker_id = null,
+          notification_sent_at = null,
+          completed_at = null,
+          push_subscription = coalesce(p_push_subscription, push_subscription),
+          updated_at = now()
+      where id = v_existing.id
+      returning status into v_status;
+    else
+      update public.jarvis_jobs
+      set access_token_hashes = v_tokens,
+          dedupe_key = coalesce(dedupe_key, p_dedupe_key),
+          updated_at = now()
+      where id = v_existing.id
+      returning status into v_status;
+    end if;
+
+    return jsonb_build_object(
+      'id', v_existing.id,
+      'status', v_status,
+      'deduplicated', true
+    );
+  end if;
+
+  insert into public.jarvis_jobs (
+    task, history, status, phase, access_token_hash,
+    access_token_hashes, dedupe_key, push_subscription
+  ) values (
+    p_task, coalesce(p_history, '[]'::jsonb), 'queued',
+    'Sparat – väntar på bakgrundsarbetare', p_token_hash,
+    array[p_token_hash], p_dedupe_key, p_push_subscription
+  )
+  returning id, status into v_existing.id, v_status;
+
+  return jsonb_build_object(
+    'id', v_existing.id,
+    'status', v_status,
+    'deduplicated', false
+  );
+end;
+$$;
+
+revoke all on function public.jarvis_enqueue_job(text, text, text, jsonb, jsonb) from public, anon, authenticated;
+grant execute on function public.jarvis_enqueue_job(text, text, text, jsonb, jsonb) to service_role;

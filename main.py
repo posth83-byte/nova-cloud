@@ -207,27 +207,9 @@ def supabase_jobs_request(method, path, payload=None, query="", prefer=""):
         raise RuntimeError(f"JARVIS jobbkö svarade med HTTP {error.code}: {detail}") from error
 
 
-def find_recent_duplicate_jarvis_job(task, dedupe_key):
-    """Find an equivalent queued, running, or recently completed task."""
-    cutoff = (datetime.now(timezone.utc) - timedelta(days=30)).isoformat()
-    query = urllib.parse.urlencode({
-        "status": "in.(queued,running,completed,failed)",
-        "updated_at": "gte." + cutoff,
-        "select": "id,task,status,dedupe_key,access_token_hash,access_token_hashes",
-        "order": "updated_at.desc",
-        "limit": "100"
-    })
-    rows, _ = supabase_jobs_request("GET", "jarvis_jobs", None, query)
-    for candidate in rows:
-        if candidate.get("dedupe_key") == dedupe_key or is_duplicate_job_task(
-            task, candidate.get("task", "")
-        ):
-            return candidate
-    return None
-
-
 def enqueue_jarvis_job(task, history=None, push_subscription=None):
-    clean_task = str(task).strip()
+    """Atomically deduplicate/reuse a durable job and append its access token."""
+    clean_task = str(task or "").strip()
     normalized_task = normalize_job_task(clean_task)
     if not normalized_task:
         raise ValueError("JARVIS-uppdraget saknar en giltig uppgiftstext.")
@@ -236,86 +218,32 @@ def enqueue_jarvis_job(task, history=None, push_subscription=None):
     access_token = uuid.uuid4().hex + uuid.uuid4().hex
     token_hash = hashlib.sha256(access_token.encode("utf-8")).hexdigest()
 
-    def reuse_existing_job(existing):
-        hashes = list(existing.get("access_token_hashes") or [])
-        legacy_hash = existing.get("access_token_hash")
-        if legacy_hash and legacy_hash not in hashes:
-            hashes.append(legacy_hash)
-        if token_hash not in hashes:
-            hashes.append(token_hash)
-
-        patch = {
-            "access_token_hashes": hashes,
-            "dedupe_key": dedupe_key,
-            "updated_at": datetime.now(timezone.utc).isoformat()
+    # All matching, token-array updates, reactivation and insertion happen in
+    # one Postgres transaction. A database advisory lock serializes competing
+    # requests so no concurrent read/modify/write can lose a token or insert
+    # a near-duplicate task.
+    result, _ = supabase_jobs_request(
+        "POST",
+        "rpc/jarvis_enqueue_job",
+        {
+            "p_task": clean_task,
+            "p_dedupe_key": dedupe_key,
+            "p_token_hash": token_hash,
+            "p_history": history if isinstance(history, list) else [],
+            "p_push_subscription": push_subscription if isinstance(push_subscription, dict) else None
         }
-        status = existing.get("status")
-        if status in ("completed", "failed"):
-            patch.update({
-                "status": "queued",
-                "phase": "Återupptaget efter en ny begäran – väntar på bakgrundsarbetare",
-                "history": history if isinstance(history, list) else [],
-                "result": None,
-                "error": None,
-                "attempts": 0,
-                "started_at": None,
-                "locked_at": None,
-                "worker_id": None,
-                "notification_sent_at": None,
-                "completed_at": None
-            })
-            if isinstance(push_subscription, dict):
-                patch["push_subscription"] = push_subscription
-            status = "queued"
+    )
+    if isinstance(result, list):
+        result = result[0] if result else None
+    if not isinstance(result, dict) or not result.get("id"):
+        raise RuntimeError("Supabase kunde inte skapa eller återanvända JARVIS-uppdraget.")
 
-        supabase_jobs_request(
-            "PATCH", "jarvis_jobs", patch,
-            urllib.parse.urlencode({"id": "eq." + str(existing["id"])}),
-            "return=minimal"
-        )
-        return {
-            "id": existing["id"],
-            "access_token": access_token,
-            "status": status,
-            "deduplicated": True
-        }
-
-    existing = find_recent_duplicate_jarvis_job(clean_task, dedupe_key)
-    if existing:
-        return reuse_existing_job(existing)
-
-    row = {
-        "task": clean_task,
-        "history": history if isinstance(history, list) else [],
-        "status": "queued",
-        "phase": "Sparat – väntar på bakgrundsarbetare",
-        "access_token_hash": token_hash,
-        "access_token_hashes": [token_hash],
-        "dedupe_key": dedupe_key,
-        "push_subscription": push_subscription if isinstance(push_subscription, dict) else None
-    }
-    try:
-        rows, _ = supabase_jobs_request(
-            "POST", "jarvis_jobs", row, prefer="return=representation"
-        )
-    except RuntimeError as error:
-        # The partial unique index closes the race between simultaneous requests.
-        if "HTTP 409" not in str(error):
-            raise
-        existing = find_recent_duplicate_jarvis_job(clean_task, dedupe_key)
-        if not existing:
-            raise
-        return reuse_existing_job(existing)
-
-    if not rows:
-        raise RuntimeError("Supabase sparade inte JARVIS-uppdraget.")
     return {
-        "id": rows[0]["id"],
+        "id": result["id"],
         "access_token": access_token,
-        "status": rows[0]["status"],
-        "deduplicated": False
+        "status": result.get("status", "queued"),
+        "deduplicated": bool(result.get("deduplicated"))
     }
-
 
 
 
