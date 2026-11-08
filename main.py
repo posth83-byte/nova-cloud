@@ -15,13 +15,14 @@ import tempfile
 import xml.etree.ElementTree as ET
 
 from pathlib import Path
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from urllib.parse import quote
 
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
+from job_dedup import normalize_job_task, job_task_fingerprint, is_duplicate_job_task
 from video_engine import router as video_router
 from runway_engine import router as runway_router
 from kling_engine import router as kling_router
@@ -207,22 +208,42 @@ def supabase_jobs_request(method, path, payload=None, query="", prefer=""):
 
 
 def enqueue_jarvis_job(task, history=None, push_subscription=None):
-    access_token = uuid.uuid4().hex + uuid.uuid4().hex
-    row = {
-        "task": str(task).strip(),
-        "history": history if isinstance(history, list) else [],
-        "status": "queued",
-        "phase": "Sparat – väntar på bakgrundsarbetare",
-        "access_token_hash": hashlib.sha256(access_token.encode("utf-8")).hexdigest(),
-        "push_subscription": push_subscription if isinstance(push_subscription, dict) else None
-    }
-    rows, _ = supabase_jobs_request(
-        "POST", "jarvis_jobs", row, prefer="return=representation"
-    )
-    if not rows:
-        raise RuntimeError("Supabase sparade inte JARVIS-uppdraget.")
-    return {"id": rows[0]["id"], "access_token": access_token, "status": rows[0]["status"]}
+    """Atomically deduplicate/reuse a durable job and append its access token."""
+    clean_task = str(task or "").strip()
+    normalized_task = normalize_job_task(clean_task)
+    if not normalized_task:
+        raise ValueError("JARVIS-uppdraget saknar en giltig uppgiftstext.")
 
+    dedupe_key = job_task_fingerprint(clean_task)
+    access_token = uuid.uuid4().hex + uuid.uuid4().hex
+    token_hash = hashlib.sha256(access_token.encode("utf-8")).hexdigest()
+
+    # All matching, token-array updates, reactivation and insertion happen in
+    # one Postgres transaction. A database advisory lock serializes competing
+    # requests so no concurrent read/modify/write can lose a token or insert
+    # a near-duplicate task.
+    result, _ = supabase_jobs_request(
+        "POST",
+        "rpc/jarvis_enqueue_job",
+        {
+            "p_task": clean_task,
+            "p_dedupe_key": dedupe_key,
+            "p_token_hash": token_hash,
+            "p_history": history if isinstance(history, list) else [],
+            "p_push_subscription": push_subscription if isinstance(push_subscription, dict) else None
+        }
+    )
+    if isinstance(result, list):
+        result = result[0] if result else None
+    if not isinstance(result, dict) or not result.get("id"):
+        raise RuntimeError("Supabase kunde inte skapa eller återanvända JARVIS-uppdraget.")
+
+    return {
+        "id": result["id"],
+        "access_token": access_token,
+        "status": result.get("status", "queued"),
+        "deduplicated": bool(result.get("deduplicated"))
+    }
 
 
 
@@ -3027,10 +3048,15 @@ async def create_jarvis_job(request: JarvisDelegateRequest):
     try:
         job = await asyncio.to_thread(enqueue_jarvis_job, request.task, request.history, request.push_subscription)
         return {
-            "status": "queued",
+            "status": job["status"],
             "job_id": job["id"],
             "access_token": job["access_token"],
-            "reply": "Uppdraget är sparat i serverns jobbkö. Arbetet fortsätter medan tjänsten är igång och resultatet sparas i Supabase."
+            "deduplicated": bool(job.get("deduplicated")),
+            "reply": (
+                "Jag återanvänder det befintliga uppdraget i stället för att skapa en dubblett."
+                if job.get("deduplicated")
+                else "Uppdraget är sparat i serverns jobbkö. Arbetet fortsätter medan tjänsten är igång och resultatet sparas i Supabase."
+            )
         }
     except Exception as error:
         raise HTTPException(status_code=503, detail=f"Kunde inte spara uppdraget: {str(error)[:500]}")
@@ -3046,18 +3072,26 @@ async def get_jarvis_job(job_id: str, token: str):
             None,
             urllib.parse.urlencode({
                 "id": "eq." + job_id,
-                "select": "id,status,phase,active,completed,result,error,created_at,updated_at,completed_at,access_token_hash",
+                "select": "id,status,phase,active,completed,result,error,created_at,updated_at,completed_at,access_token_hash,access_token_hashes",
                 "limit": "1"
             })
         )
         if not rows:
             raise HTTPException(status_code=404, detail="Uppdraget hittades inte.")
-        expected = rows[0].get("access_token_hash") or ""
+        expected_hashes = list(rows[0].get("access_token_hashes") or [])
+        legacy_hash = rows[0].get("access_token_hash") or ""
+        if legacy_hash:
+            expected_hashes.append(legacy_hash)
         supplied = hashlib.sha256(str(token).encode("utf-8")).hexdigest()
-        if not expected or not __import__("hmac").compare_digest(expected, supplied):
+        if not any(
+            __import__("hmac").compare_digest(expected, supplied)
+            for expected in expected_hashes
+        ):
             raise HTTPException(status_code=403, detail="Ogiltig åtkomst till uppdraget.")
         row = rows[0]
         row.pop("access_token_hash", None)
+        row.pop("access_token_hashes", None)
+        row.pop("dedupe_key", None)
         return row
     except HTTPException:
         raise
