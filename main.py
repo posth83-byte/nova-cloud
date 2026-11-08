@@ -15,7 +15,7 @@ import tempfile
 import xml.etree.ElementTree as ET
 
 from pathlib import Path
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from urllib.parse import quote
 
 from fastapi import FastAPI, HTTPException
@@ -246,6 +246,7 @@ def enqueue_jarvis_job(task, history=None, push_subscription=None):
 
         patch = {
             "access_token_hashes": hashes,
+            "dedupe_key": dedupe_key,
             "updated_at": datetime.now(timezone.utc).isoformat()
         }
         status = existing.get("status")
@@ -3115,10 +3116,15 @@ async def create_jarvis_job(request: JarvisDelegateRequest):
     try:
         job = await asyncio.to_thread(enqueue_jarvis_job, request.task, request.history, request.push_subscription)
         return {
-            "status": "queued",
+            "status": job["status"],
             "job_id": job["id"],
             "access_token": job["access_token"],
-            "reply": "Uppdraget är sparat i serverns jobbkö. Arbetet fortsätter medan tjänsten är igång och resultatet sparas i Supabase."
+            "deduplicated": bool(job.get("deduplicated")),
+            "reply": (
+                "Jag återanvänder det befintliga uppdraget i stället för att skapa en dubblett."
+                if job.get("deduplicated")
+                else "Uppdraget är sparat i serverns jobbkö. Arbetet fortsätter medan tjänsten är igång och resultatet sparas i Supabase."
+            )
         }
     except Exception as error:
         raise HTTPException(status_code=503, detail=f"Kunde inte spara uppdraget: {str(error)[:500]}")
