@@ -22,6 +22,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
+from job_dedup import normalize_job_task, job_task_fingerprint, is_duplicate_job_task
 from video_engine import router as video_router
 from runway_engine import router as runway_router
 from kling_engine import router as kling_router
@@ -206,22 +207,109 @@ def supabase_jobs_request(method, path, payload=None, query="", prefer=""):
         raise RuntimeError(f"JARVIS jobbkö svarade med HTTP {error.code}: {detail}") from error
 
 
+def find_recent_duplicate_jarvis_job(task, dedupe_key):
+    """Find an equivalent queued, running, or recently completed task."""
+    cutoff = (datetime.now(timezone.utc) - timedelta(days=30)).isoformat()
+    query = urllib.parse.urlencode({
+        "status": "in.(queued,running,completed,failed)",
+        "created_at": "gte." + cutoff,
+        "select": "id,task,status,dedupe_key,access_token_hash,access_token_hashes",
+        "order": "updated_at.desc",
+        "limit": "100"
+    })
+    rows, _ = supabase_jobs_request("GET", "jarvis_jobs", None, query)
+    for candidate in rows:
+        if candidate.get("dedupe_key") == dedupe_key or is_duplicate_job_task(
+            task, candidate.get("task", "")
+        ):
+            return candidate
+    return None
+
+
 def enqueue_jarvis_job(task, history=None, push_subscription=None):
+    clean_task = str(task).strip()
+    normalized_task = normalize_job_task(clean_task)
+    if not normalized_task:
+        raise ValueError("JARVIS-uppdraget saknar en giltig uppgiftstext.")
+
+    dedupe_key = job_task_fingerprint(clean_task)
     access_token = uuid.uuid4().hex + uuid.uuid4().hex
+    token_hash = hashlib.sha256(access_token.encode("utf-8")).hexdigest()
+
+    def reuse_existing_job(existing):
+        hashes = list(existing.get("access_token_hashes") or [])
+        legacy_hash = existing.get("access_token_hash")
+        if legacy_hash and legacy_hash not in hashes:
+            hashes.append(legacy_hash)
+        if token_hash not in hashes:
+            hashes.append(token_hash)
+
+        patch = {
+            "access_token_hashes": hashes,
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        }
+        status = existing.get("status")
+        if status in ("completed", "failed"):
+            patch.update({
+                "status": "queued",
+                "phase": "Återupptaget efter en ny begäran – väntar på bakgrundsarbetare",
+                "history": history if isinstance(history, list) else [],
+                "result": None,
+                "error": None,
+                "attempts": 0,
+                "completed_at": None
+            })
+            if isinstance(push_subscription, dict):
+                patch["push_subscription"] = push_subscription
+            status = "queued"
+
+        supabase_jobs_request(
+            "PATCH", "jarvis_jobs", patch,
+            urllib.parse.urlencode({"id": "eq." + str(existing["id"])}),
+            "return=minimal"
+        )
+        return {
+            "id": existing["id"],
+            "access_token": access_token,
+            "status": status,
+            "deduplicated": True
+        }
+
+    existing = find_recent_duplicate_jarvis_job(clean_task, dedupe_key)
+    if existing:
+        return reuse_existing_job(existing)
+
     row = {
-        "task": str(task).strip(),
+        "task": clean_task,
         "history": history if isinstance(history, list) else [],
         "status": "queued",
         "phase": "Sparat – väntar på bakgrundsarbetare",
-        "access_token_hash": hashlib.sha256(access_token.encode("utf-8")).hexdigest(),
+        "access_token_hash": token_hash,
+        "access_token_hashes": [token_hash],
+        "dedupe_key": dedupe_key,
         "push_subscription": push_subscription if isinstance(push_subscription, dict) else None
     }
-    rows, _ = supabase_jobs_request(
-        "POST", "jarvis_jobs", row, prefer="return=representation"
-    )
+    try:
+        rows, _ = supabase_jobs_request(
+            "POST", "jarvis_jobs", row, prefer="return=representation"
+        )
+    except RuntimeError as error:
+        # The partial unique index closes the race between simultaneous requests.
+        if "HTTP 409" not in str(error):
+            raise
+        existing = find_recent_duplicate_jarvis_job(clean_task, dedupe_key)
+        if not existing:
+            raise
+        return reuse_existing_job(existing)
+
     if not rows:
         raise RuntimeError("Supabase sparade inte JARVIS-uppdraget.")
-    return {"id": rows[0]["id"], "access_token": access_token, "status": rows[0]["status"]}
+    return {
+        "id": rows[0]["id"],
+        "access_token": access_token,
+        "status": rows[0]["status"],
+        "deduplicated": False
+    }
 
 
 
@@ -3046,18 +3134,26 @@ async def get_jarvis_job(job_id: str, token: str):
             None,
             urllib.parse.urlencode({
                 "id": "eq." + job_id,
-                "select": "id,status,phase,active,completed,result,error,created_at,updated_at,completed_at,access_token_hash",
+                "select": "id,status,phase,active,completed,result,error,created_at,updated_at,completed_at,access_token_hash,access_token_hashes",
                 "limit": "1"
             })
         )
         if not rows:
             raise HTTPException(status_code=404, detail="Uppdraget hittades inte.")
-        expected = rows[0].get("access_token_hash") or ""
+        expected_hashes = list(rows[0].get("access_token_hashes") or [])
+        legacy_hash = rows[0].get("access_token_hash") or ""
+        if legacy_hash:
+            expected_hashes.append(legacy_hash)
         supplied = hashlib.sha256(str(token).encode("utf-8")).hexdigest()
-        if not expected or not __import__("hmac").compare_digest(expected, supplied):
+        if not any(
+            __import__("hmac").compare_digest(expected, supplied)
+            for expected in expected_hashes
+        ):
             raise HTTPException(status_code=403, detail="Ogiltig åtkomst till uppdraget.")
         row = rows[0]
         row.pop("access_token_hash", None)
+        row.pop("access_token_hashes", None)
+        row.pop("dedupe_key", None)
         return row
     except HTTPException:
         raise
