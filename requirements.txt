@@ -1,0 +1,8 @@
+
+fastapi
+uvicorn
+python-multipart
+edge-tts
+imageio-ffmpeg
+Pillow
+pywebpush>=2.0.0
