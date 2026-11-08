@@ -223,6 +223,7 @@ let products = [
 
 // Catalogue stays in preview mode until verified products are explicitly activated in Supabase.
 let catalogueMode = 'preview';
+const STORE_PREVIEW_ONLY = true; // Flip only after legal, supplier and operational launch gates are approved.
 
 // Nordic Varda public catalogue API (publishable key only; never put service-role keys in browser code).
 const SUPABASE_URL = 'https://oadjfqrfppckrtzbvlsv.supabase.co';
@@ -351,13 +352,19 @@ document.addEventListener('DOMContentLoaded', async () => {
     await loadPublishedProducts();
     renderProducts();
     updateCartUI();
-    if (checkoutBtn && catalogueMode !== 'live') {
+    if (checkoutBtn && (STORE_PREVIEW_ONLY || catalogueMode !== 'live')) {
         checkoutBtn.disabled = true;
         checkoutBtn.textContent = 'Butiken förbereds';
         checkoutBtn.setAttribute('aria-label', 'Kassan öppnar när produkter och leverantörer har verifierats');
         checkoutBtn.classList.add('opacity-60', 'cursor-not-allowed');
     }
     setupEventListeners();
+    if (STORE_PREVIEW_ONLY) {
+        [contactForm, newsletterForm].forEach(form => {
+            const submit = form?.querySelector('button[type="submit"]');
+            if (submit) { submit.disabled = true; submit.textContent = 'Inte aktivt ännu'; submit.classList.add('opacity-60', 'cursor-not-allowed'); }
+        });
+    }
     checkCookies();
 
     // Handle the return from the hosted payment page.
@@ -441,7 +448,7 @@ function setupEventListeners() {
     // Checkout modal toggle
     if (checkoutBtn && checkoutModal) {
         checkoutBtn.addEventListener('click', () => {
-            if (catalogueMode !== 'live') return;
+            if (STORE_PREVIEW_ONLY || catalogueMode !== 'live') return;
             if (cart.length === 0) {
                 alert('Din varukorg är tom.');
                 return;
@@ -713,8 +720,8 @@ function closeCart() {
 }
 
 function addToCart(productId, quantity = 1) {
-    if (catalogueMode !== 'live') {
-        alert('Det här är en förhandsvisning. Köp öppnar när produkter och leverantörer har verifierats.');
+    if (STORE_PREVIEW_ONLY || catalogueMode !== 'live') {
+        alert('Det här är en förhandsvisning. Köp öppnar när produkter, leverantörer och butikens villkor har verifierats.');
         return;
     }
     const product = products.find(p => p.id === productId);
