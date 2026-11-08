@@ -65,7 +65,7 @@ begin
       into v_task_tokens
     from unnest(regexp_split_to_array(
       regexp_replace(lower(coalesce(p_task, '')), '[^[:alnum:]_ ]', ' ', 'g'),
-      '\s+'
+      '[[:space:]]+'
     )) t
     where t <> '';
 
@@ -93,7 +93,7 @@ begin
           into v_candidate_tokens
         from unnest(regexp_split_to_array(
           regexp_replace(lower(coalesce(v_existing.task, '')), '[^[:alnum:]_ ]', ' ', 'g'),
-          '\s+'
+          '[[:space:]]+'
         )) t
         where t <> '';
 
