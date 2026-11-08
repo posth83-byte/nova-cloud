@@ -33,9 +33,12 @@ as $$
 declare
   v_existing public.jarvis_jobs%rowtype;
   v_tokens text[];
+  v_task_tokens text[];
   v_candidate_tokens text[];
-  v_new_tokens text[];
-  v_old_negated boolean;
+  v_task_numbers text[];
+  v_candidate_numbers text[];
+  v_overlap integer;
+  v_task_negated boolean;
   v_candidate_negated boolean;
   v_match boolean := false;
   v_status text;
@@ -45,10 +48,9 @@ begin
     raise exception 'Task, dedupe key and token hash are required';
   end if;
 
+  -- One transaction-level lock serializes enqueue operations for this queue.
   perform pg_advisory_xact_lock(731942018);
 
-  -- Exact fingerprint wins. Otherwise compare substantial normalized token
-  -- sets, while keeping numeric identifiers and negation semantically safe.
   select * into v_existing
   from public.jarvis_jobs j
   where j.status in ('queued', 'running', 'completed', 'failed')
@@ -59,77 +61,79 @@ begin
   for update;
 
   if not found then
-    for v_existing in
-      select j.*
-      from public.jarvis_jobs j
-      where j.status in ('queued', 'running', 'completed', 'failed')
-        and j.updated_at >= now() - interval '30 days'
-      order by j.updated_at desc
-      limit 100
-      for update
-    loop
-      select coalesce(array_agg(distinct t order by t), '{}')
-        into v_new_tokens
-      from unnest(regexp_split_to_array(
-        regexp_replace(lower(coalesce(p_task, '')), '[^[:alnum:]_ ]', ' ', 'g'),
-        '\s+'
-      )) t
-      where t <> '';
+    select coalesce(array_agg(distinct t order by t), '{}')
+      into v_task_tokens
+    from unnest(regexp_split_to_array(
+      regexp_replace(lower(coalesce(p_task, '')), '[^[:alnum:]_ ]', ' ', 'g'),
+      '\s+'
+    )) t
+    where t <> '';
 
-      select coalesce(array_agg(distinct t order by t), '{}')
-        into v_candidate_tokens
-      from unnest(regexp_split_to_array(
-        regexp_replace(lower(coalesce(v_existing.task, '')), '[^[:alnum:]_ ]', ' ', 'g'),
-        '\s+'
-      )) t
-      where t <> '';
+    select coalesce(array_agg(t order by t), '{}')
+      into v_task_numbers
+    from unnest(v_task_tokens) t
+    where t ~ '^[0-9]+([.,][0-9]+)?$';
 
-      if cardinality(v_new_tokens) < 6 or cardinality(v_candidate_tokens) < 6 then
-        continue;
-      end if;
+    v_task_negated := v_task_tokens && array[
+      'inte','ej','aldrig','inget','ingen','ingenting','utan',
+      'not','never','no','without','stoppa','avbryt'
+    ];
 
-      select coalesce(array_agg(t order by t), '{}')
-        into v_tokens
-      from unnest(v_new_tokens) t
-      where t ~ '^[0-9]+([.,][0-9]+)?$';
-
-      select coalesce(array_agg(t order by t), '{}')
-        into v_candidate_tokens
-      from unnest(v_candidate_tokens) t
-      where t ~ '^[0-9]+([.,][0-9]+)?$';
-
-      if v_tokens <> v_candidate_tokens then
-        continue;
-      end if;
-
-      v_old_negated := regexp_split_to_array(
-        lower(coalesce(p_task, '')), '\s+'
-      ) && array['inte','ej','aldrig','inget','ingen','ingenting','utan','not','never','no','without','stoppa','avbryt'];
-      v_candidate_negated := regexp_split_to_array(
-        lower(coalesce(v_existing.task, '')), '\s+'
-      ) && array['inte','ej','aldrig','inget','ingen','ingenting','utan','not','never','no','without','stoppa','avbryt'];
-
-      if v_old_negated <> v_candidate_negated then
-        continue;
-      end if;
-
-      -- Count distinct common words; require >=90% overlap of the smaller set.
-      if (
-        select count(*)::numeric
+    if cardinality(v_task_tokens) >= 6 then
+      for v_existing in
+        select j.*
+        from public.jarvis_jobs j
+        where j.status in ('queued', 'running', 'completed', 'failed')
+          and j.updated_at >= now() - interval '30 days'
+        order by j.updated_at desc
+        limit 100
+        for update
+      loop
+        select coalesce(array_agg(distinct t order by t), '{}')
+          into v_candidate_tokens
         from unnest(regexp_split_to_array(
-          regexp_replace(lower(coalesce(p_task, '')), '[^[:alnum:]_ ]', ' ', 'g'),
-          '\s+'
-        )) a
-        where a <> '' and a = any(regexp_split_to_array(
           regexp_replace(lower(coalesce(v_existing.task, '')), '[^[:alnum:]_ ]', ' ', 'g'),
           '\s+'
-        ))
-      ) / least(cardinality(v_new_tokens), cardinality(v_candidate_tokens)) >= 0.90 then
-        v_match := true;
-        exit;
+        )) t
+        where t <> '';
+
+        if cardinality(v_candidate_tokens) < 6 then
+          continue;
+        end if;
+
+        select coalesce(array_agg(t order by t), '{}')
+          into v_candidate_numbers
+        from unnest(v_candidate_tokens) t
+        where t ~ '^[0-9]+([.,][0-9]+)?$';
+
+        if v_task_numbers <> v_candidate_numbers then
+          continue;
+        end if;
+
+        v_candidate_negated := v_candidate_tokens && array[
+          'inte','ej','aldrig','inget','ingen','ingenting','utan',
+          'not','never','no','without','stoppa','avbryt'
+        ];
+        if v_task_negated <> v_candidate_negated then
+          continue;
+        end if;
+
+        select count(*) into v_overlap
+        from unnest(v_task_tokens) t
+        where t = any(v_candidate_tokens);
+
+        if v_overlap::numeric / least(
+          cardinality(v_task_tokens), cardinality(v_candidate_tokens)
+        ) >= 0.90 then
+          v_match := true;
+          exit;
+        end if;
+      end loop;
+
+      if not v_match then
+        v_existing := null;
       end if;
-    end loop;
-    if not v_match then
+    else
       v_existing := null;
     end if;
   end if;
