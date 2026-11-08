@@ -221,6 +221,9 @@ let products = [
     }
 ];
 
+// Catalogue stays in preview mode until verified products are explicitly activated in Supabase.
+let catalogueMode = 'preview';
+
 // Nordic Varda public catalogue API (publishable key only; never put service-role keys in browser code).
 const SUPABASE_URL = 'https://oadjfqrfppckrtzbvlsv.supabase.co';
 const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_UMpzaxkA21uV-MONB7gQ9Q_FgDtWm1_';
@@ -255,6 +258,7 @@ async function loadPublishedProducts() {
         if (!response.ok) throw new Error(`Product API returned ${response.status}`);
         const rows = await response.json();
         if (Array.isArray(rows) && rows.length) {
+            catalogueMode = 'live';
             products = rows.map((p, index) => ({
                 id: p.id,
                 name: p.name,
@@ -268,8 +272,18 @@ async function loadPublishedProducts() {
                 featured: p.featured,
                 inventoryStatus: p.inventory_status
             }));
+            const liveIds = new Set(products.map(p => String(p.id)));
+            cart = cart.filter(item => liveIds.has(String(item.id)));
+            saveCart();
+        } else {
+            catalogueMode = 'preview';
+            cart = [];
+            saveCart();
         }
     } catch (error) {
+        catalogueMode = 'preview';
+        cart = [];
+        saveCart();
         console.warn('Could not load live catalogue; using local preview catalogue.', error);
     }
 }
@@ -337,6 +351,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     await loadPublishedProducts();
     renderProducts();
     updateCartUI();
+    if (checkoutBtn && catalogueMode !== 'live') {
+        checkoutBtn.disabled = true;
+        checkoutBtn.textContent = 'Butiken förbereds';
+        checkoutBtn.setAttribute('aria-label', 'Kassan öppnar när produkter och leverantörer har verifierats');
+        checkoutBtn.classList.add('opacity-60', 'cursor-not-allowed');
+    }
     setupEventListeners();
     checkCookies();
 
@@ -421,6 +441,7 @@ function setupEventListeners() {
     // Checkout modal toggle
     if (checkoutBtn && checkoutModal) {
         checkoutBtn.addEventListener('click', () => {
+            if (catalogueMode !== 'live') return;
             if (cart.length === 0) {
                 alert('Din varukorg är tom.');
                 return;
@@ -692,6 +713,10 @@ function closeCart() {
 }
 
 function addToCart(productId, quantity = 1) {
+    if (catalogueMode !== 'live') {
+        alert('Det här är en förhandsvisning. Köp öppnar när produkter och leverantörer har verifierats.');
+        return;
+    }
     const product = products.find(p => p.id === productId);
     if (!product) return;
 
