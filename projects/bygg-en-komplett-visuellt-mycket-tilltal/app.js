@@ -222,7 +222,8 @@ const products = [
 ];
 
 // App State
-let cart = JSON.parse(localStorage.getItem('nordic_varda_cart')) || [];
+let cart = [];
+try { cart = JSON.parse(localStorage.getItem('nordic_varda_cart') || '[]'); } catch (error) { cart = []; }
 let currentCategory = 'all';
 let currentSearch = '';
 let currentSort = 'default';
@@ -238,40 +239,40 @@ const cartToggleBtn = document.getElementById('cart-toggle-btn');
 const mobileMenuBtn = document.getElementById('mobile-menu-btn');
 const mobileMenu = document.getElementById('mobile-menu');
 const cartDrawer = document.getElementById('cart-drawer');
-const cartOverlay = document.getElementById('cart-overlay');
-const closeCartBtn = document.getElementById('close-cart');
-const cartItemsContainer = document.getElementById('cart-items');
+const cartOverlay = document.getElementById('cart-backdrop');
+const closeCartBtn = document.getElementById('cart-close-btn');
+const cartItemsContainer = document.getElementById('cart-items-container');
 const cartBadge = document.getElementById('cart-badge');
 const cartSubtotalEl = document.getElementById('cart-subtotal');
 const cartShippingEl = document.getElementById('cart-shipping');
 const cartTotalEl = document.getElementById('cart-total');
-const freeShippingNotice = document.getElementById('free-shipping-notice');
-const freeShippingProgress = document.getElementById('free-shipping-progress');
+const freeShippingNotice = null;
+const freeShippingProgress = null;
 const checkoutBtn = document.getElementById('checkout-btn');
 
 const productModal = document.getElementById('product-modal');
-const modalOverlay = document.getElementById('modal-overlay');
-const closeModalBtn = document.getElementById('close-modal');
-const modalImage = document.getElementById('modal-image');
+const modalOverlay = document.getElementById('modal-backdrop');
+const closeModalBtn = document.getElementById('modal-close-btn');
+const modalImage = document.getElementById('modal-img');
 const modalCategory = document.getElementById('modal-category');
 const modalTitle = document.getElementById('modal-title');
 const modalPrice = document.getElementById('modal-price');
 const modalSku = document.getElementById('modal-sku');
 const modalStock = document.getElementById('modal-stock');
 const modalDesc = document.getElementById('modal-desc');
-const modalQtyInput = document.getElementById('modal-qty');
-const modalAddToCartBtn = document.getElementById('modal-add-to-cart');
+const modalQtyInput = null;
+const modalAddToCartBtn = document.getElementById('modal-add-btn');
 
 const checkoutModal = document.getElementById('checkout-modal');
-const checkoutOverlay = document.getElementById('checkout-overlay');
-const closeCheckoutBtn = document.getElementById('close-checkout');
+const checkoutOverlay = document.getElementById('checkout-backdrop');
+const closeCheckoutBtn = document.getElementById('checkout-close-btn');
 const checkoutForm = document.getElementById('checkout-form');
-const checkoutSuccess = document.getElementById('checkout-success');
-const orderNumberEl = document.getElementById('order-number');
-const closeSuccessBtn = document.getElementById('close-success');
+const checkoutSuccess = document.getElementById('checkout-success-msg');
+const orderNumberEl = null;
+const closeSuccessBtn = document.getElementById('checkout-reset-btn');
 
 const cookieBanner = document.getElementById('cookie-banner');
-const acceptCookiesBtn = document.getElementById('accept-cookies');
+const acceptCookiesBtn = document.getElementById('cookie-accept-btn');
 const contactForm = document.getElementById('contact-form');
 const newsletterForm = document.getElementById('newsletter-form');
 
@@ -327,16 +328,16 @@ function setupEventListeners() {
     }
 
     // Cart drawer toggle
-    if (cartToggleBtn && cartDrawer && cartOverlay) {
+    if (cartToggleBtn && cartDrawer) {
         cartToggleBtn.addEventListener('click', openCart);
         closeCartBtn.addEventListener('click', closeCart);
-        cartOverlay.addEventListener('click', closeCart);
+        document.getElementById('cart-backdrop').addEventListener('click', closeCart);
     }
 
     // Modal close
-    if (closeModalBtn && modalOverlay) {
+    if (closeModalBtn && productModal) {
         closeModalBtn.addEventListener('click', closeModal);
-        modalOverlay.addEventListener('click', closeModal);
+        document.getElementById('modal-backdrop').addEventListener('click', closeModal);
     }
 
     // Checkout modal toggle
@@ -350,12 +351,8 @@ function setupEventListeners() {
             openCheckout();
         });
         closeCheckoutBtn.addEventListener('click', closeCheckout);
-        checkoutOverlay.addEventListener('click', closeCheckout);
-        closeSuccessBtn.addEventListener('click', () => {
-            checkoutSuccess.classList.add('hidden');
-            checkoutForm.classList.remove('hidden');
-            closeCheckout();
-        });
+        document.getElementById('checkout-backdrop').addEventListener('click', closeCheckout);
+        document.getElementById('checkout-reset-btn').addEventListener('click', closeCheckout);
     }
 
     // Checkout form submit
@@ -365,7 +362,7 @@ function setupEventListeners() {
             const formData = new FormData(checkoutForm);
             // Validation check handled by HTML required attributes, simulate success order
             const orderId = 'NV-' + Math.floor(100000 + Math.random() * 900000);
-            orderNumberEl.textContent = orderId;
+            // Demo order ID generated locally; no real order is submitted.
             
             checkoutForm.classList.add('hidden');
             checkoutSuccess.classList.remove('hidden');
@@ -390,7 +387,8 @@ function setupEventListeners() {
     if (contactForm) {
         contactForm.addEventListener('submit', (e) => {
             e.preventDefault();
-            alert('Tack för ditt meddelande! Vi återkommer inom 24 timmar.');
+            const success = document.getElementById('contact-success');
+            if (success) success.classList.remove('hidden');
             contactForm.reset();
         });
     }
@@ -399,7 +397,8 @@ function setupEventListeners() {
     if (newsletterForm) {
         newsletterForm.addEventListener('submit', (e) => {
             e.preventDefault();
-            alert('Tack för din prenumeration! En rabattkod på 10% har skickats till din e-post.');
+            const success = document.getElementById('newsletter-success');
+            if (success) success.classList.remove('hidden');
             newsletterForm.reset();
         });
     }
@@ -408,7 +407,7 @@ function setupEventListeners() {
     if (modalAddToCartBtn) {
         modalAddToCartBtn.addEventListener('click', () => {
             if (!activeModalProduct) return;
-            const qty = parseInt(modalQtyInput.value) || 1;
+            const qty = 1;
             addToCart(activeModalProduct.id, qty);
             closeModal();
             openCart();
@@ -445,7 +444,7 @@ function getFilteredAndSortedProducts() {
         result.sort((a, b) => a.price - b.price);
     } else if (currentSort === 'price-desc') {
         result.sort((a, b) => b.price - a.price);
-    } else if (currentSort === 'name-asc') {
+    } else if (currentSort === 'name' || currentSort === 'name-asc') {
         result.sort((a, b) => a.name.localeCompare(b.name, 'sv'));
     }
 
@@ -455,7 +454,7 @@ function getFilteredAndSortedProducts() {
 function renderProducts() {
     if (!productGrid) return;
     const filtered = getFilteredAndSortedProducts();
-    productCountEl.textContent = `${filtered.length} st produkter`;
+    if (productCountEl) productCountEl.textContent = `${filtered.length} st produkter`;
 
     if (filtered.length === 0) {
         productGrid.innerHTML = `
@@ -471,7 +470,7 @@ function renderProducts() {
         <div class="bg-white rounded-2xl border border-[#EAE5DE] overflow-hidden group flex flex-col justify-between transition-all hover:shadow-lg">
             <div>
                 <div class="relative aspect-[4/3] bg-[#EAE5DE] overflow-hidden cursor-pointer" onclick="openModal(${product.id})">
-                    <img src="${product.image}" alt="${product.name}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" onerror="this.src='https://images.unsplash.com/photo-1507473885765-e6ed057f782c?auto=format&fit=crop&w=800&q=80'">
+                    <img src="${product.image}" alt="${product.name}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" onerror="this.onerror=null;this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22800%22 height=%22600%22%3E%3Crect width=%22800%22 height=%22600%22 fill=%22%23eee9e1%22/%3E%3C/svg%3E'">
                     <span class="absolute top-3 left-3 bg-[#FBF9F5]/90 backdrop-blur-sm text-[#1C1E21] text-xs font-semibold px-2.5 py-1 rounded-full">
                         ${product.category}
                     </span>
@@ -531,36 +530,36 @@ function openModal(productId) {
     activeModalProduct = product;
 
     modalImage.src = product.image;
-    modalImage.onerror = () => { modalImage.src = 'https://images.unsplash.com/photo-1507473885765-e6ed057f782c?auto=format&fit=crop&w=800&q=80'; };
+    modalImage.onerror = () => { modalImage.onerror = null; modalImage.src = 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22800%22 height=%22600%22%3E%3Crect width=%22800%22 height=%22600%22 fill=%22%23eee9e1%22/%3E%3C/svg%3E'; };
     modalCategory.textContent = product.category;
     modalTitle.textContent = product.name;
     modalPrice.textContent = `${product.price} SEK`;
     modalSku.textContent = product.sku;
     modalStock.textContent = `${product.stock} st i lager`;
     modalDesc.textContent = product.longDesc;
-    modalQtyInput.value = 1;
+    
 
     productModal.classList.remove('hidden');
     document.body.style.overflow = 'hidden';
 }
 
 function closeModal() {
-    productModal.classList.add('hidden');
-    document.body.style.overflow = 'auto';
+    if (productModal) productModal.classList.add('hidden');
+    document.body.style.overflow = '';
     activeModalProduct = null;
 }
 
 // Cart Functions
 function openCart() {
-    cartDrawer.classList.remove('translate-x-full');
-    cartOverlay.classList.remove('hidden');
+    if (!cartDrawer) return;
+    cartDrawer.classList.remove('hidden');
     document.body.style.overflow = 'hidden';
 }
 
 function closeCart() {
-    cartDrawer.classList.add('translate-x-full');
-    cartOverlay.classList.add('hidden');
-    document.body.style.overflow = 'auto';
+    if (!cartDrawer) return;
+    cartDrawer.classList.add('hidden');
+    document.body.style.overflow = '';
 }
 
 function addToCart(productId, quantity = 1) {
@@ -605,15 +604,16 @@ function updateQuantity(productId, delta) {
 }
 
 function saveCart() {
-    localStorage.setItem('nordic_varda_cart', JSON.stringify(cart));
+    try { localStorage.setItem('nordic_varda_cart', JSON.stringify(cart)); }
+    catch (error) { console.warn('Varukorgen kunde inte sparas lokalt.', error); }
 }
 
 function updateCartUI() {
     const totalCount = cart.reduce((sum, item) => sum + item.quantity, 0);
-    cartBadge.textContent = totalCount;
+    if (cartBadge) cartBadge.textContent = totalCount;
 
     if (cart.length === 0) {
-        cartItemsContainer.innerHTML = `
+        if (cartItemsContainer) cartItemsContainer.innerHTML = `
             <div class="py-12 text-center text-[#5A5E63]">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12  mx-auto mb-3 opacity-40" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
@@ -621,17 +621,17 @@ function updateCartUI() {
                 <p>Din varukorg är tom.</p>
             </div>
         `;
-        cartSubtotalEl.textContent = '0 SEK';
-        cartShippingEl.textContent = '0 SEK';
-        cartTotalEl.textContent = '0 SEK';
+        if (cartSubtotalEl) cartSubtotalEl.textContent = '0 SEK';
+        if (cartShippingEl) cartShippingEl.textContent = '0 SEK';
+        if (cartTotalEl) cartTotalEl.textContent = '0 SEK';
         if (freeShippingNotice) freeShippingNotice.innerHTML = `Lägg till produkter för <span class="font-bold">500 SEK</span> till för fri frakt!`;
         if (freeShippingProgress) freeShippingProgress.style.width = '0%';
         return;
     }
 
-    cartItemsContainer.innerHTML = cart.map(item => `
+    if (cartItemsContainer) cartItemsContainer.innerHTML = cart.map(item => `
         <div class="flex items-center space-x-4 py-4 border-b border-[#EAE5DE]">
-            <img src="${item.image}" alt="${item.name}" class="w-16 h-16 object-cover rounded-xl bg-[#EAE5DE]" onerror="this.src='https://images.unsplash.com/photo-1507473885765-e6ed057f782c?auto=format&fit=crop&w=200&q=80'">
+            <img src="${item.image}" alt="${item.name}" class="w-16 h-16 object-cover rounded-xl bg-[#EAE5DE]" onerror="this.onerror=null;this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22800%22 height=%22600%22%3E%3Crect width=%22800%22 height=%22600%22 fill=%22%23eee9e1%22/%3E%3C/svg%3E'">
             <div class="flex-grow">
                 <h4 class="font-bold text-sm text-[#1C1E21] line-clamp-1">${item.name}</h4>
                 <span class="text-xs text-[#5A5E63]">${item.price} SEK / st</span>
@@ -654,9 +654,9 @@ function updateCartUI() {
     const shipping = subtotal >= 500 || subtotal === 0 ? 0 : 49;
     const total = subtotal + shipping;
 
-    cartSubtotalEl.textContent = `${subtotal} SEK`;
-    cartShippingEl.textContent = shipping === 0 ? 'Fri frakt' : `${shipping} SEK`;
-    cartTotalEl.textContent = `${total} SEK`;
+    if (cartSubtotalEl) cartSubtotalEl.textContent = `${subtotal} SEK`;
+    if (cartShippingEl) cartShippingEl.textContent = shipping === 0 ? 'Fri frakt' : `${shipping} SEK`;
+    if (cartTotalEl) cartTotalEl.textContent = `${total} SEK`;
 
     const freeShippingThreshold = 500;
     const diff = freeShippingThreshold - subtotal;
@@ -680,6 +680,6 @@ function openCheckout() {
 }
 
 function closeCheckout() {
-    checkoutModal.classList.add('hidden');
-    document.body.style.overflow = 'auto';
+    if (checkoutModal) checkoutModal.classList.add('hidden');
+    document.body.style.overflow = '';
 }
