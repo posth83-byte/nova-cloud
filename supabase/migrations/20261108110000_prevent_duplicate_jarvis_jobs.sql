@@ -54,7 +54,7 @@ begin
   select * into v_existing
   from public.jarvis_jobs j
   where j.status in ('queued', 'running', 'completed', 'failed')
-    and j.updated_at >= now() - interval '30 days'
+    and (j.status in ('queued', 'running') or j.updated_at >= now() - interval '30 days')
     and j.dedupe_key = p_dedupe_key
   order by j.updated_at desc
   limit 1
@@ -84,7 +84,7 @@ begin
         select j.*
         from public.jarvis_jobs j
         where j.status in ('queued', 'running', 'completed', 'failed')
-          and j.updated_at >= now() - interval '30 days'
+          and (j.status in ('queued', 'running') or j.updated_at >= now() - interval '30 days')
         order by j.updated_at desc
         limit 100
         for update
