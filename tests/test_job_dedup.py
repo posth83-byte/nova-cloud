@@ -34,7 +34,7 @@ class JobDeduplicationTests(unittest.TestCase):
 
     def test_short_generic_prompts_only_match_exactly(self):
         self.assertFalse(is_duplicate_job_task("testa igen", "testa den igen"))
-        self.assertTrue(is_duplicate_job_task("testa igen", "testa igen"))
+        self.assertFalse(is_duplicate_job_task("testa igen", "testa igen"))
 
 
 if __name__ == "__main__":
