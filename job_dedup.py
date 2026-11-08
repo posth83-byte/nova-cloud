@@ -37,4 +37,4 @@ def is_duplicate_job_task(left, right):
 
     overlap = len(tokens_a & tokens_b) / min(len(tokens_a), len(tokens_b))
     ratio = SequenceMatcher(None, a, b, autojunk=False).ratio()
-    return overlap >= 0.84 and ratio >= 0.72
+    return ratio >= 0.86 or (overlap >= 0.90 and ratio >= 0.78)
