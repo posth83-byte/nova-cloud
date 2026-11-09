@@ -189,7 +189,7 @@ def _make_scene(path, kicker, headline, caption, kind, index):
     draw.rounded_rectangle((58, 910, W-58, 1080), radius=22,
                            fill=(3, 8, 18), outline=(255, 151, 91), width=2)
     _centered(draw, caption, 995, _font(31, True), (255, 232, 213), max_width=555, gap=9)
-    draw.text((W//2, 1165), f"{index+1:02d} / 05     •     ORIGINAL HUMOR",
+    draw.text((W//2, 1165), f"{index+1:02d} / 05     •     JARVIS VIDEO TEAM",
               font=_font(18, True), fill=(153, 178, 211), anchor="mm")
     image.save(path, quality=94)
 
@@ -358,7 +358,7 @@ def discover_video_ideas():
                 ideas.append({"title": title[:180], "traffic": traffic,
                               "source": "Google Trends Sverige",
                               "source_url": link or "https://trends.google.com/trending?geo=SE",
-                              "angle": "Skapa en egen humorvinkel – kopiera inte någon annans video."})
+                              "angle": "Använd ämnet som inspiration och skapa ett eget innehåll."})
     except Exception as error:
         source_error = str(error)[:240]
     return {"status": "ok" if ideas else "unavailable", "source": "Google Trends Sverige",
@@ -378,7 +378,7 @@ async def create_original_video(topic: str = Form(""), mode: str = Form("origina
     if video_type not in {"humor", "explainer", "tutorial", "promo", "inspiration", "story"}:
         raise HTTPException(400, "Ogiltig videotyp.")
     if not topic:
-        topic = "när man försöker vara produktiv"
+        topic = "ett intressant ämne"
     job_id = uuid.uuid4().hex[:12]
     job_dir = OUTPUT_DIR / job_id
     job_dir.mkdir(parents=True, exist_ok=True)
