@@ -24,7 +24,7 @@ def main():
     remote_payload = {
         "job_id": "abc123abc123",
         "status": "completed",
-        "updated_at": "2026-11-09T12:00:00+00:00",
+        "updated_at": "2099-01-01T00:00:00+00:00",
         "result": {"video_url": "/video.mp4"},
     }
     with patch.object(
