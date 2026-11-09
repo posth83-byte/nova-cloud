@@ -76,7 +76,7 @@ def build_explainer_beats(research, duration_mode="standard"):
     beats = []
     kinds = ("generic", "work", "phone", "money", "sleep", "gym", "food", "love", "phone", "generic")
     for index, sentence in enumerate(selected):
-        line = re.sub(r"\\s+", " ", str(sentence)).strip()
+        line = re.sub(r"\s+", " ", str(sentence)).strip()
         if len(line) > 420:
             clipped = line[:417]
             boundary = clipped.rfind(" ")
