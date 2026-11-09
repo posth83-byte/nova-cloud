@@ -169,7 +169,7 @@ async def create_original_video(
             _make_card(card, heading, line, punch, i)
             cards.append(card)
         # Match scene lengths to the spoken beats, keeping a brisk short-form rhythm.
-        durations = [3.4, 3.8, 3.4, 4.2]
+        durations = [6.2, 6.2, 6.2, 6.2]
         for i, (card, seconds) in enumerate(zip(cards, durations)):
             clip = job_dir / f"clip_{i:02}.mp4"
             frames = int(seconds * 25)
@@ -188,7 +188,7 @@ async def create_original_video(
         # Quiet, synthesized original music tones under Swedish narration.
         _ffmpeg([
             "-i", str(silent), "-i", str(narration_path),
-            "-f", "lavfi", "-i", "sine=frequency=392:sample_rate=44100:duration=18",
+            "-f", "lavfi", "-i", "sine=frequency=392:sample_rate=44100:duration=28",
             "-filter_complex", "[1:a]volume=1.0[voice];[2:a]volume=0.045[music];[voice][music]amix=inputs=2:duration=first:dropout_transition=2[a]",
             "-map", "0:v:0", "-map", "[a]", "-c:v", "copy", "-c:a", "aac", "-b:a", "128k",
             "-shortest", "-movflags", "+faststart", str(output)
