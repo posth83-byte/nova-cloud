@@ -7,9 +7,11 @@ import asyncio
 import io
 import subprocess
 import tempfile
+import sys
 from pathlib import Path
 from unittest.mock import patch
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import video_creator_engine as engine
 
 
