@@ -45,7 +45,7 @@ def main():
     pending_payload = {
         "job_id": "abc123abc123",
         "status": "running",
-        "updated_at": "2026-11-09T12:00:00+00:00",
+        "updated_at": "2099-01-01T00:00:00+00:00",
         "request": {
             "topic": "testa återhämtning",
             "mode": "original",
