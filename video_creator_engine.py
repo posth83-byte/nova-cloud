@@ -508,7 +508,6 @@ def video_job_status(job_id: str):
 
 async def _render_original_video(topic, mode, video_type, aspect, duration_mode, job_id):
     job_dir = OUTPUT_DIR / job_id
-    job_dir = OUTPUT_DIR / job_id
     job_dir.mkdir(parents=True, exist_ok=True)
     try:
         research_data = research_wikipedia(topic) if video_type == "explainer" else None
