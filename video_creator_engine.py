@@ -18,8 +18,9 @@ from pathlib import Path
 import edge_tts
 import imageio_ffmpeg
 from fastapi import APIRouter, Form, HTTPException
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from video_assets import search_commons_images, download_commons_image
+from video_storage import upload_file, open_stored_file
 from PIL import Image, ImageDraw, ImageFont, ImageEnhance, ImageOps
 
 router = APIRouter()
@@ -447,8 +448,12 @@ async def create_original_video(topic: str = Form(""), mode: str = Form("origina
                     ""
                 ])
             credits_path.write_text("\n".join(credit_lines), encoding="utf-8")
+        stored_video = upload_file(job_id, output, "jarvis_original.mp4", "video/mp4")
+        stored_credits = upload_file(job_id, credits_path, "bildkrediter.txt", "text/plain") if credits_path.is_file() else False
         return {
             "status": "completed", "job_id": job_id, "mode": mode, "video_type": video_type, "topic": topic,
+            "storage_status": "persistent" if stored_video else "temporary",
+            "credits_storage_status": "persistent" if stored_credits else "not_saved",
             "script": [{"heading": h, "line": line, "caption": caption}
                        for h, line, caption, _ in beats],
             "format": "9:16", "resolution": "720x1280", "fps": FPS,
@@ -472,9 +477,22 @@ def download_video_credits(job_id: str):
     if not re.fullmatch(r"[a-f0-9]{12}", job_id):
         raise HTTPException(400, "Ogiltigt jobb-ID.")
     path = OUTPUT_DIR / job_id / "bildkrediter.txt"
-    if not path.is_file():
-        raise HTTPException(404, "Ingen extern bildkälla användes för den här videon.")
-    return FileResponse(path, media_type="text/plain; charset=utf-8", filename="bildkrediter.txt")
+    if path.is_file():
+        return FileResponse(path, media_type="text/plain; charset=utf-8", filename="bildkrediter.txt")
+    remote = open_stored_file(job_id, "bildkrediter.txt")
+    if remote is None:
+        raise HTTPException(404, "Ingen sparad bildkreditfil hittades.")
+    def stream():
+        try:
+            while True:
+                chunk = remote.read(1024 * 1024)
+                if not chunk:
+                    break
+                yield chunk
+        finally:
+            remote.close()
+    return StreamingResponse(stream(), media_type="text/plain; charset=utf-8",
+                             headers={"Content-Disposition": 'attachment; filename="bildkrediter.txt"'})
 
 
 @router.get("/api/video/team/created/{job_id}")
@@ -482,6 +500,19 @@ def download_original_video(job_id: str):
     if not re.fullmatch(r"[a-f0-9]{12}", job_id):
         raise HTTPException(400, "Ogiltigt jobb-ID.")
     path = OUTPUT_DIR / job_id / "jarvis_original.mp4"
-    if not path.is_file():
-        raise HTTPException(404, "Originalvideon finns inte längre i Render-lagringen.")
-    return FileResponse(path, media_type="video/mp4", filename="jarvis-original-tiktok.mp4")
+    if path.is_file():
+        return FileResponse(path, media_type="video/mp4", filename="jarvis-original-tiktok.mp4")
+    remote = open_stored_file(job_id, "jarvis_original.mp4")
+    if remote is None:
+        raise HTTPException(404, "Videon finns inte kvar i lokal lagring eller Supabase Storage.")
+    def stream():
+        try:
+            while True:
+                chunk = remote.read(1024 * 1024)
+                if not chunk:
+                    break
+                yield chunk
+        finally:
+            remote.close()
+    return StreamingResponse(stream(), media_type="video/mp4",
+                             headers={"Content-Disposition": 'attachment; filename="jarvis-original-tiktok.mp4"'})
