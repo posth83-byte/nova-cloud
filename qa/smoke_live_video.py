@@ -25,8 +25,14 @@ def wait_until_live():
         try:
             response = requests.get(urljoin(BASE_URL + "/", "health"), timeout=20)
             if response.status_code == 200:
-                print("PASS Render health endpoint is live.")
-                return
+                # Require a second successful health check and a short settling
+                # period so Render's blue/green switch is fully complete.
+                time.sleep(5)
+                confirm = requests.get(urljoin(BASE_URL + "/", "health"), timeout=20)
+                if confirm.status_code == 200:
+                    print("PASS Render health endpoint is stable.")
+                    time.sleep(10)
+                    return
             last_error = f"HTTP {response.status_code}"
         except requests.RequestException as error:
             last_error = str(error)
@@ -36,17 +42,24 @@ def wait_until_live():
 
 def main():
     wait_until_live()
-    response = requests.post(
-        urljoin(BASE_URL + "/", "api/video/team/create"),
-        data={
-            "topic": "en rolig vardagsscen med kaffe",
-            "mode": "original",
-            "video_type": "humor",
-            "aspect": "9:16",
-            "duration_mode": "short",
-        },
-        timeout=TIMEOUT,
-    )
+    create_url = urljoin(BASE_URL + "/", "api/video/team/create")
+    form_data = {
+        "topic": "en rolig vardagsscen med kaffe",
+        "mode": "original",
+        "video_type": "humor",
+        "aspect": "9:16",
+        "duration_mode": "short",
+    }
+    response = None
+    for attempt in range(4):
+        response = requests.post(create_url, data=form_data, timeout=TIMEOUT)
+        if response.status_code not in {502, 503, 504}:
+            break
+        if attempt == 3:
+            response.raise_for_status()
+        delay = 5 * (attempt + 1)
+        print(f"Render returned transient HTTP {response.status_code}; retrying in {delay}s.")
+        time.sleep(delay)
     response.raise_for_status()
     result = response.json()
     if result.get("status") != "completed":
