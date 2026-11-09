@@ -40,6 +40,30 @@ def wait_until_live():
     raise RuntimeError(f"Render did not become healthy within 10 minutes: {last_error}")
 
 
+def get_job_status_with_retry(status_url, deadline):
+    delays = (3, 5, 8, 13, 20, 25)
+    attempt = 0
+    while time.time() < deadline:
+        try:
+            response = requests.get(status_url, timeout=30)
+            if response.status_code in {502, 503, 504}:
+                delay = delays[min(attempt, len(delays) - 1)]
+                attempt += 1
+                print(f"Render status endpoint returned HTTP {response.status_code}; retrying in {delay}s.")
+                time.sleep(delay)
+                continue
+            response.raise_for_status()
+            return response.json()
+        except requests.RequestException as error:
+            if time.time() >= deadline:
+                raise
+            delay = delays[min(attempt, len(delays) - 1)]
+            attempt += 1
+            print(f"Temporary status request failure ({error}); retrying in {delay}s.")
+            time.sleep(delay)
+    raise RuntimeError("Video job status could not be fetched before the production smoke-test deadline.")
+
+
 def main():
     wait_until_live()
     create_url = urljoin(BASE_URL + "/", "api/video/team/create")
@@ -75,9 +99,7 @@ def main():
         deadline = time.time() + 600
         while time.time() < deadline:
             time.sleep(4)
-            status_response = requests.get(status_url, timeout=30)
-            status_response.raise_for_status()
-            job = status_response.json()
+            job = get_job_status_with_retry(status_url, deadline)
             if job.get("status") == "failed":
                 raise RuntimeError(f"Background video job failed: {job.get('error')}")
             if job.get("status") == "completed":
