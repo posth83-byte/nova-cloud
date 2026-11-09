@@ -27,6 +27,14 @@ def main():
             "thumburl": "https://upload.wikimedia.org/windmill.jpg",
             "extmetadata": {"LicenseShortName": {"value": "Public domain"}},
         }]},
+        "4": {"title": "File:Noncommercial.jpg", "imageinfo": [{
+            "thumburl": "https://upload.wikimedia.org/noncommercial.jpg",
+            "extmetadata": {"LicenseShortName": {"value": "CC BY-NC 4.0"}},
+        }]},
+        "5": {"title": "File:No derivatives.jpg", "imageinfo": [{
+            "thumburl": "https://upload.wikimedia.org/no-derivatives.jpg",
+            "extmetadata": {"LicenseShortName": {"value": "CC BY-ND 4.0"}},
+        }]},
     }}}
     with patch.object(video_assets, "_request_json", return_value=payload):
         assets = video_assets.search_commons_images("solenergi", limit=5)
