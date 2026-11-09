@@ -26,6 +26,7 @@ from job_dedup import normalize_job_task, job_task_fingerprint, is_duplicate_job
 from video_engine import router as video_router
 from runway_engine import router as runway_router
 from kling_engine import router as kling_router
+from video_team_engine import router as video_team_router
 
 
 # ==========================================
@@ -43,6 +44,7 @@ app = FastAPI(
 app.include_router(video_router)
 app.include_router(runway_router)
 app.include_router(kling_router)
+app.include_router(video_team_router)
 
 # Temporary previews are cleared when the service restarts.
 preview_pages = {}
