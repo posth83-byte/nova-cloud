@@ -277,6 +277,13 @@ def _motion_filter(kind, index):
     font = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
     phase = index * 0.73
     frames = int(SCENE_SECONDS * FPS)
+    # A final, timed reaction word gives every scene a readable comic button.
+    reactions = {
+        "coffee": "SLURP!", "sleep": "ZZZ!", "phone": "PING!",
+        "work": "OJ!", "money": "KRASCH!", "gym": "PUH!",
+        "food": "MUMS!", "love": "OJ DA!", "generic": "PANG!",
+    }
+    reaction = reactions.get(kind, "PANG!")
     return ",".join([
         f"scale={W}:{H}",
         f"zoompan=z='1.025+0.012*sin(on/22)':"
@@ -286,6 +293,9 @@ def _motion_filter(kind, index):
         f"x='92+24*sin(t*2.4+{phase:.2f})':y='300+32*cos(t*2.0+{phase:.2f})'",
         f"drawtext=fontfile={font}:text='+':fontcolor={color}:fontsize=34:"
         f"x='560+28*cos(t*1.9+{phase:.2f})':y='520+25*sin(t*2.7+{phase:.2f})'",
+        f"drawtext=fontfile={font}:text='{reaction}':fontcolor={color}:"
+        f"fontsize='38+8*sin(t*18)':x='(w-text_w)/2':"
+        f"y='675+9*sin(t*20)':enable='between(t,{SCENE_SECONDS-0.95:.2f},{SCENE_SECONDS-0.12:.2f})'",
         f"fade=t=in:st=0:d=0.22",
         f"fade=t=out:st={SCENE_SECONDS-0.22:.2f}:d=0.22",
         "setsar=1",
