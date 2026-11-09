@@ -22,7 +22,7 @@ jobs:
         with:
           python-version: "3.12"
       - name: Compile Python modules
-        run: python -m py_compile main.py video_engine.py video_team_engine.py video_creator_engine.py video_assets.py video_storage.py video_research.py runway_engine.py kling_engine.py
+        run: python -m py_compile main.py video_engine.py video_team_engine.py video_creator_engine.py video_assets.py video_storage.py video_research.py qa/smoke_live_video.py runway_engine.py kling_engine.py
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
