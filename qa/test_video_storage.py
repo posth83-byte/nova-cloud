@@ -11,6 +11,10 @@ import video_storage
 
 class FakeResponse:
     status = 200
+    def __init__(self, body=b""):
+        self.body = body
+    def read(self, size=-1):
+        return self.body if size < 0 else self.body[:size]
     def __enter__(self):
         return self
     def __exit__(self, *args):
@@ -43,7 +47,14 @@ def main():
         with patch.object(video_storage, "_request", return_value=FakeResponse()) as request:
             assert video_storage.open_stored_file("abc123abc123", "jarvis_original.mp4") is not None
             assert "/storage/v1/object/nova-videos/abc123abc123/jarvis_original.mp4" in request.call_args.args[0]
-    print("PASS private storage configuration, upload request and durable object lookup.")
+
+        with patch.object(video_storage, "_request", side_effect=[
+            FakeResponse(), FakeResponse(b"NOVA private storage self-test"), FakeResponse()
+        ]) as request:
+            ok, message = video_storage.storage_self_test()
+            assert ok, message
+            assert [call.kwargs.get("method", "GET") for call in request.call_args_list] == ["POST", "GET", "DELETE"]
+    print("PASS private storage configuration, upload/download/delete self-test and durable object lookup.")
 
 
 if __name__ == "__main__":
