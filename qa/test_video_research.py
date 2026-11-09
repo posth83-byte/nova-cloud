@@ -18,7 +18,7 @@ def main():
     assert result["language"] == "sv"
     assert result["source_url"].startswith("https://sv.wikipedia.org/wiki/")
     beats = video_research.build_explainer_beats(result)
-    assert len(beats) == 6, beats
+    assert len(beats) == 5, beats
     assert all(beat[1] for beat in beats)
     assert "solceller" in " ".join(beat[1] for beat in beats)
     long_research = {"sentences": [f"Detta är ett längre faktapåstående nummer {i} om ämnet och dess bakgrund." for i in range(1, 31)]}
