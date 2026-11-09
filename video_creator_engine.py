@@ -6,6 +6,7 @@ not photorealistic text-to-video generation.
 """
 import asyncio
 import html
+import logging
 import math
 import re
 import shutil
@@ -21,12 +22,22 @@ import imageio_ffmpeg
 from fastapi import APIRouter, Form, HTTPException
 from fastapi.responses import FileResponse, StreamingResponse
 from video_assets import search_commons_images, download_commons_image
-from video_storage import upload_file, open_stored_file
+from video_storage import upload_file, open_stored_file, storage_self_test
 from video_research import research_wikipedia, build_explainer_beats
 from PIL import Image, ImageDraw, ImageFont, ImageEnhance, ImageOps
 
 router = APIRouter()
+logger = logging.getLogger("uvicorn.error")
 OUTPUT_DIR = Path("/tmp/nova_team_created")
+
+
+@router.on_event("startup")
+async def _video_storage_startup_check():
+    ok, message = await asyncio.to_thread(storage_self_test)
+    if ok:
+        logger.info("NOVA_VIDEO_STORAGE_SELFTEST=PASS: %s", message)
+    else:
+        logger.warning("NOVA_VIDEO_STORAGE_SELFTEST=NOT_READY: %s", message)
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 VOICE = "sv-SE-MattiasNeural"
 W, H, FPS = 720, 1280, 25
