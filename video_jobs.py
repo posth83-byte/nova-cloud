@@ -5,7 +5,11 @@ private Supabase Storage bucket as a tiny JSON object. No paid queue service is
 required.
 """
 import json
+import os
+import re
 import tempfile
+import urllib.error
+import urllib.request
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
@@ -14,7 +18,7 @@ from video_storage import list_job_ids, open_stored_file, upload_file
 _JOBS = {}
 
 
-def save_job_status(job_id, status, *, result=None, error=None, request=None):
+def save_job_status(job_id, status, *, result=None, error=None, request=None, worker_id=None):
     payload = {
         "job_id": job_id,
         "status": status,
@@ -22,6 +26,7 @@ def save_job_status(job_id, status, *, result=None, error=None, request=None):
         "result": result,
         "error": error,
         "request": request,
+        "worker_id": worker_id,
     }
     _JOBS[job_id] = payload
     saved = False
@@ -41,7 +46,7 @@ def save_job_status(job_id, status, *, result=None, error=None, request=None):
 
 
 def _expire_stale_job(payload):
-    if payload.get("status") not in {"queued", "running"}:
+    if payload.get("status") not in {"queued", "dispatched", "running"}:
         return payload
     try:
         updated = datetime.fromisoformat(payload.get("updated_at", ""))
@@ -78,12 +83,50 @@ def get_job_status(job_id):
 
 
 
+def dispatch_github_video_job(job_id):
+    """Dispatch rendering to a standard GitHub-hosted runner, not the tiny web instance."""
+    token = (os.getenv("GITHUB_TOKEN") or "").strip()
+    repository = (os.getenv("GITHUB_REPOSITORY") or "posth83-byte/nova-cloud").strip()
+    if not token:
+        raise RuntimeError("GITHUB_TOKEN saknas; kan inte starta den externa videorenderaren.")
+    if not re.fullmatch(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", repository):
+        raise RuntimeError("GITHUB_REPOSITORY har ett ogiltigt format.")
+    url = f"https://api.github.com/repos/{repository}/dispatches"
+    body = json.dumps({
+        "event_type": "nova_video_render",
+        "client_payload": {"job_id": job_id},
+    }).encode("utf-8")
+    request = urllib.request.Request(
+        url, data=body, method="POST",
+        headers={
+            "Accept": "application/vnd.github+json",
+            "Authorization": f"Bearer {token}",
+            "X-GitHub-Api-Version": "2022-11-28",
+            "Content-Type": "application/json",
+            "User-Agent": "NOVA-Cloud-Video-Worker",
+        },
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=20) as response:
+            if response.status != 204:
+                raise RuntimeError(f"GitHub repository_dispatch returned HTTP {response.status}.")
+    except urllib.error.HTTPError as error:
+        detail = error.read(1200).decode("utf-8", errors="replace")
+        raise RuntimeError(f"GitHub kunde inte starta videorenderaren (HTTP {error.code}): {detail}") from error
+    return True
+
+
 def recover_pending_jobs():
-    """Requeue persisted jobs after a Render process restart."""
+    """Find jobs saved before a Render restart but not yet claimed by a GitHub runner."""
     recovered = []
     for job_id in list_job_ids():
         payload = get_job_status(job_id)
-        if not isinstance(payload, dict) or payload.get("status") not in {"queued", "running"}:
+        if not isinstance(payload, dict):
+            continue
+        status = payload.get("status")
+        # A GitHub worker marks its claim with worker_id. It continues independently
+        # of Render restarts, so never dispatch that active job a second time.
+        if status not in {"queued", "dispatched", "running"} or payload.get("worker_id"):
             continue
         request = payload.get("request")
         if not isinstance(request, dict):
@@ -91,8 +134,6 @@ def recover_pending_jobs():
         required = {"topic", "mode", "video_type", "aspect", "duration_mode"}
         if not required.issubset(request):
             continue
-        # A previous process cannot still own this job after application startup.
-        # Mark it queued before placing it on the new process's worker queue.
         save_job_status(job_id, "queued", request=request)
         recovered.append({"job_id": job_id, **request})
     return recovered
