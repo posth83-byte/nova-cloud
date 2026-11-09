@@ -19,26 +19,56 @@ from pathlib import Path
 
 import edge_tts
 import imageio_ffmpeg
-from fastapi import APIRouter, BackgroundTasks, Form, HTTPException
+from fastapi import APIRouter, Form, HTTPException
 from fastapi.responses import FileResponse, StreamingResponse
 from video_assets import search_commons_images, download_commons_image
 from video_storage import upload_file, open_stored_file, storage_self_test
 from video_research import research_wikipedia, build_explainer_beats
-from video_jobs import save_job_status, get_job_status
+from video_jobs import save_job_status, get_job_status, recover_pending_jobs
 from PIL import Image, ImageDraw, ImageFont, ImageEnhance, ImageOps
 
 router = APIRouter()
 logger = logging.getLogger("uvicorn.error")
 OUTPUT_DIR = Path("/tmp/nova_team_created")
+_VIDEO_JOB_QUEUE = asyncio.Queue(maxsize=20)
+_VIDEO_JOB_WORKER_TASK = None
+
+
+async def _video_job_worker():
+    """Run one render at a time without blocking FastAPI's request event loop."""
+    while True:
+        job = await _VIDEO_JOB_QUEUE.get()
+        try:
+            await asyncio.to_thread(
+                _run_video_job,
+                job["job_id"], job["topic"], job["mode"], job["video_type"],
+                job["aspect"], job["duration_mode"]
+            )
+        except Exception:
+            logger.exception("NOVA video queue worker failed for %s", job.get("job_id"))
+        finally:
+            _VIDEO_JOB_QUEUE.task_done()
 
 
 @router.on_event("startup")
 async def _video_storage_startup_check():
+    global _VIDEO_JOB_WORKER_TASK
     ok, message = await asyncio.to_thread(storage_self_test)
     if ok:
         logger.info("NOVA_VIDEO_STORAGE_SELFTEST=PASS: %s", message)
     else:
         logger.warning("NOVA_VIDEO_STORAGE_SELFTEST=NOT_READY: %s", message)
+    try:
+        pending = await asyncio.to_thread(recover_pending_jobs)
+        for job in pending:
+            _VIDEO_JOB_QUEUE.put_nowait(job)
+        logger.info("NOVA_VIDEO_QUEUE_RECOVERY=%s", len(pending))
+    except Exception:
+        logger.exception("NOVA_VIDEO_QUEUE_RECOVERY=FAILED")
+    if _VIDEO_JOB_WORKER_TASK is None or _VIDEO_JOB_WORKER_TASK.done():
+        _VIDEO_JOB_WORKER_TASK = asyncio.create_task(_video_job_worker())
+
+
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 VOICE = "sv-SE-MattiasNeural"
 W, H, FPS = 720, 1280, 25
@@ -158,7 +188,7 @@ def _draw_illustration(draw, kind, t):
         draw.arc((150, 170, 570, 690), 205, 335, fill=(83, 180, 224), width=5)
 
 
-def _make_scene(path, kicker, headline, caption, kind, index, background_path=None, scene_seconds=SCENE_SECONDS):
+def _make_scene(path, kicker, headline, caption, kind, index, background_path=None, scene_seconds=SCENE_SECONDS, scene_count=5):
     if background_path and Path(background_path).is_file():
         with Image.open(background_path) as source:
             image = ImageOps.fit(source.convert("RGB"), (W, H), method=Image.Resampling.LANCZOS)
@@ -212,7 +242,7 @@ def _make_scene(path, kicker, headline, caption, kind, index, background_path=No
     draw.rounded_rectangle((58, 910, W-58, 1080), radius=22,
                            fill=(3, 8, 18), outline=(255, 151, 91), width=2)
     _centered(draw, caption, 995, _font(31, True), (255, 232, 213), max_width=555, gap=9)
-    draw.text((W//2, 1165), f"{index+1:02d} / 05     •     JARVIS VIDEO TEAM",
+    draw.text((W//2, 1165), f"{index+1:02d} / {scene_count:02d}     •     JARVIS VIDEO TEAM",
               font=_font(18, True), fill=(153, 178, 211), anchor="mm")
     image.save(path, quality=94)
 
@@ -399,13 +429,13 @@ def _srt_time(seconds):
     return f"{hours:02}:{minutes:02}:{secs:02},{milliseconds:03}"
 
 
-def _write_subtitles(beats, duration, path):
+def _write_subtitles(beats, duration, path, include_caption=True):
     """Create sentence-level SRT cues aligned proportionally to spoken word count."""
     if not beats or duration <= 0:
         raise RuntimeError("Undertexterna saknar giltig tidslinje.")
     segments = []
     for heading, line, caption, _ in beats:
-        spoken = f"{heading}. {line} {caption}"
+        spoken = f"{heading}. {line}" + (f" {caption}" if include_caption and caption else "")
         for sentence in re.split(r"(?<=[.!?])\s+", spoken.strip()):
             sentence = sentence.strip()
             if sentence:
@@ -442,7 +472,6 @@ async def create_original_video(
     video_type: str = Form("humor"),
     aspect: str = Form("9:16"),
     duration_mode: str = Form("standard"),
-    background_tasks: BackgroundTasks = None,
 ):
     topic = (topic or "").strip()
     if len(topic) > MAX_PROMPT:
@@ -458,8 +487,6 @@ async def create_original_video(
     if not topic:
         topic = "ett intressant ämne"
     job_id = uuid.uuid4().hex[:12]
-    if background_tasks is None:
-        return await _render_original_video(topic, mode, video_type, aspect, duration_mode, job_id)
     request_data = {
         "topic": topic, "mode": mode, "video_type": video_type,
         "aspect": aspect, "duration_mode": duration_mode,
@@ -467,15 +494,21 @@ async def create_original_video(
     queued = await asyncio.to_thread(
         save_job_status, job_id, "queued", request=request_data
     )
-    background_tasks.add_task(
-        _run_video_job, job_id, topic, mode, video_type, aspect, duration_mode
-    )
+    try:
+        _VIDEO_JOB_QUEUE.put_nowait({"job_id": job_id, **request_data})
+    except asyncio.QueueFull:
+        await asyncio.to_thread(
+            save_job_status, job_id, "failed",
+            error="Videokön är full just nu. Försök igen om en stund.",
+            request=request_data
+        )
+        raise HTTPException(503, "Videokön är full just nu. Försök igen om en stund.")
     return {
         "status": "queued",
         "job_id": job_id,
         "status_url": f"/api/video/team/jobs/{job_id}",
         "status_storage_status": queued.get("status_storage_status", "memory_only"),
-        "message": "Videon köas och renderas i bakgrunden. Du kan låsa mobilen medan JARVIS arbetar.",
+        "message": "Videon är sparad i kön. Renderingen fortsätter på servern även om du låser mobilen.",
     }
 
 
@@ -517,7 +550,10 @@ async def _render_original_video(topic, mode, video_type, aspect, duration_mode,
                 raise HTTPException(422, "Jag hittade inte tillräckligt med källmaterial i Wikipedia för en faktavideo. Prova ett tydligare ämne.")
         else:
             beats = _build_script(topic, video_type)
-        narration = " ".join(f"{heading}. {line} {caption}" for heading, line, caption, _ in beats)
+        narration = " ".join(
+            f"{heading}. {line}" + (f" {caption}" if video_type != "explainer" and caption else "")
+            for heading, line, caption, _ in beats
+        )
         narration_path = job_dir / "voice.mp3"
         await edge_tts.Communicate(narration, VOICE).save(str(narration_path))
         audio_duration = _audio_duration(narration_path)
@@ -535,7 +571,7 @@ async def _render_original_video(topic, mode, video_type, aspect, duration_mode,
                     attributions.append({key: visual_assets[i].get(key, "") for key in (
                         "title", "page_url", "license", "license_url", "artist", "credit"
                     )})
-            _make_scene(still, heading, line, caption, kind, i, background_path, scene_seconds)
+            _make_scene(still, heading, line, caption, kind, i, background_path, scene_seconds, len(beats))
             clip = job_dir / f"clip_{i:02}.mp4"
             frames = int(scene_seconds * FPS)
             # Animated camera drift plus subtle, topic-colored comic accents.
@@ -605,7 +641,7 @@ async def _render_original_video(topic, mode, video_type, aspect, duration_mode,
                 ])
             credits_path.write_text("\n".join(credit_lines), encoding="utf-8")
         subtitles_path = job_dir / "undertexter.srt"
-        _write_subtitles(beats, audio_duration, subtitles_path)
+        _write_subtitles(beats, audio_duration, subtitles_path, include_caption=video_type != "explainer")
         stored_video = upload_file(job_id, output, "jarvis_original.mp4", "video/mp4")
         stored_credits = upload_file(job_id, credits_path, "bildkrediter.txt", "text/plain") if credits_path.is_file() else False
         stored_subtitles = upload_file(job_id, subtitles_path, "undertexter.srt", "text/plain")
@@ -628,7 +664,7 @@ async def _render_original_video(topic, mode, video_type, aspect, duration_mode,
             "fact_check_required": video_type == "explainer",
             "image_attributions": attributions,
             "credits_url": f"/api/video/team/credits/{job_id}" if attributions else None,
-            "message": f"Video skapad ({video_type}) med fem animerade scener, svensk berättarröst och egen ljudmatta."
+            "message": f"Video skapad ({video_type}) med {len(beats)} animerade scener, svensk berättarröst och egen ljudmatta."
         }
     except HTTPException:
         shutil.rmtree(job_dir, ignore_errors=True)

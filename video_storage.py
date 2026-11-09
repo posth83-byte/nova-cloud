@@ -6,6 +6,7 @@ the existing local temporary-file behavior.
 """
 import json
 import os
+import re
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -110,3 +111,34 @@ def storage_self_test():
                         raise RuntimeError(f"Cleanup HTTP {response.status}")
             except Exception:
                 pass
+
+
+
+def list_job_ids(limit=1000):
+    """List persisted video-job folders so interrupted work can be resumed."""
+    credentials = _credentials()
+    if not credentials:
+        return []
+    base, key = credentials
+    url = f"{base}/storage/v1/object/list/{BUCKET}"
+    payload = json.dumps({
+        "prefix": "",
+        "limit": max(1, min(int(limit), 1000)),
+        "offset": 0,
+        "sortBy": {"column": "name", "order": "asc"},
+    }).encode("utf-8")
+    try:
+        with _request(url, key, method="POST", data=payload,
+                      content_type="application/json", timeout=20) as response:
+            entries = json.loads(response.read(2_000_000).decode("utf-8"))
+        job_ids = set()
+        for entry in entries if isinstance(entries, list) else []:
+            if not isinstance(entry, dict):
+                continue
+            name = str(entry.get("name") or "").strip("/")
+            folder = name.split("/", 1)[0]
+            if re.fullmatch(r"[a-f0-9]{12}", folder):
+                job_ids.add(folder)
+        return sorted(job_ids)
+    except Exception:
+        return []

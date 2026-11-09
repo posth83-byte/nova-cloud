@@ -4,6 +4,7 @@ import io
 import subprocess
 import tempfile
 import sys
+import uuid
 from pathlib import Path
 from unittest.mock import patch
 
@@ -64,8 +65,9 @@ def main():
                     raise RuntimeError(completed.stderr[-1200:])
 
         with patch.object(engine, "search_commons_images", return_value=[]), patch.object(engine.edge_tts, "Communicate", LocalSpeechFixture):
-            result = asyncio.run(engine.create_original_video(
-                topic="när kaffet tar slut precis när jobbet börjar", mode="original", video_type="humor", aspect="9:16", duration_mode="standard"))
+            result = asyncio.run(engine._render_original_video(
+                "när kaffet tar slut precis när jobbet börjar", "original", "humor",
+                "9:16", "standard", uuid.uuid4().hex[:12]))
 
         assert result["status"] == "completed", result
         assert result["format"] == "9:16"
@@ -90,9 +92,9 @@ def main():
         subtitle_response = engine.download_video_subtitles(result["job_id"])
         assert Path(subtitle_response.path) == subtitles
 
-        wide = asyncio.run(engine.create_original_video(
-            topic="när kaffet tar slut precis när jobbet börjar",
-            mode="original", video_type="humor", aspect="16:9", duration_mode="standard"))
+        wide = asyncio.run(engine._render_original_video(
+            "när kaffet tar slut precis när jobbet börjar",
+            "original", "humor", "16:9", "standard", uuid.uuid4().hex[:12]))
         assert wide["status"] == "completed", wide
         assert wide["format"] == "16:9" and wide["resolution"] == "1280x720"
         wide_path = Path(temporary) / wide["job_id"] / "jarvis_original.mp4"
@@ -102,9 +104,9 @@ def main():
             capture_output=True, text=True, timeout=120)
         assert wide_decode.returncode == 0, wide_decode.stderr
 
-        square = asyncio.run(engine.create_original_video(
-            topic="när kaffet tar slut precis när jobbet börjar",
-            mode="original", video_type="humor", aspect="1:1", duration_mode="standard"))
+        square = asyncio.run(engine._render_original_video(
+            "när kaffet tar slut precis när jobbet börjar",
+            "original", "humor", "1:1", "standard", uuid.uuid4().hex[:12]))
         assert square["status"] == "completed", square
         assert square["format"] == "1:1" and square["resolution"] == "1080x1080"
         square_path = Path(temporary) / square["job_id"] / "jarvis_original.mp4"

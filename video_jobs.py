@@ -9,7 +9,7 @@ import tempfile
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
-from video_storage import open_stored_file, upload_file
+from video_storage import list_job_ids, open_stored_file, upload_file
 
 _JOBS = {}
 
@@ -75,3 +75,24 @@ def get_job_status(job_id):
         return payload
     except Exception:
         return None
+
+
+
+def recover_pending_jobs():
+    """Requeue persisted jobs after a Render process restart."""
+    recovered = []
+    for job_id in list_job_ids():
+        payload = get_job_status(job_id)
+        if not isinstance(payload, dict) or payload.get("status") not in {"queued", "running"}:
+            continue
+        request = payload.get("request")
+        if not isinstance(request, dict):
+            continue
+        required = {"topic", "mode", "video_type", "aspect", "duration_mode"}
+        if not required.issubset(request):
+            continue
+        # A previous process cannot still own this job after application startup.
+        # Mark it queued before placing it on the new process's worker queue.
+        save_job_status(job_id, "queued", request=request)
+        recovered.append({"job_id": job_id, **request})
+    return recovered

@@ -25,14 +25,16 @@ def main():
     short_beats = video_research.build_explainer_beats(long_research, "short")
     standard_beats = video_research.build_explainer_beats(long_research, "standard")
     long_beats = video_research.build_explainer_beats(long_research, "long")
-    assert len(short_beats) == len(standard_beats) == len(long_beats) == 5
+    assert len(short_beats) == 10
+    assert len(standard_beats) == 20
+    assert len(long_beats) == 30
     assert "nummer 20" not in " ".join(beat[1] for beat in short_beats)
     assert "nummer 20" in " ".join(beat[1] for beat in standard_beats)
     assert "nummer 30" in " ".join(beat[1] for beat in long_beats)
     with patch.object(video_research, "_api", side_effect=RuntimeError("offline")):
         assert video_research.research_wikipedia("okänt ämne") is None
     assert video_research.build_explainer_beats(None) == []
-    print("PASS Wikipedia source retrieval, five-scene factual beat creation and offline failure handling.")
+    print("PASS Wikipedia source retrieval, 10/20/30-scene factual timelines and offline failure handling.")
 
 
 if __name__ == "__main__":
