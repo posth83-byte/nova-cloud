@@ -22,7 +22,7 @@ jobs:
         with:
           python-version: "3.12"
       - name: Compile Python modules
-        run: python -m py_compile main.py video_engine.py video_team_engine.py video_creator_engine.py runway_engine.py kling_engine.py
+        run: python -m py_compile main.py video_engine.py video_team_engine.py video_creator_engine.py video_assets.py runway_engine.py kling_engine.py
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
@@ -121,6 +121,7 @@ jobs:
         shell: bash
         run: |
           python -m pip install --disable-pip-version-check -r requirements.txt
+          python qa/test_video_assets.py
           python qa/test_video_creator.py
           uvicorn main:app --host 127.0.0.1 --port 8765 >/tmp/nexora-api.log 2>&1 &
           echo $! >/tmp/nexora-api.pid
