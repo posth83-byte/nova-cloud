@@ -22,7 +22,9 @@ jobs:
         with:
           python-version: "3.12"
       - name: Compile Python modules
-        run: python -m py_compile main.py video_engine.py video_team_engine.py runway_engine.py kling_engine.py
+        run: python -m py_compile main.py video_engine.py video_team_engine.py video_creator_engine.py runway_engine.py kling_engine.py
+      - name: Test original video creator end-to-end with local speech fixture
+        run: python qa/test_video_creator.py
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
