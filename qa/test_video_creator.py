@@ -82,13 +82,31 @@ def main():
         assert decode.returncode == 0, decode.stderr
         response = engine.download_original_video(result["job_id"])
         assert Path(response.path) == output
+        subtitles = job_dir / "undertexter.srt"
+        assert subtitles.is_file()
+        subtitle_text = subtitles.read_text(encoding="utf-8")
+        assert " --> " in subtitle_text and "när kaffet" in subtitle_text
+        subtitle_response = engine.download_video_subtitles(result["job_id"])
+        assert Path(subtitle_response.path) == subtitles
+
+        wide = asyncio.run(engine.create_original_video(
+            topic="när kaffet tar slut precis när jobbet börjar",
+            mode="original", video_type="humor", aspect="16:9"))
+        assert wide["status"] == "completed", wide
+        assert wide["format"] == "16:9" and wide["resolution"] == "1280x720"
+        wide_path = Path(temporary) / wide["job_id"] / "jarvis_original.mp4"
+        assert wide_path.is_file() and wide_path.stat().st_size > 10000
+        wide_decode = subprocess.run(
+            [engine.imageio_ffmpeg.get_ffmpeg_exe(), "-v", "error", "-i", str(wide_path), "-f", "null", "-"],
+            capture_output=True, text=True, timeout=120)
+        assert wide_decode.returncode == 0, wide_decode.stderr
         try:
             engine.download_original_video("../invalid")
         except Exception as error:
             assert getattr(error, "status_code", None) == 400
         else:
             raise AssertionError("Invalid job IDs must be rejected.")
-        print(f"PASS trend parsing; PASS five-scene procedural render; PASS MP4 decode ({output.stat().st_size} bytes); PASS download route.")
+        print(f"PASS trend parsing; PASS vertical and landscape MP4 renders; PASS SRT subtitles; PASS MP4 decode ({output.stat().st_size} bytes).")
         engine.OUTPUT_DIR = original_output
 
 
