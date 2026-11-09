@@ -92,7 +92,7 @@ def main():
 
         wide = asyncio.run(engine.create_original_video(
             topic="när kaffet tar slut precis när jobbet börjar",
-            mode="original", video_type="humor", aspect="16:9"))
+            mode="original", video_type="humor", aspect="16:9", duration_mode="standard"))
         assert wide["status"] == "completed", wide
         assert wide["format"] == "16:9" and wide["resolution"] == "1280x720"
         wide_path = Path(temporary) / wide["job_id"] / "jarvis_original.mp4"
