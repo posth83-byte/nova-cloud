@@ -174,5 +174,6 @@ def main():
         )
 
 
+# Live production verification is intentionally rerunnable after a stable Render deploy.
 if __name__ == "__main__":
     main()
