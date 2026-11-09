@@ -116,9 +116,9 @@ async def edit_source_video(
             args += ["-f", "lavfi", "-i", "sine=frequency=493.88:sample_rate=44100:duration=" + str(duration)]
             args += ["-f", "lavfi", "-i", "sine=frequency=587.33:sample_rate=44100:duration=" + str(duration)]
             music_mix = (
-                "[1:a]volume='0.045*(0.75+0.25*sin(2*PI*2*t))'[m1];"
-                "[2:a]volume='0.032*(0.75+0.25*sin(2*PI*2*t))'[m2];"
-                "[3:a]volume='0.022*(0.75+0.25*sin(2*PI*2*t))'[m3];"
+                "[1:a]volume=0.10[m1];"
+                "[2:a]volume=0.07[m2];"
+                "[3:a]volume=0.05[m3];"
                 "[m1][m2][m3]amix=inputs=3:duration=longest[bed]"
             )
             if has_audio:
