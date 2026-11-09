@@ -9,6 +9,14 @@ on:
       - "video_research.py"
       - "qa/smoke_live_video.py"
       - ".github/workflows/live-video-smoke.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "video_creator_engine.py"
+      - "video_storage.py"
+      - "video_research.py"
+      - "qa/smoke_live_video.py"
+      - ".github/workflows/live-video-smoke.yml"
   workflow_dispatch:
 
 permissions:
