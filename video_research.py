@@ -63,7 +63,7 @@ def research_wikipedia(topic):
 
 
 def build_explainer_beats(research, duration_mode="standard"):
-    """Turn sourced article sentences into five scenes at a selectable length."""
+    """Turn each selected sourced sentence into its own editable scene."""
     if not research:
         return []
     limits = {"short": 10, "standard": 20, "long": 30}
@@ -74,20 +74,15 @@ def build_explainer_beats(research, duration_mode="standard"):
         return []
     selected = sentences[:limits[duration_mode]]
     beats = []
-    kinds = ("generic", "work", "phone", "money", "generic")
-    for index in range(5):
-        start = round(index * len(selected) / 5)
-        end = round((index + 1) * len(selected) / 5)
-        group = selected[start:end]
-        if not group:
-            return []
-        line = " ".join(group)
+    kinds = ("generic", "work", "phone", "money", "sleep", "gym", "food", "love", "phone", "generic")
+    for index, sentence in enumerate(selected):
+        line = re.sub(r"\\s+", " ", str(sentence)).strip()
         if len(line) > 420:
             clipped = line[:417]
             boundary = clipped.rfind(" ")
             line = clipped[:boundary if boundary > 250 else 417].rstrip(" ,;:") + "…"
-        caption = group[0]
+        caption = line
         if len(caption) > 115:
             caption = caption[:112].rsplit(" ", 1)[0] + "…"
-        beats.append((f"FAKTA {index + 1}", line, caption, kinds[index]))
+        beats.append((f"FAKTA {index + 1}", line, caption, kinds[index % len(kinds)]))
     return beats
