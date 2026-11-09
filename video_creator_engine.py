@@ -316,10 +316,21 @@ async def create_original_video(topic: str = Form(""), mode: str = Form("origina
             _make_scene(still, heading, line, caption, kind, i)
             clip = job_dir / f"clip_{i:02}.mp4"
             frames = int(SCENE_SECONDS * FPS)
-            # Slow cinematic push-in with a short cross-fade between scenes.
+            # Continuous camera drift, gentle breathing zoom and clean scene fades.
+            # The small pan makes each illustrated scene feel less like a static slide.
+            motion = (
+                f"scale={W}:{H},"
+                f"zoompan=z='1.025+0.012*sin(on/22)':"
+                f"x='iw/2-(iw/zoom/2)+7*sin(on/19)':"
+                f"y='ih/2-(ih/zoom/2)+10*cos(on/27)':"
+                f"d={frames}:s={W}x{H}:fps={FPS},"
+                "fade=t=in:st=0:d=0.22,"
+                f"fade=t=out:st={SCENE_SECONDS-0.22:.2f}:d=0.22,"
+                "setsar=1"
+            )
             _ffmpeg([
                 "-loop", "1", "-i", str(still),
-                "-vf", f"scale={W}:{H},zoompan=z='min(zoom+0.00055,1.035)':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d={frames}:s={W}x{H}:fps={FPS},setsar=1",
+                "-vf", motion,
                 "-frames:v", str(frames), "-an", "-c:v", "libx264", "-preset", "ultrafast",
                 "-pix_fmt", "yuv420p", str(clip)
             ], timeout=180)
