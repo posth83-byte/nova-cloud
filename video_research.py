@@ -62,14 +62,17 @@ def research_wikipedia(topic):
     return None
 
 
-def build_explainer_beats(research):
-    """Turn sourced article sentences into five short, readable scenes."""
+def build_explainer_beats(research, duration_mode="standard"):
+    """Turn sourced article sentences into five scenes at a selectable length."""
     if not research:
+        return []
+    limits = {"short": 10, "standard": 20, "long": 30}
+    if duration_mode not in limits:
         return []
     sentences = research.get("sentences") or []
     if len(sentences) < 5:
         return []
-    selected = sentences[:15]
+    selected = sentences[:limits[duration_mode]]
     beats = []
     kinds = ("generic", "work", "phone", "money", "generic")
     for index in range(5):
