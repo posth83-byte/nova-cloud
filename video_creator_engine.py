@@ -577,11 +577,11 @@ async def create_original_video(
 
 
 @router.get("/api/video/team/subtitles/{job_id}")
-def download_video_subtitles(job_id: str):
+def download_video_subtitles(job_id: str, force_remote: bool = False):
     if not re.fullmatch(r"[a-f0-9]{12}", job_id):
         raise HTTPException(400, "Ogiltigt jobb-ID.")
     path = OUTPUT_DIR / job_id / "undertexter.srt"
-    if path.is_file():
+    if path.is_file() and not force_remote:
         return FileResponse(path, media_type="application/x-subrip; charset=utf-8", filename="undertexter.srt")
     remote = open_stored_file(job_id, "undertexter.srt")
     if remote is None:
@@ -600,11 +600,11 @@ def download_video_subtitles(job_id: str):
 
 
 @router.get("/api/video/team/credits/{job_id}")
-def download_video_credits(job_id: str):
+def download_video_credits(job_id: str, force_remote: bool = False):
     if not re.fullmatch(r"[a-f0-9]{12}", job_id):
         raise HTTPException(400, "Ogiltigt jobb-ID.")
     path = OUTPUT_DIR / job_id / "bildkrediter.txt"
-    if path.is_file():
+    if path.is_file() and not force_remote:
         return FileResponse(path, media_type="text/plain; charset=utf-8", filename="bildkrediter.txt")
     remote = open_stored_file(job_id, "bildkrediter.txt")
     if remote is None:
@@ -623,11 +623,11 @@ def download_video_credits(job_id: str):
 
 
 @router.get("/api/video/team/created/{job_id}")
-def download_original_video(job_id: str):
+def download_original_video(job_id: str, force_remote: bool = False):
     if not re.fullmatch(r"[a-f0-9]{12}", job_id):
         raise HTTPException(400, "Ogiltigt jobb-ID.")
     path = OUTPUT_DIR / job_id / "jarvis_original.mp4"
-    if path.is_file():
+    if path.is_file() and not force_remote:
         return FileResponse(path, media_type="video/mp4", filename="jarvis-original-tiktok.mp4")
     remote = open_stored_file(job_id, "jarvis_original.mp4")
     if remote is None:
