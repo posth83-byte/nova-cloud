@@ -446,7 +446,7 @@ async def create_original_video(topic: str = Form(""), mode: str = Form("origina
                     f"Källsida: {item.get('page_url') or 'Ej angiven'}",
                     ""
                 ])
-            credits_path.write_text("\\n".join(credit_lines), encoding="utf-8")
+            credits_path.write_text("\n".join(credit_lines), encoding="utf-8")
         return {
             "status": "completed", "job_id": job_id, "mode": mode, "video_type": video_type, "topic": topic,
             "script": [{"heading": h, "line": line, "caption": caption}
