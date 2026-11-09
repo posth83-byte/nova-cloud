@@ -164,6 +164,12 @@ try {
           if (await page.locator("#videoTeamCreator").count() !== 1) localFailures.push("Video creator panel is missing.");
           if (await page.locator("#videoFindIdeas").count() !== 1) localFailures.push("Trend discovery button is missing.");
           if (await page.locator("#videoCreateOriginal").count() !== 1) localFailures.push("Original video button is missing.");
+          if (await page.locator("#videoAspectSelect").count() !== 1) localFailures.push("Video aspect selector is missing.");
+          if (await page.locator("#videoDurationSelect").count() !== 1) localFailures.push("Factual video duration selector is missing.");
+          await page.locator("#videoTypeSelect").selectOption("explainer");
+          if (await page.locator("#videoDurationWrap").evaluate(el => getComputedStyle(el).display) === "none") localFailures.push("Factual duration selector did not appear for explainers.");
+          await page.locator("#videoTypeSelect").selectOption("humor");
+          if (await page.locator("#videoDurationWrap").evaluate(el => getComputedStyle(el).display) !== "none") localFailures.push("Factual duration selector remained visible for humor.");
 
           await page.route("**/api/video/team/ideas", route => route.fulfill({
             status: 200, contentType: "application/json",
@@ -175,7 +181,7 @@ try {
 
           await page.route("**/api/video/team/create", route => route.fulfill({
             status: 200, contentType: "application/json",
-            body: JSON.stringify({ status: "completed", job_id: "abcdef123456", topic: "QA humor", format: "9:16", resolution: "720x1280", script: [{ heading: "TEST", line: "En testscen.", punchline: "Testpoäng." }], video_url: "/api/video/team/created/abcdef123456", message: "Testvideo klar." })
+            body: JSON.stringify({ status: "completed", job_id: "abcdef123456", topic: "QA humor", format: "9:16", resolution: "720x1280", storage_status: "persistent", visual_source: "Egen grafik", script: [{ heading: "TEST", line: "En testscen.", punchline: "Testpoäng." }], video_url: "/api/video/team/created/abcdef123456", subtitles_url: "/api/video/team/subtitles/abcdef123456", message: "Testvideo klar." })
           }));
           await page.route("**/api/video/team/created/*", route => route.fulfill({ status: 200, contentType: "video/mp4", body: Buffer.from("test-video") }));
           await page.locator("#videoOriginalTopic").fill("QA humor");
@@ -183,6 +189,7 @@ try {
           await page.waitForFunction(() => document.querySelector("#videoCreatorResult a")?.textContent.includes("FÄRDIG MP4"), null, { timeout: 5000 });
           if (!(await page.locator("#videoCreatorResult video").count())) localFailures.push("Created-video preview element is missing.");
           if (!(await page.locator("#videoCreatorResult").innerText()).includes("TEST")) localFailures.push("Created-video script was not displayed.");
+          if (!(await page.locator("#videoCreatorResult a").allTextContents()).some(text => text.includes("UNDERtexter"))) localFailures.push("SRT subtitle download link is missing.");
         }
         const errors = [...pageErrors, ...localFailures];
         if (errors.length) failures.push(route + " [" + viewport.name + "]: " + errors.join(" | "));
