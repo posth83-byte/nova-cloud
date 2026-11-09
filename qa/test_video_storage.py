@@ -18,6 +18,7 @@ class FakeResponse:
 
 
 def main():
+    assert video_storage.MAX_UPLOAD_BYTES == 50 * 1024 * 1024
     with patch.dict(os.environ, {}, clear=True):
         assert not video_storage.is_configured()
         assert not video_storage.upload_file("abc123abc123", "/missing", "video.mp4", "video/mp4")
