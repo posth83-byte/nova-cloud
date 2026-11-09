@@ -28,6 +28,12 @@ def main():
     with tempfile.TemporaryDirectory() as folder, patch.dict(os.environ, env, clear=True):
         path = Path(folder) / "video.mp4"
         path.write_bytes(b"test-video")
+        oversized = Path(folder) / "oversized.mp4"
+        with oversized.open("wb") as stream:
+            stream.truncate(video_storage.MAX_UPLOAD_BYTES + 1)
+        with patch.object(video_storage, "_request") as blocked_request:
+            assert not video_storage.upload_file("abc123abc123", oversized, "too-large.mp4", "video/mp4")
+            blocked_request.assert_not_called()
         with patch.object(video_storage, "_request", return_value=FakeResponse()) as request:
             assert video_storage.upload_file("abc123abc123", path, "jarvis_original.mp4", "video/mp4")
             args, kwargs = request.call_args
