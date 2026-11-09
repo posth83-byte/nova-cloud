@@ -194,79 +194,68 @@ def _make_scene(path, kicker, headline, caption, kind, index):
     image.save(path, quality=94)
 
 
-def _build_script(topic):
+def _build_script(topic, video_type="humor"):
+    """Create a five-beat script for the selected video purpose."""
     clean = re.sub(r"\s+", " ", (topic or "").strip())[:MAX_PROMPT].strip(" .!?")
     if not clean:
-        clean = "vardagslivet"
+        clean = "ett intressant ämne"
+    templates = {
+        "explainer": [
+            ("FRÅGAN", f"Vad behöver man förstå om {clean}?", "Vi börjar med grunden och håller det enkelt.", "generic"),
+            ("BAKGRUNDEN", f"För att förstå {clean} behöver vi se sammanhanget.", "Det blir lättare när man delar upp det.", "work"),
+            ("KÄRNAN", f"Den viktigaste delen av {clean} är det vi ska fokusera på.", "En tydlig sak i taget gör skillnad.", "phone"),
+            ("EXEMPEL", f"Tänk på ett konkret exempel kopplat till {clean}.", "Då blir resonemanget lättare att följa.", "generic"),
+            ("SAMMANFATTNING", f"Nu har du en tydligare bild av {clean}.", "Kontrollera detaljerna innan du drar slutsatser.", "generic"),
+        ],
+        "tutorial": [
+            ("MÅLET", f"Så kommer du igång med {clean}.", "Vi tar det steg för steg.", "generic"),
+            ("STEG 1", "Börja med att förbereda det du behöver.", "En bra start gör resten enklare.", "work"),
+            ("STEG 2", f"Gå igenom grunderna för {clean} i lugn takt.", "Följ instruktionerna för just din situation.", "phone"),
+            ("STEG 3", "Testa resultatet och rätta till det som inte fungerar.", "Små justeringar är helt normala.", "generic"),
+            ("KLART", "Nu har du en tydlig startpunkt.", "Kontrollera alltid resultatet innan du går vidare.", "generic"),
+        ],
+        "promo": [
+            ("UPPTÄCK", f"Letar du efter ett bättre sätt att ta dig an {clean}?", "Här är en idé värd att utforska.", "generic"),
+            ("UTMANINGEN", f"{clean.capitalize()} kan kännas mer komplicerat än det behöver vara.", "Det ska vara enkelt att komma igång.", "work"),
+            ("MÖJLIGHETEN", "Fokusera på det som faktiskt gör skillnad.", "Tydlighet och enkelhet först.", "phone"),
+            ("FÖRDELEN", "Jämför alternativen och välj det som passar dina behov.", "Inga tomma löften – välj det som fungerar.", "money"),
+            ("TA NÄSTA STEG", f"Utforska {clean} och se vad som passar dig.", "Läs mer innan du bestämmer dig.", "generic"),
+        ],
+        "inspiration": [
+            ("BÖRJA", f"Du behöver inte ha allt klart för att börja med {clean}.", "Det räcker att ta första steget.", "generic"),
+            ("SMÅ STEG", "Framsteg byggs av små beslut som upprepas.", "Hellre lite i taget än aldrig.", "work"),
+            ("MOTGÅNG", "Det kommer inte alltid gå enligt planen.", "Det betyder inte att du ska ge upp.", "sleep"),
+            ("UTVECKLING", f"Varje försök lär dig något om {clean}.", "Använd erfarenheten och fortsätt framåt.", "phone"),
+            ("FORTSÄTT", "Ditt nästa steg behöver inte vara perfekt.", "Det behöver bara bli av.", "generic"),
+        ],
+        "story": [
+            ("DET BÖRJADE", f"Allt började med en enkel idé: {clean}.", "Ingen visste vart det skulle leda.", "generic"),
+            ("FÖRSTA STEGET", "Till en början verkade allt ganska enkelt.", "Sedan dök den första överraskningen upp.", "work"),
+            ("VÄNDPUNKTEN", "Plötsligt behövde en helt ny plan ta form.", "Det var nu berättelsen tog fart.", "phone"),
+            ("UPPTÄCKTEN", "Det som först verkade vara ett hinder blev en möjlighet.", "Ibland ser man lösningen först efteråt.", "generic"),
+            ("SLUTET", f"Det här var början på berättelsen om {clean}.", "Resten kan du själv vara med och forma.", "generic"),
+        ],
+    }
+    if video_type in templates:
+        return templates[video_type]
     lower = clean.casefold()
     if any(word in lower for word in ("kaffe", "kaffet", "espresso")):
-        beats = [
+        return [
             ("DAGENS PLAN", "Jag skulle bara ta en snabb kaffe.", "Det var innan kaffemaskinen fick en egen åsikt.", "coffee"),
             ("FÖRSTA FÖRSÖKET", "Tryckte på start. Ingenting hände.", "Maskinen behövde tydligen också måndag morgon.", "coffee"),
             ("STRATEGIN", "Jag googlade: hur lagar man en kaffemaskin?", "Internet föreslog att jag skulle andas lugnt.", "phone"),
             ("INSIKTEN", "Jag hade nu lagt 20 minuter på kaffe.", "Produktiviteten låg fortfarande på 0 procent.", "work"),
             ("SLUTSATSEN", "Så jag tog en kopp te istället.", "Nu är jag stressad OCH besviken.", "coffee"),
         ]
-    elif any(word in lower for word in ("sova", "sömn", "natt", "hjärnan")):
-        beats = [
-            ("02:47", "Du ska bara sova.", "Äntligen lite lugn och ro.", "sleep"),
-            ("HJÄRNAN", "Kommer du ihåg det pinsamma från 2016?", "Det där som ingen annan minns längre.", "sleep"),
-            ("DU", "Nej. Och det tänker jag inte göra heller.", "Vi har faktiskt ett schema här.", "phone"),
-            ("HJÄRNAN", "Perfekt. Här är det i 4K med surroundljud.", "Bonus: du sa det med självförtroende.", "phone"),
-            ("03:19", "Ska vi gå igenom RESTEN av ditt liv också?", "Sov gott. Om 4–5 arbetsdagar.", "sleep"),
-        ]
-    elif any(word in lower for word in ("jobb", "chef", "möte", "måndag", "arbete")):
-        beats = [
-            ("MÅNDAG 08:00", "Den här veckan ska jag vara effektiv.", "Jag har till och med gjort en lista.", "work"),
-            ("08:07", "Första mötet börjar om tre minuter.", "Ingen vet varför jag är med.", "phone"),
-            ("09:42", "Någon säger: vi tar det offline.", "Jag har varit online hela mitt liv.", "work"),
-            ("14:56", "Jag har svarat på 38 mejl.", "Och gjort exakt noll av jobbet.", "work"),
-            ("17:01", "Imorgon kör vi på riktigt.", "Det sa jag även förra måndagen.", "sleep"),
-        ]
-    elif any(word in lower for word in ("gym", "träna", "träning", "motion")):
-        beats = [
-            ("MÅLET", "Idag börjar mitt nya träningsliv.", "Jag har till och med köpt vattenflaska.", "gym"),
-            ("UPPVÄRMNING", "Jag googlade hur man värmer upp.", "Blev trött av att läsa instruktionerna.", "phone"),
-            ("FÖRSTA SETET", "Jag lyfte en hantel. En gång.", "Musklerna har redan skickat klagomål.", "gym"),
-            ("ÅTERHÄMTNING", "Jag vilade i 47 minuter.", "Det kallas tydligen aktiv återhämtning.", "sleep"),
-            ("RESULTATET", "Jag har tränat hela dagen.", "Stegräknaren visar 312 steg. Mest till fiket.", "coffee"),
-        ]
-    elif any(word in lower for word in ("pengar", "lön", "budget", "faktura", "ekonomi")):
-        beats = [
-            ("LÖNEDAG", "Lönen kom precis in på kontot.", "Jag kände mig ekonomiskt odödlig.", "money"),
-            ("FÖRSTA TIMMEN", "Jag köpte bara det allra nödvändigaste.", "En kaffemaskin och en liten båt.", "coffee"),
-            ("VERKLIGHETEN", "Hyran och räkningarna vaknade.", "De hade tydligen planerat en överraskning.", "phone"),
-            ("BUDGETMÖTET", "Jag öppnade min budget med stort mod.", "Budgeten öppnade istället ett krisärende.", "work"),
-            ("SLUTET", "Nu lever jag på nudlar till nästa lön.", "Men båten var faktiskt värd det.", "food"),
-        ]
-    elif any(word in lower for word in ("dejt", "relation", "kärlek", "partner")):
-        beats = [
-            ("INFÖR DEJTEN", "Jag skulle vara avslappnad och naturlig.", "Övade på att säga hej i spegeln.", "love"),
-            ("FÖRSTA INTRYCKET", "Jag sa: trevligt att träffas.", "Och råkade kalla personen för mamma.", "love"),
-            ("SMÅPRAT", "Vi pratade om vädret i tjugo minuter.", "Meteorologin gick bättre än romantiken.", "phone"),
-            ("TYSTNADEN", "Jag skulle säga något charmigt.", "Hjärnan visade bara laddningssymbolen.", "generic"),
-            ("EFTERÅT", "De sa att vi hörs snart.", "Jag har redan planerat bröllopet. Och flytten.", "love"),
-        ]
-    elif any(word in lower for word in ("mat", "middag", "laga", "recept", "matlagning")):
-        beats = [
-            ("MIDDAGSPLANEN", "Ikväll lagar jag något avancerat.", "Jag har sparat ett recept från internet.", "food"),
-            ("INGREDIENSERNA", "Det saknas bara en liten ingrediens.", "Och tydligen resten av köket.", "food"),
-            ("KOCKEN", "Jag improviserar lite istället.", "Brandvarnaren blir min souschef.", "work"),
-            ("PROBLEMET", "Receptet sa: stek tills gyllenbrunt.", "Min panna gick direkt till kolsvart.", "food"),
-            ("SERVERING", "Det blev mackor till middag igen.", "Michelin får vänta tills imorgon.", "food"),
-        ]
-    else:
-        beats = [
-            ("JAG HADE EN PLAN", f"Idag skulle jag äntligen lyckas med {clean}.", "Hur svårt kunde det vara?", "generic"),
-            ("SJÄLVFÖRTROENDE", "Jag hade sett en video på 12 sekunder.", "Nu räknade jag mig som expert.", "phone"),
-            ("VERKLIGHETEN", "Tre sekunder senare gick allt åt fel håll.", "Självförtroendet var kvar. Kompetensen tog ledigt.", "work"),
-            ("FELSÖKNING", "Jag testade exakt samma sak igen.", "För tydligen fungerar envishet som teknik.", "generic"),
-            ("LÄRDOMEN", f"Nästa gång ska jag läsa på om {clean}.", "Eller låta bli. Vi får se.", "generic"),
-        ]
-    return beats
+    return [
+        ("JAG HADE EN PLAN", f"Idag skulle jag äntligen lyckas med {clean}.", "Hur svårt kunde det vara?", "generic"),
+        ("SJÄLVFÖRTROENDE", "Jag hade sett en video på 12 sekunder.", "Nu räknade jag mig som expert.", "phone"),
+        ("VERKLIGHETEN", "Tre sekunder senare gick allt åt fel håll.", "Självförtroendet var kvar. Kompetensen tog ledigt.", "work"),
+        ("FELSÖKNING", "Jag testade exakt samma sak igen.", "För tydligen fungerar envishet som teknik.", "generic"),
+        ("LÄRDOMEN", f"Nästa gång ska jag läsa på om {clean}.", "Eller låta bli. Vi får se.", "generic"),
+    ]
 
-
-def _motion_filter(kind, index):
+def _motion_filter(kind, index, video_type="humor"):
     """Build a lightweight animated FFmpeg filter for floating comic accents."""
     palettes = {
         "coffee": "0xFF975B", "sleep": "0xAFC5FF", "phone": "0x69BBE5",
@@ -283,7 +272,7 @@ def _motion_filter(kind, index):
         "work": "OJ!", "money": "KRASCH!", "gym": "PUH!",
         "food": "MUMS!", "love": "OJ DA!", "generic": "PANG!",
     }
-    reaction = reactions.get(kind, "PANG!")
+    reaction = reactions.get(kind, "PANG!") if video_type == "humor" else ""
     return ",".join([
         f"scale={W}:{H}",
         f"zoompan=z='1.025+0.012*sin(on/22)':"
@@ -330,19 +319,21 @@ def discover_video_ideas():
 
 
 @router.post("/api/video/team/create")
-async def create_original_video(topic: str = Form(""), mode: str = Form("original")):
+async def create_original_video(topic: str = Form(""), mode: str = Form("original"), video_type: str = Form("humor")):
     topic = (topic or "").strip()
     if len(topic) > MAX_PROMPT:
         raise HTTPException(400, f"Ämnet får vara högst {MAX_PROMPT} tecken.")
     if mode not in {"original", "trend"}:
         raise HTTPException(400, "Ogiltigt videoläge.")
+    if video_type not in {"humor", "explainer", "tutorial", "promo", "inspiration", "story"}:
+        raise HTTPException(400, "Ogiltig videotyp.")
     if not topic:
         topic = "när man försöker vara produktiv"
     job_id = uuid.uuid4().hex[:12]
     job_dir = OUTPUT_DIR / job_id
     job_dir.mkdir(parents=True, exist_ok=True)
     try:
-        beats = _build_script(topic)
+        beats = _build_script(topic, video_type)
         narration = " ".join(f"{heading}. {line} {caption}" for heading, line, caption, _ in beats)
         narration_path = job_dir / "voice.mp3"
         await edge_tts.Communicate(narration, VOICE).save(str(narration_path))
@@ -353,7 +344,7 @@ async def create_original_video(topic: str = Form(""), mode: str = Form("origina
             clip = job_dir / f"clip_{i:02}.mp4"
             frames = int(SCENE_SECONDS * FPS)
             # Animated camera drift plus subtle, topic-colored comic accents.
-            motion = _motion_filter(kind, i)
+            motion = _motion_filter(kind, i, video_type)
             _ffmpeg([
                 "-loop", "1", "-i", str(still),
                 "-vf", motion,
@@ -376,13 +367,13 @@ async def create_original_video(topic: str = Form(""), mode: str = Form("origina
         if not output.is_file() or output.stat().st_size < 10000:
             raise RuntimeError("MP4-filen saknas eller är ofullständig.")
         return {
-            "status": "completed", "job_id": job_id, "mode": mode, "topic": topic,
+            "status": "completed", "job_id": job_id, "mode": mode, "video_type": video_type, "topic": topic,
             "script": [{"heading": h, "line": line, "caption": caption}
                        for h, line, caption, _ in beats],
             "format": "9:16", "resolution": "720x1280", "fps": FPS,
             "duration_target_seconds": round(len(beats) * SCENE_SECONDS, 1),
             "voice": VOICE, "video_url": f"/api/video/team/created/{job_id}",
-            "message": "Originalvideo skapad med fem animerade scener, svensk berättarröst och egen ljudmatta."
+            "message": f"Video skapad ({video_type}) med fem animerade scener, svensk berättarröst och egen ljudmatta."
         }
     except HTTPException:
         shutil.rmtree(job_dir, ignore_errors=True)
