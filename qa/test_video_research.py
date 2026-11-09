@@ -34,7 +34,7 @@ def main():
     with patch.object(video_research, "_api", side_effect=RuntimeError("offline")):
         assert video_research.research_wikipedia("okänt ämne") is None
     assert video_research.build_explainer_beats(None) == []
-    print("PASS Wikipedia source retrieval, five-scene factual beat creation and offline failure handling.")
+    print("PASS Wikipedia source retrieval, 10/20/30-scene factual timelines and offline failure handling.")
 
 
 if __name__ == "__main__":
