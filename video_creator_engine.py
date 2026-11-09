@@ -19,7 +19,8 @@ import edge_tts
 import imageio_ffmpeg
 from fastapi import APIRouter, Form, HTTPException
 from fastapi.responses import FileResponse
-from PIL import Image, ImageDraw, ImageFont
+from video_assets import search_commons_images, download_commons_image
+from PIL import Image, ImageDraw, ImageFont, ImageEnhance, ImageOps
 
 router = APIRouter()
 OUTPUT_DIR = Path("/tmp/nova_team_created")
@@ -142,17 +143,24 @@ def _draw_illustration(draw, kind, t):
         draw.arc((150, 170, 570, 690), 205, 335, fill=(83, 180, 224), width=5)
 
 
-def _make_scene(path, kicker, headline, caption, kind, index):
-    image = Image.new("RGB", (W, H), (5, 10, 22))
-    pixels = image.load()
-    for y in range(H):
-        f = y / H
-        base = (int(6 + 12*f), int(12 + 12*f), int(28 + 16*f))
-        for x in range(W):
-            glow = max(0.0, 1 - (((x-W*.5)/(W*.78))**2 + ((y-H*.34)/(H*.62))**2))
-            pixels[x, y] = (min(255, base[0] + int(20*glow)),
-                            min(255, base[1] + int(29*glow)),
-                            min(255, base[2] + int(42*glow)))
+def _make_scene(path, kicker, headline, caption, kind, index, background_path=None):
+    if background_path and Path(background_path).is_file():
+        with Image.open(background_path) as source:
+            image = ImageOps.fit(source.convert("RGB"), (W, H), method=Image.Resampling.LANCZOS)
+        image = ImageEnhance.Brightness(image).enhance(0.34)
+        shade = Image.new("RGBA", (W, H), (4, 9, 20, 112))
+        image = Image.alpha_composite(image.convert("RGBA"), shade).convert("RGB")
+    else:
+        image = Image.new("RGB", (W, H), (5, 10, 22))
+        pixels = image.load()
+        for y in range(H):
+            f = y / H
+            base = (int(6 + 12*f), int(12 + 12*f), int(28 + 16*f))
+            for x in range(W):
+                glow = max(0.0, 1 - (((x-W*.5)/(W*.78))**2 + ((y-H*.34)/(H*.62))**2))
+                pixels[x, y] = (min(255, base[0] + int(20*glow)),
+                                min(255, base[1] + int(29*glow)),
+                                min(255, base[2] + int(42*glow)))
     draw = ImageDraw.Draw(image)
     palettes = {
         "coffee": (255, 151, 91), "sleep": (142, 173, 239), "phone": (105, 187, 229),
@@ -388,9 +396,19 @@ async def create_original_video(topic: str = Form(""), mode: str = Form("origina
         narration_path = job_dir / "voice.mp3"
         await edge_tts.Communicate(narration, VOICE).save(str(narration_path))
         clips = []
+        attributions = []
         for i, (heading, line, caption, kind) in enumerate(beats):
             still = job_dir / f"scene_{i:02}.jpg"
-            _make_scene(still, heading, line, caption, kind, i)
+            candidates = search_commons_images(f"{topic} {heading} {line}", limit=1)
+            background_path = None
+            if candidates:
+                asset_path = job_dir / f"commons_{i:02}.jpg"
+                if download_commons_image(candidates[0], asset_path):
+                    background_path = asset_path
+                    attributions.append({key: candidates[0].get(key, "") for key in (
+                        "title", "page_url", "license", "license_url", "artist", "credit"
+                    )})
+            _make_scene(still, heading, line, caption, kind, i, background_path)
             clip = job_dir / f"clip_{i:02}.mp4"
             frames = int(SCENE_SECONDS * FPS)
             # Animated camera drift plus subtle, topic-colored comic accents.
@@ -423,6 +441,8 @@ async def create_original_video(topic: str = Form(""), mode: str = Form("origina
             "format": "9:16", "resolution": "720x1280", "fps": FPS,
             "duration_target_seconds": round(len(beats) * SCENE_SECONDS, 1),
             "voice": VOICE, "video_url": f"/api/video/team/created/{job_id}",
+            "visual_source": "Wikimedia Commons + egen grafik" if attributions else "Egen procedural grafik (bildkälla ej tillgänglig)",
+            "image_attributions": attributions,
             "message": f"Video skapad ({video_type}) med fem animerade scener, svensk berättarröst och egen ljudmatta."
         }
     except HTTPException:
