@@ -19,11 +19,12 @@ from pathlib import Path
 
 import edge_tts
 import imageio_ffmpeg
-from fastapi import APIRouter, Form, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Form, HTTPException
 from fastapi.responses import FileResponse, StreamingResponse
 from video_assets import search_commons_images, download_commons_image
 from video_storage import upload_file, open_stored_file, storage_self_test
 from video_research import research_wikipedia, build_explainer_beats
+from video_jobs import save_job_status, get_job_status
 from PIL import Image, ImageDraw, ImageFont, ImageEnhance, ImageOps
 
 router = APIRouter()
@@ -441,6 +442,7 @@ async def create_original_video(
     video_type: str = Form("humor"),
     aspect: str = Form("9:16"),
     duration_mode: str = Form("standard"),
+    background_tasks: BackgroundTasks = None,
 ):
     topic = (topic or "").strip()
     if len(topic) > MAX_PROMPT:
@@ -456,6 +458,55 @@ async def create_original_video(
     if not topic:
         topic = "ett intressant ämne"
     job_id = uuid.uuid4().hex[:12]
+    if background_tasks is None:
+        return await _render_original_video(topic, mode, video_type, aspect, duration_mode, job_id)
+    request_data = {
+        "topic": topic, "mode": mode, "video_type": video_type,
+        "aspect": aspect, "duration_mode": duration_mode,
+    }
+    queued = await asyncio.to_thread(
+        save_job_status, job_id, "queued", request=request_data
+    )
+    background_tasks.add_task(
+        _run_video_job, job_id, topic, mode, video_type, aspect, duration_mode
+    )
+    return {
+        "status": "queued",
+        "job_id": job_id,
+        "status_url": f"/api/video/team/jobs/{job_id}",
+        "status_storage_status": queued.get("status_storage_status", "memory_only"),
+        "message": "Videon köas och renderas i bakgrunden. Du kan låsa mobilen medan JARVIS arbetar.",
+    }
+
+
+def _run_video_job(job_id, topic, mode, video_type, aspect, duration_mode):
+    request_data = {
+        "topic": topic, "mode": mode, "video_type": video_type,
+        "aspect": aspect, "duration_mode": duration_mode,
+    }
+    save_job_status(job_id, "running", request=request_data)
+    try:
+        result = asyncio.run(
+            _render_original_video(topic, mode, video_type, aspect, duration_mode, job_id)
+        )
+        save_job_status(job_id, "completed", result=result, request=request_data)
+    except Exception as error:
+        detail = error.detail if isinstance(error, HTTPException) else str(error)
+        logger.exception("NOVA video job %s failed", job_id)
+        save_job_status(job_id, "failed", error=str(detail)[:900], request=request_data)
+
+
+@router.get("/api/video/team/jobs/{job_id}")
+def video_job_status(job_id: str):
+    if not re.fullmatch(r"[a-f0-9]{12}", job_id):
+        raise HTTPException(400, "Ogiltigt jobb-ID.")
+    status = get_job_status(job_id)
+    if status is None:
+        raise HTTPException(404, "Videoprojektet hittades inte.")
+    return status
+
+
+async def _render_original_video(topic, mode, video_type, aspect, duration_mode, job_id):
     job_dir = OUTPUT_DIR / job_id
     job_dir.mkdir(parents=True, exist_ok=True)
     try:

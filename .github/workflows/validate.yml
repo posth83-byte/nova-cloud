@@ -22,7 +22,7 @@ jobs:
         with:
           python-version: "3.12"
       - name: Compile Python modules
-        run: python -m py_compile main.py video_engine.py video_team_engine.py video_creator_engine.py video_assets.py video_storage.py video_research.py qa/smoke_live_video.py runway_engine.py kling_engine.py
+        run: python -m py_compile main.py video_engine.py video_team_engine.py video_creator_engine.py video_assets.py video_storage.py video_research.py video_jobs.py qa/smoke_live_video.py qa/test_video_jobs.py runway_engine.py kling_engine.py
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
@@ -123,6 +123,7 @@ jobs:
           python -m pip install --disable-pip-version-check -r requirements.txt
           python qa/test_video_assets.py
           python qa/test_video_storage.py
+          python qa/test_video_jobs.py
           python qa/test_video_research.py
           python qa/test_video_creator.py
           uvicorn main:app --host 127.0.0.1 --port 8765 >/tmp/nexora-api.log 2>&1 &
@@ -147,11 +148,37 @@ jobs:
           print(f"PASS live trend feed: {len(data['ideas'])} current topics.")
           PY
           echo "Creating a real MP4 through the HTTP API using the free Swedish voice..."
-          curl --fail --silent --show-error --max-time 240 -F "topic=vardagshumor och kaffe" -F "mode=original" http://127.0.0.1:8765/api/video/team/create >/tmp/jarvis-create.json
           python - <<'PY'
-          import json
+          import json, time
           from pathlib import Path
-          data = json.loads(Path("/tmp/jarvis-create.json").read_text())
+          import requests
+          base = "http://127.0.0.1:8765"
+          response = requests.post(
+              base + "/api/video/team/create",
+              data={"topic": "vardagshumor och kaffe", "mode": "original",
+                    "video_type": "humor", "aspect": "9:16", "duration_mode": "standard"},
+              timeout=60,
+          )
+          response.raise_for_status()
+          data = response.json()
+          if data.get("status") != "queued":
+              raise SystemExit(f"Expected immediate background-job queue response, got: {data}")
+          print(f"PASS API returned immediately with queued job {data.get('job_id')}.")
+          if data.get("status") in {"queued", "running"}:
+              status_url = base + data.get("status_url", f"/api/video/team/jobs/{data.get('job_id', '')}")
+              deadline = time.time() + 300
+              while time.time() < deadline:
+                  time.sleep(2)
+                  status = requests.get(status_url, timeout=15)
+                  status.raise_for_status()
+                  job = status.json()
+                  if job.get("status") == "failed":
+                      raise SystemExit(f"Background video job failed: {job.get('error')}")
+                  if job.get("status") == "completed":
+                      data = job.get("result") or {}
+                      break
+              if data.get("status") != "completed":
+                  raise SystemExit("Background video job did not finish within five minutes.")
           if data.get("status") != "completed" or data.get("format") != "9:16":
               raise SystemExit(f"HTTP video creation failed: {data}")
           Path("/tmp/jarvis-video-url.txt").write_text(data["video_url"])
