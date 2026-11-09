@@ -1137,7 +1137,7 @@ ox-spelutvecklare. Från spelidé och värld till Luau-kod, system, testning och
    <div id="novaVideoResults" class="video-results hidden"></div>
    <section class="video-studio" id="videoTeamCreator" style="margin-top:16px;border:1px solid #d78b43;border-radius:14px;padding:15px;background:linear-gradient(145deg,#211a16,#100d0b)">
     <h3 style="color:#ffc17a;margin-top:0">JARVIS VIDEO STUDIO / SKAPA VILKEN VIDEO SOM HELST</h3>
-    <p>Skapa humor, faktaförklaring, guide, reklam, inspiration eller en kort berättelse. Skriv ämnet och välj videotyp. Teamet skapar en animerad video med svensk berättarröst.</p>
+    <p>Skapa humor, faktaförklaring, guide, reklam, inspiration eller en kort berättelse. Skriv ämnet och välj videotyp. Teamet skapar en animerad video med svensk berättarröst. Faktavideor är första utkast och behöver faktagranskas före publicering.</p>
     <div style="display:flex;gap:8px;flex-wrap:wrap">
      <button class="video-create" id="videoFindIdeas" type="button" style="background:#342719;border-color:#e9a15c">⌕ HITTA POPULÄRA IDÉER</button>
      <a class="export-btn" href="https://ads.tiktok.com/business/creativecenter/inspiration/popular/trends/pc/sv" target="_blank" rel="noopener noreferrer" style="display:inline-flex;align-items:center">ÖPPNA TIKTOK CREATIVE CENTER ↗</a>
@@ -2635,7 +2635,7 @@ async function createOriginalVideo(mode){
   const preview=document.createElement("video");preview.controls=true;preview.playsInline=true;preview.preload="metadata";preview.src=data.video_url;preview.style.cssText="display:block;width:100%;max-width:360px;margin-top:12px;border-radius:12px";videoCreatorResult.appendChild(preview);
   logActivity("JARVIS VIDEO TEAM skapade originalvideo","✓",data.resolution);
  }catch(error){videoCreatorStatus.className="video-status error";videoCreatorStatus.textContent="KUNDE INTE SKAPA VIDEO: "+error.message;logActivity("Originalvideon misslyckades","⚠",error.message)}
- finally{videoCreateButton.disabled=false;videoCreateButton.textContent="✦ SKAPA ETT EGET HUMORKLIPP";setRoomState("nova","idle")}
+ finally{videoCreateButton.disabled=false;videoCreateButton.textContent="✦ SKAPA VIDEO";setRoomState("nova","idle")}
 }
 if(videoCreateButton)videoCreateButton.addEventListener("click",()=>createOriginalVideo("original"));
 function toSrtTime(seconds){
