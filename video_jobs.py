@@ -6,7 +6,7 @@ required.
 """
 import json
 import tempfile
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
 from video_storage import open_stored_file, upload_file
@@ -40,10 +40,26 @@ def save_job_status(job_id, status, *, result=None, error=None, request=None):
     return payload
 
 
+def _expire_stale_job(payload):
+    if payload.get("status") not in {"queued", "running"}:
+        return payload
+    try:
+        updated = datetime.fromisoformat(payload.get("updated_at", ""))
+    except (TypeError, ValueError):
+        updated = datetime.min.replace(tzinfo=timezone.utc)
+    if datetime.now(timezone.utc) - updated.astimezone(timezone.utc) > timedelta(minutes=15):
+        return save_job_status(
+            payload["job_id"], "failed",
+            error="Videoprocessen avbröts troligen när Render startade om eller jobbet fastnade. Starta ett nytt videoförsök.",
+            request=payload.get("request"),
+        )
+    return payload
+
+
 def get_job_status(job_id):
     cached = _JOBS.get(job_id)
     if cached is not None:
-        return cached
+        return _expire_stale_job(cached)
     remote = open_stored_file(job_id, "status.json")
     if remote is None:
         return None
@@ -54,6 +70,7 @@ def get_job_status(job_id):
         if not isinstance(payload, dict) or payload.get("job_id") != job_id:
             return None
         payload["status_storage_status"] = "persistent"
+        payload = _expire_stale_job(payload)
         _JOBS[job_id] = payload
         return payload
     except Exception:
