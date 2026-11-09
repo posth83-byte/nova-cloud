@@ -69,7 +69,7 @@ def main():
         assert decode.returncode == 0, decode.stderr
 
         response = engine.download_original_video(result["job_id"])
-        assert response.path == str(output)
+        assert Path(response.path) == output
         try:
             engine.download_original_video("../invalid")
         except Exception as error:
