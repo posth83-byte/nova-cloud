@@ -21,6 +21,7 @@ from fastapi import APIRouter, Form, HTTPException
 from fastapi.responses import FileResponse, StreamingResponse
 from video_assets import search_commons_images, download_commons_image
 from video_storage import upload_file, open_stored_file
+from video_research import research_wikipedia, build_explainer_beats
 from PIL import Image, ImageDraw, ImageFont, ImageEnhance, ImageOps
 
 router = APIRouter()
@@ -144,7 +145,7 @@ def _draw_illustration(draw, kind, t):
         draw.arc((150, 170, 570, 690), 205, 335, fill=(83, 180, 224), width=5)
 
 
-def _make_scene(path, kicker, headline, caption, kind, index, background_path=None):
+def _make_scene(path, kicker, headline, caption, kind, index, background_path=None, scene_seconds=SCENE_SECONDS):
     if background_path and Path(background_path).is_file():
         with Image.open(background_path) as source:
             image = ImageOps.fit(source.convert("RGB"), (W, H), method=Image.Resampling.LANCZOS)
@@ -191,7 +192,7 @@ def _make_scene(path, kicker, headline, caption, kind, index, background_path=No
                            fill=(20, 39, 61), outline=(255, 151, 91), width=2)
     draw.text((W//2, 149), kicker.upper(), font=_font(25, True),
               fill=(255, 190, 145), anchor="mm")
-    _draw_illustration(draw, kind, index * SCENE_SECONDS)
+    _draw_illustration(draw, kind, index * scene_seconds)
     _centered(draw, headline, 765, _font(49 if len(headline) < 36 else 42, True),
               (248, 250, 255), max_width=600, gap=14)
     # High-contrast subtitle panel for sound-off viewing.
@@ -314,7 +315,7 @@ def _build_script(topic, video_type="humor"):
     return beats
 
 
-def _motion_filter(kind, index, video_type="humor"):
+def _motion_filter(kind, index, video_type="humor", scene_seconds=SCENE_SECONDS):
     """Build a lightweight animated FFmpeg filter for floating comic accents."""
     palettes = {
         "coffee": "0xFF975B", "sleep": "0xAFC5FF", "phone": "0x69BBE5",
@@ -324,7 +325,7 @@ def _motion_filter(kind, index, video_type="humor"):
     color = palettes.get(kind, "0xFF975B")
     font = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
     phase = index * 0.73
-    frames = int(SCENE_SECONDS * FPS)
+    frames = int(scene_seconds * FPS)
     # A final, timed reaction word gives every scene a readable comic button.
     reactions = {
         "coffee": "SLURP!", "sleep": "ZZZ!", "phone": "PING!",
@@ -343,9 +344,9 @@ def _motion_filter(kind, index, video_type="humor"):
         f"x='560+28*cos(t*1.9+{phase:.2f})':y='520+25*sin(t*2.7+{phase:.2f})'",
         f"drawtext=fontfile={font}:text='{reaction}':fontcolor={color}:"
         f"fontsize='38+8*sin(t*18)':x='(w-text_w)/2':"
-        f"y='675+9*sin(t*20)':enable='between(t,{SCENE_SECONDS-0.95:.2f},{SCENE_SECONDS-0.12:.2f})'",
+        f"y='675+9*sin(t*20)':enable='between(t,{scene_seconds-0.95:.2f},{scene_seconds-0.12:.2f})'",
         f"fade=t=in:st=0:d=0.22",
-        f"fade=t=out:st={SCENE_SECONDS-0.22:.2f}:d=0.22",
+        f"fade=t=out:st={scene_seconds-0.22:.2f}:d=0.22",
         "setsar=1",
     ])
 
@@ -377,6 +378,18 @@ def discover_video_ideas():
             "error": source_error}
 
 
+def _audio_duration(path):
+    result = subprocess.run(
+        [imageio_ffmpeg.get_ffmpeg_exe(), "-i", str(path), "-f", "null", "-"],
+        stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=45
+    )
+    match = re.search(r"Duration:\s*(\d+):(\d+):(\d+(?:\.\d+)?)", result.stderr or "")
+    if not match:
+        raise RuntimeError("Kunde inte läsa berättarröstens längd.")
+    hours, minutes, seconds = match.groups()
+    return int(hours) * 3600 + int(minutes) * 60 + float(seconds)
+
+
 @router.post("/api/video/team/create")
 async def create_original_video(topic: str = Form(""), mode: str = Form("original"), video_type: str = Form("humor")):
     topic = (topic or "").strip()
@@ -392,10 +405,17 @@ async def create_original_video(topic: str = Form(""), mode: str = Form("origina
     job_dir = OUTPUT_DIR / job_id
     job_dir.mkdir(parents=True, exist_ok=True)
     try:
-        beats = _build_script(topic, video_type)
+        research_data = research_wikipedia(topic) if video_type == "explainer" else None
+        if video_type == "explainer":
+            beats = build_explainer_beats(research_data)
+            if not beats:
+                raise HTTPException(422, "Jag hittade inte tillräckligt med källmaterial i Wikipedia för en faktavideo. Prova ett tydligare ämne.")
+        else:
+            beats = _build_script(topic, video_type)
         narration = " ".join(f"{heading}. {line} {caption}" for heading, line, caption, _ in beats)
         narration_path = job_dir / "voice.mp3"
         await edge_tts.Communicate(narration, VOICE).save(str(narration_path))
+        scene_seconds = max(2.8, min(40.0, _audio_duration(narration_path) / len(beats) + 0.35))
         clips = []
         attributions = []
         visual_assets = search_commons_images(topic, limit=len(beats))
@@ -409,11 +429,11 @@ async def create_original_video(topic: str = Form(""), mode: str = Form("origina
                     attributions.append({key: visual_assets[i].get(key, "") for key in (
                         "title", "page_url", "license", "license_url", "artist", "credit"
                     )})
-            _make_scene(still, heading, line, caption, kind, i, background_path)
+            _make_scene(still, heading, line, caption, kind, i, background_path, scene_seconds)
             clip = job_dir / f"clip_{i:02}.mp4"
-            frames = int(SCENE_SECONDS * FPS)
+            frames = int(scene_seconds * FPS)
             # Animated camera drift plus subtle, topic-colored comic accents.
-            motion = _motion_filter(kind, i, video_type)
+            motion = _motion_filter(kind, i, video_type, scene_seconds)
             _ffmpeg([
                 "-loop", "1", "-i", str(still),
                 "-vf", motion,
@@ -457,9 +477,13 @@ async def create_original_video(topic: str = Form(""), mode: str = Form("origina
             "script": [{"heading": h, "line": line, "caption": caption}
                        for h, line, caption, _ in beats],
             "format": "9:16", "resolution": "720x1280", "fps": FPS,
-            "duration_target_seconds": round(len(beats) * SCENE_SECONDS, 1),
+            "duration_target_seconds": round(len(beats) * scene_seconds, 1),
             "voice": VOICE, "video_url": f"/api/video/team/created/{job_id}",
             "visual_source": "Wikimedia Commons + egen grafik" if attributions else "Egen procedural grafik (bildkälla ej tillgänglig)",
+            "research_source": research_data.get("source") if research_data else None,
+            "research_title": research_data.get("title") if research_data else None,
+            "research_url": research_data.get("source_url") if research_data else None,
+            "fact_check_required": video_type == "explainer",
             "image_attributions": attributions,
             "credits_url": f"/api/video/team/credits/{job_id}" if attributions else None,
             "message": f"Video skapad ({video_type}) med fem animerade scener, svensk berättarröst och egen ljudmatta."
