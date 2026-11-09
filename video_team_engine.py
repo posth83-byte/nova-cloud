@@ -129,7 +129,7 @@ async def edit_source_video(
                     "-map", "0:v:0", "-map", "[aout]"
                 ]
             else:
-                args += ["-filter_complex", music_mix + "[aout]", "-map", "0:v:0", "-map", "[aout]"]
+                args += ["-filter_complex", music_mix + ";[bed]anull[aout]", "-map", "0:v:0", "-map", "[aout]"]
         else:
             args += ["-map", "0:v:0"]
             if has_audio:
