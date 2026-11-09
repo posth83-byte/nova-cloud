@@ -48,9 +48,30 @@ def main():
         timeout=TIMEOUT,
     )
     response.raise_for_status()
-    result = response.json()
-    if result.get("status") != "completed":
-        raise RuntimeError(f"Video engine did not complete: {result}")
+    queued = response.json()
+    if queued.get("status") not in {"queued", "running", "completed"}:
+        raise RuntimeError(f"Video engine did not queue a job: {queued}")
+    if queued.get("status_storage_status") != "persistent":
+        raise RuntimeError(
+            "Video job state was not saved in private Supabase Storage. "
+            f"Reported status_storage_status={queued.get('status_storage_status')!r}"
+        )
+    result = queued
+    if queued.get("status") != "completed":
+        status_url = urljoin(BASE_URL + "/", queued.get("status_url", f"/api/video/team/jobs/{queued.get('job_id', '')}").lstrip("/"))
+        deadline = time.time() + 600
+        while time.time() < deadline:
+            time.sleep(4)
+            status_response = requests.get(status_url, timeout=30)
+            status_response.raise_for_status()
+            job = status_response.json()
+            if job.get("status") == "failed":
+                raise RuntimeError(f"Background video job failed: {job.get('error')}")
+            if job.get("status") == "completed":
+                result = job.get("result") or {}
+                break
+        if result.get("status") != "completed":
+            raise RuntimeError(f"Background video job did not finish within 10 minutes: {queued.get('job_id')}")
     if result.get("storage_status") != "persistent":
         raise RuntimeError(
             "MP4 was not saved in private Supabase Storage. "
