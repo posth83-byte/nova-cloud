@@ -2620,14 +2620,14 @@ if(videoIdeasButton){
 async function createOriginalVideo(mode){
  const topic=$("videoOriginalTopic")?.value?.trim()||"när man försöker vara produktiv";
  videoCreateButton.disabled=true;videoCreateButton.textContent="SKAPAR VIDEO…";videoCreatorResult.replaceChildren();
- videoCreatorStatus.className="video-status";videoCreatorStatus.textContent="JARVIS skriver ett kort humorupplägg, skapar svenska berättarrösten och renderar fyra animerade scener till MP4. Låt sidan vara öppen.";
+ videoCreatorStatus.className="video-status";videoCreatorStatus.textContent="JARVIS skriver ett kort humorupplägg, skapar svensk berättarröst och renderar fem animerade scener till MP4. Låt sidan vara öppen.";
  setRoomState("nova","working");logActivity("JARVIS VIDEO TEAM startade egen videoproduktion","🎬",topic);
  try{
   const formData=new FormData();formData.append("topic",topic);formData.append("mode",mode);
   const response=await fetch("/api/video/team/create",{method:"POST",body:formData});const data=await response.json();
   if(!response.ok)throw new Error(data.detail||"Videon kunde inte skapas.");
   videoCreatorStatus.className="video-status success";videoCreatorStatus.textContent="✓ EGEN VIDEO KLAR · "+data.resolution+" · "+data.format+" · Svensk berättarröst";
-  const script=document.createElement("div");script.className="reference-help";script.style.whiteSpace="pre-wrap";script.textContent="MANUS:\n"+(data.script||[]).map(x=>x.heading+"\n"+x.line+"\n"+x.punchline).join("\n\n");videoCreatorResult.appendChild(script);
+  const script=document.createElement("div");script.className="reference-help";script.style.whiteSpace="pre-wrap";script.textContent="MANUS:\n"+(data.script||[]).map(x=>x.heading+"\n"+x.line+"\n"+(x.caption||"")).join("\n\n");videoCreatorResult.appendChild(script);
   const link=document.createElement("a");link.className="export-btn";link.href=data.video_url;link.textContent="ÖPPNA / LADDA NER FÄRDIG MP4";link.setAttribute("download","jarvis-original-tiktok.mp4");videoCreatorResult.appendChild(link);
   const preview=document.createElement("video");preview.controls=true;preview.playsInline=true;preview.preload="metadata";preview.src=data.video_url;preview.style.cssText="display:block;width:100%;max-width:360px;margin-top:12px;border-radius:12px";videoCreatorResult.appendChild(preview);
   logActivity("JARVIS VIDEO TEAM skapade originalvideo","✓",data.resolution);
