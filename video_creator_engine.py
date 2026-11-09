@@ -195,10 +195,9 @@ def _make_scene(path, kicker, headline, caption, kind, index):
 
 
 def _build_script(topic, video_type="humor"):
-    """Create a five-beat script for the selected video purpose."""
     clean = re.sub(r"\s+", " ", (topic or "").strip())[:MAX_PROMPT].strip(" .!?")
     if not clean:
-        clean = "ett intressant ämne"
+        clean = "vardagslivet"
     templates = {
         "explainer": [
             ("FRÅGAN", f"Vad behöver man förstå om {clean}?", "Vi börjar med grunden och håller det enkelt.", "generic"),
@@ -240,20 +239,71 @@ def _build_script(topic, video_type="humor"):
         return templates[video_type]
     lower = clean.casefold()
     if any(word in lower for word in ("kaffe", "kaffet", "espresso")):
-        return [
+        beats = [
             ("DAGENS PLAN", "Jag skulle bara ta en snabb kaffe.", "Det var innan kaffemaskinen fick en egen åsikt.", "coffee"),
             ("FÖRSTA FÖRSÖKET", "Tryckte på start. Ingenting hände.", "Maskinen behövde tydligen också måndag morgon.", "coffee"),
             ("STRATEGIN", "Jag googlade: hur lagar man en kaffemaskin?", "Internet föreslog att jag skulle andas lugnt.", "phone"),
             ("INSIKTEN", "Jag hade nu lagt 20 minuter på kaffe.", "Produktiviteten låg fortfarande på 0 procent.", "work"),
             ("SLUTSATSEN", "Så jag tog en kopp te istället.", "Nu är jag stressad OCH besviken.", "coffee"),
         ]
-    return [
-        ("JAG HADE EN PLAN", f"Idag skulle jag äntligen lyckas med {clean}.", "Hur svårt kunde det vara?", "generic"),
-        ("SJÄLVFÖRTROENDE", "Jag hade sett en video på 12 sekunder.", "Nu räknade jag mig som expert.", "phone"),
-        ("VERKLIGHETEN", "Tre sekunder senare gick allt åt fel håll.", "Självförtroendet var kvar. Kompetensen tog ledigt.", "work"),
-        ("FELSÖKNING", "Jag testade exakt samma sak igen.", "För tydligen fungerar envishet som teknik.", "generic"),
-        ("LÄRDOMEN", f"Nästa gång ska jag läsa på om {clean}.", "Eller låta bli. Vi får se.", "generic"),
-    ]
+    elif any(word in lower for word in ("sova", "sömn", "natt", "hjärnan")):
+        beats = [
+            ("02:47", "Du ska bara sova.", "Äntligen lite lugn och ro.", "sleep"),
+            ("HJÄRNAN", "Kommer du ihåg det pinsamma från 2016?", "Det där som ingen annan minns längre.", "sleep"),
+            ("DU", "Nej. Och det tänker jag inte göra heller.", "Vi har faktiskt ett schema här.", "phone"),
+            ("HJÄRNAN", "Perfekt. Här är det i 4K med surroundljud.", "Bonus: du sa det med självförtroende.", "phone"),
+            ("03:19", "Ska vi gå igenom RESTEN av ditt liv också?", "Sov gott. Om 4–5 arbetsdagar.", "sleep"),
+        ]
+    elif any(word in lower for word in ("jobb", "chef", "möte", "måndag", "arbete")):
+        beats = [
+            ("MÅNDAG 08:00", "Den här veckan ska jag vara effektiv.", "Jag har till och med gjort en lista.", "work"),
+            ("08:07", "Första mötet börjar om tre minuter.", "Ingen vet varför jag är med.", "phone"),
+            ("09:42", "Någon säger: vi tar det offline.", "Jag har varit online hela mitt liv.", "work"),
+            ("14:56", "Jag har svarat på 38 mejl.", "Och gjort exakt noll av jobbet.", "work"),
+            ("17:01", "Imorgon kör vi på riktigt.", "Det sa jag även förra måndagen.", "sleep"),
+        ]
+    elif any(word in lower for word in ("gym", "träna", "träning", "motion")):
+        beats = [
+            ("MÅLET", "Idag börjar mitt nya träningsliv.", "Jag har till och med köpt vattenflaska.", "gym"),
+            ("UPPVÄRMNING", "Jag googlade hur man värmer upp.", "Blev trött av att läsa instruktionerna.", "phone"),
+            ("FÖRSTA SETET", "Jag lyfte en hantel. En gång.", "Musklerna har redan skickat klagomål.", "gym"),
+            ("ÅTERHÄMTNING", "Jag vilade i 47 minuter.", "Det kallas tydligen aktiv återhämtning.", "sleep"),
+            ("RESULTATET", "Jag har tränat hela dagen.", "Stegräknaren visar 312 steg. Mest till fiket.", "coffee"),
+        ]
+    elif any(word in lower for word in ("pengar", "lön", "budget", "faktura", "ekonomi")):
+        beats = [
+            ("LÖNEDAG", "Lönen kom precis in på kontot.", "Jag kände mig ekonomiskt odödlig.", "money"),
+            ("FÖRSTA TIMMEN", "Jag köpte bara det allra nödvändigaste.", "En kaffemaskin och en liten båt.", "coffee"),
+            ("VERKLIGHETEN", "Hyran och räkningarna vaknade.", "De hade tydligen planerat en överraskning.", "phone"),
+            ("BUDGETMÖTET", "Jag öppnade min budget med stort mod.", "Budgeten öppnade istället ett krisärende.", "work"),
+            ("SLUTET", "Nu lever jag på nudlar till nästa lön.", "Men båten var faktiskt värd det.", "food"),
+        ]
+    elif any(word in lower for word in ("dejt", "relation", "kärlek", "partner")):
+        beats = [
+            ("INFÖR DEJTEN", "Jag skulle vara avslappnad och naturlig.", "Övade på att säga hej i spegeln.", "love"),
+            ("FÖRSTA INTRYCKET", "Jag sa: trevligt att träffas.", "Och råkade kalla personen för mamma.", "love"),
+            ("SMÅPRAT", "Vi pratade om vädret i tjugo minuter.", "Meteorologin gick bättre än romantiken.", "phone"),
+            ("TYSTNADEN", "Jag skulle säga något charmigt.", "Hjärnan visade bara laddningssymbolen.", "generic"),
+            ("EFTERÅT", "De sa att vi hörs snart.", "Jag har redan planerat bröllopet. Och flytten.", "love"),
+        ]
+    elif any(word in lower for word in ("mat", "middag", "laga", "recept", "matlagning")):
+        beats = [
+            ("MIDDAGSPLANEN", "Ikväll lagar jag något avancerat.", "Jag har sparat ett recept från internet.", "food"),
+            ("INGREDIENSERNA", "Det saknas bara en liten ingrediens.", "Och tydligen resten av köket.", "food"),
+            ("KOCKEN", "Jag improviserar lite istället.", "Brandvarnaren blir min souschef.", "work"),
+            ("PROBLEMET", "Receptet sa: stek tills gyllenbrunt.", "Min panna gick direkt till kolsvart.", "food"),
+            ("SERVERING", "Det blev mackor till middag igen.", "Michelin får vänta tills imorgon.", "food"),
+        ]
+    else:
+        beats = [
+            ("JAG HADE EN PLAN", f"Idag skulle jag äntligen lyckas med {clean}.", "Hur svårt kunde det vara?", "generic"),
+            ("SJÄLVFÖRTROENDE", "Jag hade sett en video på 12 sekunder.", "Nu räknade jag mig som expert.", "phone"),
+            ("VERKLIGHETEN", "Tre sekunder senare gick allt åt fel håll.", "Självförtroendet var kvar. Kompetensen tog ledigt.", "work"),
+            ("FELSÖKNING", "Jag testade exakt samma sak igen.", "För tydligen fungerar envishet som teknik.", "generic"),
+            ("LÄRDOMEN", f"Nästa gång ska jag läsa på om {clean}.", "Eller låta bli. Vi får se.", "generic"),
+        ]
+    return beats
+
 
 def _motion_filter(kind, index, video_type="humor"):
     """Build a lightweight animated FFmpeg filter for floating comic accents."""
