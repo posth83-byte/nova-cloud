@@ -116,6 +116,24 @@ def _draw_illustration(draw, kind, t):
         draw.text((360, 400), "kr", font=_font(115, True), fill=(190, 255, 211), anchor="mm")
         for x, y in [(170, 310), (540, 300), (185, 540), (525, 550)]:
             draw.text((x, y), "?", font=_font(52, True), fill=orange, anchor="mm")
+    elif kind == "gym":
+        draw.rounded_rectangle((305, 275, 415, 560), radius=45, fill=(44, 65, 91), outline=orange, width=8)
+        draw.ellipse((260, 245, 460, 445), fill=(44, 65, 91), outline=pale, width=7)
+        draw.line((180, 390, 540, 390), fill=orange, width=18)
+        for x in (190, 510):
+            draw.rounded_rectangle((x-28, 320, x+28, 460), radius=14, fill=(104, 135, 177), outline=pale, width=5)
+        draw.text((360, 640), "1 REP", font=_font(48, True), fill=orange, anchor="mm")
+    elif kind == "food":
+        draw.ellipse((185, 280, 535, 630), fill=(225, 232, 239), outline=orange, width=12)
+        draw.ellipse((230, 325, 490, 585), fill=(63, 105, 74), outline=(255, 255, 255), width=5)
+        for x, y in ((300, 390), (420, 450), (350, 520), (440, 360)):
+            draw.ellipse((x-34, y-34, x+34, y+34), fill=(231, 112, 81), outline=(255, 221, 174), width=4)
+        draw.arc((270, 215, 450, 390), 190, 350, fill=pale, width=9)
+    elif kind == "love":
+        draw.ellipse((190, 275, 530, 615), fill=(63, 38, 70), outline=(255, 139, 177), width=8)
+        draw.text((360, 430), "♥", font=_font(180, True), fill=(255, 111, 159), anchor="mm")
+        draw.text((205, 270), "…", font=_font(65, True), fill=pale, anchor="mm")
+        draw.text((515, 585), "?", font=_font(70, True), fill=orange, anchor="mm")
     else:
         # A cinematic spotlight and abstract character silhouette.
         draw.ellipse((220, 245, 500, 525), fill=(39, 62, 94), outline=orange, width=8)
@@ -136,8 +154,29 @@ def _make_scene(path, kicker, headline, caption, kind, index):
                             min(255, base[1] + int(29*glow)),
                             min(255, base[2] + int(42*glow)))
     draw = ImageDraw.Draw(image)
+    palettes = {
+        "coffee": (255, 151, 91), "sleep": (142, 173, 239), "phone": (105, 187, 229),
+        "work": (105, 187, 229), "money": (133, 224, 169), "gym": (255, 145, 83),
+        "food": (255, 181, 115), "love": (255, 139, 177),
+    }
+    accent = palettes.get(kind, (255, 151, 91))
     draw.rounded_rectangle((34, 42, W-34, H-42), radius=34,
                            outline=(80, 119, 167), width=2)
+    # Scene-specific ambient marks create a distinct visual identity for each beat.
+    if kind == "sleep":
+        for sx, sy, radius in ((95, 245, 4), (590, 285, 5), (115, 710, 3), (575, 690, 4)):
+            draw.ellipse((sx-radius, sy-radius, sx+radius, sy+radius), fill=(210, 222, 255))
+    elif kind in ("coffee", "food"):
+        for sx in (110, 610):
+            draw.arc((sx-35, 260, sx+35, 390), 190, 330, fill=accent, width=4)
+    elif kind == "work":
+        for sy in range(230, 690, 70):
+            draw.line((82, sy, 638, sy), fill=(22, 38, 59), width=1)
+    elif kind == "love":
+        draw.arc((100, 220, 620, 740), 195, 345, fill=accent, width=5)
+    elif kind == "gym":
+        for sx in (110, 610):
+            draw.line((sx, 260, sx, 700), fill=(70, 48, 73), width=5)
     draw.text((62, 75), "JARVIS ORIGINALS", font=_font(22, True), fill=(153, 184, 220))
     draw.rounded_rectangle((58, 120, W-58, 178), radius=20,
                            fill=(20, 39, 61), outline=(255, 151, 91), width=2)
@@ -183,6 +222,38 @@ def _build_script(topic):
             ("09:42", "Någon säger: vi tar det offline.", "Jag har varit online hela mitt liv.", "work"),
             ("14:56", "Jag har svarat på 38 mejl.", "Och gjort exakt noll av jobbet.", "work"),
             ("17:01", "Imorgon kör vi på riktigt.", "Det sa jag även förra måndagen.", "sleep"),
+        ]
+    elif any(word in lower for word in ("gym", "träna", "träning", "motion")):
+        beats = [
+            ("MÅLET", "Idag börjar mitt nya träningsliv.", "Jag har till och med köpt vattenflaska.", "gym"),
+            ("UPPVÄRMNING", "Jag googlade hur man värmer upp.", "Blev trött av att läsa instruktionerna.", "phone"),
+            ("FÖRSTA SETET", "Jag lyfte en hantel. En gång.", "Musklerna har redan skickat klagomål.", "gym"),
+            ("ÅTERHÄMTNING", "Jag vilade i 47 minuter.", "Det kallas tydligen aktiv återhämtning.", "sleep"),
+            ("RESULTATET", "Jag har tränat hela dagen.", "Stegräknaren visar 312 steg. Mest till fiket.", "coffee"),
+        ]
+    elif any(word in lower for word in ("pengar", "lön", "budget", "faktura", "ekonomi")):
+        beats = [
+            ("LÖNEDAG", "Lönen kom precis in på kontot.", "Jag kände mig ekonomiskt odödlig.", "money"),
+            ("FÖRSTA TIMMEN", "Jag köpte bara det allra nödvändigaste.", "En kaffemaskin och en liten båt.", "coffee"),
+            ("VERKLIGHETEN", "Hyran och räkningarna vaknade.", "De hade tydligen planerat en överraskning.", "phone"),
+            ("BUDGETMÖTET", "Jag öppnade min budget med stort mod.", "Budgeten öppnade istället ett krisärende.", "work"),
+            ("SLUTET", "Nu lever jag på nudlar till nästa lön.", "Men båten var faktiskt värd det.", "food"),
+        ]
+    elif any(word in lower for word in ("dejt", "relation", "kärlek", "partner")):
+        beats = [
+            ("INFÖR DEJTEN", "Jag skulle vara avslappnad och naturlig.", "Övade på att säga hej i spegeln.", "love"),
+            ("FÖRSTA INTRYCKET", "Jag sa: trevligt att träffas.", "Och råkade kalla personen för mamma.", "love"),
+            ("SMÅPRAT", "Vi pratade om vädret i tjugo minuter.", "Meteorologin gick bättre än romantiken.", "phone"),
+            ("TYSTNADEN", "Jag skulle säga något charmigt.", "Hjärnan visade bara laddningssymbolen.", "generic"),
+            ("EFTERÅT", "De sa att vi hörs snart.", "Jag har redan planerat bröllopet. Och flytten.", "love"),
+        ]
+    elif any(word in lower for word in ("mat", "middag", "laga", "recept", "matlagning")):
+        beats = [
+            ("MIDDAGSPLANEN", "Ikväll lagar jag något avancerat.", "Jag har sparat ett recept från internet.", "food"),
+            ("INGREDIENSERNA", "Det saknas bara en liten ingrediens.", "Och tydligen resten av köket.", "food"),
+            ("KOCKEN", "Jag improviserar lite istället.", "Brandvarnaren blir min souschef.", "work"),
+            ("PROBLEMET", "Receptet sa: stek tills gyllenbrunt.", "Min panna gick direkt till kolsvart.", "food"),
+            ("SERVERING", "Det blev mackor till middag igen.", "Michelin får vänta tills imorgon.", "food"),
         ]
     else:
         beats = [
