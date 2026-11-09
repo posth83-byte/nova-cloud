@@ -33,7 +33,7 @@ from video_team_engine import router as video_team_router
 # NOVA CLOUD – VERSION 2.2.0
 # ==========================================
 
-APP_VERSION = "3.4.1"
+APP_VERSION = "3.5.0"
 
 app = FastAPI(
     title="NOVA Cloud",
