@@ -115,13 +115,45 @@ def main():
             [engine.imageio_ffmpeg.get_ffmpeg_exe(), "-v", "error", "-i", str(square_path), "-f", "null", "-"],
             capture_output=True, text=True, timeout=120)
         assert square_decode.returncode == 0, square_decode.stderr
+        factual_research = {
+            "title": "Testfakta",
+            "source_url": "https://sv.wikipedia.org/wiki/Testfakta",
+            "language": "sv",
+            "sentences": [
+                f"Detta är ett faktapåstående nummer {index} om testämnet och dess bakgrund."
+                for index in range(1, 31)
+            ],
+        }
+        with patch.object(engine, "research_wikipedia", return_value=factual_research), \
+             patch.object(engine, "search_commons_images", return_value=[]), \
+             patch.object(engine.edge_tts, "Communicate", LocalSpeechFixture):
+            factual = asyncio.run(engine._render_original_video(
+                "testfakta", "original", "explainer", "9:16", "short",
+                uuid.uuid4().hex[:12]))
+        assert factual["status"] == "completed", factual
+        assert factual["video_type"] == "explainer"
+        assert factual["fact_check_required"] is True
+        assert factual["research_url"] == factual_research["source_url"]
+        assert len(factual["script"]) == 10
+        factual_dir = Path(temporary) / factual["job_id"]
+        assert len(list(factual_dir.glob("scene_*.jpg"))) == 10
+        factual_video = factual_dir / "jarvis_original.mp4"
+        factual_decode = subprocess.run(
+            [engine.imageio_ffmpeg.get_ffmpeg_exe(), "-v", "error", "-i", str(factual_video), "-f", "null", "-"],
+            capture_output=True, text=True, timeout=120)
+        assert factual_decode.returncode == 0, factual_decode.stderr
+        factual_srt = factual_dir / "undertexter.srt"
+        assert factual_srt.is_file()
+        assert len([line for line in factual_srt.read_text(encoding="utf-8").splitlines() if "-->" in line]) >= 10
+        assert "10 animerade scener" in factual["message"]
+
         try:
             engine.download_original_video("../invalid")
         except Exception as error:
             assert getattr(error, "status_code", None) == 400
         else:
             raise AssertionError("Invalid job IDs must be rejected.")
-        print(f"PASS trend parsing; PASS vertical, landscape and square MP4 renders; PASS SRT subtitles; PASS MP4 decode ({output.stat().st_size} bytes).")
+        print(f"PASS trend parsing; PASS vertical, landscape and square MP4 renders; PASS 10-scene factual explainer; PASS SRT subtitles; PASS MP4 decode ({output.stat().st_size} bytes).")
         engine.OUTPUT_DIR = original_output
 
 
