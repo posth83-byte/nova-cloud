@@ -189,7 +189,7 @@ async def create_original_video(
         _ffmpeg([
             "-i", str(silent), "-i", str(narration_path),
             "-f", "lavfi", "-i", "sine=frequency=392:sample_rate=44100:duration=28",
-            "-filter_complex", "[1:a]volume=1.0[voice];[2:a]volume=0.045[music];[voice][music]amix=inputs=2:duration=first:dropout_transition=2[a]",
+            "-filter_complex", "[1:a]volume=1.0[voice];[2:a]volume=0.045[music];[voice][music]amix=inputs=2:duration=longest:dropout_transition=2[a]",
             "-map", "0:v:0", "-map", "[a]", "-c:v", "copy", "-c:a", "aac", "-b:a", "128k",
             "-shortest", "-movflags", "+faststart", str(output)
         ], timeout=240)
