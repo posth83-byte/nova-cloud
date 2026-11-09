@@ -85,7 +85,7 @@ def main():
         subtitles = job_dir / "undertexter.srt"
         assert subtitles.is_file()
         subtitle_text = subtitles.read_text(encoding="utf-8")
-        assert " --> " in subtitle_text and "när kaffet" in subtitle_text
+        assert " --> " in subtitle_text and "kaffemaskinen" in subtitle_text
         subtitle_response = engine.download_video_subtitles(result["job_id"])
         assert Path(subtitle_response.path) == subtitles
 
