@@ -19,26 +19,56 @@ from pathlib import Path
 
 import edge_tts
 import imageio_ffmpeg
-from fastapi import APIRouter, BackgroundTasks, Form, HTTPException
+from fastapi import APIRouter, Form, HTTPException
 from fastapi.responses import FileResponse, StreamingResponse
 from video_assets import search_commons_images, download_commons_image
 from video_storage import upload_file, open_stored_file, storage_self_test
 from video_research import research_wikipedia, build_explainer_beats
-from video_jobs import save_job_status, get_job_status
+from video_jobs import save_job_status, get_job_status, recover_pending_jobs
 from PIL import Image, ImageDraw, ImageFont, ImageEnhance, ImageOps
 
 router = APIRouter()
 logger = logging.getLogger("uvicorn.error")
 OUTPUT_DIR = Path("/tmp/nova_team_created")
+_VIDEO_JOB_QUEUE = asyncio.Queue(maxsize=20)
+_VIDEO_JOB_WORKER_TASK = None
+
+
+async def _video_job_worker():
+    """Run one render at a time without blocking FastAPI's request event loop."""
+    while True:
+        job = await _VIDEO_JOB_QUEUE.get()
+        try:
+            await asyncio.to_thread(
+                _run_video_job,
+                job["job_id"], job["topic"], job["mode"], job["video_type"],
+                job["aspect"], job["duration_mode"]
+            )
+        except Exception:
+            logger.exception("NOVA video queue worker failed for %s", job.get("job_id"))
+        finally:
+            _VIDEO_JOB_QUEUE.task_done()
 
 
 @router.on_event("startup")
 async def _video_storage_startup_check():
+    global _VIDEO_JOB_WORKER_TASK
     ok, message = await asyncio.to_thread(storage_self_test)
     if ok:
         logger.info("NOVA_VIDEO_STORAGE_SELFTEST=PASS: %s", message)
     else:
         logger.warning("NOVA_VIDEO_STORAGE_SELFTEST=NOT_READY: %s", message)
+    try:
+        pending = await asyncio.to_thread(recover_pending_jobs)
+        for job in pending:
+            _VIDEO_JOB_QUEUE.put_nowait(job)
+        logger.info("NOVA_VIDEO_QUEUE_RECOVERY=%s", len(pending))
+    except Exception:
+        logger.exception("NOVA_VIDEO_QUEUE_RECOVERY=FAILED")
+    if _VIDEO_JOB_WORKER_TASK is None or _VIDEO_JOB_WORKER_TASK.done():
+        _VIDEO_JOB_WORKER_TASK = asyncio.create_task(_video_job_worker())
+
+
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 VOICE = "sv-SE-MattiasNeural"
 W, H, FPS = 720, 1280, 25
@@ -442,7 +472,6 @@ async def create_original_video(
     video_type: str = Form("humor"),
     aspect: str = Form("9:16"),
     duration_mode: str = Form("standard"),
-    background_tasks: BackgroundTasks = None,
 ):
     topic = (topic or "").strip()
     if len(topic) > MAX_PROMPT:
@@ -458,8 +487,6 @@ async def create_original_video(
     if not topic:
         topic = "ett intressant ämne"
     job_id = uuid.uuid4().hex[:12]
-    if background_tasks is None:
-        return await _render_original_video(topic, mode, video_type, aspect, duration_mode, job_id)
     request_data = {
         "topic": topic, "mode": mode, "video_type": video_type,
         "aspect": aspect, "duration_mode": duration_mode,
@@ -467,15 +494,21 @@ async def create_original_video(
     queued = await asyncio.to_thread(
         save_job_status, job_id, "queued", request=request_data
     )
-    background_tasks.add_task(
-        _run_video_job, job_id, topic, mode, video_type, aspect, duration_mode
-    )
+    try:
+        _VIDEO_JOB_QUEUE.put_nowait({"job_id": job_id, **request_data})
+    except asyncio.QueueFull:
+        await asyncio.to_thread(
+            save_job_status, job_id, "failed",
+            error="Videokön är full just nu. Försök igen om en stund.",
+            request=request_data
+        )
+        raise HTTPException(503, "Videokön är full just nu. Försök igen om en stund.")
     return {
         "status": "queued",
         "job_id": job_id,
         "status_url": f"/api/video/team/jobs/{job_id}",
         "status_storage_status": queued.get("status_storage_status", "memory_only"),
-        "message": "Videon köas och renderas i bakgrunden. Du kan låsa mobilen medan JARVIS arbetar.",
+        "message": "Videon är sparad i kön. Renderingen fortsätter på servern även om du låser mobilen.",
     }
 
 
