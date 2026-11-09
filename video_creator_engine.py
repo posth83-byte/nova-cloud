@@ -10,6 +10,7 @@ import math
 import re
 import shutil
 import subprocess
+import textwrap
 import uuid
 import urllib.request
 import xml.etree.ElementTree as ET
@@ -387,20 +388,28 @@ def _srt_time(seconds):
 
 
 def _write_subtitles(beats, duration, path):
-    """Write one timed SRT cue per scene using the spoken scene captions."""
+    """Create sentence-level SRT cues aligned proportionally to spoken word count."""
     if not beats or duration <= 0:
         raise RuntimeError("Undertexterna saknar giltig tidslinje.")
-    cue_duration = duration / len(beats)
+    segments = []
+    for heading, line, caption, _ in beats:
+        spoken = f"{heading}. {line} {caption}"
+        for sentence in re.split(r"(?<=[.!?])\s+", spoken.strip()):
+            sentence = sentence.strip()
+            if sentence:
+                segments.append(sentence)
+    total_words = sum(max(1, len(segment.split())) for segment in segments)
+    current = 0.0
     blocks = []
-    for index, beat in enumerate(beats, 1):
-        start = (index - 1) * cue_duration
-        end = min(duration, index * cue_duration)
-        caption = beat[2] or beat[1]
+    for index, segment in enumerate(segments, 1):
+        cue_duration = duration * max(1, len(segment.split())) / total_words
+        end = min(duration, current + cue_duration)
+        wrapped = "\n".join(textwrap.wrap(segment, width=42)) or segment
         blocks.append(
-            f"{index}\n{_srt_time(start)} --> {_srt_time(end)}\n{caption}\n"
+            f"{index}\n{_srt_time(current)} --> {_srt_time(end)}\n{wrapped}\n"
         )
+        current = end
     path.write_text("\n".join(blocks), encoding="utf-8")
-
 
 def _audio_duration(path):
     result = subprocess.run(
