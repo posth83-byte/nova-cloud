@@ -1,11 +1,12 @@
-"""Free trend discovery and original short-video generation for JARVIS Video Team.
+"""Free procedural short-video engine for JARVIS Video Team.
 
-Trend discovery uses Google's public Trends RSS feed (Sweden). Original videos
-are assembled locally with Pillow + FFmpeg and the already-installed Edge TTS
-library; no paid video-generation API is called.
+Creates original 9:16 videos locally with Pillow, FFmpeg and Swedish Edge TTS.
+No paid generative-video API is used. Visuals are animated procedural scenes,
+not photorealistic text-to-video generation.
 """
 import asyncio
 import html
+import math
 import re
 import shutil
 import subprocess
@@ -13,7 +14,6 @@ import uuid
 import urllib.request
 import xml.etree.ElementTree as ET
 from pathlib import Path
-from urllib.parse import quote_plus
 
 import edge_tts
 import imageio_ffmpeg
@@ -25,8 +25,9 @@ router = APIRouter()
 OUTPUT_DIR = Path("/tmp/nova_team_created")
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 VOICE = "sv-SE-MattiasNeural"
-W, H = 720, 1280
+W, H, FPS = 720, 1280, 25
 MAX_PROMPT = 220
+SCENE_SECONDS = 5.2
 
 
 def _ffmpeg(args, timeout=600):
@@ -64,90 +65,165 @@ def _wrap(draw, text, font, max_width):
     return lines
 
 
-def _make_card(path, kicker, headline, line, index):
-    image = Image.new("RGB", (W, H), (5, 11, 22))
+def _centered(draw, text, y, font, fill, max_width=590, gap=12):
+    lines = _wrap(draw, text, font, max_width)[:4]
+    height = len(lines) * (font.size + gap)
+    top = y - height / 2
+    for line in lines:
+        draw.text((W // 2, int(top)), line, font=font, fill=fill, anchor="ma",
+                  stroke_width=2, stroke_fill=(4, 9, 20))
+        top += font.size + gap
+
+
+def _draw_illustration(draw, kind, t):
+    """Draw a distinct vector illustration for each scene template."""
+    cx, cy = W // 2, 410
+    glow = int(20 + 12 * (0.5 + 0.5 * math.sin(t * 2.2)))
+    orange = (255, 145 + glow, 83)
+    pale = (225, 237, 255)
+    if kind == "coffee":
+        draw.rounded_rectangle((245, 300, 465, 515), radius=38,
+                               fill=(40, 65, 91), outline=orange, width=8)
+        draw.arc((425, 340, 535, 470), 270, 90, fill=orange, width=13)
+        draw.line((270, 280, 300, 225), fill=pale, width=8)
+        draw.line((355, 280, 355, 210), fill=pale, width=8)
+        draw.line((440, 280, 410, 225), fill=pale, width=8)
+        draw.ellipse((280, 325, 430, 390), fill=(122, 77, 53), outline=orange, width=4)
+    elif kind == "sleep":
+        draw.ellipse((190, 270, 530, 610), fill=(29, 48, 83), outline=(142, 173, 239), width=7)
+        draw.ellipse((275, 235, 555, 535), fill=(7, 13, 29))
+        for x, y, r in [(170, 280, 8), (520, 240, 7), (550, 540, 6), (175, 560, 5)]:
+            draw.ellipse((x-r, y-r, x+r, y+r), fill=(255, 206, 143))
+        draw.text((cx, 635), "Z z z", font=_font(54, True), fill=pale, anchor="mm")
+    elif kind == "phone":
+        draw.rounded_rectangle((260, 210, 460, 620), radius=35,
+                               fill=(16, 24, 43), outline=orange, width=9)
+        draw.rounded_rectangle((280, 250, 440, 555), radius=18, fill=(39, 58, 91))
+        draw.ellipse((330, 350, 390, 410), fill=orange)
+        draw.rounded_rectangle((305, 445, 415, 465), radius=10, fill=pale)
+        draw.rounded_rectangle((320, 480, 400, 495), radius=8, fill=(150, 177, 215))
+    elif kind == "work":
+        draw.rounded_rectangle((150, 300, 570, 540), radius=22,
+                               fill=(22, 37, 61), outline=(105, 187, 229), width=7)
+        draw.rectangle((185, 335, 535, 490), fill=(11, 22, 42))
+        for i in range(4):
+            y = 365 + i * 30
+            draw.rounded_rectangle((215, y, 430 + (i % 2) * 45, y+10), radius=5, fill=orange if i == 2 else pale)
+        draw.line((360, 540, 360, 605), fill=pale, width=12)
+        draw.line((275, 610, 445, 610), fill=pale, width=12)
+    elif kind == "money":
+        draw.ellipse((205, 245, 515, 555), fill=(34, 75, 66), outline=(133, 224, 169), width=9)
+        draw.text((360, 400), "kr", font=_font(115, True), fill=(190, 255, 211), anchor="mm")
+        for x, y in [(170, 310), (540, 300), (185, 540), (525, 550)]:
+            draw.text((x, y), "?", font=_font(52, True), fill=orange, anchor="mm")
+    else:
+        # A cinematic spotlight and abstract character silhouette.
+        draw.ellipse((220, 245, 500, 525), fill=(39, 62, 94), outline=orange, width=8)
+        draw.ellipse((305, 305, 415, 415), fill=(190, 208, 236))
+        draw.rounded_rectangle((270, 420, 450, 620), radius=80, fill=(104, 132, 174))
+        draw.arc((150, 170, 570, 690), 205, 335, fill=(83, 180, 224), width=5)
+
+
+def _make_scene(path, kicker, headline, caption, kind, index):
+    image = Image.new("RGB", (W, H), (5, 10, 22))
     pixels = image.load()
-    # Subtle vertical blue/orange gradient, generated locally.
     for y in range(H):
-        t = y / H
-        c = (int(7 + 18*t), int(18 + 8*t), int(36 + 5*t))
+        f = y / H
+        base = (int(6 + 12*f), int(12 + 12*f), int(28 + 16*f))
         for x in range(W):
-            glow = max(0, 1 - (((x-W*0.5)/(W*.75))**2 + ((y-H*.35)/(H*.55))**2))
-            pixels[x, y] = (min(255, c[0] + int(22*glow)), min(255, c[1] + int(35*glow)), min(255, c[2] + int(42*glow)))
+            glow = max(0.0, 1 - (((x-W*.5)/(W*.78))**2 + ((y-H*.34)/(H*.62))**2))
+            pixels[x, y] = (min(255, base[0] + int(20*glow)),
+                            min(255, base[1] + int(29*glow)),
+                            min(255, base[2] + int(42*glow)))
     draw = ImageDraw.Draw(image)
-    draw.ellipse((75, 150, 645, 720), outline=(255, 137, 67), width=3)
-    draw.ellipse((115, 190, 605, 680), outline=(65, 183, 235), width=2)
-    draw.rounded_rectangle((46, 55, 674, 125), radius=24, fill=(18, 38, 58), outline=(255, 145, 76), width=2)
-    draw.text((W//2, 90), kicker.upper(), font=_font(25, True), fill=(255, 190, 132), anchor="mm")
-    headline_font = _font(58 if index == 0 else 52, True)
-    lines = _wrap(draw, headline, headline_font, 590)
-    y = 400 - (len(lines) * 72)//2
-    for item in lines[:5]:
-        draw.text((W//2, y), item, font=headline_font, fill=(245, 250, 255), anchor="mm", stroke_width=1, stroke_fill=(7, 18, 32))
-        y += 76
-    line_font = _font(32, False)
-    y2 = 850
-    for item in _wrap(draw, line, line_font, 580)[:4]:
-        draw.text((W//2, y2), item, font=line_font, fill=(177, 216, 239), anchor="mm")
-        y2 += 46
-    draw.text((W//2, 1175), "JARVIS VIDEO TEAM  •  ORIGINAL", font=_font(19, True), fill=(255, 156, 91), anchor="mm")
-    image.save(path, quality=92)
+    draw.rounded_rectangle((34, 42, W-34, H-42), radius=34,
+                           outline=(80, 119, 167), width=2)
+    draw.text((62, 75), "JARVIS ORIGINALS", font=_font(22, True), fill=(153, 184, 220))
+    draw.rounded_rectangle((58, 120, W-58, 178), radius=20,
+                           fill=(20, 39, 61), outline=(255, 151, 91), width=2)
+    draw.text((W//2, 149), kicker.upper(), font=_font(25, True),
+              fill=(255, 190, 145), anchor="mm")
+    _draw_illustration(draw, kind, index * SCENE_SECONDS)
+    _centered(draw, headline, 765, _font(49 if len(headline) < 36 else 42, True),
+              (248, 250, 255), max_width=600, gap=14)
+    # High-contrast subtitle panel for sound-off viewing.
+    draw.rounded_rectangle((58, 910, W-58, 1080), radius=22,
+                           fill=(3, 8, 18), outline=(255, 151, 91), width=2)
+    _centered(draw, caption, 995, _font(31, True), (255, 232, 213), max_width=555, gap=9)
+    draw.text((W//2, 1165), f"{index+1:02d} / 05     •     ORIGINAL HUMOR",
+              font=_font(18, True), fill=(153, 178, 211), anchor="mm")
+    image.save(path, quality=94)
 
 
 def _build_script(topic):
-    topic = re.sub(r"\s+", " ", (topic or "").strip())[:MAX_PROMPT].strip(" .!?")
-    if not topic:
-        topic = "vardagslivet"
-    # Short, self-contained Swedish comedy structure with an original punchline.
-    return [
-        ("VÄNTA LITE…", f"Alla pratar om {topic}.", "Jag tänkte också haka på. Det gick… sådär."),
-        ("PLANEN", "Jag hade en genialisk plan.", f"Den byggde på att {topic} skulle vara enkelt."),
-        ("VERKLIGHETEN", "Tre sekunder senare:", "Självförtroendet var kvar. Kompetensen hade gått hem."),
-        ("SLUTKLÄMMEN", "Så dagens lärdom?", "Om det verkar enkelt på internet – filma inte när du försöker."),
-    ]
+    clean = re.sub(r"\s+", " ", (topic or "").strip())[:MAX_PROMPT].strip(" .!?")
+    if not clean:
+        clean = "vardagslivet"
+    lower = clean.casefold()
+    if any(word in lower for word in ("kaffe", "kaffet", "espresso")):
+        beats = [
+            ("DAGENS PLAN", "Jag skulle bara ta en snabb kaffe.", "Det var innan kaffemaskinen fick en egen åsikt.", "coffee"),
+            ("FÖRSTA FÖRSÖKET", "Tryckte på start. Ingenting hände.", "Maskinen behövde tydligen också måndag morgon.", "coffee"),
+            ("STRATEGIN", "Jag googlade: hur lagar man en kaffemaskin?", "Internet föreslog att jag skulle andas lugnt.", "phone"),
+            ("INSIKTEN", "Jag hade nu lagt 20 minuter på kaffe.", "Produktiviteten låg fortfarande på 0 procent.", "work"),
+            ("SLUTSATSEN", "Så jag tog en kopp te istället.", "Nu är jag stressad OCH besviken.", "coffee"),
+        ]
+    elif any(word in lower for word in ("sova", "sömn", "natt", "hjärnan")):
+        beats = [
+            ("02:47", "Du ska bara sova.", "Äntligen lite lugn och ro.", "sleep"),
+            ("HJÄRNAN", "Kommer du ihåg det pinsamma från 2016?", "Det där som ingen annan minns längre.", "sleep"),
+            ("DU", "Nej. Och det tänker jag inte göra heller.", "Vi har faktiskt ett schema här.", "phone"),
+            ("HJÄRNAN", "Perfekt. Här är det i 4K med surroundljud.", "Bonus: du sa det med självförtroende.", "phone"),
+            ("03:19", "Ska vi gå igenom RESTEN av ditt liv också?", "Sov gott. Om 4–5 arbetsdagar.", "sleep"),
+        ]
+    elif any(word in lower for word in ("jobb", "chef", "möte", "måndag", "arbete")):
+        beats = [
+            ("MÅNDAG 08:00", "Den här veckan ska jag vara effektiv.", "Jag har till och med gjort en lista.", "work"),
+            ("08:07", "Första mötet börjar om tre minuter.", "Ingen vet varför jag är med.", "phone"),
+            ("09:42", "Någon säger: vi tar det offline.", "Jag har varit online hela mitt liv.", "work"),
+            ("14:56", "Jag har svarat på 38 mejl.", "Och gjort exakt noll av jobbet.", "work"),
+            ("17:01", "Imorgon kör vi på riktigt.", "Det sa jag även förra måndagen.", "sleep"),
+        ]
+    else:
+        beats = [
+            ("JAG HADE EN PLAN", f"Idag skulle jag äntligen lyckas med {clean}.", "Hur svårt kunde det vara?", "generic"),
+            ("SJÄLVFÖRTROENDE", "Jag hade sett en video på 12 sekunder.", "Nu räknade jag mig som expert.", "phone"),
+            ("VERKLIGHETEN", "Tre sekunder senare gick allt åt fel håll.", "Självförtroendet var kvar. Kompetensen tog ledigt.", "work"),
+            ("FELSÖKNING", "Jag testade exakt samma sak igen.", "För tydligen fungerar envishet som teknik.", "generic"),
+            ("LÄRDOMEN", f"Nästa gång ska jag läsa på om {clean}.", "Eller låta bli. Vi får se.", "generic"),
+        ]
+    return beats
 
 
 @router.get("/api/video/team/ideas")
 def discover_video_ideas():
-    """Fetch a small set of current Sweden trend topics from the public Trends RSS."""
     url = "https://trends.google.com/trending/rss?geo=SE"
     request = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 NOVA-Cloud"})
-    ideas = []
-    source_error = None
+    ideas, source_error = [], None
     try:
         with urllib.request.urlopen(request, timeout=12) as response:
             payload = response.read(1_500_000)
         root = ET.fromstring(payload)
         for item in root.findall(".//item")[:12]:
             title = (item.findtext("title") or "").strip()
-            if not title:
-                continue
-            traffic = (item.findtext("{https://trends.google.com/trending/rss}approx_traffic") or "").strip()
-            link = (item.findtext("link") or "").strip()
-            ideas.append({
-                "title": title[:180],
-                "traffic": traffic,
-                "source": "Google Trends Sverige",
-                "source_url": link or "https://trends.google.com/trending?geo=SE",
-                "angle": "Gör en egen vardagshumorversion – inte en kopia av klippet eller innehållet."
-            })
+            if title:
+                traffic = (item.findtext("{https://trends.google.com/trending/rss}approx_traffic") or "").strip()
+                link = (item.findtext("link") or "").strip()
+                ideas.append({"title": title[:180], "traffic": traffic,
+                              "source": "Google Trends Sverige",
+                              "source_url": link or "https://trends.google.com/trending?geo=SE",
+                              "angle": "Skapa en egen humorvinkel – kopiera inte någon annans video."})
     except Exception as error:
         source_error = str(error)[:240]
-    return {
-        "status": "ok" if ideas else "unavailable",
-        "source": "Google Trends Sverige",
-        "ideas": ideas,
-        "creative_center_url": "https://ads.tiktok.com/business/creativecenter/inspiration/popular/trends/pc/sv",
-        "note": "Trenderna är sökintresse, inte verifierade TikTok-visningar. TikToks Creative Center kan öppnas separat.",
-        "error": source_error
-    }
+    return {"status": "ok" if ideas else "unavailable", "source": "Google Trends Sverige",
+            "ideas": ideas,
+            "creative_center_url": "https://ads.tiktok.com/business/creativecenter/inspiration/popular/trends/pc/sv",
+            "note": "Sökintresse är inte samma sak som verifierade TikTok-visningar.",
+            "error": source_error}
 
 
 @router.post("/api/video/team/create")
-async def create_original_video(
-    topic: str = Form(""),
-    mode: str = Form("original"),
-):
+async def create_original_video(topic: str = Form(""), mode: str = Form("original")):
     topic = (topic or "").strip()
     if len(topic) > MAX_PROMPT:
         raise HTTPException(400, f"Ämnet får vara högst {MAX_PROMPT} tecken.")
@@ -160,22 +236,19 @@ async def create_original_video(
     job_dir.mkdir(parents=True, exist_ok=True)
     try:
         beats = _build_script(topic)
-        narration = " ".join(f"{heading}. {line} {punch}" for heading, line, punch in beats)
+        narration = " ".join(f"{heading}. {line} {caption}" for heading, line, caption, _ in beats)
         narration_path = job_dir / "voice.mp3"
         await edge_tts.Communicate(narration, VOICE).save(str(narration_path))
-        cards, clips = [], []
-        for i, (heading, line, punch) in enumerate(beats):
-            card = job_dir / f"scene_{i:02}.jpg"
-            _make_card(card, heading, line, punch, i)
-            cards.append(card)
-        # Match scene lengths to the spoken beats, keeping a brisk short-form rhythm.
-        durations = [6.2, 6.2, 6.2, 6.2]
-        for i, (card, seconds) in enumerate(zip(cards, durations)):
+        clips = []
+        for i, (heading, line, caption, kind) in enumerate(beats):
+            still = job_dir / f"scene_{i:02}.jpg"
+            _make_scene(still, heading, line, caption, kind, i)
             clip = job_dir / f"clip_{i:02}.mp4"
-            frames = int(seconds * 25)
+            frames = int(SCENE_SECONDS * FPS)
+            # Slow cinematic push-in with a short cross-fade between scenes.
             _ffmpeg([
-                "-loop", "1", "-i", str(card),
-                "-vf", f"scale={W}:{H},zoompan=z='min(zoom+0.0007,1.045)':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d={frames}:s={W}x{H}:fps=25,setsar=1",
+                "-loop", "1", "-i", str(still),
+                "-vf", f"scale={W}:{H},zoompan=z='min(zoom+0.00055,1.035)':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d={frames}:s={W}x{H}:fps={FPS},setsar=1",
                 "-frames:v", str(frames), "-an", "-c:v", "libx264", "-preset", "ultrafast",
                 "-pix_fmt", "yuv420p", str(clip)
             ], timeout=180)
@@ -185,27 +258,23 @@ async def create_original_video(
         silent = job_dir / "silent.mp4"
         _ffmpeg(["-f", "concat", "-safe", "0", "-i", str(concat), "-c", "copy", str(silent)], timeout=180)
         output = job_dir / "jarvis_original.mp4"
-        # Quiet, synthesized original music tones under Swedish narration.
         _ffmpeg([
             "-i", str(silent), "-i", str(narration_path),
-            "-f", "lavfi", "-i", "sine=frequency=392:sample_rate=44100:duration=28",
-            "-filter_complex", "[1:a]volume=1.0[voice];[2:a]volume=0.045[music];[voice][music]amix=inputs=2:duration=longest:dropout_transition=2[a]",
+            "-f", "lavfi", "-i", "sine=frequency=392:sample_rate=44100:duration=30",
+            "-filter_complex", "[1:a]volume=1.0[voice];[2:a]volume=0.035[music];[voice][music]amix=inputs=2:duration=longest:dropout_transition=2[a]",
             "-map", "0:v:0", "-map", "[a]", "-c:v", "copy", "-c:a", "aac", "-b:a", "128k",
             "-shortest", "-movflags", "+faststart", str(output)
         ], timeout=240)
         if not output.is_file() or output.stat().st_size < 10000:
             raise RuntimeError("MP4-filen saknas eller är ofullständig.")
         return {
-            "status": "completed",
-            "job_id": job_id,
-            "mode": mode,
-            "topic": topic,
-            "script": [{"heading": h, "line": line, "punchline": punch} for h, line, punch in beats],
-            "format": "9:16",
-            "resolution": "720x1280",
-            "voice": VOICE,
-            "video_url": f"/api/video/team/created/{job_id}",
-            "message": "En originalvideo med svensk berättarröst, animerade textscener och egen ljudmatta har skapats."
+            "status": "completed", "job_id": job_id, "mode": mode, "topic": topic,
+            "script": [{"heading": h, "line": line, "caption": caption}
+                       for h, line, caption, _ in beats],
+            "format": "9:16", "resolution": "720x1280", "fps": FPS,
+            "duration_target_seconds": round(len(beats) * SCENE_SECONDS, 1),
+            "voice": VOICE, "video_url": f"/api/video/team/created/{job_id}",
+            "message": "Originalvideo skapad med fem animerade scener, svensk berättarröst och egen ljudmatta."
         }
     except HTTPException:
         shutil.rmtree(job_dir, ignore_errors=True)
