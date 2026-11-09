@@ -2629,7 +2629,7 @@ async function createOriginalVideo(mode){
   const formData=new FormData();formData.append("topic",topic);formData.append("mode",mode);formData.append("video_type",videoType);
   const response=await fetch("/api/video/team/create",{method:"POST",body:formData});const data=await response.json();
   if(!response.ok)throw new Error(data.detail||"Videon kunde inte skapas.");
-  videoCreatorStatus.className="video-status success";videoCreatorStatus.textContent="✓ EGEN VIDEO KLAR · "+data.resolution+" · "+data.format+" · Svensk berättarröst · "+(data.visual_source||"Egen grafik");
+  videoCreatorStatus.className="video-status success";videoCreatorStatus.textContent="✓ EGEN VIDEO KLAR · "+data.resolution+" · "+data.format+" · Svensk berättarröst · "+(data.visual_source||"Egen grafik")+" · "+(data.storage_status==="persistent"?"Permanent sparad":"Tillfälligt sparad på servern");
   const script=document.createElement("div");script.className="reference-help";script.style.whiteSpace="pre-wrap";script.textContent="MANUS:\n"+(data.script||[]).map(x=>x.heading+"\n"+x.line+"\n"+(x.caption||"")).join("\n\n");videoCreatorResult.appendChild(script);
   const link=document.createElement("a");link.className="export-btn";link.href=data.video_url;link.textContent="ÖPPNA / LADDA NER FÄRDIG MP4";link.setAttribute("download","jarvis-original-tiktok.mp4");videoCreatorResult.appendChild(link);
   if(data.credits_url){const credits=document.createElement("a");credits.className="export-btn";credits.href=data.credits_url;credits.textContent="LADDA NER BILDKREDITER / LICENSER";credits.setAttribute("download","bildkrediter.txt");credits.style.marginLeft="8px";videoCreatorResult.appendChild(credits);}
