@@ -33,6 +33,9 @@ def main():
         assert expected in {beat[3] for beat in beats}, (topic, beats)
     assert len({beat[3] for beat in engine._build_script("lön och budget")}) >= 4
     assert len({beat[3] for beat in engine._build_script("första dejten")}) >= 3
+    animated_filter = engine._motion_filter("coffee", 2)
+    assert "zoompan=" in animated_filter and "drawtext=" in animated_filter
+    assert "sin(t*" in animated_filter and "fade=t=in" in animated_filter
 
     original_output = engine.OUTPUT_DIR
     with tempfile.TemporaryDirectory(prefix="jarvis-video-test-") as temporary:
