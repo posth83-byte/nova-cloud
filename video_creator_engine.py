@@ -512,12 +512,20 @@ async def create_original_video(
             "-i", str(silent), "-i", str(narration_path),
             "-f", "lavfi", "-i", "sine=frequency=392:sample_rate=44100:duration=30",
             "-filter_complex", ";".join(filters),
-            "-map", video_map, "-map", "[a]", "-c:v", "libx264", "-preset", "ultrafast",
-            "-crf", "23", "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "128k",
+            "-map", video_map, "-map", "[a]", "-c:v", "libx264", "-preset", "veryfast",
+            "-crf", "29", "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "112k",
             "-shortest", "-movflags", "+faststart", str(output)
         ], timeout=360)
         if not output.is_file() or output.stat().st_size < 10000:
             raise RuntimeError("MP4-filen saknas eller är ofullständig.")
+        if output.stat().st_size > 48 * 1024 * 1024:
+            compact = job_dir / "compact.mp4"
+            _ffmpeg([
+                "-i", str(output), "-c:v", "libx264", "-preset", "veryfast",
+                "-crf", "32", "-c:a", "copy", "-movflags", "+faststart", str(compact)
+            ], timeout=360)
+            if compact.is_file() and compact.stat().st_size < output.stat().st_size:
+                compact.replace(output)
         credits_path = job_dir / "bildkrediter.txt"
         if attributions:
             credit_lines = ["Bildkrediter – Wikimedia Commons", ""]
