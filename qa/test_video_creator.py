@@ -65,7 +65,7 @@ def main():
 
         with patch.object(engine, "search_commons_images", return_value=[]), patch.object(engine.edge_tts, "Communicate", LocalSpeechFixture):
             result = asyncio.run(engine.create_original_video(
-                topic="när kaffet tar slut precis när jobbet börjar", mode="original", video_type="humor"))
+                topic="när kaffet tar slut precis när jobbet börjar", mode="original", video_type="humor", aspect="9:16", duration_mode="standard"))
 
         assert result["status"] == "completed", result
         assert result["format"] == "9:16"
