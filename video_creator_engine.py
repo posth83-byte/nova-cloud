@@ -557,7 +557,7 @@ async def _render_original_video(topic, mode, video_type, aspect, duration_mode,
         narration_path = job_dir / "voice.mp3"
         await edge_tts.Communicate(narration, VOICE).save(str(narration_path))
         audio_duration = _audio_duration(narration_path)
-        scene_seconds = max(2.8, min(60.0, audio_duration / len(beats) + 0.35))
+        scene_seconds = max(2.8, min(60.0, audio_duration / len(beats)))
         clips = []
         attributions = []
         visual_assets = search_commons_images(topic, limit=len(beats))
