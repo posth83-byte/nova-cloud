@@ -28,7 +28,7 @@ def is_configured():
     return _credentials() is not None
 
 
-def _request(path, key, method="GET", data=None, content_type=None):
+def _request(path, key, method="GET", data=None, content_type=None, timeout=90):
     headers = {
         "apikey": key,
         "Authorization": "Bearer " + key,
@@ -38,7 +38,7 @@ def _request(path, key, method="GET", data=None, content_type=None):
     if method in ("POST", "PUT"):
         headers["x-upsert"] = "true"
     request = urllib.request.Request(path, data=data, headers=headers, method=method)
-    return urllib.request.urlopen(request, timeout=90)
+    return urllib.request.urlopen(request, timeout=timeout)
 
 
 def upload_file(job_id, local_path, object_name, content_type):
@@ -88,11 +88,11 @@ def storage_self_test():
     try:
         payload = b"NOVA private storage self-test"
         with _request(object_url, key, method="POST", data=payload,
-                      content_type="text/plain") as response:
+                      content_type="text/plain", timeout=8) as response:
             if not 200 <= response.status < 300:
                 raise RuntimeError(f"Upload HTTP {response.status}")
         uploaded = True
-        with _request(object_url, key) as response:
+        with _request(object_url, key, timeout=8) as response:
             if response.read(256) != payload:
                 raise RuntimeError("Nedladdat testinnehåll stämde inte")
         return True, "Privat Supabase Storage fungerar"
@@ -105,7 +105,7 @@ def storage_self_test():
                 remove_url = f"{base}/storage/v1/object/{BUCKET}"
                 payload = json.dumps({"prefixes": [object_name]}).encode("utf-8")
                 with _request(remove_url, key, method="DELETE", data=payload,
-                              content_type="application/json") as response:
+                              content_type="application/json", timeout=8) as response:
                     if not 200 <= response.status < 300:
                         raise RuntimeError(f"Cleanup HTTP {response.status}")
             except Exception:
