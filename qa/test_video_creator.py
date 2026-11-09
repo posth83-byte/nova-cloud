@@ -1,8 +1,4 @@
-"""Integration checks for the free original short-video renderer.
-
-Uses a locally synthesized speech fixture so CI does not depend on an external
-TTS provider. The real Render path still uses Edge TTS.
-"""
+"""Integration checks for the procedural short-video renderer."""
 import asyncio
 import io
 import subprocess
@@ -27,6 +23,10 @@ def main():
     assert trends["ideas"][0]["title"] == "Exempeltrend Sverige"
     assert trends["ideas"][0]["traffic"] == "20K+"
 
+    assert len(engine._build_script("kaffet tar slut")) == 5
+    assert len(engine._build_script("sova")) == 5
+    assert len(engine._build_script("vardagslivet")) == 5
+
     original_output = engine.OUTPUT_DIR
     with tempfile.TemporaryDirectory(prefix="jarvis-video-test-") as temporary:
         engine.OUTPUT_DIR = Path(temporary)
@@ -39,7 +39,7 @@ def main():
             async def save(self, path):
                 command = [
                     engine.imageio_ffmpeg.get_ffmpeg_exe(), "-y",
-                    "-f", "lavfi", "-i", "sine=frequency=440:sample_rate=44100:duration=22",
+                    "-f", "lavfi", "-i", "sine=frequency=440:sample_rate=44100:duration=28",
                     "-c:a", "libmp3lame", "-b:a", "64k", str(path)
                 ]
                 completed = subprocess.run(command, capture_output=True, text=True, timeout=60)
@@ -48,26 +48,20 @@ def main():
 
         with patch.object(engine.edge_tts, "Communicate", LocalSpeechFixture):
             result = asyncio.run(engine.create_original_video(
-                topic="när kaffet tar slut precis när jobbet börjar",
-                mode="original"
-            ))
+                topic="när kaffet tar slut precis när jobbet börjar", mode="original"))
 
         assert result["status"] == "completed", result
         assert result["format"] == "9:16"
         assert result["resolution"] == "720x1280"
-        assert len(result["script"]) == 4
+        assert len(result["script"]) == 5
         job_dir = Path(temporary) / result["job_id"]
         output = job_dir / "jarvis_original.mp4"
         assert output.is_file() and output.stat().st_size > 10000
-        assert len(list(job_dir.glob("scene_*.jpg"))) == 4
-
-        # Decode the complete exported MP4 to catch corrupt or truncated output.
+        assert len(list(job_dir.glob("scene_*.jpg"))) == 5
         decode = subprocess.run(
             [engine.imageio_ffmpeg.get_ffmpeg_exe(), "-v", "error", "-i", str(output), "-f", "null", "-"],
-            capture_output=True, text=True, timeout=90
-        )
+            capture_output=True, text=True, timeout=120)
         assert decode.returncode == 0, decode.stderr
-
         response = engine.download_original_video(result["job_id"])
         assert Path(response.path) == output
         try:
@@ -76,11 +70,7 @@ def main():
             assert getattr(error, "status_code", None) == 400
         else:
             raise AssertionError("Invalid job IDs must be rejected.")
-
-        print(
-            "PASS trend RSS parsing; PASS four-scene Swedish short-video render; "
-            f"PASS MP4 decode ({output.stat().st_size} bytes); PASS download route."
-        )
+        print(f"PASS trend parsing; PASS five-scene procedural render; PASS MP4 decode ({output.stat().st_size} bytes); PASS download route.")
         engine.OUTPUT_DIR = original_output
 
 
