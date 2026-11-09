@@ -158,7 +158,7 @@ def _draw_illustration(draw, kind, t):
         draw.arc((150, 170, 570, 690), 205, 335, fill=(83, 180, 224), width=5)
 
 
-def _make_scene(path, kicker, headline, caption, kind, index, background_path=None, scene_seconds=SCENE_SECONDS):
+def _make_scene(path, kicker, headline, caption, kind, index, background_path=None, scene_seconds=SCENE_SECONDS, scene_count=5):
     if background_path and Path(background_path).is_file():
         with Image.open(background_path) as source:
             image = ImageOps.fit(source.convert("RGB"), (W, H), method=Image.Resampling.LANCZOS)
@@ -212,7 +212,7 @@ def _make_scene(path, kicker, headline, caption, kind, index, background_path=No
     draw.rounded_rectangle((58, 910, W-58, 1080), radius=22,
                            fill=(3, 8, 18), outline=(255, 151, 91), width=2)
     _centered(draw, caption, 995, _font(31, True), (255, 232, 213), max_width=555, gap=9)
-    draw.text((W//2, 1165), f"{index+1:02d} / 05     •     JARVIS VIDEO TEAM",
+    draw.text((W//2, 1165), f"{index+1:02d} / {scene_count:02d}     •     JARVIS VIDEO TEAM",
               font=_font(18, True), fill=(153, 178, 211), anchor="mm")
     image.save(path, quality=94)
 
@@ -399,13 +399,13 @@ def _srt_time(seconds):
     return f"{hours:02}:{minutes:02}:{secs:02},{milliseconds:03}"
 
 
-def _write_subtitles(beats, duration, path):
+def _write_subtitles(beats, duration, path, include_caption=True):
     """Create sentence-level SRT cues aligned proportionally to spoken word count."""
     if not beats or duration <= 0:
         raise RuntimeError("Undertexterna saknar giltig tidslinje.")
     segments = []
     for heading, line, caption, _ in beats:
-        spoken = f"{heading}. {line} {caption}"
+        spoken = f"{heading}. {line}" + (f" {caption}" if include_caption and caption else "")
         for sentence in re.split(r"(?<=[.!?])\s+", spoken.strip()):
             sentence = sentence.strip()
             if sentence:
@@ -517,7 +517,10 @@ async def _render_original_video(topic, mode, video_type, aspect, duration_mode,
                 raise HTTPException(422, "Jag hittade inte tillräckligt med källmaterial i Wikipedia för en faktavideo. Prova ett tydligare ämne.")
         else:
             beats = _build_script(topic, video_type)
-        narration = " ".join(f"{heading}. {line} {caption}" for heading, line, caption, _ in beats)
+        narration = " ".join(
+            f"{heading}. {line}" + (f" {caption}" if video_type != "explainer" and caption else "")
+            for heading, line, caption, _ in beats
+        )
         narration_path = job_dir / "voice.mp3"
         await edge_tts.Communicate(narration, VOICE).save(str(narration_path))
         audio_duration = _audio_duration(narration_path)
@@ -535,7 +538,7 @@ async def _render_original_video(topic, mode, video_type, aspect, duration_mode,
                     attributions.append({key: visual_assets[i].get(key, "") for key in (
                         "title", "page_url", "license", "license_url", "artist", "credit"
                     )})
-            _make_scene(still, heading, line, caption, kind, i, background_path, scene_seconds)
+            _make_scene(still, heading, line, caption, kind, i, background_path, scene_seconds, len(beats))
             clip = job_dir / f"clip_{i:02}.mp4"
             frames = int(scene_seconds * FPS)
             # Animated camera drift plus subtle, topic-colored comic accents.
@@ -605,7 +608,7 @@ async def _render_original_video(topic, mode, video_type, aspect, duration_mode,
                 ])
             credits_path.write_text("\n".join(credit_lines), encoding="utf-8")
         subtitles_path = job_dir / "undertexter.srt"
-        _write_subtitles(beats, audio_duration, subtitles_path)
+        _write_subtitles(beats, audio_duration, subtitles_path, include_caption=video_type != "explainer")
         stored_video = upload_file(job_id, output, "jarvis_original.mp4", "video/mp4")
         stored_credits = upload_file(job_id, credits_path, "bildkrediter.txt", "text/plain") if credits_path.is_file() else False
         stored_subtitles = upload_file(job_id, subtitles_path, "undertexter.srt", "text/plain")
@@ -628,7 +631,7 @@ async def _render_original_video(topic, mode, video_type, aspect, duration_mode,
             "fact_check_required": video_type == "explainer",
             "image_attributions": attributions,
             "credits_url": f"/api/video/team/credits/{job_id}" if attributions else None,
-            "message": f"Video skapad ({video_type}) med fem animerade scener, svensk berättarröst och egen ljudmatta."
+            "message": f"Video skapad ({video_type}) med {len(beats)} animerade scener, svensk berättarröst och egen ljudmatta."
         }
     except HTTPException:
         shutil.rmtree(job_dir, ignore_errors=True)
