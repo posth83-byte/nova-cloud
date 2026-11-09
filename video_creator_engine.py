@@ -6,12 +6,14 @@ not photorealistic text-to-video generation.
 """
 import asyncio
 import html
+import json
 import logging
 import math
 import re
 import shutil
 import subprocess
 import textwrap
+import threading
 import uuid
 import urllib.request
 import xml.etree.ElementTree as ET
@@ -19,7 +21,7 @@ from pathlib import Path
 
 import edge_tts
 import imageio_ffmpeg
-from fastapi import APIRouter, Form, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Form, HTTPException
 from fastapi.responses import FileResponse, StreamingResponse
 from video_assets import search_commons_images, download_commons_image
 from video_storage import upload_file, open_stored_file, storage_self_test
@@ -43,6 +45,7 @@ VOICE = "sv-SE-MattiasNeural"
 W, H, FPS = 720, 1280, 25
 MAX_PROMPT = 220
 SCENE_SECONDS = 5.2
+VIDEO_RENDER_LOCK = threading.Lock()
 
 
 def _ffmpeg(args, timeout=600):
@@ -434,6 +437,40 @@ def _audio_duration(path):
     return int(hours) * 3600 + int(minutes) * 60 + float(seconds)
 
 
+def _write_job_status(job_id, status, progress, message, result=None, error=None):
+    job_dir = OUTPUT_DIR / job_id
+    job_dir.mkdir(parents=True, exist_ok=True)
+    payload = {
+        "job_id": job_id,
+        "status": status,
+        "progress": max(0, min(100, int(progress))),
+        "message": message,
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+    }
+    if result is not None:
+        payload["result"] = result
+    if error:
+        payload["error"] = str(error)[:900]
+    path = job_dir / "status.json"
+    path.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
+    upload_file(job_id, path, "status.json", "application/json")
+    return payload
+
+
+def _run_original_video_job(topic, mode, video_type, aspect, duration_mode, job_id):
+    with VIDEO_RENDER_LOCK:
+        _write_job_status(job_id, "processing", 2, "JARVIS och NOVA startar videoproduktionen.")
+        try:
+            result = asyncio.run(_render_original_video_async(
+                topic, mode, video_type, aspect, duration_mode, job_id
+            ))
+            _write_job_status(job_id, "completed", 100, "Videon är färdig.", result=result)
+        except HTTPException as error:
+            _write_job_status(job_id, "failed", 100, "Videoproduktionen misslyckades.", error=error.detail)
+        except Exception as error:
+            _write_job_status(job_id, "failed", 100, "Ett oväntat fel stoppade videoproduktionen.", error=error)
+
+
 @router.post("/api/video/team/create")
 async def create_original_video(
     topic: str = Form(""),
@@ -441,6 +478,7 @@ async def create_original_video(
     video_type: str = Form("humor"),
     aspect: str = Form("9:16"),
     duration_mode: str = Form("standard"),
+    background_tasks: BackgroundTasks = None,
 ):
     topic = (topic or "").strip()
     if len(topic) > MAX_PROMPT:
@@ -456,9 +494,28 @@ async def create_original_video(
     if not topic:
         topic = "ett intressant ämne"
     job_id = uuid.uuid4().hex[:12]
+    if background_tasks is None:
+        result = await _render_original_video_async(topic, mode, video_type, aspect, duration_mode, job_id)
+        _write_job_status(job_id, "completed", 100, "Videon är färdig.", result=result)
+        return result
+    await asyncio.to_thread(_write_job_status, job_id, "queued", 0, "Videon ligger i JARVIS produktionskö.")
+    background_tasks.add_task(
+        _run_original_video_job, topic, mode, video_type, aspect, duration_mode, job_id
+    )
+    return {
+        "status": "queued",
+        "job_id": job_id,
+        "progress": 0,
+        "status_url": f"/api/video/team/status/{job_id}",
+        "message": "Videoteamet har tagit emot jobbet. Du kan följa produktionen medan den arbetar."
+    }
+
+
+async def _render_original_video_async(topic, mode, video_type, aspect, duration_mode, job_id):
     job_dir = OUTPUT_DIR / job_id
     job_dir.mkdir(parents=True, exist_ok=True)
     try:
+        _write_job_status(job_id, "processing", 8, "Research och manus planeras.")
         research_data = research_wikipedia(topic) if video_type == "explainer" else None
         if video_type == "explainer":
             beats = build_explainer_beats(research_data, duration_mode)
@@ -466,10 +523,12 @@ async def create_original_video(
                 raise HTTPException(422, "Jag hittade inte tillräckligt med källmaterial i Wikipedia för en faktavideo. Prova ett tydligare ämne.")
         else:
             beats = _build_script(topic, video_type)
+        _write_job_status(job_id, "processing", 14, "Manuset är klart. Skapar svensk berättarröst.")
         narration = " ".join(f"{heading}. {line} {caption}" for heading, line, caption, _ in beats)
         narration_path = job_dir / "voice.mp3"
         await edge_tts.Communicate(narration, VOICE).save(str(narration_path))
         audio_duration = _audio_duration(narration_path)
+        _write_job_status(job_id, "processing", 22, "Berättarrösten är klar. Hämtar fria bildkällor.")
         scene_seconds = max(2.8, min(60.0, audio_duration / len(beats) + 0.35))
         clips = []
         attributions = []
@@ -496,10 +555,12 @@ async def create_original_video(
                 "-pix_fmt", "yuv420p", str(clip)
             ], timeout=180)
             clips.append(clip)
+            _write_job_status(job_id, "processing", 25 + int(45 * (i + 1) / len(beats)), f"Skapar scen {i + 1} av {len(beats)}.")
         concat = job_dir / "clips.txt"
         concat.write_text("".join(f"file '{clip.as_posix()}'\n" for clip in clips), encoding="utf-8")
         silent = job_dir / "silent.mp4"
         _ffmpeg(["-f", "concat", "-safe", "0", "-i", str(concat), "-c", "copy", str(silent)], timeout=180)
+        _write_job_status(job_id, "processing", 78, "Klipper ihop scener, musik och berättarröst.")
         output = job_dir / "jarvis_original.mp4"
         dimensions = {"9:16": (720, 1280), "16:9": (1280, 720), "1:1": (1080, 1080)}
         output_width, output_height = dimensions[aspect]
@@ -555,6 +616,7 @@ async def create_original_video(
             credits_path.write_text("\n".join(credit_lines), encoding="utf-8")
         subtitles_path = job_dir / "undertexter.srt"
         _write_subtitles(beats, audio_duration, subtitles_path)
+        _write_job_status(job_id, "processing", 90, "Videon är renderad. Sparar MP4 och undertexter permanent.")
         stored_video = upload_file(job_id, output, "jarvis_original.mp4", "video/mp4")
         stored_credits = upload_file(job_id, credits_path, "bildkrediter.txt", "text/plain") if credits_path.is_file() else False
         stored_subtitles = upload_file(job_id, subtitles_path, "undertexter.srt", "text/plain")
@@ -585,6 +647,33 @@ async def create_original_video(
     except Exception as error:
         shutil.rmtree(job_dir, ignore_errors=True)
         raise HTTPException(502, f"Kunde inte skapa originalvideon: {str(error)[:700]}")
+
+
+@router.get("/api/video/team/status/{job_id}")
+def get_video_job_status(job_id: str):
+    if not re.fullmatch(r"[a-f0-9]{12}", job_id):
+        raise HTTPException(400, "Ogiltigt jobb-ID.")
+    path = OUTPUT_DIR / job_id / "status.json"
+    if path.is_file():
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+        except Exception:
+            raise HTTPException(500, "Jobbstatusen kunde inte läsas.")
+    else:
+        remote = open_stored_file(job_id, "status.json")
+        if remote is None:
+            raise HTTPException(404, "Videjobbet hittades inte.")
+        try:
+            payload = json.loads(remote.read().decode("utf-8"))
+        finally:
+            remote.close()
+        if payload.get("status") in {"queued", "processing"}:
+            payload = _write_job_status(
+                job_id, "failed", 100,
+                "Render startade om innan videjobbet hann bli klart.",
+                error="Jobbet avbröts när servern startade om."
+            )
+    return payload
 
 
 @router.get("/api/video/team/subtitles/{job_id}")
