@@ -18,8 +18,11 @@ from pathlib import Path
 import edge_tts
 import imageio_ffmpeg
 from fastapi import APIRouter, Form, HTTPException
-from fastapi.responses import FileResponse
-from PIL import Image, ImageDraw, ImageFont
+from fastapi.responses import FileResponse, StreamingResponse
+from video_assets import search_commons_images, download_commons_image
+from video_storage import upload_file, open_stored_file
+from video_research import research_wikipedia, build_explainer_beats
+from PIL import Image, ImageDraw, ImageFont, ImageEnhance, ImageOps
 
 router = APIRouter()
 OUTPUT_DIR = Path("/tmp/nova_team_created")
@@ -142,17 +145,24 @@ def _draw_illustration(draw, kind, t):
         draw.arc((150, 170, 570, 690), 205, 335, fill=(83, 180, 224), width=5)
 
 
-def _make_scene(path, kicker, headline, caption, kind, index):
-    image = Image.new("RGB", (W, H), (5, 10, 22))
-    pixels = image.load()
-    for y in range(H):
-        f = y / H
-        base = (int(6 + 12*f), int(12 + 12*f), int(28 + 16*f))
-        for x in range(W):
-            glow = max(0.0, 1 - (((x-W*.5)/(W*.78))**2 + ((y-H*.34)/(H*.62))**2))
-            pixels[x, y] = (min(255, base[0] + int(20*glow)),
-                            min(255, base[1] + int(29*glow)),
-                            min(255, base[2] + int(42*glow)))
+def _make_scene(path, kicker, headline, caption, kind, index, background_path=None, scene_seconds=SCENE_SECONDS):
+    if background_path and Path(background_path).is_file():
+        with Image.open(background_path) as source:
+            image = ImageOps.fit(source.convert("RGB"), (W, H), method=Image.Resampling.LANCZOS)
+        image = ImageEnhance.Brightness(image).enhance(0.34)
+        shade = Image.new("RGBA", (W, H), (4, 9, 20, 112))
+        image = Image.alpha_composite(image.convert("RGBA"), shade).convert("RGB")
+    else:
+        image = Image.new("RGB", (W, H), (5, 10, 22))
+        pixels = image.load()
+        for y in range(H):
+            f = y / H
+            base = (int(6 + 12*f), int(12 + 12*f), int(28 + 16*f))
+            for x in range(W):
+                glow = max(0.0, 1 - (((x-W*.5)/(W*.78))**2 + ((y-H*.34)/(H*.62))**2))
+                pixels[x, y] = (min(255, base[0] + int(20*glow)),
+                                min(255, base[1] + int(29*glow)),
+                                min(255, base[2] + int(42*glow)))
     draw = ImageDraw.Draw(image)
     palettes = {
         "coffee": (255, 151, 91), "sleep": (142, 173, 239), "phone": (105, 187, 229),
@@ -182,22 +192,61 @@ def _make_scene(path, kicker, headline, caption, kind, index):
                            fill=(20, 39, 61), outline=(255, 151, 91), width=2)
     draw.text((W//2, 149), kicker.upper(), font=_font(25, True),
               fill=(255, 190, 145), anchor="mm")
-    _draw_illustration(draw, kind, index * SCENE_SECONDS)
+    _draw_illustration(draw, kind, index * scene_seconds)
     _centered(draw, headline, 765, _font(49 if len(headline) < 36 else 42, True),
               (248, 250, 255), max_width=600, gap=14)
     # High-contrast subtitle panel for sound-off viewing.
     draw.rounded_rectangle((58, 910, W-58, 1080), radius=22,
                            fill=(3, 8, 18), outline=(255, 151, 91), width=2)
     _centered(draw, caption, 995, _font(31, True), (255, 232, 213), max_width=555, gap=9)
-    draw.text((W//2, 1165), f"{index+1:02d} / 05     •     ORIGINAL HUMOR",
+    draw.text((W//2, 1165), f"{index+1:02d} / 05     •     JARVIS VIDEO TEAM",
               font=_font(18, True), fill=(153, 178, 211), anchor="mm")
     image.save(path, quality=94)
 
 
-def _build_script(topic):
+def _build_script(topic, video_type="humor"):
     clean = re.sub(r"\s+", " ", (topic or "").strip())[:MAX_PROMPT].strip(" .!?")
     if not clean:
         clean = "vardagslivet"
+    templates = {
+        "explainer": [
+            ("FRÅGAN", f"Vad behöver man förstå om {clean}?", "Vi börjar med grunden och håller det enkelt.", "generic"),
+            ("BAKGRUNDEN", f"För att förstå {clean} behöver vi se sammanhanget.", "Det blir lättare när man delar upp det.", "work"),
+            ("KÄRNAN", f"Den viktigaste delen av {clean} är det vi ska fokusera på.", "En tydlig sak i taget gör skillnad.", "phone"),
+            ("EXEMPEL", f"Tänk på ett konkret exempel kopplat till {clean}.", "Då blir resonemanget lättare att följa.", "generic"),
+            ("SAMMANFATTNING", f"Nu har du en tydligare bild av {clean}.", "Kontrollera detaljerna innan du drar slutsatser.", "generic"),
+        ],
+        "tutorial": [
+            ("MÅLET", f"Så kommer du igång med {clean}.", "Vi tar det steg för steg.", "generic"),
+            ("STEG 1", "Börja med att förbereda det du behöver.", "En bra start gör resten enklare.", "work"),
+            ("STEG 2", f"Gå igenom grunderna för {clean} i lugn takt.", "Följ instruktionerna för just din situation.", "phone"),
+            ("STEG 3", "Testa resultatet och rätta till det som inte fungerar.", "Små justeringar är helt normala.", "generic"),
+            ("KLART", "Nu har du en tydlig startpunkt.", "Kontrollera alltid resultatet innan du går vidare.", "generic"),
+        ],
+        "promo": [
+            ("UPPTÄCK", f"Letar du efter ett bättre sätt att ta dig an {clean}?", "Här är en idé värd att utforska.", "generic"),
+            ("UTMANINGEN", f"{clean.capitalize()} kan kännas mer komplicerat än det behöver vara.", "Det ska vara enkelt att komma igång.", "work"),
+            ("MÖJLIGHETEN", "Fokusera på det som faktiskt gör skillnad.", "Tydlighet och enkelhet först.", "phone"),
+            ("FÖRDELEN", "Jämför alternativen och välj det som passar dina behov.", "Inga tomma löften – välj det som fungerar.", "money"),
+            ("TA NÄSTA STEG", f"Utforska {clean} och se vad som passar dig.", "Läs mer innan du bestämmer dig.", "generic"),
+        ],
+        "inspiration": [
+            ("BÖRJA", f"Du behöver inte ha allt klart för att börja med {clean}.", "Det räcker att ta första steget.", "generic"),
+            ("SMÅ STEG", "Framsteg byggs av små beslut som upprepas.", "Hellre lite i taget än aldrig.", "work"),
+            ("MOTGÅNG", "Det kommer inte alltid gå enligt planen.", "Det betyder inte att du ska ge upp.", "sleep"),
+            ("UTVECKLING", f"Varje försök lär dig något om {clean}.", "Använd erfarenheten och fortsätt framåt.", "phone"),
+            ("FORTSÄTT", "Ditt nästa steg behöver inte vara perfekt.", "Det behöver bara bli av.", "generic"),
+        ],
+        "story": [
+            ("DET BÖRJADE", f"Allt började med en enkel idé: {clean}.", "Ingen visste vart det skulle leda.", "generic"),
+            ("FÖRSTA STEGET", "Till en början verkade allt ganska enkelt.", "Sedan dök den första överraskningen upp.", "work"),
+            ("VÄNDPUNKTEN", "Plötsligt behövde en helt ny plan ta form.", "Det var nu berättelsen tog fart.", "phone"),
+            ("UPPTÄCKTEN", "Det som först verkade vara ett hinder blev en möjlighet.", "Ibland ser man lösningen först efteråt.", "generic"),
+            ("SLUTET", f"Det här var början på berättelsen om {clean}.", "Resten kan du själv vara med och forma.", "generic"),
+        ],
+    }
+    if video_type in templates:
+        return templates[video_type]
     lower = clean.casefold()
     if any(word in lower for word in ("kaffe", "kaffet", "espresso")):
         beats = [
@@ -266,7 +315,7 @@ def _build_script(topic):
     return beats
 
 
-def _motion_filter(kind, index):
+def _motion_filter(kind, index, video_type="humor", scene_seconds=SCENE_SECONDS):
     """Build a lightweight animated FFmpeg filter for floating comic accents."""
     palettes = {
         "coffee": "0xFF975B", "sleep": "0xAFC5FF", "phone": "0x69BBE5",
@@ -276,14 +325,14 @@ def _motion_filter(kind, index):
     color = palettes.get(kind, "0xFF975B")
     font = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
     phase = index * 0.73
-    frames = int(SCENE_SECONDS * FPS)
+    frames = int(scene_seconds * FPS)
     # A final, timed reaction word gives every scene a readable comic button.
     reactions = {
         "coffee": "SLURP!", "sleep": "ZZZ!", "phone": "PING!",
         "work": "OJ!", "money": "KRASCH!", "gym": "PUH!",
         "food": "MUMS!", "love": "OJ DA!", "generic": "PANG!",
     }
-    reaction = reactions.get(kind, "PANG!")
+    reaction = reactions.get(kind, "PANG!") if video_type == "humor" else ""
     return ",".join([
         f"scale={W}:{H}",
         f"zoompan=z='1.025+0.012*sin(on/22)':"
@@ -295,9 +344,9 @@ def _motion_filter(kind, index):
         f"x='560+28*cos(t*1.9+{phase:.2f})':y='520+25*sin(t*2.7+{phase:.2f})'",
         f"drawtext=fontfile={font}:text='{reaction}':fontcolor={color}:"
         f"fontsize='38+8*sin(t*18)':x='(w-text_w)/2':"
-        f"y='675+9*sin(t*20)':enable='between(t,{SCENE_SECONDS-0.95:.2f},{SCENE_SECONDS-0.12:.2f})'",
+        f"y='675+9*sin(t*20)':enable='between(t,{scene_seconds-0.95:.2f},{scene_seconds-0.12:.2f})'",
         f"fade=t=in:st=0:d=0.22",
-        f"fade=t=out:st={SCENE_SECONDS-0.22:.2f}:d=0.22",
+        f"fade=t=out:st={scene_seconds-0.22:.2f}:d=0.22",
         "setsar=1",
     ])
 
@@ -319,7 +368,7 @@ def discover_video_ideas():
                 ideas.append({"title": title[:180], "traffic": traffic,
                               "source": "Google Trends Sverige",
                               "source_url": link or "https://trends.google.com/trending?geo=SE",
-                              "angle": "Skapa en egen humorvinkel – kopiera inte någon annans video."})
+                              "angle": "Använd ämnet som inspiration och skapa ett eget innehåll."})
     except Exception as error:
         source_error = str(error)[:240]
     return {"status": "ok" if ideas else "unavailable", "source": "Google Trends Sverige",
@@ -329,31 +378,62 @@ def discover_video_ideas():
             "error": source_error}
 
 
+def _audio_duration(path):
+    result = subprocess.run(
+        [imageio_ffmpeg.get_ffmpeg_exe(), "-i", str(path), "-f", "null", "-"],
+        stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=45
+    )
+    match = re.search(r"Duration:\s*(\d+):(\d+):(\d+(?:\.\d+)?)", result.stderr or "")
+    if not match:
+        raise RuntimeError("Kunde inte läsa berättarröstens längd.")
+    hours, minutes, seconds = match.groups()
+    return int(hours) * 3600 + int(minutes) * 60 + float(seconds)
+
+
 @router.post("/api/video/team/create")
-async def create_original_video(topic: str = Form(""), mode: str = Form("original")):
+async def create_original_video(topic: str = Form(""), mode: str = Form("original"), video_type: str = Form("humor")):
     topic = (topic or "").strip()
     if len(topic) > MAX_PROMPT:
         raise HTTPException(400, f"Ämnet får vara högst {MAX_PROMPT} tecken.")
     if mode not in {"original", "trend"}:
         raise HTTPException(400, "Ogiltigt videoläge.")
+    if video_type not in {"humor", "explainer", "tutorial", "promo", "inspiration", "story"}:
+        raise HTTPException(400, "Ogiltig videotyp.")
     if not topic:
-        topic = "när man försöker vara produktiv"
+        topic = "ett intressant ämne"
     job_id = uuid.uuid4().hex[:12]
     job_dir = OUTPUT_DIR / job_id
     job_dir.mkdir(parents=True, exist_ok=True)
     try:
-        beats = _build_script(topic)
+        research_data = research_wikipedia(topic) if video_type == "explainer" else None
+        if video_type == "explainer":
+            beats = build_explainer_beats(research_data)
+            if not beats:
+                raise HTTPException(422, "Jag hittade inte tillräckligt med källmaterial i Wikipedia för en faktavideo. Prova ett tydligare ämne.")
+        else:
+            beats = _build_script(topic, video_type)
         narration = " ".join(f"{heading}. {line} {caption}" for heading, line, caption, _ in beats)
         narration_path = job_dir / "voice.mp3"
         await edge_tts.Communicate(narration, VOICE).save(str(narration_path))
+        scene_seconds = max(2.8, min(40.0, _audio_duration(narration_path) / len(beats) + 0.35))
         clips = []
+        attributions = []
+        visual_assets = search_commons_images(topic, limit=len(beats))
         for i, (heading, line, caption, kind) in enumerate(beats):
             still = job_dir / f"scene_{i:02}.jpg"
-            _make_scene(still, heading, line, caption, kind, i)
+            background_path = None
+            if i < len(visual_assets):
+                asset_path = job_dir / f"commons_{i:02}.jpg"
+                if download_commons_image(visual_assets[i], asset_path):
+                    background_path = asset_path
+                    attributions.append({key: visual_assets[i].get(key, "") for key in (
+                        "title", "page_url", "license", "license_url", "artist", "credit"
+                    )})
+            _make_scene(still, heading, line, caption, kind, i, background_path, scene_seconds)
             clip = job_dir / f"clip_{i:02}.mp4"
-            frames = int(SCENE_SECONDS * FPS)
+            frames = int(scene_seconds * FPS)
             # Animated camera drift plus subtle, topic-colored comic accents.
-            motion = _motion_filter(kind, i)
+            motion = _motion_filter(kind, i, video_type, scene_seconds)
             _ffmpeg([
                 "-loop", "1", "-i", str(still),
                 "-vf", motion,
@@ -375,14 +455,38 @@ async def create_original_video(topic: str = Form(""), mode: str = Form("origina
         ], timeout=240)
         if not output.is_file() or output.stat().st_size < 10000:
             raise RuntimeError("MP4-filen saknas eller är ofullständig.")
+        credits_path = job_dir / "bildkrediter.txt"
+        if attributions:
+            credit_lines = ["Bildkrediter – Wikimedia Commons", ""]
+            for item in attributions:
+                credit_lines.extend([
+                    item.get("title", "Okänd titel"),
+                    f"Upphov: {item.get('artist') or item.get('credit') or 'Ej angiven'}",
+                    f"Licens: {item.get('license') or 'Se källsidan'}",
+                    f"Licenslänk: {item.get('license_url') or 'Se källsidan'}",
+                    f"Källsida: {item.get('page_url') or 'Ej angiven'}",
+                    ""
+                ])
+            credits_path.write_text("\n".join(credit_lines), encoding="utf-8")
+        stored_video = upload_file(job_id, output, "jarvis_original.mp4", "video/mp4")
+        stored_credits = upload_file(job_id, credits_path, "bildkrediter.txt", "text/plain") if credits_path.is_file() else False
         return {
-            "status": "completed", "job_id": job_id, "mode": mode, "topic": topic,
+            "status": "completed", "job_id": job_id, "mode": mode, "video_type": video_type, "topic": topic,
+            "storage_status": "persistent" if stored_video else "temporary",
+            "credits_storage_status": "persistent" if stored_credits else "not_saved",
             "script": [{"heading": h, "line": line, "caption": caption}
                        for h, line, caption, _ in beats],
             "format": "9:16", "resolution": "720x1280", "fps": FPS,
-            "duration_target_seconds": round(len(beats) * SCENE_SECONDS, 1),
+            "duration_target_seconds": round(len(beats) * scene_seconds, 1),
             "voice": VOICE, "video_url": f"/api/video/team/created/{job_id}",
-            "message": "Originalvideo skapad med fem animerade scener, svensk berättarröst och egen ljudmatta."
+            "visual_source": "Wikimedia Commons + egen grafik" if attributions else "Egen procedural grafik (bildkälla ej tillgänglig)",
+            "research_source": research_data.get("source") if research_data else None,
+            "research_title": research_data.get("title") if research_data else None,
+            "research_url": research_data.get("source_url") if research_data else None,
+            "fact_check_required": video_type == "explainer",
+            "image_attributions": attributions,
+            "credits_url": f"/api/video/team/credits/{job_id}" if attributions else None,
+            "message": f"Video skapad ({video_type}) med fem animerade scener, svensk berättarröst och egen ljudmatta."
         }
     except HTTPException:
         shutil.rmtree(job_dir, ignore_errors=True)
@@ -392,11 +496,47 @@ async def create_original_video(topic: str = Form(""), mode: str = Form("origina
         raise HTTPException(502, f"Kunde inte skapa originalvideon: {str(error)[:700]}")
 
 
+@router.get("/api/video/team/credits/{job_id}")
+def download_video_credits(job_id: str):
+    if not re.fullmatch(r"[a-f0-9]{12}", job_id):
+        raise HTTPException(400, "Ogiltigt jobb-ID.")
+    path = OUTPUT_DIR / job_id / "bildkrediter.txt"
+    if path.is_file():
+        return FileResponse(path, media_type="text/plain; charset=utf-8", filename="bildkrediter.txt")
+    remote = open_stored_file(job_id, "bildkrediter.txt")
+    if remote is None:
+        raise HTTPException(404, "Ingen sparad bildkreditfil hittades.")
+    def stream():
+        try:
+            while True:
+                chunk = remote.read(1024 * 1024)
+                if not chunk:
+                    break
+                yield chunk
+        finally:
+            remote.close()
+    return StreamingResponse(stream(), media_type="text/plain; charset=utf-8",
+                             headers={"Content-Disposition": 'attachment; filename="bildkrediter.txt"'})
+
+
 @router.get("/api/video/team/created/{job_id}")
 def download_original_video(job_id: str):
     if not re.fullmatch(r"[a-f0-9]{12}", job_id):
         raise HTTPException(400, "Ogiltigt jobb-ID.")
     path = OUTPUT_DIR / job_id / "jarvis_original.mp4"
-    if not path.is_file():
-        raise HTTPException(404, "Originalvideon finns inte längre i Render-lagringen.")
-    return FileResponse(path, media_type="video/mp4", filename="jarvis-original-tiktok.mp4")
+    if path.is_file():
+        return FileResponse(path, media_type="video/mp4", filename="jarvis-original-tiktok.mp4")
+    remote = open_stored_file(job_id, "jarvis_original.mp4")
+    if remote is None:
+        raise HTTPException(404, "Videon finns inte kvar i lokal lagring eller Supabase Storage.")
+    def stream():
+        try:
+            while True:
+                chunk = remote.read(1024 * 1024)
+                if not chunk:
+                    break
+                yield chunk
+        finally:
+            remote.close()
+    return StreamingResponse(stream(), media_type="video/mp4",
+                             headers={"Content-Disposition": 'attachment; filename="jarvis-original-tiktok.mp4"'})

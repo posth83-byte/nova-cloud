@@ -26,6 +26,10 @@ def main():
     assert len(engine._build_script("kaffet tar slut")) == 5
     assert len(engine._build_script("sova")) == 5
     assert len(engine._build_script("vardagslivet")) == 5
+    for kind in ("explainer", "tutorial", "promo", "inspiration", "story"):
+        assert len(engine._build_script("solenergi", kind)) == 5, kind
+        assert "solenergi" in " ".join(beat[1] for beat in engine._build_script("solenergi", kind)).casefold()
+    assert "PANG!" not in engine._motion_filter("generic", 1, "tutorial")
     for topic, expected in (("träning på gymmet", "gym"), ("lön och budget", "money"),
                             ("första dejten", "love"), ("laga middag", "food")):
         beats = engine._build_script(topic)
@@ -33,7 +37,7 @@ def main():
         assert expected in {beat[3] for beat in beats}, (topic, beats)
     assert len({beat[3] for beat in engine._build_script("lön och budget")}) >= 4
     assert len({beat[3] for beat in engine._build_script("första dejten")}) >= 3
-    animated_filter = engine._motion_filter("coffee", 2)
+    animated_filter = engine._motion_filter("coffee", 2, "humor")
     assert "zoompan=" in animated_filter and "drawtext=" in animated_filter
     assert "sin(t*" in animated_filter and "fade=t=in" in animated_filter
     assert "SLURP!" in animated_filter and "between(t," in animated_filter
@@ -59,12 +63,13 @@ def main():
                 if completed.returncode:
                     raise RuntimeError(completed.stderr[-1200:])
 
-        with patch.object(engine.edge_tts, "Communicate", LocalSpeechFixture):
+        with patch.object(engine, "search_commons_images", return_value=[]), patch.object(engine.edge_tts, "Communicate", LocalSpeechFixture):
             result = asyncio.run(engine.create_original_video(
-                topic="när kaffet tar slut precis när jobbet börjar", mode="original"))
+                topic="när kaffet tar slut precis när jobbet börjar", mode="original", video_type="humor"))
 
         assert result["status"] == "completed", result
         assert result["format"] == "9:16"
+        assert result["video_type"] == "humor"
         assert result["resolution"] == "720x1280"
         assert len(result["script"]) == 5
         job_dir = Path(temporary) / result["job_id"]

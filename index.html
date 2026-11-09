@@ -1136,17 +1136,19 @@ ox-spelutvecklare. Från spelidé och värld till Luau-kod, system, testning och
    </div>
    <div id="novaVideoResults" class="video-results hidden"></div>
    <section class="video-studio" id="videoTeamCreator" style="margin-top:16px;border:1px solid #d78b43;border-radius:14px;padding:15px;background:linear-gradient(145deg,#211a16,#100d0b)">
-    <h3 style="color:#ffc17a;margin-top:0">JARVIS VIDEO TEAM / HITTA ELLER SKAPA</h3>
-    <p>Välj en aktuell trend som inspiration eller skriv ett ämne. Teamet skapar en egen svensk humorvideo i vertikalt format – utan betald videogenerering.</p>
+    <h3 style="color:#ffc17a;margin-top:0">JARVIS VIDEO STUDIO / SKAPA VILKEN VIDEO SOM HELST</h3>
+    <p>Skapa humor, faktaförklaring, guide, reklam, inspiration eller en kort berättelse. Skriv ämnet och välj videotyp. Teamet skapar en animerad video med svensk berättarröst. Faktavideor är första utkast och behöver faktagranskas före publicering.</p>
     <div style="display:flex;gap:8px;flex-wrap:wrap">
      <button class="video-create" id="videoFindIdeas" type="button" style="background:#342719;border-color:#e9a15c">⌕ HITTA POPULÄRA IDÉER</button>
      <a class="export-btn" href="https://ads.tiktok.com/business/creativecenter/inspiration/popular/trends/pc/sv" target="_blank" rel="noopener noreferrer" style="display:inline-flex;align-items:center">ÖPPNA TIKTOK CREATIVE CENTER ↗</a>
     </div>
     <div id="videoIdeasList" class="video-results" aria-live="polite" style="margin-top:10px"></div>
-    <label for="videoOriginalTopic" style="display:block;color:#ffc17a;font-size:11px;margin:14px 0 6px">ÄMNE FÖR ETT EGET KLIPP</label>
-    <input id="videoOriginalTopic" maxlength="220" placeholder="Exempel: när man försöker vara produktiv på måndag" style="width:100%;padding:13px;border-radius:9px;border:1px solid #80552f;background:#100e0c;color:#fff">
-    <button class="video-create" id="videoCreateOriginal" type="button" style="margin-top:10px;background:linear-gradient(90deg,#99521f,#d88737);border-color:#ffc17a">✦ SKAPA ETT EGET HUMORKLIPP</button>
-    <div class="video-status" id="videoCreatorStatus" aria-live="polite">Redo. Välj en trend eller skriv ett ämne – JARVIS skapar en egen video.</div>
+    <label for="videoOriginalTopic" style="display:block;color:#ffc17a;font-size:11px;margin:14px 0 6px">VAD SKA VIDEON HANDLA OM?</label>
+    <input id="videoOriginalTopic" maxlength="220" placeholder="Exempel: hur solceller fungerar, vår nya produkt, en spännande berättelse..." style="width:100%;padding:13px;border-radius:9px;border:1px solid #80552f;background:#100e0c;color:#fff">
+    <label for="videoTypeSelect" style="display:block;color:#ffc17a;font-size:11px;margin:12px 0 6px">VIDEOTYP</label>
+    <select id="videoTypeSelect" style="width:100%;padding:12px;border-radius:9px;border:1px solid #80552f;background:#100e0c;color:#fff"><option value="humor">Humor / underhållning</option><option value="explainer">Fakta / förklaring</option><option value="tutorial">Guide / instruktionsvideo</option><option value="promo">Reklam / produktpresentation</option><option value="inspiration">Inspiration / motivation</option><option value="story">Berättelse / storytelling</option></select>
+    <button class="video-create" id="videoCreateOriginal" type="button" style="margin-top:10px;background:linear-gradient(90deg,#99521f,#d88737);border-color:#ffc17a">✦ SKAPA VIDEO</button>
+    <div class="video-status" id="videoCreatorStatus" aria-live="polite">Redo. Välj videotyp och ämne – JARVIS VIDEO TEAM skapar ett första utkast.</div>
     <div id="videoCreatorResult" class="video-results"></div>
    </section>
    <section class="video-studio" id="videoTeamEditor" style="margin-top:16px;border-color:#d78b43;background:linear-gradient(145deg,#211a16,#100d0b)">
@@ -2618,21 +2620,24 @@ if(videoIdeasButton){
  });
 }
 async function createOriginalVideo(mode){
- const topic=$("videoOriginalTopic")?.value?.trim()||"när man försöker vara produktiv";
+ const topic=$("videoOriginalTopic")?.value?.trim()||"ett intressant ämne";
+ const videoType=$("videoTypeSelect")?.value||"humor";
  videoCreateButton.disabled=true;videoCreateButton.textContent="SKAPAR VIDEO…";videoCreatorResult.replaceChildren();
- videoCreatorStatus.className="video-status";videoCreatorStatus.textContent="JARVIS skriver ett kort humorupplägg, skapar svensk berättarröst och renderar fem animerade scener till MP4. Låt sidan vara öppen.";
+ videoCreatorStatus.className="video-status";videoCreatorStatus.textContent="JARVIS planerar videon, skapar svensk berättarröst och renderar fem animerade scener till MP4. Låt sidan vara öppen.";
  setRoomState("nova","working");logActivity("JARVIS VIDEO TEAM startade egen videoproduktion","🎬",topic);
  try{
-  const formData=new FormData();formData.append("topic",topic);formData.append("mode",mode);
+  const formData=new FormData();formData.append("topic",topic);formData.append("mode",mode);formData.append("video_type",videoType);
   const response=await fetch("/api/video/team/create",{method:"POST",body:formData});const data=await response.json();
   if(!response.ok)throw new Error(data.detail||"Videon kunde inte skapas.");
-  videoCreatorStatus.className="video-status success";videoCreatorStatus.textContent="✓ EGEN VIDEO KLAR · "+data.resolution+" · "+data.format+" · Svensk berättarröst";
+  videoCreatorStatus.className="video-status success";videoCreatorStatus.textContent="✓ EGEN VIDEO KLAR · "+data.resolution+" · "+data.format+" · Svensk berättarröst · "+(data.visual_source||"Egen grafik")+" · "+(data.storage_status==="persistent"?"Permanent sparad":"Tillfälligt sparad på servern");
   const script=document.createElement("div");script.className="reference-help";script.style.whiteSpace="pre-wrap";script.textContent="MANUS:\n"+(data.script||[]).map(x=>x.heading+"\n"+x.line+"\n"+(x.caption||"")).join("\n\n");videoCreatorResult.appendChild(script);
+  if(data.research_url){const source=document.createElement("a");source.className="export-btn";source.href=data.research_url;source.target="_blank";source.rel="noopener noreferrer";source.textContent="ÖPPNA KÄLLA: "+(data.research_title||"Wikipedia");videoCreatorResult.appendChild(source);const review=document.createElement("div");review.className="reference-help";review.textContent="Faktaunderlaget kommer från Wikipedia och måste faktagranskas före publicering.";videoCreatorResult.appendChild(review);}
   const link=document.createElement("a");link.className="export-btn";link.href=data.video_url;link.textContent="ÖPPNA / LADDA NER FÄRDIG MP4";link.setAttribute("download","jarvis-original-tiktok.mp4");videoCreatorResult.appendChild(link);
+  if(data.credits_url){const credits=document.createElement("a");credits.className="export-btn";credits.href=data.credits_url;credits.textContent="LADDA NER BILDKREDITER / LICENSER";credits.setAttribute("download","bildkrediter.txt");credits.style.marginLeft="8px";videoCreatorResult.appendChild(credits);}
   const preview=document.createElement("video");preview.controls=true;preview.playsInline=true;preview.preload="metadata";preview.src=data.video_url;preview.style.cssText="display:block;width:100%;max-width:360px;margin-top:12px;border-radius:12px";videoCreatorResult.appendChild(preview);
   logActivity("JARVIS VIDEO TEAM skapade originalvideo","✓",data.resolution);
  }catch(error){videoCreatorStatus.className="video-status error";videoCreatorStatus.textContent="KUNDE INTE SKAPA VIDEO: "+error.message;logActivity("Originalvideon misslyckades","⚠",error.message)}
- finally{videoCreateButton.disabled=false;videoCreateButton.textContent="✦ SKAPA ETT EGET HUMORKLIPP";setRoomState("nova","idle")}
+ finally{videoCreateButton.disabled=false;videoCreateButton.textContent="✦ SKAPA VIDEO";setRoomState("nova","idle")}
 }
 if(videoCreateButton)videoCreateButton.addEventListener("click",()=>createOriginalVideo("original"));
 function toSrtTime(seconds){
