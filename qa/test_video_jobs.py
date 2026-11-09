@@ -41,6 +41,17 @@ def main():
         memory = video_jobs.save_job_status("def456def456", "queued")
     assert memory["status_storage_status"] == "memory_only"
     assert video_jobs.get_job_status("missing12345") is None
+
+    video_jobs._JOBS["stale1234567"] = {
+        "job_id": "stale1234567",
+        "status": "running",
+        "updated_at": "2026-11-08T00:00:00+00:00",
+        "request": {"topic": "stale"},
+    }
+    with patch.object(video_jobs, "upload_file", return_value=True):
+        stale = video_jobs.get_job_status("stale1234567")
+    assert stale["status"] == "failed"
+    assert "Render startade om" in stale["error"]
     print("PASS queued job state, private JSON persistence, remote recovery and memory-only fallback.")
 
 
