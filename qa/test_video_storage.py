@@ -54,7 +54,15 @@ def main():
             ok, message = video_storage.storage_self_test()
             assert ok, message
             assert [call.kwargs.get("method", "GET") for call in request.call_args_list] == ["POST", "GET", "DELETE"]
-    print("PASS private storage configuration, upload/download/delete self-test and durable object lookup.")
+
+        listing = FakeResponse(
+            b'[{"name":"abc123abc123"},{"name":"def456def456/status.json"},{"name":"not-a-job"}]'
+        )
+        with patch.object(video_storage, "_request", return_value=listing) as request:
+            assert video_storage.list_job_ids() == ["abc123abc123", "def456def456"]
+            assert request.call_args.kwargs["method"] == "POST"
+            assert "/storage/v1/object/list/nova-videos" in request.call_args.args[0]
+    print("PASS private storage configuration, upload/download/delete, persisted job-folder listing and durable object lookup.")
 
 
 if __name__ == "__main__":
