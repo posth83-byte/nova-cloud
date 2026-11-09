@@ -397,9 +397,9 @@ def _write_subtitles(beats, duration, path):
         end = min(duration, index * cue_duration)
         caption = beat[2] or beat[1]
         blocks.append(
-            f"{index}\\n{_srt_time(start)} --> {_srt_time(end)}\\n{caption}\\n"
+            f"{index}\n{_srt_time(start)} --> {_srt_time(end)}\n{caption}\n"
         )
-    path.write_text("\\n".join(blocks), encoding="utf-8")
+    path.write_text("\n".join(blocks), encoding="utf-8")
 
 
 def _audio_duration(path):
