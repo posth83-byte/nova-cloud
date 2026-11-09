@@ -397,15 +397,15 @@ async def create_original_video(topic: str = Form(""), mode: str = Form("origina
         await edge_tts.Communicate(narration, VOICE).save(str(narration_path))
         clips = []
         attributions = []
+        visual_assets = search_commons_images(topic, limit=len(beats))
         for i, (heading, line, caption, kind) in enumerate(beats):
             still = job_dir / f"scene_{i:02}.jpg"
-            candidates = search_commons_images(f"{topic} {heading} {line}", limit=1)
             background_path = None
-            if candidates:
+            if i < len(visual_assets):
                 asset_path = job_dir / f"commons_{i:02}.jpg"
-                if download_commons_image(candidates[0], asset_path):
+                if download_commons_image(visual_assets[i], asset_path):
                     background_path = asset_path
-                    attributions.append({key: candidates[0].get(key, "") for key in (
+                    attributions.append({key: visual_assets[i].get(key, "") for key in (
                         "title", "page_url", "license", "license_url", "artist", "credit"
                     )})
             _make_scene(still, heading, line, caption, kind, i, background_path)
@@ -434,6 +434,19 @@ async def create_original_video(topic: str = Form(""), mode: str = Form("origina
         ], timeout=240)
         if not output.is_file() or output.stat().st_size < 10000:
             raise RuntimeError("MP4-filen saknas eller är ofullständig.")
+        credits_path = job_dir / "bildkrediter.txt"
+        if attributions:
+            credit_lines = ["Bildkrediter – Wikimedia Commons", ""]
+            for item in attributions:
+                credit_lines.extend([
+                    item.get("title", "Okänd titel"),
+                    f"Upphov: {item.get('artist') or item.get('credit') or 'Ej angiven'}",
+                    f"Licens: {item.get('license') or 'Se källsidan'}",
+                    f"Licenslänk: {item.get('license_url') or 'Se källsidan'}",
+                    f"Källsida: {item.get('page_url') or 'Ej angiven'}",
+                    ""
+                ])
+            credits_path.write_text("\\n".join(credit_lines), encoding="utf-8")
         return {
             "status": "completed", "job_id": job_id, "mode": mode, "video_type": video_type, "topic": topic,
             "script": [{"heading": h, "line": line, "caption": caption}
@@ -443,6 +456,7 @@ async def create_original_video(topic: str = Form(""), mode: str = Form("origina
             "voice": VOICE, "video_url": f"/api/video/team/created/{job_id}",
             "visual_source": "Wikimedia Commons + egen grafik" if attributions else "Egen procedural grafik (bildkälla ej tillgänglig)",
             "image_attributions": attributions,
+            "credits_url": f"/api/video/team/credits/{job_id}" if attributions else None,
             "message": f"Video skapad ({video_type}) med fem animerade scener, svensk berättarröst och egen ljudmatta."
         }
     except HTTPException:
@@ -451,6 +465,16 @@ async def create_original_video(topic: str = Form(""), mode: str = Form("origina
     except Exception as error:
         shutil.rmtree(job_dir, ignore_errors=True)
         raise HTTPException(502, f"Kunde inte skapa originalvideon: {str(error)[:700]}")
+
+
+@router.get("/api/video/team/credits/{job_id}")
+def download_video_credits(job_id: str):
+    if not re.fullmatch(r"[a-f0-9]{12}", job_id):
+        raise HTTPException(400, "Ogiltigt jobb-ID.")
+    path = OUTPUT_DIR / job_id / "bildkrediter.txt"
+    if not path.is_file():
+        raise HTTPException(404, "Ingen extern bildkälla användes för den här videon.")
+    return FileResponse(path, media_type="text/plain; charset=utf-8", filename="bildkrediter.txt")
 
 
 @router.get("/api/video/team/created/{job_id}")
