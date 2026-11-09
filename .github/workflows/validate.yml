@@ -133,4 +133,42 @@ jobs:
           grep -q "NEXORA" /tmp/nexora-page.html
           curl --fail --silent http://127.0.0.1:8765/projects/nexora-store/style.css | grep -q "product-grid"
           curl --fail --silent http://127.0.0.1:8765/projects/nexora-store/app.js | grep -q "function renderProducts"
+          echo "Checking live trend source..."
+          curl --fail --silent http://127.0.0.1:8765/api/video/team/ideas >/tmp/jarvis-trends.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          data = json.loads(Path("/tmp/jarvis-trends.json").read_text())
+          if data.get("status") != "ok" or not data.get("ideas"):
+              raise SystemExit(f"Live Swedish trend feed returned no ideas: {data.get('error')}")
+          print(f"PASS live trend feed: {len(data['ideas'])} current topics.")
+          PY
+          echo "Creating a real MP4 through the HTTP API using the free Swedish voice..."
+          curl --fail --silent --show-error --max-time 240 -F "topic=vardagshumor och kaffe" -F "mode=original" http://127.0.0.1:8765/api/video/team/create >/tmp/jarvis-create.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          data = json.loads(Path("/tmp/jarvis-create.json").read_text())
+          if data.get("status") != "completed" or data.get("format") != "9:16":
+              raise SystemExit(f"HTTP video creation failed: {data}")
+          Path("/tmp/jarvis-video-url.txt").write_text(data["video_url"])
+          print(f"PASS live Edge TTS render: {data['resolution']} {data['format']}, job {data['job_id']}.")
+          PY
+          VIDEO_URL="$(cat /tmp/jarvis-video-url.txt)"
+          curl --fail --silent --show-error "http://127.0.0.1:8765${VIDEO_URL}" -o /tmp/jarvis-original.mp4
+          python - <<'PY'
+          import subprocess
+          from pathlib import Path
+          import imageio_ffmpeg
+          video = Path("/tmp/jarvis-original.mp4")
+          if not video.is_file() or video.stat().st_size < 10000:
+              raise SystemExit("HTTP download returned an empty or incomplete MP4.")
+          result = subprocess.run(
+              [imageio_ffmpeg.get_ffmpeg_exe(), "-v", "error", "-i", str(video), "-map", "0:v:0", "-map", "0:a:0", "-f", "null", "-"],
+              capture_output=True, text=True, timeout=120
+          )
+          if result.returncode:
+              raise SystemExit(f"Downloaded MP4 failed audio/video decode: {result.stderr}")
+          print(f"PASS HTTP MP4 download and audio/video decode: {video.stat().st_size} bytes.")
+          PY
           echo "PASS FastAPI serves NEXORA HTML, CSS and JavaScript."
