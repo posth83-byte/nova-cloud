@@ -266,6 +266,32 @@ def _build_script(topic):
     return beats
 
 
+def _motion_filter(kind, index):
+    """Build a lightweight animated FFmpeg filter for floating comic accents."""
+    palettes = {
+        "coffee": "0xFF975B", "sleep": "0xAFC5FF", "phone": "0x69BBE5",
+        "work": "0x69BBE5", "money": "0x85E0A9", "gym": "0xFF9153",
+        "food": "0xFFB573", "love": "0xFF8BB1", "generic": "0xFF975B",
+    }
+    color = palettes.get(kind, "0xFF975B")
+    font = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
+    phase = index * 0.73
+    frames = int(SCENE_SECONDS * FPS)
+    return ",".join([
+        f"scale={W}:{H}",
+        f"zoompan=z='1.025+0.012*sin(on/22)':"
+        f"x='iw/2-(iw/zoom/2)+7*sin(on/19)':"
+        f"y='ih/2-(ih/zoom/2)+10*cos(on/27)':d={frames}:s={W}x{H}:fps={FPS}",
+        f"drawtext=fontfile={font}:text='*':fontcolor={color}:fontsize=42:"
+        f"x='92+24*sin(t*2.4+{phase:.2f})':y='300+32*cos(t*2.0+{phase:.2f})'",
+        f"drawtext=fontfile={font}:text='+':fontcolor={color}:fontsize=34:"
+        f"x='560+28*cos(t*1.9+{phase:.2f})':y='520+25*sin(t*2.7+{phase:.2f})'",
+        f"fade=t=in:st=0:d=0.22",
+        f"fade=t=out:st={SCENE_SECONDS-0.22:.2f}:d=0.22",
+        "setsar=1",
+    ])
+
+
 @router.get("/api/video/team/ideas")
 def discover_video_ideas():
     url = "https://trends.google.com/trending/rss?geo=SE"
@@ -316,18 +342,8 @@ async def create_original_video(topic: str = Form(""), mode: str = Form("origina
             _make_scene(still, heading, line, caption, kind, i)
             clip = job_dir / f"clip_{i:02}.mp4"
             frames = int(SCENE_SECONDS * FPS)
-            # Continuous camera drift, gentle breathing zoom and clean scene fades.
-            # The small pan makes each illustrated scene feel less like a static slide.
-            motion = (
-                f"scale={W}:{H},"
-                f"zoompan=z='1.025+0.012*sin(on/22)':"
-                f"x='iw/2-(iw/zoom/2)+7*sin(on/19)':"
-                f"y='ih/2-(ih/zoom/2)+10*cos(on/27)':"
-                f"d={frames}:s={W}x{H}:fps={FPS},"
-                "fade=t=in:st=0:d=0.22,"
-                f"fade=t=out:st={SCENE_SECONDS-0.22:.2f}:d=0.22,"
-                "setsar=1"
-            )
+            # Animated camera drift plus subtle, topic-colored comic accents.
+            motion = _motion_filter(kind, i)
             _ffmpeg([
                 "-loop", "1", "-i", str(still),
                 "-vf", motion,
