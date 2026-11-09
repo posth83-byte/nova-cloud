@@ -2629,13 +2629,29 @@ async function createOriginalVideo(mode){
  const topic=$("videoOriginalTopic")?.value?.trim()||"ett intressant ämne";
  const videoType=$("videoTypeSelect")?.value||"humor";
  videoCreateButton.disabled=true;videoCreateButton.textContent="SKAPAR VIDEO…";videoCreatorResult.replaceChildren();
- videoCreatorStatus.className="video-status";videoCreatorStatus.textContent="JARVIS planerar videon, skapar svensk berättarröst och renderar fem animerade scener till MP4. Låt sidan vara öppen.";
+ videoCreatorStatus.className="video-status";videoCreatorStatus.textContent="JARVIS startar ett bakgrundsjobb. Renderingen fortsätter på servern även om du låser mobilen.";
  setRoomState("nova","working");logActivity("JARVIS VIDEO TEAM startade egen videoproduktion","🎬",topic);
  try{
   const aspect=$("videoAspectSelect")?.value||"9:16";const durationMode=$("videoDurationSelect")?.value||"standard";
   const formData=new FormData();formData.append("topic",topic);formData.append("mode",mode);formData.append("video_type",videoType);formData.append("aspect",aspect);formData.append("duration_mode",durationMode);
-  const response=await fetch("/api/video/team/create",{method:"POST",body:formData});const data=await response.json();
-  if(!response.ok)throw new Error(data.detail||"Videon kunde inte skapas.");
+  const response=await fetch("/api/video/team/create",{method:"POST",body:formData});let data=await response.json();
+  if(!response.ok)throw new Error(data.detail||"Videon kunde inte startas.");
+  if(data.status==="queued"||data.status==="running"){
+   const statusUrl=data.status_url||("/api/video/team/jobs/"+encodeURIComponent(data.job_id));
+   const deadline=Date.now()+12*60*1000;
+   videoCreatorStatus.textContent="JARVIS renderar i bakgrunden. Du kan låsa mobilen och komma tillbaka senare.";
+   while(Date.now()<deadline){
+    await new Promise(resolve=>setTimeout(resolve,2500));
+    const statusResponse=await fetch(statusUrl,{cache:"no-store"});
+    const job=await statusResponse.json();
+    if(!statusResponse.ok)throw new Error(job.detail||"Jobbstatusen kunde inte hämtas.");
+    if(job.status==="failed")throw new Error(job.error||"Videorenderingen misslyckades.");
+    if(job.status==="completed"){data=job.result||{};break;}
+    videoCreatorStatus.textContent="JARVIS arbetar vidare i bakgrunden · "+(job.status==="running"?"Renderar scener och ljud":"Förbereder jobbet")+"…";
+   }
+   if(data.status!=="completed")throw new Error("Videon tar längre tid än väntat. Jobb-ID: "+(data.job_id||"okänt")+". Du kan kontrollera statusen senare.");
+  }
+  if(data.status!=="completed")throw new Error(data.error||"Videon blev inte färdig.");
   videoCreatorStatus.className="video-status success";videoCreatorStatus.textContent="✓ EGEN VIDEO KLAR · "+data.resolution+" · "+data.format+" · Svensk berättarröst · "+(data.visual_source||"Egen grafik")+" · "+(data.storage_status==="persistent"?"Permanent sparad":"Tillfälligt sparad på servern");
   const script=document.createElement("div");script.className="reference-help";script.style.whiteSpace="pre-wrap";script.textContent="MANUS:\n"+(data.script||[]).map(x=>x.heading+"\n"+x.line+"\n"+(x.caption||"")).join("\n\n");videoCreatorResult.appendChild(script);
   if(data.research_url){const source=document.createElement("a");source.className="export-btn";source.href=data.research_url;source.target="_blank";source.rel="noopener noreferrer";source.textContent="ÖPPNA KÄLLA: "+(data.research_title||"Wikipedia");videoCreatorResult.appendChild(source);const review=document.createElement("div");review.className="reference-help";review.textContent="Faktaunderlaget kommer från Wikipedia och måste faktagranskas före publicering.";videoCreatorResult.appendChild(review);}
