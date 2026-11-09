@@ -15,7 +15,7 @@ from PIL import Image
 API = "https://commons.wikimedia.org/w/api.php"
 USER_AGENT = "NOVACloudVideoStudio/1.0 (free educational video renderer)"
 MAX_IMAGE_BYTES = 12 * 1024 * 1024
-ALLOWED_LICENSE = re.compile(r"(CC0|Public domain|CC BY(?:-SA)?(?: 2\.0| 3\.0| 4\.0)?|Creative Commons Attribution)", re.I)
+ALLOWED_LICENSE = re.compile(r"^(?:CC0|Public domain|CC BY(?:-SA)?(?: 2\.0| 3\.0| 4\.0)?)$", re.I)
 
 
 def _request_json(params):
