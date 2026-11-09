@@ -63,7 +63,7 @@ def main():
                 if completed.returncode:
                     raise RuntimeError(completed.stderr[-1200:])
 
-        with patch.object(engine.edge_tts, "Communicate", LocalSpeechFixture):
+        with patch.object(engine, "search_commons_images", return_value=[]), patch.object(engine.edge_tts, "Communicate", LocalSpeechFixture):
             result = asyncio.run(engine.create_original_video(
                 topic="när kaffet tar slut precis när jobbet börjar", mode="original", video_type="humor"))
 
