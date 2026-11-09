@@ -26,6 +26,13 @@ def main():
     assert len(engine._build_script("kaffet tar slut")) == 5
     assert len(engine._build_script("sova")) == 5
     assert len(engine._build_script("vardagslivet")) == 5
+    for topic, expected in (("träning på gymmet", "gym"), ("lön och budget", "money"),
+                            ("första dejten", "love"), ("laga middag", "food")):
+        beats = engine._build_script(topic)
+        assert len(beats) == 5, (topic, beats)
+        assert expected in {beat[3] for beat in beats}, (topic, beats)
+    assert len({beat[3] for beat in engine._build_script("lön och budget")}) >= 4
+    assert len({beat[3] for beat in engine._build_script("första dejten")}) >= 3
 
     original_output = engine.OUTPUT_DIR
     with tempfile.TemporaryDirectory(prefix="jarvis-video-test-") as temporary:
