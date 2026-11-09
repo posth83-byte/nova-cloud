@@ -36,6 +36,9 @@ def main():
     animated_filter = engine._motion_filter("coffee", 2)
     assert "zoompan=" in animated_filter and "drawtext=" in animated_filter
     assert "sin(t*" in animated_filter and "fade=t=in" in animated_filter
+    assert "SLURP!" in animated_filter and "between(t," in animated_filter
+    assert "ZZZ!" in engine._motion_filter("sleep", 0)
+    assert "PANG!" in engine._motion_filter("generic", 1)
 
     original_output = engine.OUTPUT_DIR
     with tempfile.TemporaryDirectory(prefix="jarvis-video-test-") as temporary:
