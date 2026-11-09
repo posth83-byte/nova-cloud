@@ -19,6 +19,10 @@ TIMEOUT = (20, 600)
 
 
 def wait_until_live():
+    # The push that starts this workflow also triggers Render auto-deploy.
+    # Do not mistake the old instance's healthy response for the new deploy.
+    print("Waiting 90 seconds for Render auto-deploy to finish before production testing.", flush=True)
+    time.sleep(90)
     deadline = time.time() + 600
     last_error = "No response"
     while time.time() < deadline:
