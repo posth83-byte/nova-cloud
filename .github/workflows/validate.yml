@@ -161,6 +161,9 @@ jobs:
           )
           response.raise_for_status()
           data = response.json()
+          if data.get("status") != "queued":
+              raise SystemExit(f"Expected immediate background-job queue response, got: {data}")
+          print(f"PASS API returned immediately with queued job {data.get('job_id')}.")
           if data.get("status") in {"queued", "running"}:
               status_url = base + data.get("status_url", f"/api/video/team/jobs/{data.get('job_id', '')}")
               deadline = time.time() + 300
