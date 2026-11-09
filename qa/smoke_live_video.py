@@ -132,10 +132,22 @@ def main():
         if "-->" not in subtitle_text or len(subtitle_text.strip()) < 30:
             raise RuntimeError("Remote SRT download is missing valid timed subtitle cues.")
 
+        credit_status = "not_applicable"
+        if result.get("credits_url"):
+            if result.get("credits_storage_status") != "persistent":
+                raise RuntimeError("Image credits exist but were not saved in private Supabase Storage.")
+            credits_url = urljoin(BASE_URL + "/", result["credits_url"].lstrip("/"))
+            credits = requests.get(credits_url, params={"force_remote": "true"}, timeout=120)
+            credits.raise_for_status()
+            credit_text = credits.content.decode("utf-8-sig")
+            if "Licens" not in credit_text or "Källsida" not in credit_text:
+                raise RuntimeError("Remote image-credit file is missing license or source information.")
+            credit_status = "verified_remote"
+
         print(
             "PASS live video generation; PASS private Supabase MP4 upload and remote retrieval; "
             f"PASS MP4 audio/video decode ({video_path.stat().st_size} bytes); "
-            f"PASS private SRT upload and retrieval; job={job_id}; "
+            f"PASS private SRT upload and retrieval; credits={credit_status}; job={job_id}; "
             f"format={result.get('format')}; resolution={result.get('resolution')}."
         )
 
