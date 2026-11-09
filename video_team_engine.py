@@ -1,0 +1,161 @@
+"""Free, integrated video finishing pipeline for the NOVA/JARVIS team.
+
+This module does not call paid generative-video APIs. It accepts an uploaded
+source clip and creates a TikTok/Shorts-ready MP4 with FFmpeg.
+"""
+import re
+import shutil
+import subprocess
+import uuid
+from pathlib import Path
+
+import imageio_ffmpeg
+from fastapi import APIRouter, File, Form, HTTPException, UploadFile
+from fastapi.responses import FileResponse
+
+router = APIRouter()
+VIDEO_DIR = Path("/tmp/nova_team_edits")
+VIDEO_DIR.mkdir(parents=True, exist_ok=True)
+
+MAX_UPLOAD_BYTES = 120 * 1024 * 1024
+MAX_DURATION_SECONDS = 300
+ALLOWED_SUFFIXES = {".mp4", ".mov", ".m4v"}
+OUTPUTS = {
+    "9:16": (720, 1280),
+    "16:9": (1280, 720),
+    "1:1": (1080, 1080),
+}
+
+
+def _ffmpeg(args, timeout=600):
+    executable = imageio_ffmpeg.get_ffmpeg_exe()
+    result = subprocess.run(
+        [executable, "-y", *args],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        timeout=timeout,
+    )
+    if result.returncode != 0:
+        raise RuntimeError((result.stderr or "FFmpeg kunde inte slutföra videon.")[-1800:])
+    return result.stderr or ""
+
+
+def _inspect(path):
+    executable = imageio_ffmpeg.get_ffmpeg_exe()
+    result = subprocess.run(
+        [executable, "-i", str(path), "-f", "null", "-"],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        timeout=90,
+    )
+    details = result.stderr or ""
+    match = re.search(r"Duration:\s*(\d+):(\d+):(\d+(?:\.\d+)?)", details)
+    if not match:
+        raise HTTPException(415, "Filen verkar inte innehålla en läsbar videoström.")
+    hours, minutes, seconds = match.groups()
+    duration = int(hours) * 3600 + int(minutes) * 60 + float(seconds)
+    if duration <= 0:
+        raise HTTPException(415, "Videons längd kunde inte fastställas.")
+    if duration > MAX_DURATION_SECONDS:
+        raise HTTPException(413, "Videon får vara högst 5 minuter i gratisredigeraren.")
+    has_audio = bool(re.search(r"Stream #\S+.*Audio:", details))
+    return duration, has_audio
+
+
+async def _save_upload(upload, destination):
+    suffix = Path(upload.filename or "").suffix.lower()
+    if suffix not in ALLOWED_SUFFIXES:
+        raise HTTPException(415, "Ladda upp en MP4-, MOV- eller M4V-video.")
+    size = 0
+    with destination.open("wb") as output:
+        while True:
+            chunk = await upload.read(1024 * 1024)
+            if not chunk:
+                break
+            size += len(chunk)
+            if size > MAX_UPLOAD_BYTES:
+                raise HTTPException(413, "Videofilen får vara högst 120 MB.")
+            output.write(chunk)
+    if size < 2048:
+        raise HTTPException(415, "Videofilen är tom eller ofullständig.")
+    return size
+
+
+@router.post("/api/video/team/edit")
+async def edit_source_video(
+    video: UploadFile = File(...),
+    aspect: str = Form("9:16"),
+):
+    """Create a free social-ready version of an uploaded source video."""
+    if aspect not in OUTPUTS:
+        raise HTTPException(400, "Välj formatet 9:16, 16:9 eller 1:1.")
+    job_id = uuid.uuid4().hex[:12]
+    job_dir = VIDEO_DIR / job_id
+    job_dir.mkdir(parents=True, exist_ok=True)
+    source = job_dir / "source_upload"
+    output = job_dir / "jarvis_finished_video.mp4"
+    try:
+        source_bytes = await _save_upload(video, source)
+        duration, has_audio = _inspect(source)
+        width, height = OUTPUTS[aspect]
+        video_filter = (
+            f"scale={width}:{height}:force_original_aspect_ratio=increase,"
+            f"crop={width}:{height},setsar=1,fps=30"
+        )
+        args = [
+            "-i", str(source),
+            "-map", "0:v:0",
+        ]
+        if has_audio:
+            args += ["-map", "0:a:0", "-af", "loudnorm=I=-16:TP=-1.5:LRA=11"]
+        args += [
+            "-vf", video_filter,
+            "-c:v", "libx264",
+            "-preset", "ultrafast",
+            "-crf", "24",
+            "-pix_fmt", "yuv420p",
+            "-r", "30",
+        ]
+        if has_audio:
+            args += ["-c:a", "aac", "-b:a", "128k"]
+        args += ["-movflags", "+faststart", "-t", str(MAX_DURATION_SECONDS), str(output)]
+        _ffmpeg(args)
+        if not output.is_file() or output.stat().st_size < 10000:
+            raise RuntimeError("Den färdiga MP4-filen saknas eller är ofullständig.")
+        return {
+            "status": "completed",
+            "job_id": job_id,
+            "production_team": ["JARVIS", "NOVA", "VIDEO_EDITOR", "QA_ENGINEER"],
+            "source_size_bytes": source_bytes,
+            "duration_seconds": round(duration, 1),
+            "format": aspect,
+            "resolution": f"{width}x{height}",
+            "audio_normalized": has_audio,
+            "video_url": f"/api/video/team/download/{job_id}",
+            "message": "Videon har konverterats och kvalitetskontrollerats tekniskt.",
+        }
+    except HTTPException:
+        shutil.rmtree(job_dir, ignore_errors=True)
+        raise
+    except subprocess.TimeoutExpired:
+        shutil.rmtree(job_dir, ignore_errors=True)
+        raise HTTPException(504, "Videoredigeringen tog för lång tid. Prova ett kortare klipp.")
+    except Exception as error:
+        shutil.rmtree(job_dir, ignore_errors=True)
+        raise HTTPException(500, f"Videoteamet kunde inte färdigställa klippet: {str(error)[:900]}")
+
+
+@router.get("/api/video/team/download/{job_id}")
+def download_team_video(job_id: str):
+    if not re.fullmatch(r"[a-f0-9]{12}", job_id):
+        raise HTTPException(400, "Ogiltigt jobb-ID.")
+    path = VIDEO_DIR / job_id / "jarvis_finished_video.mp4"
+    if not path.is_file():
+        raise HTTPException(404, "Videon finns inte längre i Render-lagringen.")
+    return FileResponse(
+        path,
+        media_type="video/mp4",
+        filename="jarvis-tiktok-video.mp4",
+    )
