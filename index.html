@@ -1140,6 +1140,7 @@ ox-spelutvecklare. Från spelidé och värld till Luau-kod, system, testning och
     <p>Skicka in originalklippet. Teamet gör en färdig MP4 i TikTok-/Shorts-format direkt i NOVA Cloud. Ingen VN, CapCut, Runway eller Kling behövs.</p>
     <div class="field full"><label for="videoTeamFile">ORIGINALVIDEO (MP4 / MOV)</label><input id="videoTeamFile" type="file" accept="video/mp4,video/quicktime,.m4v" style="display:block;width:100%;margin:8px 0;color:#f5d6b5"><div class="reference-help">Max 120 MB och 5 minuter. Videon behandlas på NOVA Cloud och raderas vid omstart av servern.</div></div>
     <div class="field"><label for="videoTeamAspect">FORMAT</label><select id="videoTeamAspect" style="display:block;width:100%;padding:10px;border-radius:8px;background:#17110d;color:#fff"><option value="9:16">TikTok / Shorts · 9:16</option><option value="16:9">YouTube · 16:9</option><option value="1:1">Kvadrat · 1:1</option></select></div>
+    <div class="field"><label for="videoTeamAudio">LJUD</label><select id="videoTeamAudio" style="display:block;width:100%;padding:10px;border-radius:8px;background:#17110d;color:#fff"><option value="smart">Komisk bakgrundsmusik + behåll originalljud/tal</option><option value="original">Behåll bara originalljudet</option></select><div class="reference-help">Musiken skapas gratis i videomotorn. Inga externa musikbibliotek eller licenser behövs.</div></div>
     <button class="video-create" id="videoTeamEditButton" type="button" style="background:linear-gradient(90deg,#99521f,#d88737);border-color:#ffc17a">✦ LÅT JARVIS VIDEO TEAM REDIGERA</button>
     <div class="video-status" id="videoTeamEditStatus" aria-live="polite">Redo. Välj originalvideon så sköter teamet exporten.</div>
     <div id="videoTeamEditResult" class="video-results"></div>
@@ -2557,14 +2558,14 @@ if(videoTeamEditButton){
   const file=$("videoTeamFile")?.files?.[0],status=$("videoTeamEditStatus"),resultRoot=$("videoTeamEditResult");
   if(!file){status.className="video-status error";status.textContent="Välj originalvideon först.";return}
   if(file.size>120*1024*1024){status.className="video-status error";status.textContent="Videon är större än 120 MB.";return}
-  const formData=new FormData();formData.append("video",file);formData.append("aspect",$("videoTeamAspect").value);
+  const formData=new FormData();formData.append("video",file);formData.append("aspect",$("videoTeamAspect").value);formData.append("audio_style",$("videoTeamAudio")?.value||"smart");
   videoTeamEditButton.disabled=true;videoTeamEditButton.textContent="VIDEO TEAM ARBETAR…";
-  status.className="video-status";status.textContent="JARVIS samordnar NOVA, VIDEO EDITOR och QA. Klippet beskärs, konverteras till valt format och ljudnivån jämnas ut. Låt sidan vara öppen tills exporten är klar.";
+  status.className="video-status";status.textContent="JARVIS samordnar NOVA, VIDEO EDITOR och QA. Klippet formateras, originalljudet bevaras och en diskret egenkomponerad komisk musikbädd läggs till. Låt sidan vara öppen tills exporten är klar.";
   resultRoot.replaceChildren();setRoomState("nova","working");logActivity("JARVIS VIDEO TEAM startade redigering","🎬",file.name);
   try{
    const response=await fetch("/api/video/team/edit",{method:"POST",body:formData});const data=await response.json();
    if(!response.ok)throw new Error(typeof data.detail==="string"?data.detail:JSON.stringify(data.detail||data));
-   status.className="video-status success";status.textContent="✓ MP4 KLAR · "+data.resolution+" · "+data.duration_seconds+" sekunder · ljud normaliserat: "+(data.audio_normalized?"ja":"nej");
+   status.className="video-status success";status.textContent="✓ MP4 KLAR · "+data.resolution+" · "+data.duration_seconds+" sekunder · originalljud: "+(data.audio_normalized?"normaliserat":"saknas")+" · komisk musik: "+(data.music_added?"tillagd":"av");
    const link=document.createElement("a");link.className="export-btn";link.href=data.video_url;link.textContent="ÖPPNA / LADDA NER FÄRDIG VIDEO";link.setAttribute("download","jarvis-tiktok-video.mp4");resultRoot.appendChild(link);
    const preview=document.createElement("video");preview.controls=true;preview.playsInline=true;preview.preload="metadata";preview.src=data.video_url;preview.style.display="block";preview.style.width="100%";preview.style.maxWidth="360px";preview.style.marginTop="12px";preview.style.borderRadius="12px";resultRoot.appendChild(preview);
    logActivity("JARVIS VIDEO TEAM färdigställde MP4","✓",data.resolution);
