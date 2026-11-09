@@ -27,6 +27,7 @@ from video_engine import router as video_router
 from runway_engine import router as runway_router
 from kling_engine import router as kling_router
 from video_team_engine import router as video_team_router
+from video_creator_engine import router as video_creator_router
 
 
 # ==========================================
@@ -45,6 +46,7 @@ app.include_router(video_router)
 app.include_router(runway_router)
 app.include_router(kling_router)
 app.include_router(video_team_router)
+app.include_router(video_creator_router)
 
 # Temporary previews are cleared when the service restarts.
 preview_pages = {}

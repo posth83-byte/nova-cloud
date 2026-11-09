@@ -155,6 +155,35 @@ try {
             if (canvasSize.width < 1 || canvasSize.height < 1) localFailures.push("Game canvas has invalid dimensions.");
           }
         }
+        if (route === "/") {
+          // Exercise the new NOVA video controls in both desktop and mobile viewports.
+          await page.evaluate(() => {
+            const view = document.querySelector("#novaView");
+            if (view) { view.classList.remove("hidden"); view.style.display = "block"; }
+          });
+          if (await page.locator("#videoTeamCreator").count() !== 1) localFailures.push("Video creator panel is missing.");
+          if (await page.locator("#videoFindIdeas").count() !== 1) localFailures.push("Trend discovery button is missing.");
+          if (await page.locator("#videoCreateOriginal").count() !== 1) localFailures.push("Original video button is missing.");
+
+          await page.route("**/api/video/team/ideas", route => route.fulfill({
+            status: 200, contentType: "application/json",
+            body: JSON.stringify({ status: "ok", ideas: [{ title: "Testtrend Sverige", traffic: "20K+", source: "Google Trends Sverige", source_url: "https://trends.google.com/", angle: "Gör en egen version." }], note: "Testdata." })
+          }));
+          await page.locator("#videoFindIdeas").click({ force: true });
+          await page.waitForFunction(() => document.querySelector("#videoIdeasList")?.innerText.includes("Testtrend Sverige"), null, { timeout: 5000 });
+          if (!(await page.locator("#videoIdeasList").innerText()).includes("SKAPA EGEN VIDEO")) localFailures.push("Trend result does not offer an original-video action.");
+
+          await page.route("**/api/video/team/create", route => route.fulfill({
+            status: 200, contentType: "application/json",
+            body: JSON.stringify({ status: "completed", job_id: "abcdef123456", topic: "QA humor", format: "9:16", resolution: "720x1280", script: [{ heading: "TEST", line: "En testscen.", punchline: "Testpoäng." }], video_url: "/api/video/team/created/abcdef123456", message: "Testvideo klar." })
+          }));
+          await page.route("**/api/video/team/created/*", route => route.fulfill({ status: 200, contentType: "video/mp4", body: Buffer.from("test-video") }));
+          await page.locator("#videoOriginalTopic").fill("QA humor");
+          await page.locator("#videoCreateOriginal").click({ force: true });
+          await page.waitForFunction(() => document.querySelector("#videoCreatorResult a")?.textContent.includes("FÄRDIG MP4"), null, { timeout: 5000 });
+          if (!(await page.locator("#videoCreatorResult video").count())) localFailures.push("Created-video preview element is missing.");
+          if (!(await page.locator("#videoCreatorResult").innerText()).includes("TEST")) localFailures.push("Created-video script was not displayed.");
+        }
         const errors = [...pageErrors, ...localFailures];
         if (errors.length) failures.push(route + " [" + viewport.name + "]: " + errors.join(" | "));
         results.push({ route, viewport: viewport.name, status: errors.length ? "FAIL" : "PASS" });
