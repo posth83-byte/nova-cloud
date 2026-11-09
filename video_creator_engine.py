@@ -520,12 +520,15 @@ async def create_original_video(
             raise RuntimeError("MP4-filen saknas eller är ofullständig.")
         if output.stat().st_size > 48 * 1024 * 1024:
             compact = job_dir / "compact.mp4"
-            _ffmpeg([
-                "-i", str(output), "-c:v", "libx264", "-preset", "veryfast",
-                "-crf", "32", "-c:a", "copy", "-movflags", "+faststart", str(compact)
-            ], timeout=360)
-            if compact.is_file() and compact.stat().st_size < output.stat().st_size:
-                compact.replace(output)
+            try:
+                _ffmpeg([
+                    "-i", str(output), "-c:v", "libx264", "-preset", "veryfast",
+                    "-crf", "32", "-c:a", "copy", "-movflags", "+faststart", str(compact)
+                ], timeout=360)
+                if compact.is_file() and compact.stat().st_size < output.stat().st_size:
+                    compact.replace(output)
+            except Exception:
+                compact.unlink(missing_ok=True)
         credits_path = job_dir / "bildkrediter.txt"
         if attributions:
             credit_lines = ["Bildkrediter – Wikimedia Commons", ""]
