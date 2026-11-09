@@ -101,13 +101,25 @@ def main():
             [engine.imageio_ffmpeg.get_ffmpeg_exe(), "-v", "error", "-i", str(wide_path), "-f", "null", "-"],
             capture_output=True, text=True, timeout=120)
         assert wide_decode.returncode == 0, wide_decode.stderr
+
+        square = asyncio.run(engine.create_original_video(
+            topic="när kaffet tar slut precis när jobbet börjar",
+            mode="original", video_type="humor", aspect="1:1", duration_mode="standard"))
+        assert square["status"] == "completed", square
+        assert square["format"] == "1:1" and square["resolution"] == "1080x1080"
+        square_path = Path(temporary) / square["job_id"] / "jarvis_original.mp4"
+        assert square_path.is_file() and square_path.stat().st_size > 10000
+        square_decode = subprocess.run(
+            [engine.imageio_ffmpeg.get_ffmpeg_exe(), "-v", "error", "-i", str(square_path), "-f", "null", "-"],
+            capture_output=True, text=True, timeout=120)
+        assert square_decode.returncode == 0, square_decode.stderr
         try:
             engine.download_original_video("../invalid")
         except Exception as error:
             assert getattr(error, "status_code", None) == 400
         else:
             raise AssertionError("Invalid job IDs must be rejected.")
-        print(f"PASS trend parsing; PASS vertical and landscape MP4 renders; PASS SRT subtitles; PASS MP4 decode ({output.stat().st_size} bytes).")
+        print(f"PASS trend parsing; PASS vertical, landscape and square MP4 renders; PASS SRT subtitles; PASS MP4 decode ({output.stat().st_size} bytes).")
         engine.OUTPUT_DIR = original_output
 
 
