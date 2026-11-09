@@ -11,7 +11,7 @@ import urllib.request
 from pathlib import Path
 
 BUCKET = "nova-videos"
-MAX_UPLOAD_BYTES = 100 * 1024 * 1024
+MAX_UPLOAD_BYTES = 50 * 1024 * 1024
 
 
 def _credentials():

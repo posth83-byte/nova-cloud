@@ -10,6 +10,7 @@ import math
 import re
 import shutil
 import subprocess
+import textwrap
 import uuid
 import urllib.request
 import xml.etree.ElementTree as ET
@@ -378,6 +379,38 @@ def discover_video_ideas():
             "error": source_error}
 
 
+def _srt_time(seconds):
+    milliseconds = int(round(max(0.0, seconds) * 1000))
+    hours, milliseconds = divmod(milliseconds, 3600000)
+    minutes, milliseconds = divmod(milliseconds, 60000)
+    secs, milliseconds = divmod(milliseconds, 1000)
+    return f"{hours:02}:{minutes:02}:{secs:02},{milliseconds:03}"
+
+
+def _write_subtitles(beats, duration, path):
+    """Create sentence-level SRT cues aligned proportionally to spoken word count."""
+    if not beats or duration <= 0:
+        raise RuntimeError("Undertexterna saknar giltig tidslinje.")
+    segments = []
+    for heading, line, caption, _ in beats:
+        spoken = f"{heading}. {line} {caption}"
+        for sentence in re.split(r"(?<=[.!?])\s+", spoken.strip()):
+            sentence = sentence.strip()
+            if sentence:
+                segments.append(sentence)
+    total_words = sum(max(1, len(segment.split())) for segment in segments)
+    current = 0.0
+    blocks = []
+    for index, segment in enumerate(segments, 1):
+        cue_duration = duration * max(1, len(segment.split())) / total_words
+        end = min(duration, current + cue_duration)
+        wrapped = "\n".join(textwrap.wrap(segment, width=42)) or segment
+        blocks.append(
+            f"{index}\n{_srt_time(current)} --> {_srt_time(end)}\n{wrapped}\n"
+        )
+        current = end
+    path.write_text("\n".join(blocks), encoding="utf-8")
+
 def _audio_duration(path):
     result = subprocess.run(
         [imageio_ffmpeg.get_ffmpeg_exe(), "-i", str(path), "-f", "null", "-"],
@@ -391,7 +424,13 @@ def _audio_duration(path):
 
 
 @router.post("/api/video/team/create")
-async def create_original_video(topic: str = Form(""), mode: str = Form("original"), video_type: str = Form("humor")):
+async def create_original_video(
+    topic: str = Form(""),
+    mode: str = Form("original"),
+    video_type: str = Form("humor"),
+    aspect: str = Form("9:16"),
+    duration_mode: str = Form("standard"),
+):
     topic = (topic or "").strip()
     if len(topic) > MAX_PROMPT:
         raise HTTPException(400, f"Ämnet får vara högst {MAX_PROMPT} tecken.")
@@ -399,6 +438,10 @@ async def create_original_video(topic: str = Form(""), mode: str = Form("origina
         raise HTTPException(400, "Ogiltigt videoläge.")
     if video_type not in {"humor", "explainer", "tutorial", "promo", "inspiration", "story"}:
         raise HTTPException(400, "Ogiltig videotyp.")
+    if aspect not in {"9:16", "16:9", "1:1"}:
+        raise HTTPException(400, "Välj formatet 9:16, 16:9 eller 1:1.")
+    if duration_mode not in {"short", "standard", "long"}:
+        raise HTTPException(400, "Välj kort, standard eller lång faktavideo.")
     if not topic:
         topic = "ett intressant ämne"
     job_id = uuid.uuid4().hex[:12]
@@ -407,7 +450,7 @@ async def create_original_video(topic: str = Form(""), mode: str = Form("origina
     try:
         research_data = research_wikipedia(topic) if video_type == "explainer" else None
         if video_type == "explainer":
-            beats = build_explainer_beats(research_data)
+            beats = build_explainer_beats(research_data, duration_mode)
             if not beats:
                 raise HTTPException(422, "Jag hittade inte tillräckligt med källmaterial i Wikipedia för en faktavideo. Prova ett tydligare ämne.")
         else:
@@ -415,7 +458,8 @@ async def create_original_video(topic: str = Form(""), mode: str = Form("origina
         narration = " ".join(f"{heading}. {line} {caption}" for heading, line, caption, _ in beats)
         narration_path = job_dir / "voice.mp3"
         await edge_tts.Communicate(narration, VOICE).save(str(narration_path))
-        scene_seconds = max(2.8, min(40.0, _audio_duration(narration_path) / len(beats) + 0.35))
+        audio_duration = _audio_duration(narration_path)
+        scene_seconds = max(2.8, min(60.0, audio_duration / len(beats) + 0.35))
         clips = []
         attributions = []
         visual_assets = search_commons_images(topic, limit=len(beats))
@@ -446,15 +490,45 @@ async def create_original_video(topic: str = Form(""), mode: str = Form("origina
         silent = job_dir / "silent.mp4"
         _ffmpeg(["-f", "concat", "-safe", "0", "-i", str(concat), "-c", "copy", str(silent)], timeout=180)
         output = job_dir / "jarvis_original.mp4"
+        dimensions = {"9:16": (720, 1280), "16:9": (1280, 720), "1:1": (1080, 1080)}
+        output_width, output_height = dimensions[aspect]
+        filters = [
+            "[1:a]volume=1.0[voice]",
+            "[2:a]volume=0.035[music]",
+            "[voice][music]amix=inputs=2:duration=longest:dropout_transition=2[a]",
+        ]
+        if aspect == "9:16":
+            video_map = "0:v:0"
+        else:
+            filters.append(
+                f"[0:v]split=2[bg][fg];"
+                f"[bg]scale={output_width}:{output_height}:force_original_aspect_ratio=increase,"
+                f"crop={output_width}:{output_height},boxblur=24:1[bgblur];"
+                f"[fg]scale=-2:{output_height}[fgfit];"
+                f"[bgblur][fgfit]overlay=(W-w)/2:(H-h)/2,setsar=1[vout]"
+            )
+            video_map = "[vout]"
         _ffmpeg([
             "-i", str(silent), "-i", str(narration_path),
             "-f", "lavfi", "-i", "sine=frequency=392:sample_rate=44100:duration=30",
-            "-filter_complex", "[1:a]volume=1.0[voice];[2:a]volume=0.035[music];[voice][music]amix=inputs=2:duration=longest:dropout_transition=2[a]",
-            "-map", "0:v:0", "-map", "[a]", "-c:v", "copy", "-c:a", "aac", "-b:a", "128k",
+            "-filter_complex", ";".join(filters),
+            "-map", video_map, "-map", "[a]", "-c:v", "libx264", "-preset", "veryfast",
+            "-crf", "29", "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "112k",
             "-shortest", "-movflags", "+faststart", str(output)
-        ], timeout=240)
+        ], timeout=360)
         if not output.is_file() or output.stat().st_size < 10000:
             raise RuntimeError("MP4-filen saknas eller är ofullständig.")
+        if output.stat().st_size > 48 * 1024 * 1024:
+            compact = job_dir / "compact.mp4"
+            try:
+                _ffmpeg([
+                    "-i", str(output), "-c:v", "libx264", "-preset", "veryfast",
+                    "-crf", "32", "-c:a", "copy", "-movflags", "+faststart", str(compact)
+                ], timeout=360)
+                if compact.is_file() and compact.stat().st_size < output.stat().st_size:
+                    compact.replace(output)
+            except Exception:
+                compact.unlink(missing_ok=True)
         credits_path = job_dir / "bildkrediter.txt"
         if attributions:
             credit_lines = ["Bildkrediter – Wikimedia Commons", ""]
@@ -468,17 +542,23 @@ async def create_original_video(topic: str = Form(""), mode: str = Form("origina
                     ""
                 ])
             credits_path.write_text("\n".join(credit_lines), encoding="utf-8")
+        subtitles_path = job_dir / "undertexter.srt"
+        _write_subtitles(beats, audio_duration, subtitles_path)
         stored_video = upload_file(job_id, output, "jarvis_original.mp4", "video/mp4")
         stored_credits = upload_file(job_id, credits_path, "bildkrediter.txt", "text/plain") if credits_path.is_file() else False
+        stored_subtitles = upload_file(job_id, subtitles_path, "undertexter.srt", "text/plain")
         return {
             "status": "completed", "job_id": job_id, "mode": mode, "video_type": video_type, "topic": topic,
             "storage_status": "persistent" if stored_video else "temporary",
             "credits_storage_status": "persistent" if stored_credits else "not_saved",
+            "subtitles_storage_status": "persistent" if stored_subtitles else "temporary",
             "script": [{"heading": h, "line": line, "caption": caption}
                        for h, line, caption, _ in beats],
-            "format": "9:16", "resolution": "720x1280", "fps": FPS,
+            "format": aspect, "resolution": f"{output_width}x{output_height}", "fps": FPS,
+            "duration_mode": duration_mode,
             "duration_target_seconds": round(len(beats) * scene_seconds, 1),
             "voice": VOICE, "video_url": f"/api/video/team/created/{job_id}",
+            "subtitles_url": f"/api/video/team/subtitles/{job_id}",
             "visual_source": "Wikimedia Commons + egen grafik" if attributions else "Egen procedural grafik (bildkälla ej tillgänglig)",
             "research_source": research_data.get("source") if research_data else None,
             "research_title": research_data.get("title") if research_data else None,
@@ -494,6 +574,29 @@ async def create_original_video(topic: str = Form(""), mode: str = Form("origina
     except Exception as error:
         shutil.rmtree(job_dir, ignore_errors=True)
         raise HTTPException(502, f"Kunde inte skapa originalvideon: {str(error)[:700]}")
+
+
+@router.get("/api/video/team/subtitles/{job_id}")
+def download_video_subtitles(job_id: str):
+    if not re.fullmatch(r"[a-f0-9]{12}", job_id):
+        raise HTTPException(400, "Ogiltigt jobb-ID.")
+    path = OUTPUT_DIR / job_id / "undertexter.srt"
+    if path.is_file():
+        return FileResponse(path, media_type="application/x-subrip; charset=utf-8", filename="undertexter.srt")
+    remote = open_stored_file(job_id, "undertexter.srt")
+    if remote is None:
+        raise HTTPException(404, "Ingen sparad undertextfil hittades.")
+    def stream():
+        try:
+            while True:
+                chunk = remote.read(1024 * 1024)
+                if not chunk:
+                    break
+                yield chunk
+        finally:
+            remote.close()
+    return StreamingResponse(stream(), media_type="application/x-subrip; charset=utf-8",
+                             headers={"Content-Disposition": 'attachment; filename="undertexter.srt"'})
 
 
 @router.get("/api/video/team/credits/{job_id}")

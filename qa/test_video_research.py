@@ -21,6 +21,14 @@ def main():
     assert len(beats) == 5, beats
     assert all(beat[1] for beat in beats)
     assert "solceller" in " ".join(beat[1] for beat in beats)
+    long_research = {"sentences": [f"Detta är ett längre faktapåstående nummer {i} om ämnet och dess bakgrund." for i in range(1, 31)]}
+    short_beats = video_research.build_explainer_beats(long_research, "short")
+    standard_beats = video_research.build_explainer_beats(long_research, "standard")
+    long_beats = video_research.build_explainer_beats(long_research, "long")
+    assert len(short_beats) == len(standard_beats) == len(long_beats) == 5
+    assert "nummer 20" not in " ".join(beat[1] for beat in short_beats)
+    assert "nummer 20" in " ".join(beat[1] for beat in standard_beats)
+    assert "nummer 30" in " ".join(beat[1] for beat in long_beats)
     with patch.object(video_research, "_api", side_effect=RuntimeError("offline")):
         assert video_research.research_wikipedia("okänt ämne") is None
     assert video_research.build_explainer_beats(None) == []
