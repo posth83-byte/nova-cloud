@@ -2163,6 +2163,7 @@ async function createJarvisChatVideo(message,loading){
 
  // Prefer NOVA Studio's private local GPU worker when it is actually online.
  // Otherwise keep the existing verified procedural renderer as fallback.
+ let studioJobStarted=false;
  try{
   const healthResponse=await fetch("/api/nova-studio/health",{cache:"no-store"});
   const health=healthResponse.ok?await healthResponse.json():{};
@@ -2175,6 +2176,7 @@ async function createJarvisChatVideo(message,loading){
    if(!create.ok)throw new Error(studio.detail||"NOVA Studio kunde inte köa jobbet.");
    const id=studio.job&&studio.job.id;
    if(!id)throw new Error("NOVA Studio returnerade inget jobb-ID.");
+   studioJobStarted=true;
    const deadline=Date.now()+25*60*1000;
    while(Date.now()<deadline){
     await new Promise(resolve=>setTimeout(resolve,4000));
@@ -2192,7 +2194,7 @@ async function createJarvisChatVideo(message,loading){
    throw new Error("NOVA Studio arbetar fortfarande. Jobb-ID: "+id);
   }
  }catch(studioError){
-  if(String(studioError&&studioError.message||"").includes("NOVA Studio")||String(studioError&&studioError.message||"").includes("NOVA Studio-jobbet"))throw studioError;
+  if(studioJobStarted)throw studioError;
   console.warn("NOVA Studio ej tillgänglig; använder reservmotorn.",studioError);
  }
  const formData=new FormData();
