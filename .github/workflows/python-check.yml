@@ -16,5 +16,7 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+      - name: Run paid-provider safety guard tests
+        run: python qa/test_paid_video_guard.py
       - name: Compile application modules
-        run: python -m compileall -q main.py video_engine.py video_team_engine.py video_creator_engine.py video_assets.py video_storage.py video_research.py runway_engine.py kling_engine.py
+        run: python -m compileall -q main.py video_engine.py video_team_engine.py video_creator_engine.py video_assets.py video_storage.py video_research.py runway_engine.py kling_engine.py video_cost_guard.py qa/test_paid_video_guard.py
