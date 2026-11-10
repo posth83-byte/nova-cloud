@@ -1,5 +1,5 @@
 """NOVA Studio control plane. Worker-only routes use a server-side bearer secret."""
-import hmac, json, os, urllib.error, urllib.parse, urllib.request, uuid
+import hmac, json, os, re, urllib.error, urllib.parse, urllib.request, uuid
 from datetime import datetime, timezone
 from fastapi import APIRouter, Header, HTTPException, UploadFile, File, Form
 from pydantic import BaseModel, Field
@@ -17,10 +17,11 @@ class JobRequest(BaseModel):
  aspect:str=Field(default="9:16",pattern="^(9:16|16:9|1:1)$")
  duration_seconds:int=Field(default=20,ge=5,le=180)
 
-def db(method,path,data=None,ctype="application/json"):
+def db(method,path,data=None,ctype="application/json",prefer=None):
  if not URL or not KEY: raise RuntimeError("Supabase saknas för NOVA Studio.")
  headers={"apikey":KEY,"Authorization":"Bearer "+KEY,"Accept":"application/json"}
  if data is not None: headers["Content-Type"]=ctype
+ if prefer: headers["Prefer"]=prefer
  req=urllib.request.Request(URL+path,data=data,headers=headers,method=method)
  try:
   with urllib.request.urlopen(req,timeout=35) as res:
@@ -46,10 +47,9 @@ def health():
 def create_job(request:JobRequest):
  try:
   db("POST","/rest/v1/nova_studio_jobs",json.dumps({"prompt":request.prompt.strip(),"style":request.style,
-    "aspect":request.aspect,"duration_seconds":request.duration_seconds}).encode())
-  rows=db("GET","/rest/v1/nova_studio_jobs?select=id,status,phase,progress,created_at&order=created_at.desc&limit=1")
-  if not rows: raise RuntimeError("Jobbet sparades inte.")
-  return {"status":"queued","job":rows[0],"engine":"NOVA Studio local GPU"}
+    "aspect":request.aspect,"duration_seconds":request.duration_seconds}).encode(),prefer="return=representation")
+  if not isinstance(rows,list) or not rows: raise RuntimeError("Jobbet sparades inte.")
+  return {"status":"queued","job":{k:rows[0].get(k) for k in ("id","status","phase","progress","created_at")},"engine":"NOVA Studio local GPU"}
  except Exception as exc: raise HTTPException(status_code=503,detail=str(exc)[:700]) from exc
 
 @router.get("/api/nova-studio/jobs/{job_id}")
@@ -62,9 +62,10 @@ def job_status(job_id:str):
  except Exception as exc: raise HTTPException(status_code=503,detail=str(exc)[:700]) from exc
 
 @router.post("/api/nova-studio/worker/claim")
-def claim(authorization:str=Header(default="")):
+def claim(authorization:str=Header(default=""),x_worker_id:str=Header(default="")):
  auth(authorization)
- worker_id="nova-worker-"+uuid.uuid4().hex[:12]
+ worker_id=(x_worker_id or "").strip()[:80] or "nova-worker-"+uuid.uuid4().hex[:12]
+ if not re.fullmatch(r"[A-Za-z0-9_.:-]{3,80}",worker_id): raise HTTPException(status_code=400,detail="Ogiltigt worker-id.")
  try:
   db("POST","/rest/v1/rpc/recover_stale_nova_studio_jobs",json.dumps({"p_stale_seconds":240}).encode())
   rows=db("POST","/rest/v1/rpc/claim_nova_studio_job",json.dumps({"p_worker_id":worker_id}).encode())
@@ -73,19 +74,19 @@ def claim(authorization:str=Header(default="")):
  except Exception as exc: raise HTTPException(status_code=503,detail=str(exc)[:700]) from exc
 
 @router.post("/api/nova-studio/worker/{job_id}/heartbeat")
-def heartbeat(job_id:str,phase:str=Form(...),progress:int=Form(...),authorization:str=Header(default="")):
+def heartbeat(job_id:str,phase:str=Form(...),progress:int=Form(...),worker_id:str=Form(...),authorization:str=Header(default="")):
  auth(authorization)
  if phase not in ("generating","assembling","uploading") or not 0<=progress<=99:
   raise HTTPException(status_code=400,detail="Ogiltig fas eller progress.")
  try:
-  rows=db("PATCH","/rest/v1/nova_studio_jobs?id=eq.%s&worker_id=not.is.null&status=in.(leased,generating,assembling,uploading)"%urllib.parse.quote(job_id),
+  rows=db("PATCH","/rest/v1/nova_studio_jobs?id=eq.%s&worker_id=eq.%s&status=in.(leased,generating,assembling,uploading)"%(urllib.parse.quote(job_id),urllib.parse.quote(worker_id)),
    json.dumps({"status":phase,"phase":phase.capitalize(),"progress":progress,"locked_at":datetime.now(timezone.utc).isoformat(),
    "updated_at":datetime.now(timezone.utc).isoformat()}).encode())
   return {"updated":bool(rows) if isinstance(rows,list) else True}
  except Exception as exc: raise HTTPException(status_code=503,detail=str(exc)[:700]) from exc
 
 @router.post("/api/nova-studio/worker/{job_id}/complete")
-async def complete(job_id:str,video:UploadFile=File(...),subtitles:UploadFile=File(None),authorization:str=Header(default="")):
+async def complete(job_id:str,video:UploadFile=File(...),subtitles:UploadFile=File(None),worker_id:str=Form(...),authorization:str=Header(default="")):
  auth(authorization)
  if video.content_type not in ("video/mp4","application/octet-stream"):
   raise HTTPException(status_code=415,detail="Videofilen måste vara MP4.")
@@ -94,7 +95,7 @@ async def complete(job_id:str,video:UploadFile=File(...),subtitles:UploadFile=Fi
   raise HTTPException(status_code=400,detail="MP4-filen är tom, för stor eller ogiltig.")
  try:
   row=get_row(job_id)
-  if not row or row.get("status") not in ("leased","generating","assembling","uploading"):
+  if not row or row.get("worker_id") != worker_id or row.get("status") not in ("leased","generating","assembling","uploading"):
    raise HTTPException(status_code=409,detail="Jobbet är inte aktivt.")
   prefix="studio/%s/"%job_id; video_path=prefix+"film.mp4"
   db("POST","/storage/v1/object/"+BUCKET+"/"+video_path,data,"video/mp4")
@@ -113,10 +114,10 @@ async def complete(job_id:str,video:UploadFile=File(...),subtitles:UploadFile=Fi
  except Exception as exc: raise HTTPException(status_code=503,detail=str(exc)[:700]) from exc
 
 @router.post("/api/nova-studio/worker/{job_id}/fail")
-def fail(job_id:str,error:str=Form(...),authorization:str=Header(default="")):
+def fail(job_id:str,error:str=Form(...),worker_id:str=Form(...),authorization:str=Header(default="")):
  auth(authorization)
  try:
-  db("PATCH","/rest/v1/nova_studio_jobs?id=eq.%s"%urllib.parse.quote(job_id),
+  db("PATCH","/rest/v1/nova_studio_jobs?id=eq.%s&worker_id=eq.%s"%(urllib.parse.quote(job_id),urllib.parse.quote(worker_id)),
    json.dumps({"status":"failed","phase":"Arbetaren rapporterade fel","error":error[:1200],
     "updated_at":datetime.now(timezone.utc).isoformat()}).encode())
   return {"status":"failed"}
