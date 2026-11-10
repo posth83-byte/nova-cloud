@@ -182,9 +182,11 @@ def main():
                 for index in range(1, 31)
             ],
         }
-        with patch.object(engine, "research_wikipedia", return_value=factual_research), \\
-             patch.object(engine, "search_commons_images", return_value=[]), \\
-             patch.object(engine.edge_tts, "Communicate", LocalSpeechFixture):
+        with (
+            patch.object(engine, "research_wikipedia", return_value=factual_research),
+            patch.object(engine, "search_commons_images", return_value=[]),
+            patch.object(engine.edge_tts, "Communicate", LocalSpeechFixture),
+        ):
             factual_result = asyncio.run(engine._render_original_video(
                 "testfakta", "original", "explainer", "9:16", "short",
                 uuid.uuid4().hex[:12]))
