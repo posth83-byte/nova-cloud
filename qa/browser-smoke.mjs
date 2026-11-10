@@ -269,7 +269,7 @@ try {
              status: 200, contentType: "text/plain; charset=utf-8", body: "1\\n00:00:00,000 --> 00:00:02,000\\nJARVIS test\\n"
            }));
            await page.locator(".room-topbar .back-btn").first().click();
-           await page.waitForFunction(() => !document.querySelector("#novaView")?.classList.contains("hidden"), null, { timeout: 5000 }).catch(() => {});
+           await page.waitForFunction(() => document.querySelector("#novaView")?.classList.contains("hidden"), null, { timeout: 5000 });
            await page.locator("#jarvisInput").fill("Skapa en kort video om JARVIS CHAT BRIDGE TEST");
            await page.locator("#jarvisSend").click();
            await page.waitForFunction(() => {
