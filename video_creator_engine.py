@@ -842,7 +842,7 @@ async def _render_original_video(topic, mode, video_type, aspect, duration_mode,
                     )})
             _make_scene(still, heading, line, caption, kind, i, background_path, scene_seconds, len(beats))
             clip = job_dir / f"clip_{i:02}.mp4"
-            frames = int(scene_seconds * FPS)
+            frames = max(1, int(round(scene_seconds * FPS)))
             # Add a transparent, independently moving mascot to original comedy scenes.
             motion = _motion_filter(kind, i, video_type, scene_seconds)
             character_pattern = (
