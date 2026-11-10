@@ -242,7 +242,7 @@ def _make_scene(path, kicker, headline, caption, kind, index, background_path=No
     _centered(draw, headline, 765, _font(49 if len(headline) < 36 else 42, True),
               (248, 250, 255), max_width=600, gap=14)
     # High-contrast subtitle panel for sound-off viewing.
-    draw.rounded_rectangle((58, 910, W-58, 1080), radius=22,
+    draw.rounded_rectangle((58, 910, DESIGN_W-58, 1080), radius=22,
                            fill=(3, 8, 18), outline=(255, 151, 91), width=2)
     _centered(draw, caption, 995, _font(31, True), (255, 232, 213), max_width=555, gap=9)
     draw.text((DESIGN_W//2, 1165), f"{index+1:02d} / {scene_count:02d}     •     JARVIS VIDEO TEAM",

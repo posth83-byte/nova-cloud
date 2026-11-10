@@ -66,6 +66,8 @@ def main():
         with Image.open(preview) as scene_preview:
             assert scene_preview.size == (engine.W, engine.H)
             assert scene_preview.getpixel((270, 750)) != scene_preview.getpixel((270, 660)), \
+            assert scene_preview.getpixel((520, 750)) != scene_preview.getpixel((520, 660)), \
+                "The subtitle panel must span the full design width."
                 "The scaled subtitle panel must remain visible inside the frame."
         character_pattern = engine._write_character_frames(Path(temporary), "coffee", 0, 2.0)
         character_frames = sorted(character_pattern.parent.glob("frame_*.png"))
