@@ -4,7 +4,8 @@
 - Polls the durable NOVA Studio queue over outbound HTTPS.
 - Uses ComfyUI on localhost to generate four AI scene frames from NOVA-authored visual prompts.
 - Uses FFmpeg to animate the stills with cinematic camera movement and assemble a vertical, square or landscape MP4.
-- Uses Swedish Edge TTS narration, time-aligned SRT subtitles and MP4 decode validation.
+- Uses Swedish Edge TTS narration or optional offline Piper, time-aligned SRT subtitles and MP4 decode validation.
+- Can generate the screenplay locally with Ollama (Qwen 2.5 3B) so the cloud NOVA text model is optional.
 - Uploads the MP4 and SRT to the existing private nova-videos bucket.
 - Reports progress, worker heartbeat and failures; a stale lease is recovered by the cloud queue.
 
