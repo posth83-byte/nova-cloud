@@ -109,6 +109,7 @@ def assemble(images,job,directory):
  silent=str(Path(directory)/"silent.mp4")
  run_ffmpeg(["-f","concat","-safe","0","-i",concat_file,"-c","copy",silent])
  topic=str(job.get("prompt","din berättelse")).strip().replace("\\n"," ")[:55]
+ topic=str(job.get("prompt","din berättelse")).strip().replace("\\n"," ")[:55]
  captions=[
   "Allt börjar med: "+topic+".",
   "En första idé verkar äntligen fungera.",
