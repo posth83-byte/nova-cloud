@@ -2,7 +2,7 @@ name: Python validation
 
 on:
   push:
-    branches: [main]
+    branches: [main, jarvis/free-video-engine-guard-20261110]
   pull_request:
     branches: [main]
 
