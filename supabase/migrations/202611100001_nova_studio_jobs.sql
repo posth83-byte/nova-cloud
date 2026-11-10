@@ -13,6 +13,7 @@ create table if not exists public.nova_studio_jobs (
  created_at timestamptz not null default now(), updated_at timestamptz not null default now(),
  completed_at timestamptz
 );
+alter table public.nova_studio_jobs add column if not exists scenes jsonb not null default '[]'::jsonb;
 create index if not exists nova_studio_jobs_queue_idx on public.nova_studio_jobs(created_at) where status='queued';
 alter table public.nova_studio_jobs enable row level security;
 revoke all on public.nova_studio_jobs from anon, authenticated;
