@@ -106,11 +106,11 @@ def heartbeat(job_id:str,phase:str=Form(...),progress:int=Form(...),worker_id:st
   rows=db("PATCH","/rest/v1/nova_studio_jobs?id=eq.%s&worker_id=eq.%s&status=in.(leased,generating,assembling,uploading)"%(urllib.parse.quote(job_id),urllib.parse.quote(worker_id)),
    json.dumps({"status":phase,"phase":phase.capitalize(),"progress":progress,"locked_at":datetime.now(timezone.utc).isoformat(),
    "updated_at":datetime.now(timezone.utc).isoformat()}).encode(),prefer="return=representation")
-  if not updated: raise HTTPException(status_code=409,detail="Arbetaren äger inte längre det här jobbet.")
+  if not rows: raise HTTPException(status_code=409,detail="Arbetaren äger inte längre det här jobbet.")
   db("PATCH","/rest/v1/nova_studio_workers?worker_id=eq.%s"%urllib.parse.quote(worker_id),
      json.dumps({"status":"busy","current_job":job_id,"last_seen":datetime.now(timezone.utc).isoformat()}).encode())
-  if not rows: raise HTTPException(status_code=409,detail="Arbetaren äger inte längre det här jobbet.")
   return {"updated":True}
+ except HTTPException: raise
  except Exception as exc: raise HTTPException(status_code=503,detail=str(exc)[:700]) from exc
 
 @router.post("/api/nova-studio/worker/{job_id}/complete")
@@ -151,9 +151,11 @@ def fail(job_id:str,error:str=Form(...),worker_id:str=Form(...),authorization:st
   updated=db("PATCH","/rest/v1/nova_studio_jobs?id=eq.%s&worker_id=eq.%s"%(urllib.parse.quote(job_id),urllib.parse.quote(worker_id)),
    json.dumps({"status":"failed","phase":"Arbetaren rapporterade fel","error":error[:1200],
     "updated_at":datetime.now(timezone.utc).isoformat()}).encode(),prefer="return=representation")
+  if not updated: raise HTTPException(status_code=409,detail="Arbetaren äger inte längre det här jobbet.")
   db("PATCH","/rest/v1/nova_studio_workers?worker_id=eq.%s"%urllib.parse.quote(worker_id),
       json.dumps({"status":"idle","current_job":None,"last_seen":datetime.now(timezone.utc).isoformat()}).encode())
   return {"status":"failed"}
+ except HTTPException: raise
  except Exception as exc: raise HTTPException(status_code=503,detail=str(exc)[:700]) from exc
 
 def _stream_private_object(path,media_type,filename):
