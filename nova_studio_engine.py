@@ -61,6 +61,8 @@ def health():
 def create_job(request:JobRequest):
  try:
   if request.scenes and len(request.scenes)!=4: raise HTTPException(status_code=422,detail="NOVA Studio kräver exakt fyra scener.")
+  active=db("GET","/rest/v1/nova_studio_jobs?status=in.(queued,leased,generating,assembling,uploading)&select=id&limit=8")
+  if len(active)>=8: raise HTTPException(status_code=429,detail="NOVA Studio-kön är full just nu. Vänta tills ett jobb har slutförts.")
   rows=db("POST","/rest/v1/nova_studio_jobs",json.dumps({"prompt":request.prompt.strip(),"scenes":[x.model_dump() for x in request.scenes],"style":request.style,
     "aspect":request.aspect,"duration_seconds":request.duration_seconds}).encode(),prefer="return=representation")
   if not isinstance(rows,list) or not rows: raise RuntimeError("Jobbet sparades inte.")
