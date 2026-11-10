@@ -1,6 +1,6 @@
 """NOVA Studio control plane. Worker-only routes use a server-side bearer secret."""
 import hmac, json, os, re, urllib.error, urllib.parse, urllib.request, uuid
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from fastapi import APIRouter, Header, HTTPException, UploadFile, File, Form
 from pydantic import BaseModel, Field
 
