@@ -68,13 +68,10 @@ def main():
          ]), \
          patch.object(video_jobs, "upload_file", return_value=True):
         recovered_jobs = video_jobs.recover_pending_jobs()
-    assert len(recovered_jobs) == 1
-    assert recovered_jobs[0]["job_id"] == "abc123abc123"
-    assert recovered_jobs[0]["topic"] == "testa återhämtning"
-    assert video_jobs.get_job_status("abc123abc123")["status"] == "queued"
-    interrupted = video_jobs.get_job_status("def456def456")
-    assert interrupted["status"] == "failed"
-    assert "startas inte om automatiskt" in interrupted["error"]
+    assert recovered_jobs == []
+    assert video_jobs.get_job_status("abc123abc123")["status"] == "failed"
+    assert video_jobs.get_job_status("def456def456")["status"] == "failed"
+    assert "återupptas inte" in video_jobs.get_job_status("abc123abc123")["error"]
 
     video_jobs._JOBS["stale1234567"] = {
         "job_id": "stale1234567",
