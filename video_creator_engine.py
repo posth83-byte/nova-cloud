@@ -72,6 +72,7 @@ async def _video_storage_startup_check():
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 VOICE = "sv-SE-MattiasNeural"
 W, H, FPS = 540, 960, 20
+DESIGN_W, DESIGN_H = 720, 1280
 MAX_PROMPT = 220
 SCENE_SECONDS = 5.2
 
@@ -118,14 +119,14 @@ def _centered(draw, text, y, font, fill, max_width=590, gap=12):
     height = len(lines) * (font.size + gap)
     top = y - height / 2
     for line in lines:
-        draw.text((W // 2, int(top)), line, font=font, fill=fill, anchor="ma",
+        draw.text((DESIGN_W // 2, int(top)), line, font=font, fill=fill, anchor="ma",
                   stroke_width=2, stroke_fill=(4, 9, 20))
         top += font.size + gap
 
 
 def _draw_illustration(draw, kind, t):
     """Draw a distinct vector illustration for each scene template."""
-    cx, cy = W // 2, 410
+    cx, cy = DESIGN_W // 2, 410
     glow = int(20 + 12 * (0.5 + 0.5 * math.sin(t * 2.2)))
     orange = (255, 145 + glow, 83)
     pale = (225, 237, 255)
@@ -193,18 +194,18 @@ def _draw_illustration(draw, kind, t):
 def _make_scene(path, kicker, headline, caption, kind, index, background_path=None, scene_seconds=SCENE_SECONDS, scene_count=5):
     if background_path and Path(background_path).is_file():
         with Image.open(background_path) as source:
-            image = ImageOps.fit(source.convert("RGB"), (W, H), method=Image.Resampling.LANCZOS)
+            image = ImageOps.fit(source.convert("RGB"), (DESIGN_W, DESIGN_H), method=Image.Resampling.LANCZOS)
         image = ImageEnhance.Brightness(image).enhance(0.34)
-        shade = Image.new("RGBA", (W, H), (4, 9, 20, 112))
+        shade = Image.new("RGBA", (DESIGN_W, DESIGN_H), (4, 9, 20, 112))
         image = Image.alpha_composite(image.convert("RGBA"), shade).convert("RGB")
     else:
-        image = Image.new("RGB", (W, H), (5, 10, 22))
+        image = Image.new("RGB", (DESIGN_W, DESIGN_H), (5, 10, 22))
         pixels = image.load()
-        for y in range(H):
-            f = y / H
+        for y in range(DESIGN_H):
+            f = y / DESIGN_H
             base = (int(6 + 12*f), int(12 + 12*f), int(28 + 16*f))
-            for x in range(W):
-                glow = max(0.0, 1 - (((x-W*.5)/(W*.78))**2 + ((y-H*.34)/(H*.62))**2))
+            for x in range(DESIGN_W):
+                glow = max(0.0, 1 - (((x-DESIGN_W*.5)/(DESIGN_W*.78))**2 + ((y-DESIGN_H*.34)/(DESIGN_H*.62))**2))
                 pixels[x, y] = (min(255, base[0] + int(20*glow)),
                                 min(255, base[1] + int(29*glow)),
                                 min(255, base[2] + int(42*glow)))
@@ -215,7 +216,7 @@ def _make_scene(path, kicker, headline, caption, kind, index, background_path=No
         "food": (255, 181, 115), "love": (255, 139, 177),
     }
     accent = palettes.get(kind, (255, 151, 91))
-    draw.rounded_rectangle((34, 42, W-34, H-42), radius=34,
+    draw.rounded_rectangle((34, 42, DESIGN_W-34, DESIGN_H-42), radius=34,
                            outline=(80, 119, 167), width=2)
     # Scene-specific ambient marks create a distinct visual identity for each beat.
     if kind == "sleep":
@@ -233,20 +234,20 @@ def _make_scene(path, kicker, headline, caption, kind, index, background_path=No
         for sx in (110, 610):
             draw.line((sx, 260, sx, 700), fill=(70, 48, 73), width=5)
     draw.text((62, 75), "JARVIS ORIGINALS", font=_font(22, True), fill=(153, 184, 220))
-    draw.rounded_rectangle((58, 120, W-58, 178), radius=20,
+    draw.rounded_rectangle((58, 120, DESIGN_W-58, 178), radius=20,
                            fill=(20, 39, 61), outline=(255, 151, 91), width=2)
-    draw.text((W//2, 149), kicker.upper(), font=_font(25, True),
+    draw.text((DESIGN_W//2, 149), kicker.upper(), font=_font(25, True),
               fill=(255, 190, 145), anchor="mm")
     _draw_illustration(draw, kind, index * scene_seconds)
     _centered(draw, headline, 765, _font(49 if len(headline) < 36 else 42, True),
               (248, 250, 255), max_width=600, gap=14)
     # High-contrast subtitle panel for sound-off viewing.
-    draw.rounded_rectangle((58, 910, W-58, 1080), radius=22,
+    draw.rounded_rectangle((58, 910, DESIGN_W-58, 1080), radius=22,
                            fill=(3, 8, 18), outline=(255, 151, 91), width=2)
     _centered(draw, caption, 995, _font(31, True), (255, 232, 213), max_width=555, gap=9)
-    draw.text((W//2, 1165), f"{index+1:02d} / {scene_count:02d}     •     JARVIS VIDEO TEAM",
+    draw.text((DESIGN_W//2, 1165), f"{index+1:02d} / {scene_count:02d}     •     JARVIS VIDEO TEAM",
               font=_font(18, True), fill=(153, 178, 211), anchor="mm")
-    image.save(path, quality=94)
+    image.resize((W, H), Image.Resampling.LANCZOS).save(path, quality=94)
 
 
 def _build_script(topic, video_type="humor"):
@@ -504,6 +505,14 @@ def _draw_character_frame(kind, index, elapsed, scene_seconds):
     return frame
 
 
+def _character_overlay_x(aspect):
+    """Keep the animated mascot fully inside the portrait source frame."""
+    positions = {"9:16": 330, "16:9": 205, "1:1": 205}
+    if aspect not in positions:
+        raise ValueError(f"Unsupported video aspect: {aspect}")
+    return max(0, min(W - 184, positions[aspect]))
+
+
 def _write_character_frames(job_dir, kind, index, scene_seconds):
     """Create a lightweight transparent PNG sequence for one comic character."""
     folder = Path(job_dir) / f"character_{index:02d}"
@@ -708,7 +717,7 @@ async def _render_original_video(topic, mode, video_type, aspect, duration_mode,
                 if video_type == "humor" else None
             )
             if character_pattern:
-                character_x = {"9:16": 500, "16:9": 205, "1:1": 400}[aspect]
+                character_x = _character_overlay_x(aspect)
                 ffmpeg_args = [
                     "-loop", "1", "-i", str(still),
                     "-framerate", str(CHARACTER_FPS), "-i", str(character_pattern),
