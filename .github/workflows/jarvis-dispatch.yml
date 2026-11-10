@@ -1,0 +1,59 @@
+name: JARVIS remote dispatch
+
+on:
+  push:
+    branches:
+      - jarvis-dispatch
+    paths:
+      - ".jarvis/dispatch.json"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: jarvis-remote-dispatch
+  cancel-in-progress: false
+
+jobs:
+  dispatch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    steps:
+      - name: Check out dispatch request
+        uses: actions/checkout@v4
+
+      - name: Submit task and wait for JARVIS
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s .jarvis/dispatch.json
+          PAYLOAD="$(jq -c '{task: .task, history: (.history // [])}' .jarvis/dispatch.json)"
+          RESPONSE="$(curl --fail-with-body --silent --show-error --retry 3 --retry-delay 2 -H 'Content-Type: application/json' -X POST 'https://nova-cloud-c4t9.onrender.com/api/jarvis/jobs' --data "$PAYLOAD")"
+          JOB_ID="$(jq -er '.job_id' <<<"$RESPONSE")"
+          ACCESS_TOKEN="$(jq -er '.access_token' <<<"$RESPONSE")"
+          echo "::add-mask::$ACCESS_TOKEN"
+          echo "JARVIS accepted the task. Job ID: $JOB_ID"
+          echo "Queue response: $(jq -c '{status, deduplicated, reply}' <<<"$RESPONSE")"
+          for attempt in $(seq 1 300); do
+            RESPONSE="$(curl --fail-with-body --silent --show-error --retry 2 --get --data-urlencode "token=$ACCESS_TOKEN" "https://nova-cloud-c4t9.onrender.com/api/jarvis/jobs/$JOB_ID")"
+            STATUS="$(jq -r '.status // "unknown"' <<<"$RESPONSE")"
+            PHASE="$(jq -r '.phase // ""' <<<"$RESPONSE")"
+            echo "Poll $attempt: $STATUS — $PHASE"
+            if [[ "$STATUS" == "completed" || "$STATUS" == "failed" ]]; then
+              {
+                echo "## JARVIS task result"
+                echo
+                echo "- Job: $JOB_ID"
+                echo "- Status: $STATUS"
+                echo "- Phase: $PHASE"
+                echo
+                jq '{status, phase, active, completed, result, error}' <<<"$RESPONSE"
+              } >> "$GITHUB_STEP_SUMMARY"
+              jq -r '.result.reply // .error // "JARVIS avslutade utan ett textresultat."' <<<"$RESPONSE"
+              [[ "$STATUS" == "completed" ]] || exit 1
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "Timed out waiting for JARVIS job $JOB_ID" >&2
+          exit 1
