@@ -12,6 +12,11 @@ if not exist ".venv\Scripts\python.exe" (
 )
 ".venv\Scripts\python.exe" -m pip install --upgrade pip
 ".venv\Scripts\python.exe" -m pip install -r workers\requirements.txt
+if not "%COMFYUI_DIR%"=="" if exist "%COMFYUI_DIR%\\run_nvidia_gpu.bat" (
+  echo Startar ComfyUI...
+  start "ComfyUI" /D "%COMFYUI_DIR%" run_nvidia_gpu.bat
+  timeout /t 30 /nobreak >nul
+)
 if "%NOVA_STUDIO_WORKER_TOKEN%"=="" (
   echo.
   echo Satt NOVA_STUDIO_WORKER_TOKEN i Windows miljo variabler innan du startar arbetaren.
