@@ -1,0 +1,33 @@
+name: Procedural video QA
+
+on:
+  pull_request:
+    paths:
+      - "video_creator_engine.py"
+      - "qa/test_video_creator.py"
+      - "video_assets.py"
+      - "video_storage.py"
+      - "video_jobs.py"
+      - "video_research.py"
+      - "requirements.txt"
+      - ".github/workflows/procedural-video-qa.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  procedural-video:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out pull request
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+      - name: Install free engine dependencies
+        run: python -m pip install -r requirements.txt
+      - name: Run procedural video integration QA
+        run: python qa/test_video_creator.py
