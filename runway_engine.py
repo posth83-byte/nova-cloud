@@ -14,6 +14,7 @@ import imageio_ffmpeg
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
+from video_cost_guard import paid_video_engines_enabled
 
 router = APIRouter()
 RUNWAY_API_KEY = os.getenv("RUNWAYML_API_SECRET", "").strip()
@@ -32,6 +33,8 @@ class RunwaySceneRequest(BaseModel):
 
 
 def runway_request(path: str, method: str = "GET", payload=None):
+    if not paid_video_engines_enabled():
+        raise HTTPException(503, "Runway är avstängt för att skydda gratisläget. Den lokala procedurmotorn är standard.")
     if not RUNWAY_API_KEY:
         raise HTTPException(503, "Runway är inte konfigurerat i Render.")
 
