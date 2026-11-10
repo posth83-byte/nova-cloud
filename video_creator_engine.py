@@ -387,6 +387,94 @@ CHARACTER_REACTIONS = {
 }
 
 
+def _draw_character_gag(draw, kind, elapsed, punch, accent, phase):
+    """Animate a small scene-specific prop so each reaction has its own visual joke."""
+    drift = 3.0 * math.sin(elapsed * 3.1 + phase)
+    lift = 5.0 * punch
+    x = 142 + drift
+    y = 112 - lift
+    ink = (12, 20, 36, 255)
+    white = (248, 250, 255, 255)
+    if kind == "coffee":
+        # A tiny mug that sloshes over when the character gets startled.
+        draw.rounded_rectangle((x-9, y-11, x+17, y+12), radius=5,
+                               fill=(255, 255, 255, 250), outline=accent, width=3)
+        draw.arc((x+13, y-6, x+28, y+9), 265, 95, fill=accent, width=3)
+        draw.line((x-3, y-15, x-7, y-23), fill=white, width=2)
+        draw.line((x+6, y-15, x+9, y-24), fill=white, width=2)
+        if punch > 0.2:
+            for dx, dy in ((-8, -8), (2, -17), (14, -10)):
+                draw.ellipse((x+dx, y+dy, x+dx+5, y+dy+8), fill=accent)
+    elif kind == "sleep":
+        # The Z drifts upward, then the final jolt turns it into a startled star.
+        z_y = 35 - 13 * (0.5 + 0.5 * math.sin(elapsed * 2.5 + phase))
+        draw.text((x-2, z_y), "Z", font=_font(25 + int(5*punch), True),
+                  fill=accent, anchor="mm")
+        if punch > 0.25:
+            draw.line((x-12, z_y-15, x-19, z_y-23), fill=white, width=3)
+            draw.line((x+13, z_y-14, x+21, z_y-22), fill=white, width=3)
+    elif kind == "phone":
+        # Notification screen flashes only on the punchline.
+        draw.rounded_rectangle((x-7, y-23, x+19, y+20), radius=5,
+                               fill=(18, 31, 54, 255), outline=accent, width=3)
+        draw.rectangle((x-3, y-17, x+15, y+11),
+                       fill=(60, 105, 145, 255) if punch < 0.25 else (255, 224, 130, 255))
+        draw.line((x+1, y+15, x+10, y+15), fill=white, width=2)
+        if punch > 0.2:
+            draw.ellipse((x+11, y-26, x+22, y-15), fill=(255, 88, 91, 255))
+            for dx, dy in ((-8, -30), (22, -32), (27, -5)):
+                draw.line((x+dx, y+dy, x+dx+5, y+dy-5), fill=accent, width=3)
+    elif kind == "work":
+        # The paper stack fans out as the deadline hits.
+        spread = 13 * punch
+        draw.polygon(((x-7, y-15), (x+17, y-18-spread),
+                      (x+22, y+13-spread), (x-3, y+16)),
+                     fill=white, outline=accent)
+        draw.line((x-1, y-7, x+12, y-9-spread), fill=ink, width=2)
+        draw.line((x-1, y+1, x+12, y-spread), fill=ink, width=2)
+        if punch > 0.25:
+            draw.line((x+19, y-20, x+31, y-31), fill=accent, width=3)
+            draw.line((x+20, y+10, x+32, y+16), fill=accent, width=3)
+    elif kind == "money":
+        # A coin bounces above the hand; extra coins appear at the reveal.
+        coin_y = y - 5 - 8 * abs(math.sin(elapsed * 5.0 + phase))
+        draw.ellipse((x-7, coin_y-13, x+20, coin_y+14),
+                     fill=(133, 224, 169, 255), outline=white, width=3)
+        draw.text((x+6, coin_y), "kr", font=_font(12, True), fill=ink, anchor="mm")
+        if punch > 0.3:
+            for dx, dy in ((-15, -25), (23, -23), (25, 20)):
+                draw.ellipse((x+dx, coin_y+dy, x+dx+9, coin_y+dy+9),
+                             fill=(133, 224, 169, 255), outline=white, width=1)
+    elif kind == "gym":
+        # The dumbbell wobbles, then tilts under the imaginary weight.
+        tilt = 7 * math.sin(elapsed * 5.5 + phase) + 17 * punch
+        draw.line((x-18, y+tilt, x+23, y-tilt), fill=white, width=6)
+        for side in (-1, 1):
+            px = x + side * 19
+            py = y + (-tilt if side > 0 else tilt)
+            draw.rounded_rectangle((px-5, py-12, px+5, py+12),
+                                   radius=3, fill=accent, outline=white, width=2)
+        if punch > 0.25:
+            draw.text((x+1, y-31), "!", font=_font(24, True), fill=accent, anchor="mm")
+    elif kind == "food":
+        # A sandwich rises toward the mouth and leaves crumbs at the punchline.
+        draw.polygon(((x-10, y+8), (x+7, y-17), (x+25, y+8)),
+                     fill=(231, 177, 92, 255), outline=white)
+        draw.line((x-5, y+2, x+20, y+2), fill=(93, 151, 82, 255), width=5)
+        draw.ellipse((x+1, y-8, x+10, y+1), fill=(224, 91, 74, 255))
+        if punch > 0.2:
+            for dx, dy in ((-14, -7), (27, -15), (18, 22)):
+                draw.ellipse((x+dx, y+dy, x+dx+4, y+dy+4), fill=accent)
+    elif kind == "love":
+        # The heart grows into an over-the-top romantic reveal.
+        size = 18 + int(9 * punch)
+        draw.text((x+4, y-8), "♥", font=_font(size, True),
+                  fill=(255, 111, 159, 255), anchor="mm")
+        if punch > 0.35:
+            draw.line((x+4, y-29, x-2, y-36), fill=white, width=3)
+            draw.line((x+15, y-28, x+22, y-36), fill=white, width=3)
+
+
 def _draw_character_frame(kind, index, elapsed, scene_seconds):
     """Draw one transparent, expressive mascot frame for the comic scenes."""
     width, height = 184, 250
@@ -395,7 +483,11 @@ def _draw_character_frame(kind, index, elapsed, scene_seconds):
     phase = index * 0.73
     wave = math.sin(elapsed * 5.1 + phase)
     punch_start = _character_punchline_start(scene_seconds)
-    punch = max(0.0, min(1.0, (elapsed - punch_start) / 0.16))
+    punch_raw = max(0.0, min(1.0, (elapsed - punch_start) / 0.24))
+    punch = punch_raw * punch_raw * (3.0 - 2.0 * punch_raw)
+    # A short anticipation dip gives the audience a beat to read the reaction.
+    anticipation = max(0.0, 1.0 - abs(elapsed - (punch_start - 0.10)) / 0.14)
+    recoil = math.sin(min(1.0, max(0.0, elapsed - punch_start) / 0.36) * math.pi)
     accent = {
         "coffee": (255, 151, 91, 255), "sleep": (142, 173, 239, 255),
         "phone": (105, 187, 229, 255), "work": (105, 187, 229, 255),
@@ -404,7 +496,10 @@ def _draw_character_frame(kind, index, elapsed, scene_seconds):
     }.get(kind, (255, 151, 91, 255))
 
     bob = 4.5 * math.sin(elapsed * (2.0 if kind == "sleep" else 5.1) + phase)
+    bob -= 8.0 * anticipation
+    bob += 4.0 * punch - 3.0 * recoil
     lean = 5.0 * math.sin(elapsed * 2.7 + phase)
+    lean += 7.0 * anticipation - 9.0 * punch
     left_raise = 0.18 + 0.13 * math.sin(elapsed * 3.8 + phase)
     right_raise = 0.18 + 0.13 * math.sin(elapsed * 4.2 + phase + 1.1)
     if kind == "coffee":
@@ -462,7 +557,9 @@ def _draw_character_frame(kind, index, elapsed, scene_seconds):
               fill=(244, 248, 255, 255), width=18)
     draw.line((cx, shoulder_y + 3, cx + lean * 0.25, hip_y - 3),
               fill=accent, width=5)
-    draw.ellipse((cx - 26, head_y - 26, cx + 26, head_y + 26),
+    head_radius = 26 + int(5 * punch)
+    draw.ellipse((cx - head_radius, head_y - head_radius,
+                  cx + head_radius, head_y + head_radius),
                  fill=(244, 248, 255, 255), outline=accent, width=5)
     eye_shift = 2 if kind == "phone" else 0
     for eye_x in (cx - 9 + eye_shift, cx + 9 + eye_shift):
@@ -481,6 +578,8 @@ def _draw_character_frame(kind, index, elapsed, scene_seconds):
     else:
         draw.arc((cx - 9, head_y + 4, cx + 9, head_y + 17),
                  10, 170, fill=(12, 20, 36, 255), width=3)
+
+    _draw_character_gag(draw, kind, elapsed, punch, accent, phase)
 
     # Floating sparkles replace FFmpeg drawtext so the bundled encoder stays compatible.
     sparkle_x = 27 + 7 * math.sin(elapsed * 2.4 + phase)
