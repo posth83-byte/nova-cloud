@@ -3,9 +3,10 @@ import json,os,socket,time,urllib.request,urllib.error
 BASE=os.getenv("NOVA_STUDIO_URL","https://nova-cloud-c4t9.onrender.com").rstrip("/")
 TOKEN=os.getenv("NOVA_STUDIO_WORKER_TOKEN","")
 COMFY=os.getenv("COMFYUI_URL","http://127.0.0.1:8188").rstrip("/")
+WORKER_ID=socket.gethostname()[:60]
 def call(path,payload=None):
  data=None if payload is None else json.dumps(payload).encode()
- req=urllib.request.Request(BASE+path,data=data,headers={"Authorization":"Bearer "+TOKEN,"Content-Type":"application/json"})
+ req=urllib.request.Request(BASE+path,data=data,headers={"Authorization":"Bearer "+TOKEN,"Content-Type":"application/json","X-Worker-ID":WORKER_ID})
  with urllib.request.urlopen(req,timeout=30) as r:return json.loads(r.read().decode())
 def main():
  if not TOKEN:raise SystemExit("NOVA_STUDIO_WORKER_TOKEN saknas i Windows miljövariabler.")
