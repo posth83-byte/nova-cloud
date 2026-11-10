@@ -2242,8 +2242,10 @@ async function sendMessage(event,assistant){
    if(isWeb&&$("webDropMode")?.checked)webmasterMessage+="\n\n"+dropshipBrief();
    response=await fetch(isWeb?"/api/webmaster":"/api/chat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({message:webmasterMessage,history:conversationHistory,push_subscription:assistant==="jarvis"?getSavedJarvisPushSubscription():null})});
   }
-  data=await response.json();
-  if(!response.ok)throw new Error(typeof data.detail==="string"?data.detail:JSON.stringify(data.detail||data));
+  if(!(assistant==="jarvis"&&videoRequest)){
+   data=await response.json();
+   if(!response.ok)throw new Error(typeof data.detail==="string"?data.detail:JSON.stringify(data.detail||data));
+  }
   if(assistant==="jarvis"&&data.job_queued){
    loading.textContent=data.reply||"Uppdraget är sparat på servern.";
    const jobResult=await waitForJarvisJob(data.job_id,data.job_access_token,loading,message);
