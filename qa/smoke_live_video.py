@@ -121,6 +121,9 @@ def main():
             "SRT subtitles were not saved in private Supabase Storage. "
             f"Reported subtitles_storage_status={result.get('subtitles_storage_status')!r}"
         )
+    duration = float(result.get("duration_target_seconds") or 0)
+    if not 12 <= duration <= 30:
+        raise RuntimeError(f"Short video duration was outside 12-30 seconds: {duration}s")
 
     job_id = result.get("job_id")
     if not job_id or len(job_id) != 12:
@@ -174,7 +177,7 @@ def main():
             "PASS live video generation; PASS private Supabase MP4 upload and remote retrieval; "
             f"PASS MP4 audio/video decode ({video_path.stat().st_size} bytes); "
             f"PASS private SRT upload and retrieval; credits={credit_status}; job={job_id}; "
-            f"format={result.get('format')}; resolution={result.get('resolution')}."
+            f"format={result.get('format')}; resolution={result.get('resolution')}; duration={duration:.1f}s."
         )
 
 

@@ -29,6 +29,17 @@ def main():
     assert len(engine._build_script("kaffet tar slut")) == 5
     assert len(engine._build_script("sova")) == 5
     assert len(engine._build_script("vardagslivet")) == 5
+    sample_beats = engine._build_script("kaffet tar slut", "humor")
+    short_beats = engine._apply_duration_mode(sample_beats, "short", "kaffe", "humor")
+    standard_beats = engine._apply_duration_mode(sample_beats, "standard", "kaffe", "humor")
+    long_beats = engine._apply_duration_mode(sample_beats, "long", "kaffe", "humor")
+    assert len(short_beats) == 3
+    assert len(standard_beats) == 5
+    assert len(long_beats) == 7
+    short_voice = engine._build_narration(short_beats, "humor", "short")
+    standard_voice = engine._build_narration(standard_beats, "humor", "standard")
+    assert all(caption not in short_voice for _, _, caption, _ in short_beats)
+    assert all(caption in standard_voice for _, _, caption, _ in standard_beats)
     for kind in ("explainer", "tutorial", "promo", "inspiration", "story"):
         assert len(engine._build_script("solenergi", kind)) == 5, kind
         assert "solenergi" in " ".join(beat[1] for beat in engine._build_script("solenergi", kind)).casefold()

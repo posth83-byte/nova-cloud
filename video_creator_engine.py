@@ -361,6 +361,41 @@ def _build_script(topic, video_type="humor"):
     return beats
 
 
+def _apply_duration_mode(beats, duration_mode, topic, video_type="humor"):
+    """Keep short clips concise and give long clips a deliberate extra beat arc."""
+    beats = list(beats)
+    if duration_mode == "short":
+        return beats[:3]
+    if duration_mode == "standard":
+        return beats[:5]
+    if duration_mode == "long":
+        if video_type == "humor":
+            extra = [
+                ("PLAN B", "Jag bestämde mig för att ta kontroll över situationen.",
+                 "Det gick inte heller enligt plan.", "generic"),
+                ("EFTERTANKEN", f"Så nästa gång tänker jag på {topic} i förväg.",
+                 "Eller så chansar jag igen.", "generic"),
+            ]
+        else:
+            extra = [
+                ("FÖRDJUPNING", f"En sak till att tänka på kring {topic} är att jämföra alternativen.",
+                 "Det hjälper dig att välja en väg som passar.", "generic"),
+                ("SAMMANFATTNING", f"Nu har du fler delar att utgå från när det gäller {topic}.",
+                 "Testa i lugn takt och anpassa efter behov.", "generic"),
+            ]
+        return (beats + extra)[:7]
+    return beats
+
+
+def _build_narration(beats, video_type="humor", duration_mode="standard"):
+    """Short videos speak the main line; captions remain visual punchlines."""
+    include_captions = duration_mode != "short" and video_type != "explainer"
+    return " ".join(
+        f"{heading}. {line}" + (f" {caption}" if include_captions and caption else "")
+        for heading, line, caption, _ in beats
+    )
+
+
 def _motion_filter(kind, index, video_type="humor", scene_seconds=SCENE_SECONDS):
     """Build the camera movement and fades without optional FFmpeg text filters."""
     frames = int(scene_seconds * FPS)
@@ -782,11 +817,10 @@ async def _render_original_video(topic, mode, video_type, aspect, duration_mode,
             if not beats:
                 raise HTTPException(422, "Jag hittade inte tillräckligt med källmaterial i Wikipedia för en faktavideo. Prova ett tydligare ämne.")
         else:
-            beats = _build_script(topic, video_type)
-        narration = " ".join(
-            f"{heading}. {line}" + (f" {caption}" if video_type != "explainer" and caption else "")
-            for heading, line, caption, _ in beats
-        )
+            beats = _apply_duration_mode(
+                _build_script(topic, video_type), duration_mode, topic, video_type
+            )
+        narration = _build_narration(beats, video_type, duration_mode)
         narration_path = job_dir / "voice.mp3"
         await edge_tts.Communicate(narration, VOICE).save(str(narration_path))
         audio_duration = _audio_duration(narration_path)
