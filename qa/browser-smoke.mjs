@@ -236,6 +236,54 @@ try {
           await page.locator("#videoCreateOriginal").click();
           await page.waitForFunction(() => document.querySelector("#videoCreatorStatus")?.textContent.includes("Simulerat renderingsfel"), null, { timeout: 8000 });
           if (!(await page.locator("#videoCreatorStatus").evaluate(el => el.classList.contains("error")))) localFailures.push("Failed job did not display an error state.");
+
+           // JARVIS chat must start the real video queue and show the finished MP4 in the same chat bubble.
+           let jarvisChatApiCalled = false;
+           await page.route("**/api/chat", async route => {
+             if ((route.request().postData() || "").includes("JARVIS CHAT BRIDGE TEST")) {
+               jarvisChatApiCalled = true;
+               return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ status: "online", reply: "Unexpected generic chat response." }) });
+             }
+             return route.fallback();
+           });
+           await page.route("**/api/video/team/create", async route => {
+             if ((route.request().postData() || "").includes("JARVIS CHAT BRIDGE TEST")) {
+               return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({
+                 status: "queued", job_id: "jarvis123456", status_url: "/api/video/team/jobs/jarvis123456"
+               }) });
+             }
+             return route.fallback();
+           });
+           await page.route("**/api/video/team/jobs/jarvis123456", route => route.fulfill({
+             status: 200, contentType: "application/json",
+             body: JSON.stringify({ status: "completed", job_id: "jarvis123456", result: {
+               status: "completed", job_id: "jarvis123456", topic: "JARVIS CHAT BRIDGE TEST", format: "9:16",
+               resolution: "540x960", storage_status: "persistent", video_url: "/api/video/team/created/jarvis123456",
+               subtitles_url: "/api/video/team/subtitles/jarvis123456", script: [{ heading: "TEST", line: "Direktleverans från JARVIS." }]
+             } })
+           }));
+           await page.route("**/api/video/team/created/jarvis123456", route => route.fulfill({
+             status: 200, contentType: "video/mp4", body: mp4Bytes
+           }));
+           await page.route("**/api/video/team/subtitles/jarvis123456", route => route.fulfill({
+             status: 200, contentType: "text/plain; charset=utf-8", body: "1\\n00:00:00,000 --> 00:00:02,000\\nJARVIS test\\n"
+           }));
+           await page.locator("#novaView .room-topbar .back-btn").first().click();
+           await page.waitForFunction(() => document.querySelector("#novaView")?.classList.contains("hidden"), null, { timeout: 5000 });
+           await page.locator(".jarvis-open").click();
+           await page.waitForFunction(() => !document.querySelector("#jarvisView")?.classList.contains("hidden"), null, { timeout: 5000 });
+           await page.locator("#jarvisInput").fill("Skapa en kort video om JARVIS CHAT BRIDGE TEST");
+           await page.locator("#jarvisSend").click();
+           await page.waitForFunction(() => {
+             const bubble = [...document.querySelectorAll("#jarvisMessages .msg.ai")].find(node => node.querySelector('a[href*="jarvis123456"]'));
+             return !!bubble && !!bubble.querySelector("video");
+           }, null, { timeout: 8000 });
+           if (jarvisChatApiCalled) localFailures.push("JARVIS video request incorrectly went through the generic /api/chat route.");
+           const jarvisVideoBubble = page.locator("#jarvisMessages .msg.ai").filter({ has: page.locator('a[href*="jarvis123456"]') }).first();
+           if (!(await jarvisVideoBubble.innerText()).includes("Din video är färdig")) localFailures.push("JARVIS chat did not display the completed-video confirmation.");
+           if (!(await jarvisVideoBubble.locator("a").count())) localFailures.push("JARVIS chat did not include an MP4 delivery link.");
+           if (!(await jarvisVideoBubble.locator("video").count())) localFailures.push("JARVIS chat did not include an inline MP4 preview.");
+
         }
         const errors = [...pageErrors, ...localFailures];
         if (errors.length) failures.push(route + " [" + viewport.name + "]: " + errors.join(" | "));
