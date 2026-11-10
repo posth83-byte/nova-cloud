@@ -51,7 +51,10 @@ try {
       const localFailures = [];
       page.on("pageerror", error => pageErrors.push(error.message));
       page.on("response", response => {
-        if (response.url().startsWith(baseUrl) && response.status() >= 400) localFailures.push(response.status() + " " + response.url());
+        const isExpectedRetry = response.url() === baseUrl + "/api/video/team/jobs/abcdef123456" && response.status() === 503;
+        if (!isExpectedRetry && response.url().startsWith(baseUrl) && response.status() >= 400) {
+          localFailures.push(response.status() + " " + response.url());
+        }
       });
       try {
         const response = await page.goto(baseUrl + route, { waitUntil: "domcontentloaded", timeout: 20000 });
@@ -215,9 +218,18 @@ try {
           const srtHref = await exportLinks.filter({ hasText: "UNDERtexter" }).getAttribute("href");
           if (!mp4Href || !srtHref) localFailures.push("MP4 or SRT download link is missing.");
           else {
-            const [mp4Response, srtResponse] = await Promise.all([page.request.get(baseUrl + mp4Href), page.request.get(baseUrl + srtHref)]);
-            if (!mp4Response.ok() || !(mp4Response.headers()["content-type"] || "").includes("video/mp4") || (await mp4Response.body()).length < 16) localFailures.push("MP4 export endpoint did not return video content.");
-            if (!srtResponse.ok() || !(await srtResponse.text()).includes("Testundertext")) localFailures.push("SRT export endpoint did not return subtitle content.");
+            // Use the page's browser context so these requests pass through page.route mocks.
+            const exportResults = await page.evaluate(async ([mp4Url, srtUrl]) => {
+              const [mp4Response, srtResponse] = await Promise.all([fetch(mp4Url), fetch(srtUrl)]);
+              const mp4 = await mp4Response.arrayBuffer();
+              const srt = await srtResponse.text();
+              return {
+                mp4Ok: mp4Response.ok && (mp4Response.headers.get("content-type") || "").includes("video/mp4") && mp4.byteLength >= 16,
+                srtOk: srtResponse.ok && srt.includes("Testundertext")
+              };
+            }, [mp4Href, srtHref]);
+            if (!exportResults.mp4Ok) localFailures.push("MP4 export endpoint did not return video content.");
+            if (!exportResults.srtOk) localFailures.push("SRT export endpoint did not return subtitle content.");
           }
           // A failed background job must produce a visible, actionable error state.
           await page.route("**/api/video/team/jobs/failed123456", route => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ status: "failed", error: "Simulerat renderingsfel" }) }));
