@@ -45,3 +45,14 @@ revoke all on function public.claim_nova_studio_job(text) from public,anon,authe
 revoke all on function public.recover_stale_nova_studio_jobs(integer) from public,anon,authenticated;
 grant execute on function public.claim_nova_studio_job(text) to service_role;
 grant execute on function public.recover_stale_nova_studio_jobs(integer) to service_role;
+
+create table if not exists public.nova_studio_workers (
+ worker_id text primary key,
+ status text not null default 'idle' check (status in ('idle','busy')),
+ current_job uuid references public.nova_studio_jobs(id) on delete set null,
+ last_seen timestamptz not null default now()
+);
+create index if not exists nova_studio_workers_last_seen_idx on public.nova_studio_workers(last_seen);
+alter table public.nova_studio_workers enable row level security;
+revoke all on public.nova_studio_workers from anon, authenticated;
+grant all on public.nova_studio_workers to service_role;
