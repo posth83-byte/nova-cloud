@@ -223,7 +223,7 @@ try {
           await page.route("**/api/video/team/jobs/failed123456", route => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ status: "failed", error: "Simulerat renderingsfel" }) }));
           await page.locator("#videoCreateOriginal").click();
           await page.waitForFunction(() => document.querySelector("#videoCreatorStatus")?.textContent.includes("Simulerat renderingsfel"), null, { timeout: 8000 });
-          if (!document.querySelector("#videoCreatorStatus")?.classList.contains("error")) localFailures.push("Failed job did not display an error state.");
+          if (!(await page.locator("#videoCreatorStatus").evaluate(el => el.classList.contains("error")))) localFailures.push("Failed job did not display an error state.");
         }
         const errors = [...pageErrors, ...localFailures];
         if (errors.length) failures.push(route + " [" + viewport.name + "]: " + errors.join(" | "));
