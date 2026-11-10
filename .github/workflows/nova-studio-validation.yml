@@ -22,6 +22,8 @@ jobs:
         run: pip install -r requirements.txt
       - name: Compile Python modules
         run: python -m py_compile main.py nova_studio_engine.py workers/nova_studio_worker.py
+      - name: Run worker unit tests
+        run: python -m unittest discover -s workers -p "test_*.py"
       - name: Validate migration security and queue contract
         run: |
           python - <<'PY'
