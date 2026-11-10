@@ -8,7 +8,7 @@ import uuid
 from pathlib import Path
 from unittest.mock import patch
 
-from PIL import Image
+from PIL import Image, ImageDraw
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import video_creator_engine as engine
@@ -57,6 +57,14 @@ def main():
     assert start_pose.getbbox(), "The procedural character frame must not be empty."
     assert start_pose.tobytes() != moving_pose.tobytes(), "The character must move between frames."
     assert moving_pose.tobytes() != punchline_pose.tobytes(), "The punchline must change the character pose."
+    # Every comedy archetype gets a distinct animated prop/reaction, not only a speech bubble.
+    for kind in engine.CHARACTER_REACTIONS:
+        accent = (255, 151, 91, 255)
+        early_gag = Image.new("RGBA", (184, 250), (0, 0, 0, 0))
+        late_gag = Image.new("RGBA", (184, 250), (0, 0, 0, 0))
+        engine._draw_character_gag(ImageDraw.Draw(early_gag), kind, 1.0, 0.0, accent, 0.0)
+        engine._draw_character_gag(ImageDraw.Draw(late_gag), kind, 4.7, 1.0, accent, 0.0)
+        assert early_gag.tobytes() != late_gag.tobytes(), f"{kind} gag must animate into its punchline."
 
     original_output = engine.OUTPUT_DIR
     with tempfile.TemporaryDirectory(prefix="jarvis-video-test-") as temporary:
