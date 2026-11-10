@@ -56,12 +56,16 @@ def make_workflow(prompt,seed,width,height):
   "7":{"class_type":"SaveImage","inputs":{"filename_prefix":"nova_studio","images":["6",0]}}
  }
 
-def generate_image(prompt,seed,width,height,out_path):
+def generate_image(prompt,seed,width,height,out_path,job_id=None,progress=5):
  queued=http_json(COMFY+"/prompt",{"prompt":make_workflow(prompt,seed,width,height),"client_id":"nova-"+WORKER_ID})
  pid=queued.get("prompt_id")
  if not pid:raise RuntimeError("ComfyUI returnerade inget prompt_id: "+str(queued)[:300])
  deadline=time.time()+240
+ last_heartbeat=0
  while time.time()<deadline:
+  if job_id and time.time()-last_heartbeat>=20:
+   heartbeat(job_id,"generating",progress)
+   last_heartbeat=time.time()
   history=http_json(COMFY+"/history/"+pid)
   item=history.get(pid) or {}
   outputs=item.get("outputs") or {}
@@ -168,7 +172,7 @@ def process(job):
    heartbeat(job_id,"generating",5+i*17)
    image=str(Path(directory)/("frame_%02d.png"%i))
    scene=(job.get("scenes") or [])[i] if len(job.get("scenes") or [])>i else None
-   generate_image(scene_prompt(job["prompt"],i,4,scene),abs(hash(job_id))%(2**32),width,height,image)
+   generate_image(scene_prompt(job["prompt"],i,4,scene),abs(hash(job_id))%(2**32),width,height,image,job_id,5+i*17)
    images.append(image)
   heartbeat(job_id,"assembling",78)
   video,srt=assemble(images,job,directory)
