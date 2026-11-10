@@ -16,6 +16,8 @@ COMFY=os.getenv("COMFYUI_URL","http://127.0.0.1:8188").rstrip("/")
 CHECKPOINT=os.getenv("COMFYUI_CHECKPOINT","v1-5-pruned-emaonly.safetensors")
 WORKER_ID=socket.gethostname()[:60]
 VOICE=os.getenv("NOVA_STUDIO_VOICE","sv-SE-MattiasNeural")
+PIPER_MODEL=os.getenv("PIPER_MODEL","").strip()
+PIPER_VOICE=None
 FFMPEG=imageio_ffmpeg.get_ffmpeg_exe()
 
 def http_json(url,payload=None,headers=None,timeout=30):
@@ -86,6 +88,18 @@ def scene_prompt(topic,index,total,scene=None):
  visual=str((scene or {}).get("visual_prompt") or "").strip()
  return base+(visual if visual else "Story subject: "+topic+". Shot "+str(index+1)+" of "+str(total)+": "+beats[index]+".")
 
+def synthesize_voice(text,out_path):
+ global PIPER_VOICE
+ if PIPER_MODEL:
+  import wave
+  from piper import PiperVoice
+  if PIPER_VOICE is None:
+   PIPER_VOICE=PiperVoice.load(PIPER_MODEL)
+  with wave.open(out_path,"wb") as wav_file:
+   PIPER_VOICE.synthesize_wav(text,wav_file)
+ else:
+  asyncio.run(edge_tts.Communicate(text,VOICE).save(out_path))
+
 def run_ffmpeg(args):
  import subprocess
  p=subprocess.run([FFMPEG,"-y","-threads","2",*args],capture_output=True,text=True,timeout=240)
@@ -122,7 +136,7 @@ def assemble(images,job,directory):
  for i,line in enumerate(captions):
   raw_audio=str(Path(directory)/("voice_%02d.mp3"%i))
   padded_audio=str(Path(directory)/("voice_pad_%02d.m4a"%i))
-  asyncio.run(edge_tts.Communicate(line,VOICE).save(raw_audio))
+  synthesize_voice(line,raw_audio)
   run_ffmpeg(["-i",raw_audio,"-af","apad","-t","%.3f"%per_scene,"-c:a","aac","-b:a","96k",padded_audio])
   audio_parts.append(padded_audio)
  audio_list=str(Path(directory)/"audio_concat.txt")
@@ -154,7 +168,7 @@ def process(job):
    heartbeat(job_id,"generating",5+i*17)
    image=str(Path(directory)/("frame_%02d.png"%i))
    scene=(job.get("scenes") or [])[i] if len(job.get("scenes") or [])>i else None
-   generate_image(scene_prompt(job["prompt"],i,4,scene),abs(hash(job_id+str(i)))%(2**32),width,height,image)
+   generate_image(scene_prompt(job["prompt"],i,4,scene),abs(hash(job_id))%(2**32),width,height,image)
    images.append(image)
   heartbeat(job_id,"assembling",78)
   video,srt=assemble(images,job,directory)
