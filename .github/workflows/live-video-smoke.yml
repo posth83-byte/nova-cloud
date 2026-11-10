@@ -5,7 +5,10 @@ on:
     branches: [main]
     paths:
       - ".github/workflows/live-video-smoke.yml"
+      - "index.html"
+      - "main.py"
       - "video_creator_engine.py"
+      - "video_team_engine.py"
       - "video_storage.py"
       - "video_jobs.py"
       - "video_assets.py"
