@@ -13,7 +13,7 @@ import imageio_ffmpeg
 BASE=os.getenv("NOVA_STUDIO_URL","https://nova-cloud-c4t9.onrender.com").rstrip("/")
 TOKEN=os.getenv("NOVA_STUDIO_WORKER_TOKEN","")
 COMFY=os.getenv("COMFYUI_URL","http://127.0.0.1:8188").rstrip("/")
-CHECKPOINT=os.getenv("COMFYUI_CHECKPOINT","v1-5-pruned-emaonly.safetensors")
+CHECKPOINT=os.getenv("COMFYUI_CHECKPOINT","v1-5-pruned-emaonly-fp16.safetensors")
 WORKER_ID=socket.gethostname()[:60]
 VOICE=os.getenv("NOVA_STUDIO_VOICE","sv-SE-MattiasNeural")
 PIPER_MODEL=os.getenv("PIPER_MODEL","").strip()
