@@ -17,6 +17,9 @@ class SceneRequest(BaseModel):
  visual_prompt:str=Field(min_length=12,max_length=1400)
  voiceover:str=Field(min_length=2,max_length=400)
 
+class PlanRequest(BaseModel):
+ scenes:list[SceneRequest]=Field(min_length=4,max_length=4)
+
 class JobRequest(BaseModel):
  prompt:str=Field(min_length=8,max_length=2400)
  scenes:list[SceneRequest]=Field(default_factory=list,max_length=4)
@@ -96,6 +99,17 @@ def claim(authorization:str=Header(default=""),x_worker_id:str=Header(default=""
      json.dumps({"status":"busy" if job else "idle","current_job":job.get("id") if job else None,
                  "last_seen":datetime.now(timezone.utc).isoformat()}).encode())
   return {"job":job,"worker_id":worker_id}
+ except Exception as exc: raise HTTPException(status_code=503,detail=str(exc)[:700]) from exc
+
+@router.post("/api/nova-studio/worker/{job_id}/plan")
+def save_plan(job_id:str,request:PlanRequest,authorization:str=Header(default=""),x_worker_id:str=Header(default="")):
+ auth(authorization)
+ try:
+  rows=db("PATCH","/rest/v1/nova_studio_jobs?id=eq.%s&worker_id=eq.%s&status=in.(leased,generating,assembling,uploading)"%(urllib.parse.quote(job_id),urllib.parse.quote(x_worker_id)),
+   json.dumps({"scenes":[x.model_dump() for x in request.scenes],"updated_at":datetime.now(timezone.utc).isoformat()}).encode(),prefer="return=representation")
+  if not rows: raise HTTPException(status_code=409,detail="Arbetaren äger inte längre det här jobbet.")
+  return {"saved":True,"scene_count":len(request.scenes)}
+ except HTTPException: raise
  except Exception as exc: raise HTTPException(status_code=503,detail=str(exc)[:700]) from exc
 
 @router.post("/api/nova-studio/worker/{job_id}/heartbeat")
