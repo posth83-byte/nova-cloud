@@ -35,10 +35,12 @@ jobs:
           assert "claim_nova_studio_job" in sql
           source = Path("nova_studio_engine.py").read_text()
           for route in ("/api/nova-studio/jobs", "/api/nova-studio/worker/claim",
+                        "/api/nova-studio/worker/{job_id}/plan",
                         "/api/nova-studio/worker/{job_id}/heartbeat",
                         "/api/nova-studio/worker/{job_id}/complete"):
               assert route in source, route
           worker = Path("workers/nova_studio_worker.py").read_text()
           assert "ComfyUI" in worker and "edge_tts" in worker and "imageio_ffmpeg" in worker
+          assert "OLLAMA_MODEL" in worker and "plan_scenes_local" in worker
           print("NOVA Studio source and security contract checks passed.")
           PY
