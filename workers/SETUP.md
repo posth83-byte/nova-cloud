@@ -8,3 +8,7 @@
 6. Run: python workers/nova_studio_worker.py
 
 The worker makes outbound calls to NOVA Cloud and local calls to ComfyUI only. Keep the PC powered on during generation. The first release generates four AI stills and animates them with camera movement, adds Swedish narration and SRT subtitles, and uploads a private MP4. It is not frame-by-frame AI video or a guarantee of consistent characters across shots. Model license and available GPU memory must be checked locally.
+
+
+## Optional offline Swedish voice
+For fully local TTS, install Piper with `pip install piper-tts`, download the Swedish Alma medium ONNX model and matching JSON file, then set `PIPER_MODEL` to the ONNX file path. See LOCAL_VOICE.md for the direct model links and CC BY 4.0 attribution. If PIPER_MODEL is empty, the worker uses the online Edge TTS voice configured by NOVA_STUDIO_VOICE.
