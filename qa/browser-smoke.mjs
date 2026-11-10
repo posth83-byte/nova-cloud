@@ -156,11 +156,9 @@ try {
           }
         }
         if (route === "/") {
-          // Exercise the new NOVA video controls in both desktop and mobile viewports.
-          await page.evaluate(() => {
-            const view = document.querySelector("#novaView");
-            if (view) { view.classList.remove("hidden"); view.style.display = "block"; }
-          });
+          // Navigate through the real home-screen control instead of force-opening the studio.
+          await page.locator(".jarvis-nova-link").click();
+          await page.waitForFunction(() => !document.querySelector("#novaView")?.classList.contains("hidden"), null, { timeout: 5000 });
           if (await page.locator("#videoTeamCreator").count() !== 1) localFailures.push("Video creator panel is missing.");
           if (await page.locator("#videoFindIdeas").count() !== 1) localFailures.push("Trend discovery button is missing.");
           if (await page.locator("#videoCreateOriginal").count() !== 1) localFailures.push("Original video button is missing.");
@@ -179,17 +177,53 @@ try {
           await page.waitForFunction(() => document.querySelector("#videoIdeasList")?.innerText.includes("Testtrend Sverige"), null, { timeout: 5000 });
           if (!(await page.locator("#videoIdeasList").innerText()).includes("SKAPA EGEN VIDEO")) localFailures.push("Trend result does not offer an original-video action.");
 
-          await page.route("**/api/video/team/create", route => route.fulfill({
-            status: 200, contentType: "application/json",
-            body: JSON.stringify({ status: "completed", job_id: "abcdef123456", topic: "QA humor", format: "9:16", resolution: "720x1280", storage_status: "persistent", visual_source: "Egen grafik", script: [{ heading: "TEST", line: "En testscen.", punchline: "Testpoäng." }], video_url: "/api/video/team/created/abcdef123456", subtitles_url: "/api/video/team/subtitles/abcdef123456", message: "Testvideo klar." })
-          }));
-          await page.route("**/api/video/team/created/*", route => route.fulfill({ status: 200, contentType: "video/mp4", body: Buffer.from("test-video") }));
+          let createCount = 0;
+          await page.route("**/api/video/team/create", async route => {
+            createCount++;
+            const jobId = createCount === 1 ? "abcdef123456" : "failed123456";
+            await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({
+              status: "queued", job_id: jobId, status_url: "/api/video/team/jobs/" + jobId, topic: "QA humor"
+            }) });
+          });
+          let statusCount = 0;
+          await page.route("**/api/video/team/jobs/abcdef123456", async route => {
+            statusCount++;
+            if (statusCount === 1) return route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ detail: "Tillfälligt servicefel" }) });
+            const state = statusCount === 2 ? "queued" : statusCount === 3 ? "running" : "completed";
+            const body = state === "completed" ? { status: state, result: {
+              status: "completed", job_id: "abcdef123456", topic: "QA humor", format: "9:16", resolution: "720x1280",
+              storage_status: "persistent", visual_source: "Egen grafik", script: [{ heading: "TEST", line: "En testscen.", punchline: "Testpoäng." }],
+              video_url: "/api/video/team/created/abcdef123456", subtitles_url: "/api/video/team/subtitles/abcdef123456"
+            }} : { status: state, job_id: "abcdef123456" };
+            return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(body) });
+          });
+          const mp4Bytes = Buffer.from([0,0,0,24,102,116,121,112,105,115,111,109,0,0,2,0,105,115,111,109,105,115,111,50]);
+          await page.route("**/api/video/team/created/*", route => route.fulfill({ status: 200, contentType: "video/mp4", body: mp4Bytes }));
+          await page.route("**/api/video/team/subtitles/*", route => route.fulfill({ status: 200, contentType: "text/plain; charset=utf-8", body: "1\\n00:00:00,000 --> 00:00:02,000\\nTestundertext\\n" }));
+          await page.addInitScript(() => {
+            const originalTimeout = window.setTimeout.bind(window);
+            window.setTimeout = (callback, delay, ...args) => originalTimeout(callback, delay === 2500 || delay === 1000 || delay === 2000 || delay === 4000 ? 5 : delay, ...args);
+          });
           await page.locator("#videoOriginalTopic").fill("QA humor");
-          await page.locator("#videoCreateOriginal").click({ force: true });
-          await page.waitForFunction(() => document.querySelector("#videoCreatorResult a")?.textContent.includes("FÄRDIG MP4"), null, { timeout: 5000 });
+          await page.locator("#videoCreateOriginal").click();
+          await page.waitForFunction(() => document.querySelector("#videoCreatorResult a")?.textContent.includes("FÄRDIG MP4"), null, { timeout: 8000 });
+          if (statusCount < 4) localFailures.push("Queued/running/completed status sequence was not fully polled after a transient 503.");
           if (!(await page.locator("#videoCreatorResult video").count())) localFailures.push("Created-video preview element is missing.");
           if (!(await page.locator("#videoCreatorResult").innerText()).includes("TEST")) localFailures.push("Created-video script was not displayed.");
-          if (!(await page.locator("#videoCreatorResult a").allTextContents()).some(text => text.includes("UNDERtexter"))) localFailures.push("SRT subtitle download link is missing.");
+          const exportLinks = page.locator("#videoCreatorResult a");
+          const mp4Href = await exportLinks.filter({ hasText: "FÄRDIG MP4" }).getAttribute("href");
+          const srtHref = await exportLinks.filter({ hasText: "UNDERtexter" }).getAttribute("href");
+          if (!mp4Href || !srtHref) localFailures.push("MP4 or SRT download link is missing.");
+          else {
+            const [mp4Response, srtResponse] = await Promise.all([page.request.get(baseUrl + mp4Href), page.request.get(baseUrl + srtHref)]);
+            if (!mp4Response.ok() || !(mp4Response.headers()["content-type"] || "").includes("video/mp4") || (await mp4Response.body()).length < 16) localFailures.push("MP4 export endpoint did not return video content.");
+            if (!srtResponse.ok() || !(await srtResponse.text()).includes("Testundertext")) localFailures.push("SRT export endpoint did not return subtitle content.");
+          }
+          // A failed background job must produce a visible, actionable error state.
+          await page.route("**/api/video/team/jobs/failed123456", route => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ status: "failed", error: "Simulerat renderingsfel" }) }));
+          await page.locator("#videoCreateOriginal").click();
+          await page.waitForFunction(() => document.querySelector("#videoCreatorStatus")?.textContent.includes("Simulerat renderingsfel"), null, { timeout: 8000 });
+          if (!document.querySelector("#videoCreatorStatus")?.classList.contains("error")) localFailures.push("Failed job did not display an error state.");
         }
         const errors = [...pageErrors, ...localFailures];
         if (errors.length) failures.push(route + " [" + viewport.name + "]: " + errors.join(" | "));
