@@ -10,6 +10,7 @@ import uuid
 
 from fastapi import APIRouter, Header, HTTPException
 from pydantic import BaseModel, Field
+from video_cost_guard import paid_video_engines_enabled
 
 router = APIRouter()
 
@@ -41,6 +42,8 @@ def require_kling_access(x_jarvis_access_token: str = Header(default="")):
 
 
 def kling_request(path: str, method: str = "GET", payload=None):
+    if not paid_video_engines_enabled():
+        raise HTTPException(503, "Kling är avstängt för att skydda gratisläget. Den lokala procedurmotorn är standard.")
     if not KLING_API_KEY:
         raise HTTPException(
             503,
