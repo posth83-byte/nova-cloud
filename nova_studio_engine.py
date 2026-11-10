@@ -84,7 +84,7 @@ def claim(authorization:str=Header(default=""),x_worker_id:str=Header(default=""
  try:
   db("POST","/rest/v1/nova_studio_workers",json.dumps({"worker_id":worker_id,"status":"idle","last_seen":datetime.now(timezone.utc).isoformat(),"current_job":None}).encode(),
      prefer="resolution=merge-duplicates,return=minimal")
-  db("POST","/rest/v1/rpc/recover_stale_nova_studio_jobs",json.dumps({"p_stale_seconds":240}).encode())
+  db("POST","/rest/v1/rpc/recover_stale_nova_studio_jobs",json.dumps({"p_stale_seconds":900}).encode())
   rows=db("POST","/rest/v1/rpc/claim_nova_studio_job",json.dumps({"p_worker_id":worker_id}).encode())
   if isinstance(rows,dict): rows=[rows]
   job=rows[0] if rows else None
