@@ -2,6 +2,7 @@
 import asyncio
 import io
 import subprocess
+import re
 import tempfile
 import sys
 import uuid
@@ -12,6 +13,17 @@ from PIL import Image, ImageDraw
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import video_creator_engine as engine
+
+
+def media_duration(path):
+    result = subprocess.run(
+        [engine.imageio_ffmpeg.get_ffmpeg_exe(), "-i", str(path), "-f", "null", "-"],
+        capture_output=True, text=True, timeout=60
+    )
+    match = re.search(r"Duration: (\\d+):(\\d+):(\\d+(?:\\.\\d+)?)", result.stderr)
+    assert match, result.stderr[-1500:]
+    hours, minutes, seconds = match.groups()
+    return int(hours) * 3600 + int(minutes) * 60 + float(seconds)
 
 
 def main():
@@ -130,6 +142,11 @@ def main():
             [engine.imageio_ffmpeg.get_ffmpeg_exe(), "-v", "error", "-i", str(output), "-f", "null", "-"],
             capture_output=True, text=True, timeout=120)
         assert decode.returncode == 0, decode.stderr
+        actual_duration = media_duration(output)
+        assert abs(actual_duration - result["duration_target_seconds"]) <= 0.25, (
+            actual_duration, result["duration_target_seconds"]
+        )
+        assert abs(actual_duration - 28.0) <= 0.25, actual_duration
         response = engine.download_original_video(result["job_id"])
         assert Path(response.path) == output
         subtitles = job_dir / "undertexter.srt"
