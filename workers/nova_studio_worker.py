@@ -105,17 +105,18 @@ def assemble(images,job,directory):
   run_ffmpeg(["-loop","1","-i",image,"-t","%.3f"%per_scene,"-vf",vf,"-an","-c:v","libx264","-preset","veryfast","-crf","27","-pix_fmt","yuv420p",clip])
   clips.append(clip)
  concat_file=str(Path(directory)/"concat.txt")
- Path(concat_file).write_text("".join("file '%s'\n"%p.replace("'","") for p in clips),encoding="utf-8")
+ Path(concat_file).write_text("".join("file '%s'\\n"%p.replace("'","") for p in clips),encoding="utf-8")
  silent=str(Path(directory)/"silent.mp4")
  run_ffmpeg(["-f","concat","-safe","0","-i",concat_file,"-c","copy",silent])
  topic=str(job.get("prompt","din berättelse")).strip().replace("\\n"," ")[:55]
- topic=str(job.get("prompt","din berättelse")).strip().replace("\\n"," ")[:55]
- captions=[
+ scenes=job.get("scenes") or []
+ fallbacks=[
   "Allt börjar med: "+topic+".",
   "En första idé verkar äntligen fungera.",
   "Men så dyker ett oväntat problem upp.",
   "Och det här är bara början på äventyret."
  ]
+ captions=[str((scenes[i] if len(scenes)>i else {}).get("voiceover") or fallbacks[i]) for i in range(4)]
  audio_parts=[]
  for i,line in enumerate(captions):
   raw_audio=str(Path(directory)/("voice_%02d.mp3"%i))
