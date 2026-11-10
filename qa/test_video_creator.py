@@ -46,6 +46,8 @@ def main():
     assert engine._character_punchline_start(2.0) == 1.12
     assert (engine.W, engine.H, engine.FPS) == (540, 960, 20)
     assert engine.CHARACTER_FPS == 10
+    for aspect in ("9:16", "16:9", "1:1"):
+        assert 0 <= engine._character_overlay_x(aspect) <= engine.W - 184
     start_pose = engine._draw_character_frame("coffee", 0, 0.2, 5.2)
     moving_pose = engine._draw_character_frame("coffee", 0, 1.4, 5.2)
     punchline_pose = engine._draw_character_frame("coffee", 0, 4.7, 5.2)
@@ -57,6 +59,12 @@ def main():
     original_output = engine.OUTPUT_DIR
     with tempfile.TemporaryDirectory(prefix="jarvis-video-test-") as temporary:
         engine.OUTPUT_DIR = Path(temporary)
+        preview = Path(temporary) / "scene-layout.jpg"
+        engine._make_scene(preview, "TEST", "Rubrik i bild", "Punchline i bild", "coffee", 0)
+        with Image.open(preview) as scene_preview:
+            assert scene_preview.size == (engine.W, engine.H)
+            assert scene_preview.getpixel((270, 750)) != scene_preview.getpixel((270, 660)), \
+                "The scaled subtitle panel must remain visible inside the frame."
         character_pattern = engine._write_character_frames(Path(temporary), "coffee", 0, 2.0)
         character_frames = sorted(character_pattern.parent.glob("frame_*.png"))
         assert len(character_frames) == 20
