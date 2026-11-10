@@ -359,39 +359,160 @@ def _build_script(topic, video_type="humor"):
 
 
 def _motion_filter(kind, index, video_type="humor", scene_seconds=SCENE_SECONDS):
-    """Build a lightweight animated FFmpeg filter for floating comic accents."""
-    palettes = {
-        "coffee": "0xFF975B", "sleep": "0xAFC5FF", "phone": "0x69BBE5",
-        "work": "0x69BBE5", "money": "0x85E0A9", "gym": "0xFF9153",
-        "food": "0xFFB573", "love": "0xFF8BB1", "generic": "0xFF975B",
-    }
-    color = palettes.get(kind, "0xFF975B")
-    font = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
-    phase = index * 0.73
+    """Build the camera movement and fades without optional FFmpeg text filters."""
     frames = int(scene_seconds * FPS)
-    # A final, timed reaction word gives every scene a readable comic button.
-    reactions = {
-        "coffee": "SLURP!", "sleep": "ZZZ!", "phone": "PING!",
-        "work": "OJ!", "money": "KRASCH!", "gym": "PUH!",
-        "food": "MUMS!", "love": "OJ DA!", "generic": "PANG!",
-    }
-    reaction = reactions.get(kind, "PANG!") if video_type == "humor" else ""
     return ",".join([
         f"scale={W}:{H}",
         f"zoompan=z='1.025+0.012*sin(on/22)':"
         f"x='iw/2-(iw/zoom/2)+7*sin(on/19)':"
         f"y='ih/2-(ih/zoom/2)+10*cos(on/27)':d={frames}:s={W}x{H}:fps={FPS}",
-        f"drawtext=fontfile={font}:text='*':fontcolor={color}:fontsize=42:"
-        f"x='92+24*sin(t*2.4+{phase:.2f})':y='300+32*cos(t*2.0+{phase:.2f})'",
-        f"drawtext=fontfile={font}:text='+':fontcolor={color}:fontsize=34:"
-        f"x='560+28*cos(t*1.9+{phase:.2f})':y='520+25*sin(t*2.7+{phase:.2f})'",
-        f"drawtext=fontfile={font}:text='{reaction}':fontcolor={color}:"
-        f"fontsize='38+8*sin(t*18)':x='(w-text_w)/2':"
-        f"y='675+9*sin(t*20)':enable='between(t,{scene_seconds-0.95:.2f},{scene_seconds-0.12:.2f})'",
-        f"fade=t=in:st=0:d=0.22",
+        "fade=t=in:st=0:d=0.22",
         f"fade=t=out:st={scene_seconds-0.22:.2f}:d=0.22",
         "setsar=1",
     ])
+
+
+def _character_punchline_start(scene_seconds):
+    """Keep the visual reaction for the final 0.88 seconds of a scene."""
+    return max(0.0, scene_seconds - 0.88)
+
+CHARACTER_FPS = 12
+CHARACTER_REACTIONS = {
+    "coffee": "VA?!", "sleep": "NEJ!", "phone": "PING!",
+    "work": "MÖTE?!", "money": "OJ!", "gym": "PUH!",
+    "food": "MUMS?!", "love": "VA DÅ?",
+}
+
+
+def _draw_character_frame(kind, index, elapsed, scene_seconds):
+    """Draw one transparent, expressive mascot frame for the comic scenes."""
+    width, height = 184, 250
+    frame = Image.new("RGBA", (width, height), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(frame)
+    phase = index * 0.73
+    wave = math.sin(elapsed * 5.1 + phase)
+    punch_start = _character_punchline_start(scene_seconds)
+    punch = max(0.0, min(1.0, (elapsed - punch_start) / 0.16))
+    accent = {
+        "coffee": (255, 151, 91, 255), "sleep": (142, 173, 239, 255),
+        "phone": (105, 187, 229, 255), "work": (105, 187, 229, 255),
+        "money": (133, 224, 169, 255), "gym": (255, 145, 83, 255),
+        "food": (255, 181, 115, 255), "love": (255, 139, 177, 255),
+    }.get(kind, (255, 151, 91, 255))
+
+    bob = 4.5 * math.sin(elapsed * (2.0 if kind == "sleep" else 5.1) + phase)
+    lean = 5.0 * math.sin(elapsed * 2.7 + phase)
+    left_raise = 0.18 + 0.13 * math.sin(elapsed * 3.8 + phase)
+    right_raise = 0.18 + 0.13 * math.sin(elapsed * 4.2 + phase + 1.1)
+    if kind == "coffee":
+        right_raise += 0.38 * max(0.0, wave)
+    elif kind == "sleep":
+        bob -= 7.0 * punch
+        left_raise = right_raise = 0.10
+    elif kind == "phone":
+        right_raise += 0.30
+    elif kind == "gym":
+        left_raise += 0.35 * max(0.0, wave)
+        right_raise += 0.35 * max(0.0, -wave)
+    elif kind == "work":
+        left_raise += 0.20 * max(0.0, wave)
+        right_raise += 0.20 * max(0.0, -wave)
+    left_raise = left_raise * (1.0 - punch) + 0.94 * punch
+    right_raise = right_raise * (1.0 - punch) + 0.94 * punch
+
+    cx = 92 + lean
+    head_y = 39 + bob
+    shoulder_y = head_y + 37
+    hip_y = head_y + 116
+    left_shoulder = (cx - 13, shoulder_y)
+    right_shoulder = (cx + 13, shoulder_y)
+    left_hand = (cx - 53, shoulder_y + 48 - 58 * left_raise)
+    right_hand = (cx + 53, shoulder_y + 48 - 58 * right_raise)
+    left_elbow = (cx - 31, shoulder_y + 25 - 35 * left_raise)
+    right_elbow = (cx + 31, shoulder_y + 25 - 35 * right_raise)
+
+    # Small contact shadow and legs make the mascot feel grounded.
+    draw.ellipse((cx - 43, 226, cx + 43, 239), fill=(0, 0, 0, 75))
+    foot_bob = 4.0 * math.sin(elapsed * 5.1 + phase)
+    left_foot = (cx - 39 + foot_bob, 220)
+    right_foot = (cx + 39 - foot_bob, 220)
+    for hip, knee, foot in (
+        ((cx - 8, hip_y), (cx - 22, hip_y + 31), left_foot),
+        ((cx + 8, hip_y), (cx + 22, hip_y + 31), right_foot),
+    ):
+        draw.line((hip, knee, foot), fill=(244, 248, 255, 255), width=12, joint="curve")
+        draw.line((hip, knee, foot), fill=accent, width=4, joint="curve")
+        draw.rounded_rectangle((foot[0] - 13, foot[1] - 3, foot[0] + 12, foot[1] + 7),
+                               radius=5, fill=(244, 248, 255, 255), outline=accent, width=3)
+
+    # Arms move independently; the punchline lifts both hands in surprise.
+    for shoulder, elbow, hand in (
+        (left_shoulder, left_elbow, left_hand),
+        (right_shoulder, right_elbow, right_hand),
+    ):
+        draw.line((shoulder, elbow, hand), fill=(244, 248, 255, 255), width=13, joint="curve")
+        draw.line((shoulder, elbow, hand), fill=accent, width=5, joint="curve")
+        draw.ellipse((hand[0] - 7, hand[1] - 7, hand[0] + 7, hand[1] + 7),
+                     fill=(244, 248, 255, 255), outline=accent, width=3)
+
+    draw.line((cx, shoulder_y, cx + lean * 0.25, hip_y),
+              fill=(244, 248, 255, 255), width=18)
+    draw.line((cx, shoulder_y + 3, cx + lean * 0.25, hip_y - 3),
+              fill=accent, width=5)
+    draw.ellipse((cx - 26, head_y - 26, cx + 26, head_y + 26),
+                 fill=(244, 248, 255, 255), outline=accent, width=5)
+    eye_shift = 2 if kind == "phone" else 0
+    for eye_x in (cx - 9 + eye_shift, cx + 9 + eye_shift):
+        draw.ellipse((eye_x - 3, head_y - 4, eye_x + 3, head_y + 3),
+                     fill=(12, 20, 36, 255))
+    if punch > 0.35:
+        draw.ellipse((cx - 5, head_y + 8, cx + 5, head_y + 19),
+                     fill=(12, 20, 36, 255))
+        # Comic impact rays appear only at the punchline.
+        for angle in (-2.45, -1.85, -1.25, -0.65, 0.0):
+            x1 = cx + math.cos(angle) * 34
+            y1 = head_y + math.sin(angle) * 34
+            x2 = cx + math.cos(angle) * 46
+            y2 = head_y + math.sin(angle) * 46
+            draw.line((x1, y1, x2, y2), fill=accent, width=4)
+    else:
+        draw.arc((cx - 9, head_y + 4, cx + 9, head_y + 17),
+                 10, 170, fill=(12, 20, 36, 255), width=3)
+
+    # Floating sparkles replace FFmpeg drawtext so the bundled encoder stays compatible.
+    sparkle_x = 27 + 7 * math.sin(elapsed * 2.4 + phase)
+    sparkle_y = 112 + 8 * math.cos(elapsed * 2.0 + phase)
+    draw.line((sparkle_x - 8, sparkle_y, sparkle_x + 8, sparkle_y),
+              fill=accent, width=3)
+    draw.line((sparkle_x, sparkle_y - 8, sparkle_x, sparkle_y + 8),
+              fill=accent, width=3)
+    plus_x = 157 + 6 * math.cos(elapsed * 1.9 + phase)
+    plus_y = 145 + 6 * math.sin(elapsed * 2.7 + phase)
+    draw.line((plus_x - 7, plus_y, plus_x + 7, plus_y), fill=accent, width=3)
+    draw.line((plus_x, plus_y - 7, plus_x, plus_y + 7), fill=accent, width=3)
+
+    if punch > 0.2:
+        # A speech bubble lands with the final reaction, not throughout the scene.
+        draw.rounded_rectangle((4, 4, 116, 42), radius=13,
+                               fill=(255, 255, 255, 248), outline=accent, width=3)
+        draw.polygon(((91, 39), (106, 53), (108, 38)),
+                     fill=(255, 255, 255, 248))
+        draw.text((60, 23), CHARACTER_REACTIONS.get(kind, "OJ?!"),
+                  font=_font(17, True), fill=(12, 20, 36, 255), anchor="mm")
+    return frame
+
+
+def _write_character_frames(job_dir, kind, index, scene_seconds):
+    """Create a lightweight transparent PNG sequence for one comic character."""
+    folder = Path(job_dir) / f"character_{index:02d}"
+    folder.mkdir(parents=True, exist_ok=True)
+    frame_count = max(2, int(math.ceil(scene_seconds * CHARACTER_FPS)))
+    for frame_number in range(frame_count):
+        frame = _draw_character_frame(
+            kind, index, frame_number / CHARACTER_FPS, scene_seconds
+        )
+        frame.save(folder / f"frame_{frame_number:03d}.png")
+    return folder / "frame_%03d.png"
 
 
 @router.get("/api/video/team/ideas")
@@ -574,14 +695,32 @@ async def _render_original_video(topic, mode, video_type, aspect, duration_mode,
             _make_scene(still, heading, line, caption, kind, i, background_path, scene_seconds, len(beats))
             clip = job_dir / f"clip_{i:02}.mp4"
             frames = int(scene_seconds * FPS)
-            # Animated camera drift plus subtle, topic-colored comic accents.
+            # Add a transparent, independently moving mascot to original comedy scenes.
             motion = _motion_filter(kind, i, video_type, scene_seconds)
-            _ffmpeg([
-                "-loop", "1", "-i", str(still),
-                "-vf", motion,
+            character_pattern = (
+                _write_character_frames(job_dir, kind, i, scene_seconds)
+                if video_type == "humor" else None
+            )
+            if character_pattern:
+                character_x = {"9:16": 500, "16:9": 205, "1:1": 400}[aspect]
+                ffmpeg_args = [
+                    "-loop", "1", "-i", str(still),
+                    "-framerate", str(CHARACTER_FPS), "-i", str(character_pattern),
+                    "-filter_complex",
+                    f"[0:v]{motion}[base];"
+                    f"[1:v]format=rgba,fps={FPS}[character];"
+                    f"[base][character]overlay="
+                    f"x='{character_x}+4*sin(t*3.2)':y='470+3*cos(t*4.1)':"
+                    "shortest=1:eof_action=pass:format=auto,format=yuv420p[v]",
+                    "-map", "[v]",
+                ]
+            else:
+                ffmpeg_args = ["-loop", "1", "-i", str(still), "-vf", motion]
+            ffmpeg_args.extend([
                 "-frames:v", str(frames), "-an", "-c:v", "libx264", "-preset", "ultrafast",
                 "-pix_fmt", "yuv420p", str(clip)
-            ], timeout=180)
+            ])
+            _ffmpeg(ffmpeg_args, timeout=180)
             clips.append(clip)
         concat = job_dir / "clips.txt"
         concat.write_text("".join(f"file '{clip.as_posix()}'\n" for clip in clips), encoding="utf-8")

@@ -39,15 +39,26 @@ def main():
     assert len({beat[3] for beat in engine._build_script("lön och budget")}) >= 4
     assert len({beat[3] for beat in engine._build_script("första dejten")}) >= 3
     animated_filter = engine._motion_filter("coffee", 2, "humor")
-    assert "zoompan=" in animated_filter and "drawtext=" in animated_filter
-    assert "sin(t*" in animated_filter and "fade=t=in" in animated_filter
-    assert "SLURP!" in animated_filter and "between(t," in animated_filter
-    assert "ZZZ!" in engine._motion_filter("sleep", 0)
-    assert "PANG!" in engine._motion_filter("generic", 1)
+    assert "zoompan=" in animated_filter and "drawtext=" not in animated_filter
+    assert "sin(on/" in animated_filter and "fade=t=in" in animated_filter
+    assert engine.CHARACTER_REACTIONS["coffee"] == "VA?!"
+    assert engine._character_punchline_start(5.2) == 4.32
+    assert engine._character_punchline_start(2.0) == 1.12
+    start_pose = engine._draw_character_frame("coffee", 0, 0.2, 5.2)
+    moving_pose = engine._draw_character_frame("coffee", 0, 1.4, 5.2)
+    punchline_pose = engine._draw_character_frame("coffee", 0, 4.7, 5.2)
+    assert start_pose.mode == "RGBA" and start_pose.size == (184, 250)
+    assert start_pose.getbbox(), "The procedural character frame must not be empty."
+    assert start_pose.tobytes() != moving_pose.tobytes(), "The character must move between frames."
+    assert moving_pose.tobytes() != punchline_pose.tobytes(), "The punchline must change the character pose."
 
     original_output = engine.OUTPUT_DIR
     with tempfile.TemporaryDirectory(prefix="jarvis-video-test-") as temporary:
         engine.OUTPUT_DIR = Path(temporary)
+        character_pattern = engine._write_character_frames(Path(temporary), "coffee", 0, 2.0)
+        character_frames = sorted(character_pattern.parent.glob("frame_*.png"))
+        assert len(character_frames) == 24
+        assert len({frame.read_bytes() for frame in character_frames}) > 1
 
         class LocalSpeechFixture:
             def __init__(self, text, voice):
@@ -78,6 +89,8 @@ def main():
         output = job_dir / "jarvis_original.mp4"
         assert output.is_file() and output.stat().st_size > 10000
         assert len(list(job_dir.glob("scene_*.jpg"))) == 5
+        rendered_character_frames = sorted((job_dir / "character_00").glob("frame_*.png"))
+        assert len(rendered_character_frames) >= 60, "Comedy scenes must include the animated character sequence."
         decode = subprocess.run(
             [engine.imageio_ffmpeg.get_ffmpeg_exe(), "-v", "error", "-i", str(output), "-f", "null", "-"],
             capture_output=True, text=True, timeout=120)
