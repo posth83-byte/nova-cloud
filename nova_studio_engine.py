@@ -13,8 +13,13 @@ TOKEN=os.getenv("NOVA_STUDIO_WORKER_TOKEN","").strip()
 BUCKET="nova-videos"
 MAX_BYTES=48*1024*1024
 
+class SceneRequest(BaseModel):
+ visual_prompt:str=Field(min_length=12,max_length=1400)
+ voiceover:str=Field(min_length=2,max_length=400)
+
 class JobRequest(BaseModel):
  prompt:str=Field(min_length=8,max_length=2400)
+ scenes:list[SceneRequest]=Field(default_factory=list,max_length=4)
  style:str=Field(default="cinematic-family-animation",max_length=80)
  aspect:str=Field(default="9:16",pattern="^(9:16|16:9|1:1)$")
  duration_seconds:int=Field(default=20,ge=5,le=180)
@@ -55,7 +60,8 @@ def health():
 @router.post("/api/nova-studio/jobs")
 def create_job(request:JobRequest):
  try:
-  rows=db("POST","/rest/v1/nova_studio_jobs",json.dumps({"prompt":request.prompt.strip(),"style":request.style,
+  if request.scenes and len(request.scenes)!=4: raise HTTPException(status_code=422,detail="NOVA Studio kräver exakt fyra scener.")
+  rows=db("POST","/rest/v1/nova_studio_jobs",json.dumps({"prompt":request.prompt.strip(),"scenes":[x.model_dump() for x in request.scenes],"style":request.style,
     "aspect":request.aspect,"duration_seconds":request.duration_seconds}).encode(),prefer="return=representation")
   if not isinstance(rows,list) or not rows: raise RuntimeError("Jobbet sparades inte.")
   return {"status":"queued","job":{k:rows[0].get(k) for k in ("id","status","phase","progress","created_at")},"engine":"NOVA Studio local GPU"}
