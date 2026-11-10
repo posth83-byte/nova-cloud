@@ -398,7 +398,7 @@ def _build_narration(beats, video_type="humor", duration_mode="standard"):
 
 def _motion_filter(kind, index, video_type="humor", scene_seconds=SCENE_SECONDS):
     """Build the camera movement and fades without optional FFmpeg text filters."""
-    frames = int(scene_seconds * FPS)
+    frames = max(1, int(round(scene_seconds * FPS)))
     return ",".join([
         f"scale={W}:{H}",
         f"zoompan=z='1.025+0.012*sin(on/22)':"
@@ -825,7 +825,7 @@ async def _render_original_video(topic, mode, video_type, aspect, duration_mode,
         await edge_tts.Communicate(narration, VOICE).save(str(narration_path))
         audio_duration = _audio_duration(narration_path)
         logger.info("NOVA_VIDEO_TTS_READY job=%s seconds=%.1f", job_id, audio_duration)
-        scene_seconds = max(2.8, min(60.0, audio_duration / len(beats) + 0.35))
+        scene_seconds = max(0.1, min(60.0, audio_duration / len(beats)))
         clips = []
         attributions = []
         visual_assets = search_commons_images(topic, limit=min(3, len(beats)))
@@ -947,7 +947,7 @@ async def _render_original_video(topic, mode, video_type, aspect, duration_mode,
                        for h, line, caption, _ in beats],
             "format": aspect, "resolution": f"{output_width}x{output_height}", "fps": FPS,
             "duration_mode": duration_mode,
-            "duration_target_seconds": round(len(beats) * scene_seconds, 1),
+            "duration_target_seconds": round(audio_duration, 1),
             "voice": VOICE, "video_url": f"/api/video/team/created/{job_id}",
             "subtitles_url": f"/api/video/team/subtitles/{job_id}",
             "visual_source": "Wikimedia Commons + egen grafik" if attributions else "Egen procedural grafik (bildkälla ej tillgänglig)",

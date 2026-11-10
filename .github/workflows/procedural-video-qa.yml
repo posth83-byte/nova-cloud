@@ -1,6 +1,18 @@
 name: Procedural video QA
+# Keep the full FFmpeg integration test active for every duration-probe change.
 
 on:
+  push:
+    branches: [main, "jarvis/**"]
+    paths:
+      - "video_creator_engine.py"
+      - "qa/test_video_creator.py"
+      - "video_assets.py"
+      - "video_storage.py"
+      - "video_jobs.py"
+      - "video_research.py"
+      - "requirements.txt"
+      - ".github/workflows/procedural-video-qa.yml"
   pull_request:
     paths:
       - "video_creator_engine.py"

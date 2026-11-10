@@ -2,6 +2,7 @@
 import asyncio
 import io
 import subprocess
+import re
 import tempfile
 import sys
 import uuid
@@ -12,6 +13,21 @@ from PIL import Image, ImageDraw
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import video_creator_engine as engine
+
+
+def media_duration(path):
+    result = subprocess.run(
+        [engine.imageio_ffmpeg.get_ffmpeg_exe(), "-i", str(path), "-f", "null", "-"],
+        capture_output=True, text=True, timeout=60
+    )
+    if result.returncode != 0:
+        raise AssertionError(result.stderr[-1500:])
+    # This bundled FFmpeg build omits the input "Duration:" banner.
+    # Its final progress record reliably reports the decoded end timestamp.
+    matches = re.findall(r"time=(\d+):(\d+):(\d+(?:\.\d+)?)", result.stderr)
+    assert matches, result.stderr[-1500:]
+    hours, minutes, seconds = matches[-1]
+    return int(hours) * 3600 + int(minutes) * 60 + float(seconds)
 
 
 def main():
@@ -130,6 +146,11 @@ def main():
             [engine.imageio_ffmpeg.get_ffmpeg_exe(), "-v", "error", "-i", str(output), "-f", "null", "-"],
             capture_output=True, text=True, timeout=120)
         assert decode.returncode == 0, decode.stderr
+        actual_duration = media_duration(output)
+        assert abs(actual_duration - result["duration_target_seconds"]) <= 0.25, (
+            actual_duration, result["duration_target_seconds"]
+        )
+        assert abs(actual_duration - 28.0) <= 0.25, actual_duration
         response = engine.download_original_video(result["job_id"])
         assert Path(response.path) == output
         subtitles = job_dir / "undertexter.srt"
@@ -151,6 +172,34 @@ def main():
             [engine.imageio_ffmpeg.get_ffmpeg_exe(), "-v", "error", "-i", str(wide_path), "-f", "null", "-"],
             capture_output=True, text=True, timeout=120)
         assert wide_decode.returncode == 0, wide_decode.stderr
+
+        factual_research = {
+            "title": "Testfakta",
+            "source_url": "https://sv.wikipedia.org/wiki/Testfakta",
+            "language": "sv",
+            "sentences": [
+                f"Detta är ett faktapåstående nummer {index} om testämnet och dess bakgrund."
+                for index in range(1, 31)
+            ],
+        }
+        with (
+            patch.object(engine, "research_wikipedia", return_value=factual_research),
+            patch.object(engine, "search_commons_images", return_value=[]),
+            patch.object(engine.edge_tts, "Communicate", LocalSpeechFixture),
+        ):
+            factual_result = asyncio.run(engine._render_original_video(
+                "testfakta", "original", "explainer", "9:16", "short",
+                uuid.uuid4().hex[:12]))
+        assert factual_result["status"] == "completed", factual_result
+        assert factual_result["fact_check_required"] is True
+        assert factual_result["research_url"] == factual_research["source_url"]
+        assert len(factual_result["script"]) == 10
+        factual_dir = Path(temporary) / factual_result["job_id"]
+        assert len(list(factual_dir.glob("scene_*.jpg"))) == 10
+        factual_video = factual_dir / "jarvis_original.mp4"
+        assert abs(media_duration(factual_video) - factual_result["duration_target_seconds"]) <= 0.25
+        factual_subtitles = (factual_dir / "undertexter.srt").read_text(encoding="utf-8")
+        assert len([line for line in factual_subtitles.splitlines() if " --> " in line]) >= 10
 
         square = asyncio.run(engine._render_original_video(
             "när kaffet tar slut precis när jobbet börjar",
