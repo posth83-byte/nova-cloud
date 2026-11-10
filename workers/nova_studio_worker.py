@@ -185,6 +185,7 @@ def process(job):
   if not OLLAMA_MODEL:raise RuntimeError("Jobbet saknar manus och ingen lokal Ollama-modell är konfigurerad.")
   print("Skapar manus lokalt med",OLLAMA_MODEL)
   job["scenes"]=plan_scenes_local(job["prompt"])
+  cloud("/api/nova-studio/worker/%s/plan"%job_id,{"scenes":job["scenes"]})
  with tempfile.TemporaryDirectory(prefix="nova-studio-") as directory:
   aspect=job.get("aspect","9:16")
   width,height=(512,512) if aspect=="1:1" else ((768,512) if aspect=="16:9" else (512,768))
