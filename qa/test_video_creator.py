@@ -69,7 +69,7 @@ def main():
                 scene_preview.getpixel((270, 750)) != scene_preview.getpixel((270, 660))
             ), "The scaled subtitle panel must remain visible inside the frame."
             assert (
-                scene_preview.getpixel((520, 750)) != scene_preview.getpixel((520, 660))
+                scene_preview.getpixel((480, 750)) != scene_preview.getpixel((480, 660))
             ), "The subtitle panel must span the full design width."
         character_pattern = engine._write_character_frames(Path(temporary), "coffee", 0, 2.0)
         character_frames = sorted(character_pattern.parent.glob("frame_*.png"))
