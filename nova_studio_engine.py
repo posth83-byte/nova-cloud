@@ -67,6 +67,7 @@ def create_job(request:JobRequest):
     "aspect":request.aspect,"duration_seconds":request.duration_seconds}).encode(),prefer="return=representation")
   if not isinstance(rows,list) or not rows: raise RuntimeError("Jobbet sparades inte.")
   return {"status":"queued","job":{k:rows[0].get(k) for k in ("id","status","phase","progress","created_at")},"engine":"NOVA Studio local GPU"}
+ except HTTPException: raise
  except Exception as exc: raise HTTPException(status_code=503,detail=str(exc)[:700]) from exc
 
 @router.get("/api/nova-studio/jobs/{job_id}")
