@@ -2640,11 +2640,27 @@ async function createOriginalVideo(mode){
    const statusUrl=data.status_url||("/api/video/team/jobs/"+encodeURIComponent(data.job_id));
    const deadline=Date.now()+12*60*1000;
    videoCreatorStatus.textContent="JARVIS renderar i bakgrunden. Du kan låsa mobilen och komma tillbaka senare.";
+   let consecutiveStatusErrors=0;
    while(Date.now()<deadline){
     await new Promise(resolve=>setTimeout(resolve,2500));
-    const statusResponse=await fetch(statusUrl,{cache:"no-store"});
-    const job=await statusResponse.json();
-    if(!statusResponse.ok)throw new Error(job.detail||"Jobbstatusen kunde inte hämtas.");
+    let job;
+    try{
+     const statusResponse=await fetch(statusUrl,{cache:"no-store"});
+     if(!statusResponse.ok){
+      const transient=[408,429,500,502,503,504].includes(statusResponse.status);
+      if(!transient)throw new Error("Jobbstatusen kunde inte hämtas (HTTP "+statusResponse.status+").");
+      throw new Error("Tillfälligt statusfel (HTTP "+statusResponse.status+").");
+     }
+     job=await statusResponse.json();
+     consecutiveStatusErrors=0;
+    }catch(statusError){
+     consecutiveStatusErrors++;
+     if(consecutiveStatusErrors>4)throw new Error("Kunde inte återansluta till videomotorn efter flera försök: "+statusError.message);
+     const retryDelay=Math.min(1000*Math.pow(2,consecutiveStatusErrors-1),8000);
+     videoCreatorStatus.textContent="Tillfälligt anslutningsfel. Försöker igen ("+consecutiveStatusErrors+"/4)…";
+     await new Promise(resolve=>setTimeout(resolve,retryDelay));
+     continue;
+    }
     if(job.status==="failed")throw new Error(job.error||"Videorenderingen misslyckades.");
     if(job.status==="completed"){data=job.result||{};break;}
     videoCreatorStatus.textContent="JARVIS arbetar vidare i bakgrunden · "+(job.status==="running"?"Renderar scener och ljud":"Förbereder jobbet")+"…";
