@@ -2,7 +2,7 @@ name: Live Video Production Smoke
 
 on:
   push:
-    branches: [main]
+    branches: [main, jarvis-dispatch]
     paths:
       - ".github/workflows/live-video-smoke.yml"
       - "video_creator_engine.py"
