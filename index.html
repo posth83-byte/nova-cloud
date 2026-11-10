@@ -2084,7 +2084,7 @@ async function waitForJarvisJob(jobId,token,loading,task){
  try{localStorage.setItem(storageKey,JSON.stringify({jobId,token,task,createdAt:Date.now()}))}catch(e){}
  const started=Date.now();
  while(Date.now()-started<12*60*60*1000){
-  const response=await fetch("/api/jarvis/jobs/"+encodeURIComponent(jobId)+"?token="+encodeURIComponent(token),{cache:"no-store"});
+  const response=await fetch("/api/jarvis/jobs/"+encodeURIComponent(jobId),{cache:"no-store",headers:{Authorization:"Bearer "+token}});
   const data=await response.json();
   if(!response.ok)throw new Error(data.detail||"Kunde inte läsa JARVIS uppdragsstatus.");
   if(data.status==="completed"){
