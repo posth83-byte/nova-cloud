@@ -200,7 +200,7 @@ try {
           const mp4Bytes = Buffer.from([0,0,0,24,102,116,121,112,105,115,111,109,0,0,2,0,105,115,111,109,105,115,111,50]);
           await page.route("**/api/video/team/created/*", route => route.fulfill({ status: 200, contentType: "video/mp4", body: mp4Bytes }));
           await page.route("**/api/video/team/subtitles/*", route => route.fulfill({ status: 200, contentType: "text/plain; charset=utf-8", body: "1\\n00:00:00,000 --> 00:00:02,000\\nTestundertext\\n" }));
-          await page.addInitScript(() => {
+          await page.evaluate(() => {
             const originalTimeout = window.setTimeout.bind(window);
             window.setTimeout = (callback, delay, ...args) => originalTimeout(callback, delay === 2500 || delay === 1000 || delay === 2000 || delay === 4000 ? 5 : delay, ...args);
           });
