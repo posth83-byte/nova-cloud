@@ -24,14 +24,14 @@ class JobRequest(BaseModel):
  aspect:str=Field(default="9:16",pattern="^(9:16|16:9|1:1)$")
  duration_seconds:int=Field(default=20,ge=5,le=180)
 
-def db(method,path,data=None,ctype="application/json",prefer=None):
+def db(method,path,data=None,ctype="application/json",prefer=None,timeout=35):
  if not URL or not KEY: raise RuntimeError("Supabase saknas för NOVA Studio.")
  headers={"apikey":KEY,"Authorization":"Bearer "+KEY,"Accept":"application/json"}
  if data is not None: headers["Content-Type"]=ctype
  if prefer: headers["Prefer"]=prefer
  req=urllib.request.Request(URL+path,data=data,headers=headers,method=method)
  try:
-  with urllib.request.urlopen(req,timeout=35) as res:
+  with urllib.request.urlopen(req,timeout=timeout) as res:
    raw=res.read(2_000_000); return json.loads(raw.decode()) if raw else []
  except urllib.error.HTTPError as exc:
   raise RuntimeError("Supabase HTTP %s: %s"%(exc.code,exc.read().decode(errors="replace")[:700])) from exc
@@ -126,7 +126,7 @@ async def complete(job_id:str,video:UploadFile=File(...),subtitles:UploadFile=Fi
   if not row or row.get("worker_id") != worker_id or row.get("status") not in ("leased","generating","assembling","uploading"):
    raise HTTPException(status_code=409,detail="Jobbet är inte aktivt.")
   prefix="studio/%s/"%job_id; video_path=prefix+"film.mp4"
-  db("POST","/storage/v1/object/"+BUCKET+"/"+video_path,data,"video/mp4")
+  db("POST","/storage/v1/object/"+BUCKET+"/"+video_path,data,"video/mp4",timeout=120)
   result={"video_path":video_path,"video_bytes":len(data)}
   if subtitles:
    srt=await subtitles.read(2_000_001)
