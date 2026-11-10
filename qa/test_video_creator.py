@@ -169,6 +169,32 @@ def main():
             capture_output=True, text=True, timeout=120)
         assert wide_decode.returncode == 0, wide_decode.stderr
 
+        factual_research = {
+            "title": "Testfakta",
+            "source_url": "https://sv.wikipedia.org/wiki/Testfakta",
+            "language": "sv",
+            "sentences": [
+                f"Detta är ett faktapåstående nummer {index} om testämnet och dess bakgrund."
+                for index in range(1, 31)
+            ],
+        }
+        with patch.object(engine, "research_wikipedia", return_value=factual_research), \\
+             patch.object(engine, "search_commons_images", return_value=[]), \\
+             patch.object(engine.edge_tts, "Communicate", LocalSpeechFixture):
+            factual_result = asyncio.run(engine._render_original_video(
+                "testfakta", "original", "explainer", "9:16", "short",
+                uuid.uuid4().hex[:12]))
+        assert factual_result["status"] == "completed", factual_result
+        assert factual_result["fact_check_required"] is True
+        assert factual_result["research_url"] == factual_research["source_url"]
+        assert len(factual_result["script"]) == 10
+        factual_dir = Path(temporary) / factual_result["job_id"]
+        assert len(list(factual_dir.glob("scene_*.jpg"))) == 10
+        factual_video = factual_dir / "jarvis_original.mp4"
+        assert abs(media_duration(factual_video) - factual_result["duration_target_seconds"]) <= 0.25
+        factual_subtitles = (factual_dir / "undertexter.srt").read_text(encoding="utf-8")
+        assert len([line for line in factual_subtitles.splitlines() if " --> " in line]) >= 10
+
         square = asyncio.run(engine._render_original_video(
             "när kaffet tar slut precis när jobbet börjar",
             "original", "humor", "1:1", "standard", uuid.uuid4().hex[:12]))
