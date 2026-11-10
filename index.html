@@ -2160,6 +2160,41 @@ async function createJarvisChatVideo(message,loading){
   /\b(berättelse|story|saga)\b/.test(lowered)?"story":"humor";
  const aspect=/\b(16:9|liggande|landscape|youtube långfilm)\b/.test(lowered)?"16:9":"9:16";
  const durationMode=/\b(kort|short|15 sek|30 sek|tiktok|reels)\b/.test(lowered)?"short":"standard";
+
+ // Prefer NOVA Studio's private local GPU worker when it is actually online.
+ // Otherwise keep the existing verified procedural renderer as fallback.
+ try{
+  const healthResponse=await fetch("/api/nova-studio/health",{cache:"no-store"});
+  const health=healthResponse.ok?await healthResponse.json():{};
+  if(Number(health.worker_online_count||0)>0){
+   const durationSeconds=durationMode==="short"?20:40;
+   loading.textContent="NOVA Studio har hittat din lokala GPU. Skapar AI-scener, svensk berättarröst och MP4…";
+   const create=await fetch("/api/nova-studio/jobs",{method:"POST",headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({prompt:message,style:"cinematic-family-animation",aspect,duration_seconds:durationSeconds})});
+   let studio=await create.json();
+   if(!create.ok)throw new Error(studio.detail||"NOVA Studio kunde inte köa jobbet.");
+   const id=studio.job&&studio.job.id;
+   if(!id)throw new Error("NOVA Studio returnerade inget jobb-ID.");
+   const deadline=Date.now()+25*60*1000;
+   while(Date.now()<deadline){
+    await new Promise(resolve=>setTimeout(resolve,4000));
+    const statusResponse=await fetch("/api/nova-studio/jobs/"+encodeURIComponent(id),{cache:"no-store"});
+    if(!statusResponse.ok)throw new Error("Kunde inte läsa NOVA Studio-jobbet (HTTP "+statusResponse.status+").");
+    studio=await statusResponse.json();
+    if(studio.status==="failed")throw new Error(studio.error||"NOVA Studio kunde inte färdigställa filmen.");
+    if(studio.status==="completed"){
+     const base="/api/nova-studio/jobs/"+encodeURIComponent(id);
+     return {status:"completed",video_url:base+"/video",subtitles_url:base+"/subtitles",video_delivery:true,
+      reply:"✓ NOVA Studio har skapat din AI-film med lokalt genererade scener, svensk berättarröst och undertexter."};
+    }
+    loading.textContent="NOVA Studio arbetar lokalt: "+(studio.phase||studio.status)+" · "+(studio.progress||0)+" %";
+   }
+   throw new Error("NOVA Studio arbetar fortfarande. Jobb-ID: "+id);
+  }
+ }catch(studioError){
+  if(String(studioError&&studioError.message||"").includes("NOVA Studio")||String(studioError&&studioError.message||"").includes("NOVA Studio-jobbet"))throw studioError;
+  console.warn("NOVA Studio ej tillgänglig; använder reservmotorn.",studioError);
+ }
  const formData=new FormData();
  formData.append("topic",message);
  formData.append("mode","original");
