@@ -2199,21 +2199,59 @@ async function createJarvisChatVideo(message,loading){
  return {...job,video_delivery:true,reply:"✓ Din video är färdig. MP4, svensk berättarröst och "+(job.subtitles_url?"undertexter":"videofil")+" har skapats."};
 }
 
+async function renderProductAdFromPlan(data, files, referenceUrl, loading){
+ const plan=data.video||data.plan||data;
+ let narration=pick(plan,["narration","full_narration","voiceover","script","full_script"]);
+ if(!narration&&Array.isArray(plan.scenes||plan.shots)){
+  narration=(plan.scenes||plan.shots).map(scene=>pick(scene,["narration","voiceover","dialogue","script"])).filter(Boolean).join(" ");
+ }
+ narration=String(narration||"").trim();
+ if(narration.length<20)throw new Error("NOVA skapade ett manus som är för kort för att rendera. Be om en ny reklamversion.");
+ if(narration.length>6000)narration=narration.slice(0,6000);
+ let images=Array.from(files||[]);
+ if(!images.length&&referenceUrl){
+  try{
+   const imageResponse=await fetch(referenceUrl,{mode:"cors"});
+   if(!imageResponse.ok)throw new Error("Bildlänken svarade inte.");
+   const blob=await imageResponse.blob();
+   if(!/^image\/(jpeg|png|webp)$/i.test(blob.type)||blob.size>4*1024*1024)throw new Error("Länken måste vara en direkt JPG-, PNG- eller WebP-bild på högst 4 MB.");
+   const ext=blob.type.toLowerCase().includes("png")?"png":blob.type.toLowerCase().includes("webp")?"webp":"jpg";
+   images=[new File([blob],"produktbild."+ext,{type:blob.type})];
+  }catch(error){throw new Error("Jag kunde läsa produktlänken för manusunderlaget, men kunde inte hämta själva bilden för videon. Bifoga bilden direkt i chatten i stället. "+error.message)}
+ }
+ if(!images.length)throw new Error("Bifoga minst en produktbild för att rendera reklamfilmen.");
+ const form=new FormData();
+ form.append("narration",narration);
+ form.append("aspect","9:16");
+ images.slice(0,12).forEach(file=>form.append("images",file));
+ loading.textContent="NOVA har skrivit reklammanuset. Videomotorn skapar nu svensk berättarröst, rörliga produktbilder, MP4 och undertexter…";
+ const response=await fetch("/api/video/render",{method:"POST",body:form});
+ const result=await response.json();
+ if(!response.ok)throw new Error(typeof result.detail==="string"?result.detail:JSON.stringify(result.detail||result));
+ if(!result.video_url)throw new Error("Videomotorn returnerade ingen MP4-länk.");
+ loading.textContent="✓ REKLAMFILMEN ÄR KLAR · "+(result.duration_seconds||"")+" sekunder · Svensk berättarröst · 9:16";
+ const preview=document.createElement("video");preview.controls=true;preview.playsInline=true;preview.preload="metadata";preview.src=result.video_url;preview.style.cssText="display:block;width:100%;max-width:360px;margin-top:12px;border-radius:12px";loading.appendChild(preview);
+ const link=document.createElement("a");link.className="export-btn";link.href=result.video_url;link.textContent="ÖPPNA / LADDA NER FÄRDIG REKLAMFILM";link.setAttribute("download","produktreklam.mp4");loading.appendChild(link);
+ if(result.subtitles_url){const srt=document.createElement("a");srt.className="export-btn";srt.href=result.subtitles_url;srt.textContent="LADDA NER UNDERtexter (.SRT)";srt.style.marginLeft="8px";loading.appendChild(srt)}
+ logActivity("NOVA levererade en färdig produktreklam","✓",result.job_id||"MP4 klar");
+ return result;
+}
+
 async function sendMessage(event,assistant){
  event.preventDefault();
  const isNova=assistant==="nova",isWeb=assistant==="web",isGame=assistant==="game",input=$(assistant+"Input"),messages=assistant+"Messages",button=$(assistant+"Send");
  let response,data;
  const imageData=isNova?(window.novaChatImageData||""):"";
  const sceneFiles=isNova?(window.novaChatSceneFiles||[]):[];
- const message=input.value.trim()||((isNova&&imageData)?"Analysera de bifogade bilderna och föreslå hur de kan användas i en YouTube-video.":"");
+ const message=input.value.trim()||((isNova&&imageData)?"Skapa en kort, säljande produktreklam av den bifogade bilden. Gör en 15-sekunders reklamfilm i vertikalt format med svensk berättarröst.":"");
  if(!message)return;
  if("speechSynthesis" in window)stopSpeech();
  const conversationHistory=getConversationHistory(assistant,14);
  const recentContextText=conversationHistory.slice(-4).map(item=>String(item&&item.content||"")).join(" ").toLowerCase();
  const videoKeyword=/(?:\b(?:video|short|film|klipp|avsnitt|tiktok|reel)\w*|\w*video\w*)/i;
- const explicitVideoRequest=/\b(skapa|gör(?:a)?|bygg|producera|framställ|ta fram|fixa)\b.{0,80}(?:\b(?:video|short|film|klipp|avsnitt|tiktok|reel)\w*|\w*video\w*)|(?:\b(?:video|short|film|klipp|avsnitt|tiktok|reel)\w*|\w*video\w*).{0,80}\b(skapa|gör|bygg|producera|fixa)\b/i.test(message);
+ const explicitVideoRequest=/\b(skapa|gör(?:a)?|bygg|producera|framställ|ta fram|fixa)\b.{0,100}(?:\b(?:video|short|film|klipp|avsnitt|tiktok|reel|reklam|annons|produktfilm)\w*|\w*video\w*)|(?:\b(?:video|short|film|klipp|avsnitt|tiktok|reel|reklam|annons|produktfilm)\w*|\w*video\w*).{0,100}\b(skapa|gör|bygg|producera|fixa|ta\s+fram)\b|\b(reklam|annons|produktfilm|produktreklam)\b/i.test(message);
  const videoFollowUp=/^(kör|kör på|gör det|fixa det|fortsätt|sätt igång|ja|ja kör|skapa den|ta fram den)[.! ]*$/i.test(message);
- let videoRequest=explicitVideoRequest||(assistant==="jarvis"&&videoFollowUp&&videoKeyword.test(recentContextText));
+ let videoRequest=explicitVideoRequest||(assistant==="jarvis"&&videoFollowUp&&videoKeyword.test(recentContextText))||(isNova&&!!imageData)||(isNova&&/https?:\/\/[^\s<>"']+\.(?:jpe?g|png|webp)(?:[?#][^\s]*)?$/i.test(message));
  const shownMessage=message+(isNova&&sceneFiles.length?"\n📎 "+sceneFiles.length+" referens-/scenbild"+(sceneFiles.length===1?" bifogad":"er bifogade"):"");
  addMessage(messages,shownMessage,"user");logActivity(assistant.toUpperCase()+" fick ett nytt meddelande",isWeb?"⌘":isNova?"✧":"✦",message.length>65?message.slice(0,65)+"…":message);
  input.value="";button.disabled=true;button.textContent="...";setRoomState(assistant,"working");
@@ -2272,8 +2310,13 @@ async function sendMessage(event,assistant){
    loading.dataset.speechText=data.reply;updateTeamBoard("done",message,["NOVA"],"Färdig MP4 levererad direkt i JARVIS-chatten.");logActivity("JARVIS levererade färdig video i chatten","✓",data.job_id||"Video klar");
   }else if(isNova&&videoRequest){
    renderVideoPlan(data);
-   loading.textContent="✓ NOVA har skapat ett komplett produktionsunderlag för din video. Manus, scener, bild- och videoprompter samt undertexter finns samlade nedanför chatten.\n\nAI-motor: "+(data.engine||"Okänd");
-   loading.dataset.speechText="NOVA har skapat ett produktionsunderlag för din video.";
+   if(sceneFiles.length||referenceUrl){
+    try{const adUrlMatch=message.match(/https?:\/\/[^\s<>"']+/i);const adReferenceUrl=adUrlMatch?adUrlMatch[0].replace(/[),.]+$/,""):"";await renderProductAdFromPlan(data,sceneFiles,adReferenceUrl,loading);loading.dataset.speechText="NOVA har färdigställt din reklamfilm."}
+    catch(renderError){loading.textContent="✓ Reklamunderlaget är klart, men MP4-renderingen kunde inte slutföras. "+renderError.message+"\n\nManus och scenplan finns nedanför chatten.";loading.className="msg error";loading.dataset.speechText="Reklamunderlaget är klart, men videon kunde inte renderas."}
+   }else{
+    loading.textContent="✓ NOVA har skapat ett komplett produktionsunderlag för din video. Manus, scener, bild- och videoprompter samt undertexter finns samlade nedanför chatten.\n\nBifoga produktbilden för att rendera MP4 automatiskt. AI-motor: "+(data.engine||"Okänd");
+    loading.dataset.speechText="NOVA har skapat ett produktionsunderlag för din video.";
+   }
   }else{
    if(isNova)window.novaChatSceneFiles=[];
    const reply=(data.reply||"Inget svar mottogs.")+"\n\nAI-motor: "+(data.engine||"Okänd");
