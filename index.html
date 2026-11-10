@@ -2202,6 +2202,7 @@ async function createJarvisChatVideo(message,loading){
 async function sendMessage(event,assistant){
  event.preventDefault();
  const isNova=assistant==="nova",isWeb=assistant==="web",isGame=assistant==="game",input=$(assistant+"Input"),messages=assistant+"Messages",button=$(assistant+"Send");
+ let response,data;
  const imageData=isNova?(window.novaChatImageData||""):"";
  const sceneFiles=isNova?(window.novaChatSceneFiles||[]):[];
  const message=input.value.trim()||((isNova&&imageData)?"Analysera de bifogade bilderna och föreslå hur de kan användas i en YouTube-video.":"");
