@@ -42,26 +42,39 @@ def main():
     assert memory["status_storage_status"] == "memory_only"
     assert video_jobs.get_job_status("missing12345") is None
 
-    pending_payload = {
+    pending_request = {
+        "topic": "testa återhämtning",
+        "mode": "original",
+        "video_type": "humor",
+        "aspect": "9:16",
+        "duration_mode": "short",
+    }
+    queued_payload = {
         "job_id": "abc123abc123",
+        "status": "queued",
+        "updated_at": "2099-01-01T00:00:00+00:00",
+        "request": pending_request,
+    }
+    running_payload = {
+        "job_id": "def456def456",
         "status": "running",
         "updated_at": "2099-01-01T00:00:00+00:00",
-        "request": {
-            "topic": "testa återhämtning",
-            "mode": "original",
-            "video_type": "humor",
-            "aspect": "9:16",
-            "duration_mode": "short",
-        },
+        "request": pending_request,
     }
-    with patch.object(video_jobs, "list_job_ids", return_value=["abc123abc123"]), \
-         patch.object(video_jobs, "open_stored_file", return_value=io.BytesIO(json.dumps(pending_payload).encode("utf-8"))), \
+    with patch.object(video_jobs, "list_job_ids", return_value=["abc123abc123", "def456def456"]), \
+         patch.object(video_jobs, "open_stored_file", side_effect=[
+             io.BytesIO(json.dumps(queued_payload).encode("utf-8")),
+             io.BytesIO(json.dumps(running_payload).encode("utf-8")),
+         ]), \
          patch.object(video_jobs, "upload_file", return_value=True):
         recovered_jobs = video_jobs.recover_pending_jobs()
     assert len(recovered_jobs) == 1
     assert recovered_jobs[0]["job_id"] == "abc123abc123"
     assert recovered_jobs[0]["topic"] == "testa återhämtning"
     assert video_jobs.get_job_status("abc123abc123")["status"] == "queued"
+    interrupted = video_jobs.get_job_status("def456def456")
+    assert interrupted["status"] == "failed"
+    assert "startas inte om automatiskt" in interrupted["error"]
 
     video_jobs._JOBS["stale1234567"] = {
         "job_id": "stale1234567",
