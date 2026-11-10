@@ -2,6 +2,8 @@
 import hmac, json, os, re, urllib.error, urllib.parse, urllib.request, uuid
 from datetime import datetime, timezone, timedelta
 from fastapi import APIRouter, Header, HTTPException, UploadFile, File, Form
+from fastapi.responses import StreamingResponse
+from starlette.background import BackgroundTask
 from pydantic import BaseModel, Field
 
 router=APIRouter()
@@ -40,8 +42,15 @@ def get_row(job_id):
 
 @router.get("/api/nova-studio/health")
 def health():
+ online=[]
+ if URL and KEY:
+  try:
+   cutoff=urllib.parse.quote((datetime.now(timezone.utc)-timedelta(seconds=60)).isoformat())
+   online=db("GET","/rest/v1/nova_studio_workers?last_seen=gte.%s&select=worker_id,status,current_job,last_seen"%cutoff)
+  except Exception: online=[]
  return {"service":"nova-studio-control-plane","status":"online","worker_token_configured":bool(TOKEN),
-         "supabase_configured":bool(URL and KEY),"generation":"local-comfyui-worker","paid_generation_api":False}
+         "supabase_configured":bool(URL and KEY),"workers_online":len(online),
+         "worker_online_count":len(online),"generation":"local-comfyui-worker","paid_generation_api":False}
 
 @router.post("/api/nova-studio/jobs")
 def create_job(request:JobRequest):
