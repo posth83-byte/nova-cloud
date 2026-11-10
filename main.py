@@ -35,7 +35,7 @@ from nova_studio_engine import router as nova_studio_router
 # NOVA CLOUD – VERSION 2.2.0
 # ==========================================
 
-APP_VERSION = "3.5.0"
+APP_VERSION = "3.6.0"
 
 app = FastAPI(
     title="NOVA Cloud",
