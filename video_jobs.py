@@ -79,20 +79,34 @@ def get_job_status(job_id):
 
 
 def recover_pending_jobs():
-    """Requeue persisted jobs after a Render process restart."""
+    """Resume queued jobs and safely stop jobs interrupted by a process restart."""
     recovered = []
+    required = {"topic", "mode", "video_type", "aspect", "duration_mode"}
     for job_id in list_job_ids():
         payload = get_job_status(job_id)
-        if not isinstance(payload, dict) or payload.get("status") not in {"queued", "running"}:
+        if not isinstance(payload, dict):
             continue
+        status = payload.get("status")
         request = payload.get("request")
-        if not isinstance(request, dict):
+        if status == "running":
+            # A running FFmpeg process belonged to the previous server process.
+            # Replaying it after an OOM/restart can create an endless crash loop.
+            save_job_status(
+                job_id, "failed",
+                error="Render avbröts medan videon renderades. Jobbet startas inte om automatiskt för att undvika en ny minneskrasch. Skapa ett nytt försök.",
+                request=request if isinstance(request, dict) else None,
+            )
             continue
-        required = {"topic", "mode", "video_type", "aspect", "duration_mode"}
-        if not required.issubset(request):
+        if status != "queued":
             continue
-        # A previous process cannot still own this job after application startup.
-        # Mark it queued before placing it on the new process's worker queue.
+        if not isinstance(request, dict) or not required.issubset(request):
+            save_job_status(
+                job_id, "failed",
+                error="Videokön innehöll ett ofullständigt jobb som inte kunde återupptas.",
+                request=request if isinstance(request, dict) else None,
+            )
+            continue
+        # Queued work has not started rendering and is safe to resume.
         save_job_status(job_id, "queued", request=request)
         recovered.append({"job_id": job_id, **request})
     return recovered
