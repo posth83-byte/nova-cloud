@@ -71,7 +71,7 @@ async def _video_storage_startup_check():
 
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 VOICE = "sv-SE-MattiasNeural"
-W, H, FPS = 720, 1280, 25
+W, H, FPS = 540, 960, 20
 MAX_PROMPT = 220
 SCENE_SECONDS = 5.2
 
@@ -378,7 +378,7 @@ def _character_punchline_start(scene_seconds):
     """Keep the visual reaction for the final 0.88 seconds of a scene."""
     return max(0.0, scene_seconds - 0.88)
 
-CHARACTER_FPS = 12
+CHARACTER_FPS = 10
 CHARACTER_REACTIONS = {
     "coffee": "VA?!", "sleep": "NEJ!", "phone": "PING!",
     "work": "MÖTE?!", "money": "OJ!", "gym": "PUH!",
@@ -626,6 +626,7 @@ async def create_original_video(
             request=request_data
         )
         raise HTTPException(503, "Videokön är full just nu. Försök igen om en stund.")
+    logger.info("NOVA_VIDEO_JOB_QUEUED job=%s aspect=%s type=%s", job_id, aspect, video_type)
     return {
         "status": "queued",
         "job_id": job_id,
@@ -641,6 +642,7 @@ def _run_video_job(job_id, topic, mode, video_type, aspect, duration_mode):
         "aspect": aspect, "duration_mode": duration_mode,
     }
     save_job_status(job_id, "running", request=request_data)
+    logger.info("NOVA_VIDEO_JOB_STARTED job=%s", job_id)
     try:
         result = asyncio.run(
             _render_original_video(topic, mode, video_type, aspect, duration_mode, job_id)
@@ -680,10 +682,12 @@ async def _render_original_video(topic, mode, video_type, aspect, duration_mode,
         narration_path = job_dir / "voice.mp3"
         await edge_tts.Communicate(narration, VOICE).save(str(narration_path))
         audio_duration = _audio_duration(narration_path)
+        logger.info("NOVA_VIDEO_TTS_READY job=%s seconds=%.1f", job_id, audio_duration)
         scene_seconds = max(2.8, min(60.0, audio_duration / len(beats) + 0.35))
         clips = []
         attributions = []
-        visual_assets = search_commons_images(topic, limit=len(beats))
+        visual_assets = search_commons_images(topic, limit=min(3, len(beats)))
+        logger.info("NOVA_VIDEO_ASSETS_READY job=%s count=%s", job_id, len(visual_assets))
         for i, (heading, line, caption, kind) in enumerate(beats):
             still = job_dir / f"scene_{i:02}.jpg"
             background_path = None
@@ -725,12 +729,13 @@ async def _render_original_video(topic, mode, video_type, aspect, duration_mode,
             ])
             _ffmpeg(ffmpeg_args, timeout=180)
             clips.append(clip)
+            logger.info("NOVA_VIDEO_SCENE_READY job=%s scene=%s/%s", job_id, i + 1, len(beats))
         concat = job_dir / "clips.txt"
         concat.write_text("".join(f"file '{clip.as_posix()}'\n" for clip in clips), encoding="utf-8")
         silent = job_dir / "silent.mp4"
         _ffmpeg(["-f", "concat", "-safe", "0", "-i", str(concat), "-c", "copy", str(silent)], timeout=180)
         output = job_dir / "jarvis_original.mp4"
-        dimensions = {"9:16": (720, 1280), "16:9": (1280, 720), "1:1": (1080, 1080)}
+        dimensions = {"9:16": (540, 960), "16:9": (960, 540), "1:1": (720, 720)}
         output_width, output_height = dimensions[aspect]
         filters = [
             "[1:a]volume=1.0[voice]",
@@ -753,12 +758,13 @@ async def _render_original_video(topic, mode, video_type, aspect, duration_mode,
             "-f", "lavfi", "-i", "sine=frequency=392:sample_rate=44100:duration=30",
             "-filter_complex", ";".join(filters),
             "-map", video_map, "-map", "[a]", "-threads", "1",
-            "-c:v", "libx264", "-preset", "veryfast",
-            "-crf", "30", "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "96k",
+            "-c:v", "libx264", "-preset", "ultrafast",
+            "-crf", "31", "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "96k",
             "-shortest", "-movflags", "+faststart", str(output)
         ], timeout=360)
         if not output.is_file() or output.stat().st_size < 10000:
             raise RuntimeError("MP4-filen saknas eller är ofullständig.")
+        logger.info("NOVA_VIDEO_MP4_READY job=%s bytes=%s", job_id, output.stat().st_size)
         if output.stat().st_size > 48 * 1024 * 1024:
             compact = job_dir / "compact.mp4"
             try:
@@ -789,6 +795,7 @@ async def _render_original_video(topic, mode, video_type, aspect, duration_mode,
         stored_video = upload_file(job_id, output, "jarvis_original.mp4", "video/mp4")
         stored_credits = upload_file(job_id, credits_path, "bildkrediter.txt", "text/plain") if credits_path.is_file() else False
         stored_subtitles = upload_file(job_id, subtitles_path, "undertexter.srt", "text/plain")
+        logger.info("NOVA_VIDEO_STORAGE_RESULT job=%s mp4=%s subtitles=%s", job_id, stored_video, stored_subtitles)
         return {
             "status": "completed", "job_id": job_id, "mode": mode, "video_type": video_type, "topic": topic,
             "storage_status": "persistent" if stored_video else "temporary",

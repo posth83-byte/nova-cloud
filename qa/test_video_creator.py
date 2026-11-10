@@ -44,6 +44,8 @@ def main():
     assert engine.CHARACTER_REACTIONS["coffee"] == "VA?!"
     assert engine._character_punchline_start(5.2) == 4.32
     assert engine._character_punchline_start(2.0) == 1.12
+    assert (engine.W, engine.H, engine.FPS) == (540, 960, 20)
+    assert engine.CHARACTER_FPS == 10
     start_pose = engine._draw_character_frame("coffee", 0, 0.2, 5.2)
     moving_pose = engine._draw_character_frame("coffee", 0, 1.4, 5.2)
     punchline_pose = engine._draw_character_frame("coffee", 0, 4.7, 5.2)
@@ -57,7 +59,7 @@ def main():
         engine.OUTPUT_DIR = Path(temporary)
         character_pattern = engine._write_character_frames(Path(temporary), "coffee", 0, 2.0)
         character_frames = sorted(character_pattern.parent.glob("frame_*.png"))
-        assert len(character_frames) == 24
+        assert len(character_frames) == 20
         assert len({frame.read_bytes() for frame in character_frames}) > 1
 
         class LocalSpeechFixture:
@@ -83,14 +85,14 @@ def main():
         assert result["status"] == "completed", result
         assert result["format"] == "9:16"
         assert result["video_type"] == "humor"
-        assert result["resolution"] == "720x1280"
+        assert result["resolution"] == "540x960"
         assert len(result["script"]) == 5
         job_dir = Path(temporary) / result["job_id"]
         output = job_dir / "jarvis_original.mp4"
         assert output.is_file() and output.stat().st_size > 10000
         assert len(list(job_dir.glob("scene_*.jpg"))) == 5
         rendered_character_frames = sorted((job_dir / "character_00").glob("frame_*.png"))
-        assert len(rendered_character_frames) >= 60, "Comedy scenes must include the animated character sequence."
+        assert len(rendered_character_frames) >= 45, "Comedy scenes must include the animated character sequence."
         decode = subprocess.run(
             [engine.imageio_ffmpeg.get_ffmpeg_exe(), "-v", "error", "-i", str(output), "-f", "null", "-"],
             capture_output=True, text=True, timeout=120)
@@ -109,7 +111,7 @@ def main():
             "när kaffet tar slut precis när jobbet börjar",
             "original", "humor", "16:9", "standard", uuid.uuid4().hex[:12]))
         assert wide["status"] == "completed", wide
-        assert wide["format"] == "16:9" and wide["resolution"] == "1280x720"
+        assert wide["format"] == "16:9" and wide["resolution"] == "960x540"
         wide_path = Path(temporary) / wide["job_id"] / "jarvis_original.mp4"
         assert wide_path.is_file() and wide_path.stat().st_size > 10000
         wide_decode = subprocess.run(
@@ -121,7 +123,7 @@ def main():
             "när kaffet tar slut precis när jobbet börjar",
             "original", "humor", "1:1", "standard", uuid.uuid4().hex[:12]))
         assert square["status"] == "completed", square
-        assert square["format"] == "1:1" and square["resolution"] == "1080x1080"
+        assert square["format"] == "1:1" and square["resolution"] == "720x720"
         square_path = Path(temporary) / square["job_id"] / "jarvis_original.mp4"
         assert square_path.is_file() and square_path.stat().st_size > 10000
         square_decode = subprocess.run(
