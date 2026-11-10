@@ -2151,6 +2151,54 @@ async function resumePendingJarvisJob(){
 }
 
 
+async function createJarvisChatVideo(message,loading){
+ const lowered=String(message||"").toLowerCase();
+ const videoType=/\b(fakta|förklara|förklaring|vetenskap|historia)\b/.test(lowered)?"explainer":
+  /\b(guide|instruktion|tutorial|så här)\b/.test(lowered)?"tutorial":
+  /\b(reklam|produkt|annons)\b/.test(lowered)?"promo":
+  /\b(inspiration|motivation)\b/.test(lowered)?"inspiration":
+  /\b(berättelse|story|saga)\b/.test(lowered)?"story":"humor";
+ const aspect=/\b(16:9|liggande|landscape|youtube långfilm)\b/.test(lowered)?"16:9":"9:16";
+ const durationMode=/\b(kort|short|15 sek|30 sek|tiktok|reels)\b/.test(lowered)?"short":"standard";
+ const formData=new FormData();
+ formData.append("topic",message);
+ formData.append("mode","original");
+ formData.append("video_type",videoType);
+ formData.append("aspect",aspect);
+ formData.append("duration_mode",durationMode);
+ loading.textContent="JARVIS har skickat videouppdraget till NOVA. Skapar manus, scener, svensk berättarröst och MP4…";
+ const createResponse=await fetch("/api/video/team/create",{method:"POST",body:formData});
+ let job=await createResponse.json();
+ if(!createResponse.ok)throw new Error(typeof job.detail==="string"?job.detail:JSON.stringify(job.detail||job));
+ if(job.status!=="completed"){
+  if(!job.job_id)throw new Error("Videomotorn startade inte ett giltigt jobb.");
+  const statusUrl=job.status_url||("/api/video/team/jobs/"+encodeURIComponent(job.job_id));
+  const deadline=Date.now()+12*60*1000;
+  let errors=0;
+  while(Date.now()<deadline){
+   await new Promise(resolve=>setTimeout(resolve,2500));
+   try{
+    const response=await fetch(statusUrl,{cache:"no-store"});
+    if(!response.ok)throw new Error("HTTP "+response.status);
+    job=await response.json();errors=0;
+   }catch(error){
+    errors++;
+    if(errors>5)throw new Error("Kunde inte återansluta till videomotorn: "+error.message);
+    loading.textContent="Videon renderas fortfarande. Återansluter ("+errors+"/5)…";
+    await new Promise(resolve=>setTimeout(resolve,Math.min(1000*Math.pow(2,errors-1),8000)));
+    continue;
+   }
+   if(job.status==="failed")throw new Error(job.error||"Videorenderingen misslyckades.");
+   if(job.status==="completed")break;
+   loading.textContent="NOVA arbetar: "+(job.status==="running"?"renderar scener och ljud":"förbereder videon")+"…";
+  }
+  if(job.status!=="completed")throw new Error("Videon är inte klar ännu. Jobb-ID: "+(job.job_id||"okänt"));
+  job=job.result||{};
+ }
+ if(job.status!=="completed"||!job.video_url)throw new Error(job.error||"Videomotorn returnerade ingen färdig MP4-fil.");
+ return {...job,video_delivery:true,reply:"✓ Din video är färdig. MP4, svensk berättarröst och "+(job.subtitles_url?"undertexter":"videofil")+" har skapats."};
+}
+
 async function sendMessage(event,assistant){
  event.preventDefault();
  const isNova=assistant==="nova",isWeb=assistant==="web",isGame=assistant==="game",input=$(assistant+"Input"),messages=assistant+"Messages",button=$(assistant+"Send");
@@ -2160,18 +2208,22 @@ async function sendMessage(event,assistant){
  if(!message)return;
  if("speechSynthesis" in window)stopSpeech();
  const conversationHistory=getConversationHistory(assistant,14);
+ const recentContextText=conversationHistory.slice(-4).map(item=>String(item&&item.content||"")).join(" ").toLowerCase();
+ const explicitVideoRequest=/\b(skapa|gör(?:a)?|bygg|producera|framställ|ta fram)\b.{0,65}\b(video|short|film|klipp|avsnitt|tiktok|reel)\b|\b(video|short|film|klipp|avsnitt|tiktok|reel)\b.{0,65}\b(skapa|gör|bygg|producera|fixa)\b/i.test(message);
+ const videoFollowUp=/^(kör|kör på|gör det|fixa det|fortsätt|sätt igång|ja|ja kör|skapa den|ta fram den)[.! ]*$/i.test(message);
+ let videoRequest=explicitVideoRequest||(assistant==="jarvis"&&videoFollowUp&&/\b(video|short|film|klipp|avsnitt|tiktok|reel)\b/i.test(recentContextText));
  const shownMessage=message+(isNova&&sceneFiles.length?"\n📎 "+sceneFiles.length+" referens-/scenbild"+(sceneFiles.length===1?" bifogad":"er bifogade"):"");
  addMessage(messages,shownMessage,"user");logActivity(assistant.toUpperCase()+" fick ett nytt meddelande",isWeb?"⌘":isNova?"✧":"✦",message.length>65?message.slice(0,65)+"…":message);
  input.value="";button.disabled=true;button.textContent="...";setRoomState(assistant,"working");
  if(assistant==="jarvis")updateTeamBoard("working",message,[],"JARVIS analyserar uppdraget och avgör om specialister behövs.");
  const loading=addMessage(messages,isGame?"GAME DEVELOPER bygger spelplan...":isWeb?"WEBMASTER bygger en lösning...":isNova?"NOVA analyserar...":"JARVIS tänker...","ai");
  try{
-   videoRequest=/\b(skapa|gör(?:a)?|bygg|producera|framställ|ta fram)\b.{0,55}\b(video|short|film|klipp|avsnitt)\b|\b(video|short|film|klipp|avsnitt)\b.{0,55}\b(skapa|gör(?:a)?|bygg|producera)\b/i.test(message);
   if(assistant==="jarvis")startTeamRuntimePolling();
-  if(isNova){
+  if(assistant==="jarvis"&&videoRequest){
+   data=await createJarvisChatVideo(message,loading);
+  }else if(isNova){
    const urlMatch=message.match(/https?:\/\/[^\s<>"']+/i);
    const referenceUrl=urlMatch?urlMatch[0].replace(/[),.]+$/,""):"";
-   videoRequest=/\b(skapa|gör|bygg|producera|framställ)\b.{0,55}\b(video|short|film|klipp)\b|\b(video|short|film|klipp)\b.{0,55}\b(skapa|gör|bygg|producera)\b/i.test(message);
    if(videoRequest){
     const isShort=/\bshort\b/i.test(message);
     const sceneNote=sceneFiles.length?"\n\nBIFOGADE SCENBILDER: Använd bilderna i den ordning de bifogats som scenmaterial i den färdiga MP4-renderingen. Första bilden används även som visuell referens i analysen.":"";
@@ -2208,7 +2260,13 @@ async function sendMessage(event,assistant){
    const picker=$("novaImageInput");if(picker)picker.value="";
    const label=$("novaAttachmentName");if(label)label.textContent="Klistra in en länk direkt i chatten eller bifoga upp till 12 scenbilder.";
   }
-  if(isNova&&videoRequest){
+  if(assistant==="jarvis"&&data.video_delivery){
+   loading.textContent=data.reply+"\n\nFormat: "+(data.format||"9:16")+" · "+(data.resolution||"")+(data.storage_status==="persistent"?" · Sparad säkert i molnet":" · Tillfällig lagring");
+   const mp4=document.createElement("a");mp4.className="export-btn";mp4.href=data.video_url;mp4.textContent="ÖPPNA / LADDA NER FÄRDIG MP4";mp4.setAttribute("download","jarvis-video.mp4");loading.appendChild(mp4);
+   if(data.subtitles_url){const srt=document.createElement("a");srt.className="export-btn";srt.href=data.subtitles_url;srt.textContent="LADDA NER UNDERtexter (.SRT)";srt.style.marginLeft="8px";loading.appendChild(srt);}
+   const preview=document.createElement("video");preview.controls=true;preview.playsInline=true;preview.preload="metadata";preview.src=data.video_url;preview.style.cssText="display:block;width:100%;max-width:360px;margin-top:12px;border-radius:12px";loading.appendChild(preview);
+   loading.dataset.speechText=data.reply;updateTeamBoard("done",message,["NOVA"],"Färdig MP4 levererad direkt i JARVIS-chatten.");logActivity("JARVIS levererade färdig video i chatten","✓",data.job_id||"Video klar");
+  }else if(isNova&&videoRequest){
    renderVideoPlan(data);
    loading.textContent="✓ NOVA har skapat ett komplett produktionsunderlag för din video. Manus, scener, bild- och videoprompter samt undertexter finns samlade nedanför chatten.\n\nAI-motor: "+(data.engine||"Okänd");
    loading.dataset.speechText="NOVA har skapat ett produktionsunderlag för din video.";
