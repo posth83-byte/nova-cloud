@@ -79,34 +79,27 @@ def get_job_status(job_id):
 
 
 def recover_pending_jobs():
-    """Resume queued jobs and safely stop jobs interrupted by a process restart."""
-    recovered = []
-    required = {"topic", "mode", "video_type", "aspect", "duration_mode"}
+    """Fail work left by a previous process instead of duplicating it across deploys.
+
+    Render can briefly run old and new service processes during a deployment.
+    A process-local asyncio queue cannot safely coordinate ownership between
+    those processes, so replaying persisted jobs could launch duplicate FFmpeg
+    renders and exhaust the free instance's memory.
+    """
+    interrupted = 0
     for job_id in list_job_ids():
         payload = get_job_status(job_id)
-        if not isinstance(payload, dict):
+        if not isinstance(payload, dict) or payload.get("status") not in {"queued", "running"}:
             continue
-        status = payload.get("status")
         request = payload.get("request")
-        if status == "running":
-            # A running FFmpeg process belonged to the previous server process.
-            # Replaying it after an OOM/restart can create an endless crash loop.
-            save_job_status(
-                job_id, "failed",
-                error="Render avbröts medan videon renderades. Jobbet startas inte om automatiskt för att undvika en ny minneskrasch. Skapa ett nytt försök.",
-                request=request if isinstance(request, dict) else None,
-            )
-            continue
-        if status != "queued":
-            continue
-        if not isinstance(request, dict) or not required.issubset(request):
-            save_job_status(
-                job_id, "failed",
-                error="Videokön innehöll ett ofullständigt jobb som inte kunde återupptas.",
-                request=request if isinstance(request, dict) else None,
-            )
-            continue
-        # Queued work has not started rendering and is safe to resume.
-        save_job_status(job_id, "queued", request=request)
-        recovered.append({"job_id": job_id, **request})
-    return recovered
+        save_job_status(
+            job_id, "failed",
+            error=(
+                "Render startade om innan videon blev klar. Av säkerhetsskäl "
+                "återupptas inte jobb automatiskt efter en serveromstart. "
+                "Skapa ett nytt försök."
+            ),
+            request=request if isinstance(request, dict) else None,
+        )
+        interrupted += 1
+    return []
