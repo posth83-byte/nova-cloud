@@ -51,11 +51,11 @@ def health():
  if URL and KEY:
   try:
    cutoff=urllib.parse.quote((datetime.now(timezone.utc)-timedelta(seconds=60)).isoformat())
-   online=db("GET","/rest/v1/nova_studio_workers?last_seen=gte.%s&select=worker_id,status,current_job,last_seen"%cutoff)
+   online=db("GET","/rest/v1/nova_studio_workers?last_seen=gte.%s&select=worker_id,status,current_job,last_seen,planner_mode"%cutoff)
   except Exception: online=[]
  return {"service":"nova-studio-control-plane","status":"online","worker_token_configured":bool(TOKEN),
          "supabase_configured":bool(URL and KEY),"workers_online":len(online),
-         "worker_online_count":len(online),"generation":"local-comfyui-worker","paid_generation_api":False}
+         "worker_online_count":len(online),"local_planner_online":sum(1 for x in online if x.get("planner_mode")=="local"),"generation":"local-comfyui-worker","paid_generation_api":False}
 
 @router.post("/api/nova-studio/jobs")
 def create_job(request:JobRequest):
@@ -80,12 +80,13 @@ def job_status(job_id:str):
  except Exception as exc: raise HTTPException(status_code=503,detail=str(exc)[:700]) from exc
 
 @router.post("/api/nova-studio/worker/claim")
-def claim(authorization:str=Header(default=""),x_worker_id:str=Header(default="")):
+def claim(authorization:str=Header(default=""),x_worker_id:str=Header(default=""),x_planner_mode:str=Header(default="cloud")):
  auth(authorization)
  worker_id=(x_worker_id or "").strip()[:80] or "nova-worker-"+uuid.uuid4().hex[:12]
  if not re.fullmatch(r"[A-Za-z0-9_.:-]{3,80}",worker_id): raise HTTPException(status_code=400,detail="Ogiltigt worker-id.")
+ if x_planner_mode not in ("cloud","local"): raise HTTPException(status_code=400,detail="Ogiltigt planner-läge.")
  try:
-  db("POST","/rest/v1/nova_studio_workers",json.dumps({"worker_id":worker_id,"status":"idle","last_seen":datetime.now(timezone.utc).isoformat(),"current_job":None}).encode(),
+  db("POST","/rest/v1/nova_studio_workers",json.dumps({"worker_id":worker_id,"status":"idle","last_seen":datetime.now(timezone.utc).isoformat(),"current_job":None,"planner_mode":x_planner_mode}).encode(),
      prefer="resolution=merge-duplicates,return=minimal")
   db("POST","/rest/v1/rpc/recover_stale_nova_studio_jobs",json.dumps({"p_stale_seconds":900}).encode())
   rows=db("POST","/rest/v1/rpc/claim_nova_studio_job",json.dumps({"p_worker_id":worker_id}).encode())
