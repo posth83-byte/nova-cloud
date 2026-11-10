@@ -359,40 +359,22 @@ def _build_script(topic, video_type="humor"):
 
 
 def _motion_filter(kind, index, video_type="humor", scene_seconds=SCENE_SECONDS):
-    """Build a lightweight animated FFmpeg filter for floating comic accents."""
-    palettes = {
-        "coffee": "0xFF975B", "sleep": "0xAFC5FF", "phone": "0x69BBE5",
-        "work": "0x69BBE5", "money": "0x85E0A9", "gym": "0xFF9153",
-        "food": "0xFFB573", "love": "0xFF8BB1", "generic": "0xFF975B",
-    }
-    color = palettes.get(kind, "0xFF975B")
-    font = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
-    phase = index * 0.73
+    """Build the camera movement and fades without optional FFmpeg text filters."""
     frames = int(scene_seconds * FPS)
-    # A final, timed reaction word gives every scene a readable comic button.
-    reactions = {
-        "coffee": "SLURP!", "sleep": "ZZZ!", "phone": "PING!",
-        "work": "OJ!", "money": "KRASCH!", "gym": "PUH!",
-        "food": "MUMS!", "love": "OJ DA!", "generic": "PANG!",
-    }
-    reaction = reactions.get(kind, "PANG!") if video_type == "humor" else ""
     return ",".join([
         f"scale={W}:{H}",
         f"zoompan=z='1.025+0.012*sin(on/22)':"
         f"x='iw/2-(iw/zoom/2)+7*sin(on/19)':"
         f"y='ih/2-(ih/zoom/2)+10*cos(on/27)':d={frames}:s={W}x{H}:fps={FPS}",
-        f"drawtext=fontfile={font}:text='*':fontcolor={color}:fontsize=42:"
-        f"x='92+24*sin(t*2.4+{phase:.2f})':y='300+32*cos(t*2.0+{phase:.2f})'",
-        f"drawtext=fontfile={font}:text='+':fontcolor={color}:fontsize=34:"
-        f"x='560+28*cos(t*1.9+{phase:.2f})':y='520+25*sin(t*2.7+{phase:.2f})'",
-        f"drawtext=fontfile={font}:text='{reaction}':fontcolor={color}:"
-        f"fontsize='38+14*abs(sin(t*14))':x='(w-text_w)/2':"
-        f"y='675-14*abs(sin(t*12))':enable='between(t,{scene_seconds-0.82:.2f},{scene_seconds-0.08:.2f})'",
-        f"fade=t=in:st=0:d=0.22",
+        "fade=t=in:st=0:d=0.22",
         f"fade=t=out:st={scene_seconds-0.22:.2f}:d=0.22",
         "setsar=1",
     ])
 
+
+def _character_punchline_start(scene_seconds):
+    """Keep the visual reaction for the final 0.88 seconds of a scene."""
+    return max(0.0, scene_seconds - 0.88)
 
 CHARACTER_FPS = 12
 CHARACTER_REACTIONS = {
@@ -409,7 +391,7 @@ def _draw_character_frame(kind, index, elapsed, scene_seconds):
     draw = ImageDraw.Draw(frame)
     phase = index * 0.73
     wave = math.sin(elapsed * 5.1 + phase)
-    punch_start = max(0.0, scene_seconds - 0.88)
+    punch_start = _character_punchline_start(scene_seconds)
     punch = max(0.0, min(1.0, (elapsed - punch_start) / 0.16))
     accent = {
         "coffee": (255, 151, 91, 255), "sleep": (142, 173, 239, 255),
@@ -496,6 +478,18 @@ def _draw_character_frame(kind, index, elapsed, scene_seconds):
     else:
         draw.arc((cx - 9, head_y + 4, cx + 9, head_y + 17),
                  10, 170, fill=(12, 20, 36, 255), width=3)
+
+    # Floating sparkles replace FFmpeg drawtext so the bundled encoder stays compatible.
+    sparkle_x = 27 + 7 * math.sin(elapsed * 2.4 + phase)
+    sparkle_y = 112 + 8 * math.cos(elapsed * 2.0 + phase)
+    draw.line((sparkle_x - 8, sparkle_y, sparkle_x + 8, sparkle_y),
+              fill=accent, width=3)
+    draw.line((sparkle_x, sparkle_y - 8, sparkle_x, sparkle_y + 8),
+              fill=accent, width=3)
+    plus_x = 157 + 6 * math.cos(elapsed * 1.9 + phase)
+    plus_y = 145 + 6 * math.sin(elapsed * 2.7 + phase)
+    draw.line((plus_x - 7, plus_y, plus_x + 7, plus_y), fill=accent, width=3)
+    draw.line((plus_x, plus_y - 7, plus_x, plus_y + 7), fill=accent, width=3)
 
     if punch > 0.2:
         # A speech bubble lands with the final reaction, not throughout the scene.
