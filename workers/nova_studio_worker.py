@@ -13,6 +13,8 @@ import imageio_ffmpeg
 BASE=os.getenv("NOVA_STUDIO_URL","https://nova-cloud-c4t9.onrender.com").rstrip("/")
 TOKEN=os.getenv("NOVA_STUDIO_WORKER_TOKEN","")
 COMFY=os.getenv("COMFYUI_URL","http://127.0.0.1:8188").rstrip("/")
+OLLAMA_URL=os.getenv("OLLAMA_URL","http://127.0.0.1:11434").rstrip("/")
+OLLAMA_MODEL=os.getenv("OLLAMA_MODEL","").strip()
 CHECKPOINT=os.getenv("COMFYUI_CHECKPOINT","v1-5-pruned-emaonly-fp16.safetensors")
 WORKER_ID=socket.gethostname()[:60]
 VOICE=os.getenv("NOVA_STUDIO_VOICE","sv-SE-MattiasNeural")
@@ -29,7 +31,7 @@ def http_json(url,payload=None,headers=None,timeout=30):
  with urllib.request.urlopen(req,timeout=timeout) as r:return json.loads(r.read().decode())
 
 def cloud(path,payload=None):
- return http_json(BASE+path,payload,{"Authorization":"Bearer "+TOKEN,"X-Worker-ID":WORKER_ID},45)
+ return http_json(BASE+path,payload,{"Authorization":"Bearer "+TOKEN,"X-Worker-ID":WORKER_ID,"X-Planner-Mode":"local" if OLLAMA_MODEL else "cloud"},45)
 
 def form_cloud(path,fields,files=None):
  boundary="----NOVA"+uuid.uuid4().hex
@@ -78,6 +80,21 @@ def generate_image(prompt,seed,width,height,out_path,job_id=None,progress=5):
   if item.get("status",{}).get("status_str")=="error":raise RuntimeError("ComfyUI misslyckades med scenen.")
   time.sleep(2)
  raise TimeoutError("ComfyUI överskred 240 sekunder för en scen.")
+
+def plan_scenes_local(topic):
+ prompt=("Write a four-scene animated short film based on this idea: "+topic+
+  ". Return only JSON with exactly this schema: {\\"scenes\\":[{\\"visual_prompt\\":\\"detailed English visual prompt\\",\\"voiceover\\":\\"short natural Swedish narration\\"},...]}."
+  " Give a beginning, development, turning point and ending. Keep character descriptions identical across scenes. No text in images.")
+ response=http_json(OLLAMA_URL+"/api/generate",{"model":OLLAMA_MODEL,"prompt":prompt,"format":"json","stream":False,"keep_alive":0},timeout=240)
+ raw=str(response.get("response") or "")
+ start=raw.find("{"); end=raw.rfind("}")
+ if start<0 or end<=start:raise RuntimeError("Ollama returnerade inget giltigt scenmanus.")
+ data=json.loads(raw[start:end+1]); scenes=data.get("scenes")
+ if not isinstance(scenes,list) or len(scenes)!=4:raise RuntimeError("Ollama-manuset måste innehålla exakt fyra scener.")
+ for scene in scenes:
+  if not isinstance(scene,dict) or len(str(scene.get("visual_prompt",""))) < 12 or len(str(scene.get("voiceover",""))) < 2:
+   raise RuntimeError("Ollama returnerade en ofullständig scen.")
+ return scenes
 
 def scene_prompt(topic,index,total,scene=None):
  base=("high-end cinematic stylized 3D family animation, expressive appealing character design, "
@@ -164,6 +181,10 @@ def assemble(images,job,directory):
 
 def process(job):
  job_id=job["id"]
+ if not job.get("scenes"):
+  if not OLLAMA_MODEL:raise RuntimeError("Jobbet saknar manus och ingen lokal Ollama-modell är konfigurerad.")
+  print("Skapar manus lokalt med",OLLAMA_MODEL)
+  job["scenes"]=plan_scenes_local(job["prompt"])
  with tempfile.TemporaryDirectory(prefix="nova-studio-") as directory:
   aspect=job.get("aspect","9:16")
   width,height=(512,512) if aspect=="1:1" else ((768,512) if aspect=="16:9" else (512,768))
@@ -188,7 +209,13 @@ def main():
  if not TOKEN:raise SystemExit("NOVA_STUDIO_WORKER_TOKEN saknas i Windows miljövariabler.")
  try:http_json(COMFY+"/system_stats")
  except Exception as exc:raise SystemExit("ComfyUI svarar inte på localhost:8188: "+str(exc))
- print("NOVA Studio worker online. Checkpoint:",CHECKPOINT,"GPU ansluten via ComfyUI.")
+ if OLLAMA_MODEL:
+  try:
+   tags=http_json(OLLAMA_URL+"/api/tags")
+   names=[str(x.get("name","")) for x in tags.get("models",[])]
+   if not any(x==OLLAMA_MODEL or x.startswith(OLLAMA_MODEL+":") for x in names):raise RuntimeError("Modellen saknas: "+OLLAMA_MODEL)
+  except Exception as exc:raise SystemExit("Lokal Ollama planner är inte redo: "+str(exc))
+ print("NOVA Studio worker online. Checkpoint:",CHECKPOINT,"GPU ansluten via ComfyUI.","Planner:",OLLAMA_MODEL or "cloud NOVA")
  while True:
   try:
    claim=cloud("/api/nova-studio/worker/claim",{})
