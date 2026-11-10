@@ -131,6 +131,9 @@ def assemble(images,job,directory):
  run_ffmpeg(["-f","concat","-safe","0","-i",audio_list,"-c","copy",audio])
  final=str(Path(directory)/"film.mp4")
  run_ffmpeg(["-i",silent,"-i",audio,"-map","0:v:0","-map","1:a:0","-c:v","copy","-c:a","aac","-b:a","128k","-shortest","-movflags","+faststart",final])
+ if not Path(final).is_file() or Path(final).stat().st_size<1024 or Path(final).stat().st_size>48*1024*1024:
+  raise RuntimeError("Den färdiga MP4-filen saknas eller överskrider 48 MB.")
+ run_ffmpeg(["-v","error","-i",final,"-f","null","-"])
  srt=str(Path(directory)/"subtitles.srt")
  def stamp(sec):
   ms=int(sec*1000); h=ms//3600000; m=(ms%3600000)//60000; ss=(ms%60000)//1000; milli=ms%1000
