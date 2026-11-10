@@ -57,3 +57,5 @@ create index if not exists nova_studio_workers_last_seen_idx on public.nova_stud
 alter table public.nova_studio_workers enable row level security;
 revoke all on public.nova_studio_workers from anon, authenticated;
 grant all on public.nova_studio_workers to service_role;
+
+alter table public.nova_studio_workers add column if not exists planner_mode text not null default 'cloud' check (planner_mode in ('cloud','local'));
