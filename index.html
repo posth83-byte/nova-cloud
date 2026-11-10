@@ -2249,7 +2249,7 @@ async function sendMessage(event,assistant){
  const conversationHistory=getConversationHistory(assistant,14);
  const recentContextText=conversationHistory.slice(-4).map(item=>String(item&&item.content||"")).join(" ").toLowerCase();
  const videoKeyword=/(?:\b(?:video|short|film|klipp|avsnitt|tiktok|reel)\w*|\w*video\w*)/i;
- const explicitVideoRequest=/\b(skapa|gör(?:a)?|bygg|producera|framställ|ta fram|fixa|gör(?:a)?\s+reklam)\b.{0,100}(?:\b(?:video|short|film|klipp|avsnitt|tiktok|reel|reklam|annons|produktfilm)\w*|\w*video\w*)|(?:\b(?:video|short|film|klipp|avsnitt|tiktok|reel|reklam|annons|produktfilm)\w*|\w*video\w*).{0,100}\b(skapa|gör|bygg|producera|fixa|ta\s+fram)\b/i.test(message);
+ const explicitVideoRequest=/\b(skapa|gör(?:a)?|bygg|producera|framställ|ta fram|fixa|gör(?:a)?\s+reklam)\b.{0,100}(?:\b(?:video|short|film|klipp|avsnitt|tiktok|reel|reklam|annons|produktfilm)\w*|\w*video\w*)|(?:\b(?:video|short|film|klipp|avsnitt|tiktok|reel|reklam|annons|produktfilm)\w*|\w*video\w*).{0,100}\b(skapa|gör|bygg|producera|fixa|ta\s+fram)\b/i|\\b(reklam|annons|produktfilm|produktreklam)\\b/i.test(message);
  const videoFollowUp=/^(kör|kör på|gör det|fixa det|fortsätt|sätt igång|ja|ja kör|skapa den|ta fram den)[.! ]*$/i.test(message);
  let videoRequest=explicitVideoRequest||(assistant==="jarvis"&&videoFollowUp&&videoKeyword.test(recentContextText));
  const shownMessage=message+(isNova&&sceneFiles.length?"\n📎 "+sceneFiles.length+" referens-/scenbild"+(sceneFiles.length===1?" bifogad":"er bifogade"):"");
