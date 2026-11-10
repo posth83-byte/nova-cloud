@@ -77,8 +77,10 @@ SCENE_SECONDS = 5.2
 
 
 def _ffmpeg(args, timeout=600):
+    # Render's free 512 MiB instance must not let FFmpeg spawn large filter pools.
     result = subprocess.run(
-        [imageio_ffmpeg.get_ffmpeg_exe(), "-y", *args],
+        [imageio_ffmpeg.get_ffmpeg_exe(), "-y", "-filter_threads", "1",
+         "-filter_complex_threads", "1", *args],
         stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=timeout
     )
     if result.returncode:
@@ -717,7 +719,8 @@ async def _render_original_video(topic, mode, video_type, aspect, duration_mode,
             else:
                 ffmpeg_args = ["-loop", "1", "-i", str(still), "-vf", motion]
             ffmpeg_args.extend([
-                "-frames:v", str(frames), "-an", "-c:v", "libx264", "-preset", "ultrafast",
+                "-frames:v", str(frames), "-an", "-threads", "1",
+                "-c:v", "libx264", "-preset", "ultrafast",
                 "-pix_fmt", "yuv420p", str(clip)
             ])
             _ffmpeg(ffmpeg_args, timeout=180)
@@ -749,8 +752,9 @@ async def _render_original_video(topic, mode, video_type, aspect, duration_mode,
             "-i", str(silent), "-i", str(narration_path),
             "-f", "lavfi", "-i", "sine=frequency=392:sample_rate=44100:duration=30",
             "-filter_complex", ";".join(filters),
-            "-map", video_map, "-map", "[a]", "-c:v", "libx264", "-preset", "veryfast",
-            "-crf", "29", "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "112k",
+            "-map", video_map, "-map", "[a]", "-threads", "1",
+            "-c:v", "libx264", "-preset", "veryfast",
+            "-crf", "30", "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "96k",
             "-shortest", "-movflags", "+faststart", str(output)
         ], timeout=360)
         if not output.is_file() or output.stat().st_size < 10000:
@@ -759,8 +763,9 @@ async def _render_original_video(topic, mode, video_type, aspect, duration_mode,
             compact = job_dir / "compact.mp4"
             try:
                 _ffmpeg([
-                    "-i", str(output), "-c:v", "libx264", "-preset", "veryfast",
-                    "-crf", "32", "-c:a", "copy", "-movflags", "+faststart", str(compact)
+                    "-i", str(output), "-threads", "1", "-c:v", "libx264",
+                    "-preset", "veryfast", "-crf", "33", "-c:a", "copy",
+                    "-movflags", "+faststart", str(compact)
                 ], timeout=360)
                 if compact.is_file() and compact.stat().st_size < output.stat().st_size:
                     compact.replace(output)
