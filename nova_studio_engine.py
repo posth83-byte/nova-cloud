@@ -134,7 +134,7 @@ async def complete(job_id:str,video:UploadFile=File(...),subtitles:UploadFile=Fi
    srt_path=prefix+"subtitles.srt"
    db("POST","/storage/v1/object/"+BUCKET+"/"+srt_path,srt,"text/plain; charset=utf-8")
    result["subtitles_path"]=srt_path
-  updated=db("PATCH","/rest/v1/nova_studio_jobs?id=eq.%s&worker_id=eq.%s"%(urllib.parse.quote(job_id),urllib.parse.quote(worker_id)),
+  updated=db("PATCH","/rest/v1/nova_studio_jobs?id=eq.%s&worker_id=eq.%s&status=in.(leased,generating,assembling,uploading)"%(urllib.parse.quote(job_id),urllib.parse.quote(worker_id)),
    json.dumps({"status":"completed","phase":"Färdig – MP4 sparad privat","progress":100,"result":result,
     "completed_at":datetime.now(timezone.utc).isoformat(),"updated_at":datetime.now(timezone.utc).isoformat()}).encode(),prefer="return=representation")
   if not updated: raise HTTPException(status_code=409,detail="Jobbleasen ändrades innan resultatet kunde registreras.")
@@ -148,7 +148,7 @@ async def complete(job_id:str,video:UploadFile=File(...),subtitles:UploadFile=Fi
 def fail(job_id:str,error:str=Form(...),worker_id:str=Form(...),authorization:str=Header(default="")):
  auth(authorization)
  try:
-  updated=db("PATCH","/rest/v1/nova_studio_jobs?id=eq.%s&worker_id=eq.%s"%(urllib.parse.quote(job_id),urllib.parse.quote(worker_id)),
+  updated=db("PATCH","/rest/v1/nova_studio_jobs?id=eq.%s&worker_id=eq.%s&status=in.(leased,generating,assembling,uploading)"%(urllib.parse.quote(job_id),urllib.parse.quote(worker_id)),
    json.dumps({"status":"failed","phase":"Arbetaren rapporterade fel","error":error[:1200],
     "updated_at":datetime.now(timezone.utc).isoformat()}).encode(),prefer="return=representation")
   if not updated: raise HTTPException(status_code=409,detail="Arbetaren äger inte längre det här jobbet.")
