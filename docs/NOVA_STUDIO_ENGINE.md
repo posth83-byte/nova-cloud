@@ -49,20 +49,23 @@ Recoverable failures:
 
 ## Phased delivery
 
-### Phase 1 — foundation
-- Define durable job contract and worker protocol.
-- Add authenticated claim/heartbeat/result endpoints.
-- Add local worker client with health checks and ComfyUI connectivity test.
-- Keep the current procedural engine unchanged as fallback.
+### Implemented foundation (branch feature/nova-studio-engine)
+- Added a durable Supabase job table and atomic claim/recovery functions.
+- Added worker-token-protected claim, heartbeat, failure and artifact-upload endpoints.
+- Added live worker heartbeats and private MP4/SRT retrieval endpoints.
+- Wired JARVIS chat to use the local worker when it is online, while retaining the procedural fallback.
+- Added a Windows worker that asks NOVA for a four-scene screenplay, generates scene frames through ComfyUI, animates them with FFmpeg, creates Swedish narration and subtitles, and uploads the MP4.
 
-### Phase 2 — local image pipeline
-- Add a versioned ComfyUI workflow template with prompt placeholders.
-- Generate storyboard frames and validate output dimensions/file types.
-- Add safe retries and per-scene progress.
+The code is in a draft PR and has not been deployed or run end-to-end. The Windows worker still requires local ComfyUI and a compatible model.
 
-### Phase 3 — film assembly
-- Add consistent character references, scene sequencing, camera motion, Swedish voice, SRT and final MP4.
+### Remaining — local image pipeline hardening
+- Test the ComfyUI workflow against the exact installed checkpoint and GPU driver.
+- Add persistent character reference images and verify character consistency across shots.
+- Add stronger retries, per-scene artifact caching and model-license metadata.
+
+### Remaining — film assembly
 - Add a project manifest so a film can be re-rendered without repeating successful stages.
+- Add optional music/sound design and more advanced motion between generated frames.
 
 ### Phase 4 — verification
 - End-to-end test from JARVIS UI through Render -> local worker -> ComfyUI -> MP4 upload.
