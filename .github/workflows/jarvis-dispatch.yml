@@ -35,7 +35,7 @@ jobs:
           echo "JARVIS accepted the task. Job ID: $JOB_ID"
           echo "Queue response: $(jq -c '{status, deduplicated, reply}' <<<"$RESPONSE")"
           for attempt in $(seq 1 300); do
-            RESPONSE="$(curl --fail-with-body --silent --show-error --retry 2 --get --data-urlencode "token=$ACCESS_TOKEN" "https://nova-cloud-c4t9.onrender.com/api/jarvis/jobs/$JOB_ID")"
+            RESPONSE="$(curl --fail-with-body --silent --show-error --retry 2 -H "Authorization: Bearer $ACCESS_TOKEN" "https://nova-cloud-c4t9.onrender.com/api/jarvis/jobs/$JOB_ID")"
             STATUS="$(jq -r '.status // "unknown"' <<<"$RESPONSE")"
             PHASE="$(jq -r '.phase // ""' <<<"$RESPONSE")"
             echo "Poll $attempt: $STATUS — $PHASE"

@@ -18,7 +18,7 @@ from pathlib import Path
 from datetime import datetime, timezone, timedelta
 from urllib.parse import quote
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Header
 from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
@@ -3067,7 +3067,7 @@ async def create_jarvis_job(request: JarvisDelegateRequest):
 
 
 @app.get("/api/jarvis/jobs/{job_id}")
-async def get_jarvis_job(job_id: str, token: str):
+async def get_jarvis_job(job_id: str, token: str = "", authorization: str = Header(default="")):
     if not USE_SUPABASE_MEMORY:
         raise HTTPException(status_code=503, detail="Jobbstatus är inte tillgänglig.")
     try:
@@ -3086,7 +3086,12 @@ async def get_jarvis_job(job_id: str, token: str):
         legacy_hash = rows[0].get("access_token_hash") or ""
         if legacy_hash:
             expected_hashes.append(legacy_hash)
-        supplied = hashlib.sha256(str(token).encode("utf-8")).hexdigest()
+        access_token = token
+        if authorization.lower().startswith("bearer "):
+            access_token = authorization[7:].strip()
+        if not access_token:
+            raise HTTPException(status_code=401, detail="Åtkomsttoken saknas.")
+        supplied = hashlib.sha256(str(access_token).encode("utf-8")).hexdigest()
         if not any(
             __import__("hmac").compare_digest(expected, supplied)
             for expected in expected_hashes
