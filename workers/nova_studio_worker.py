@@ -108,25 +108,34 @@ def assemble(images,job,directory):
  Path(concat_file).write_text("".join("file '%s'\n"%p.replace("'","") for p in clips),encoding="utf-8")
  silent=str(Path(directory)/"silent.mp4")
  run_ffmpeg(["-f","concat","-safe","0","-i",concat_file,"-c","copy",silent])
+ topic=str(job.get("prompt","din berättelse")).strip().replace("\\n"," ")[:55]
  captions=[
-  "Allt börjar med en idé.",
-  "Sedan händer något som förändrar planen.",
-  "Det är här det oväntade tar vid.",
-  "Och det bästa? Äventyret har bara börjat."
+  "Allt börjar med: "+topic+".",
+  "En första idé verkar äntligen fungera.",
+  "Men så dyker ett oväntat problem upp.",
+  "Och det här är bara början på äventyret."
  ]
- narration=" ".join(captions)
- audio=str(Path(directory)/"narration.mp3")
- asyncio.run(edge_tts.Communicate(narration,VOICE).save(audio))
+ audio_parts=[]
+ for i,line in enumerate(captions):
+  raw_audio=str(Path(directory)/("voice_%02d.mp3"%i))
+  padded_audio=str(Path(directory)/("voice_pad_%02d.m4a"%i))
+  asyncio.run(edge_tts.Communicate(line,VOICE).save(raw_audio))
+  run_ffmpeg(["-i",raw_audio,"-af","apad","-t","%.3f"%per_scene,"-c:a","aac","-b:a","96k",padded_audio])
+  audio_parts.append(padded_audio)
+ audio_list=str(Path(directory)/"audio_concat.txt")
+ Path(audio_list).write_text("".join("file '%s'\\n"%p.replace("'","") for p in audio_parts),encoding="utf-8")
+ audio=str(Path(directory)/"narration.m4a")
+ run_ffmpeg(["-f","concat","-safe","0","-i",audio_list,"-c","copy",audio])
  final=str(Path(directory)/"film.mp4")
  run_ffmpeg(["-i",silent,"-i",audio,"-map","0:v:0","-map","1:a:0","-c:v","copy","-c:a","aac","-b:a","128k","-shortest","-movflags","+faststart",final])
  srt=str(Path(directory)/"subtitles.srt")
  def stamp(sec):
-  ms=int(sec*1000); h=ms//3600000; m=(ms%3600000)//60000; s=(ms%60000)//1000; milli=ms%1000
-  return "%02d:%02d:%02d,%03d"%(h,m,s,milli)
+  ms=int(sec*1000); h=ms//3600000; m=(ms%3600000)//60000; ss=(ms%60000)//1000; milli=ms%1000
+  return "%02d:%02d:%02d,%03d"%(h,m,ss,milli)
  with open(srt,"w",encoding="utf-8") as f:
   for i,line in enumerate(captions):
    start=i*per_scene; end=(i+1)*per_scene
-   f.write("%d\n%s --> %s\n%s\n\n"%(i+1,stamp(start),stamp(end),line))
+   f.write("%d\\n%s --> %s\\n%s\\n\\n"%(i+1,stamp(start),stamp(end),line))
  return final,srt
 
 def process(job):
