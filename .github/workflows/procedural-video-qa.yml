@@ -1,4 +1,5 @@
 name: Procedural video QA
+# Keep the full FFmpeg integration test active for every duration-probe change.
 
 on:
   pull_request:
