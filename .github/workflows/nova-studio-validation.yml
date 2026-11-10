@@ -1,0 +1,42 @@
+name: NOVA Studio validation
+on:
+  push:
+    branches: [feature/nova-studio-engine]
+  pull_request:
+    branches: [main]
+    paths:
+      - 'nova_studio_engine.py'
+      - 'workers/**'
+      - 'supabase/migrations/**'
+      - 'main.py'
+      - 'requirements.txt'
+jobs:
+  syntax-and-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install server dependencies
+        run: pip install -r requirements.txt
+      - name: Compile Python modules
+        run: python -m py_compile main.py nova_studio_engine.py workers/nova_studio_worker.py
+      - name: Validate migration security and queue contract
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          sql = Path("supabase/migrations/202611100001_nova_studio_jobs.sql").read_text()
+          assert "enable row level security" in sql.lower()
+          assert "revoke all on public.nova_studio_jobs from anon, authenticated" in sql.lower()
+          assert "for update skip locked" in sql.lower()
+          assert "claim_nova_studio_job" in sql
+          source = Path("nova_studio_engine.py").read_text()
+          for route in ("/api/nova-studio/jobs", "/api/nova-studio/worker/claim",
+                        "/api/nova-studio/worker/{job_id}/heartbeat",
+                        "/api/nova-studio/worker/{job_id}/complete"):
+              assert route in source, route
+          worker = Path("workers/nova_studio_worker.py").read_text()
+          assert "ComfyUI" in worker and "edge_tts" in worker and "imageio_ffmpeg" in worker
+          print("NOVA Studio source and security contract checks passed.")
+          PY
