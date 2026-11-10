@@ -1,14 +1,9 @@
 name: Live video production verification
 
+# Manual-only: live-video-smoke.yml is the single automatic production
+# smoke test. Keeping this workflow manual prevents two expensive renders
+# from being queued against the same 512 MiB free Render instance.
 on:
-  push:
-    branches: [main]
-    paths:
-      - "qa/smoke_live_video.py"
-      - ".github/workflows/live-video-production.yml"
-      - "video_creator_engine.py"
-      - "video_storage.py"
-      - "video_jobs.py"
   workflow_dispatch:
 
 permissions:
