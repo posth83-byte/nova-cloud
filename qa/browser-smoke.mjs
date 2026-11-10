@@ -7,6 +7,16 @@ const baseUrl = "http://127.0.0.1:4173";
 const entrypoints = ["/"];
 const projectEntrypoints = [];
 
+// Keep Swedish compound forms such as "testvideo", "humorvideo" and
+// "videomotorn" routed into the JARVIS video pipeline.
+const videoRequestPattern = /\b(skapa|gör(?:a)?|bygg|producera|framställ|ta fram|fixa)\b.{0,80}(?:\b(?:video|short|film|klipp|avsnitt|tiktok|reel)\w*|\w*video\w*)|(?:\b(?:video|short|film|klipp|avsnitt|tiktok|reel)\w*|\w*video\w*).{0,80}\b(skapa|gör|bygg|producera|fixa)\b/i;
+for (const phrase of ["Gör en testvideo åt mig", "Skapa en humorvideo", "Fixa videomotorn", "Skapa en kort TikTok-video"]) {
+  if (!videoRequestPattern.test(phrase)) {
+    console.error("FAIL: JARVIS did not recognize video request: " + phrase);
+    process.exit(1);
+  }
+}
+
 function collectHtml(directory) {
   if (!fs.existsSync(directory)) return;
   for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
