@@ -270,6 +270,8 @@ try {
            }));
            await page.locator("#novaView .room-topbar .back-btn").first().click();
            await page.waitForFunction(() => document.querySelector("#novaView")?.classList.contains("hidden"), null, { timeout: 5000 });
+           await page.locator(".jarvis-open").click();
+           await page.waitForFunction(() => !document.querySelector("#jarvisView")?.classList.contains("hidden"), null, { timeout: 5000 });
            await page.locator("#jarvisInput").fill("Skapa en kort video om JARVIS CHAT BRIDGE TEST");
            await page.locator("#jarvisSend").click();
            await page.waitForFunction(() => {
