@@ -27,8 +27,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          if [[ ! -s .jarvis/dispatch.json ]]; then
-            echo "No pending JARVIS dispatch payload; nothing to do."
+          if ! jq -e '.task | strings | select(length > 0)' .jarvis/dispatch.json >/dev/null 2>&1; then
+            echo "No valid pending JARVIS dispatch payload; nothing to do."
             exit 0
           fi
           PAYLOAD="$(jq -c '{task: .task, history: (.history // [])}' .jarvis/dispatch.json)"
