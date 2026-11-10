@@ -18,10 +18,12 @@ create index if not exists nova_studio_jobs_queue_idx on public.nova_studio_jobs
 alter table public.nova_studio_jobs enable row level security;
 revoke all on public.nova_studio_jobs from anon, authenticated;
 grant all on public.nova_studio_jobs to service_role;
-create or replace function public.claim_nova_studio_job(p_worker_id text)
+drop function if exists public.claim_nova_studio_job(text);
+create or replace function public.claim_nova_studio_job(p_worker_id text, p_planner_mode text)
 returns setof public.nova_studio_jobs language sql set search_path=public,pg_temp as $$
  with candidate as (
   select id from public.nova_studio_jobs where status='queued' and attempts<max_attempts
+    and (jsonb_array_length(scenes)>0 or p_planner_mode='local')
   order by created_at asc for update skip locked limit 1
  )
  update public.nova_studio_jobs j set status='leased',phase='Lokal GPU-arbetare har tagit jobbet',
@@ -42,9 +44,9 @@ begin
  and locked_at<now()-make_interval(secs=>greatest(60,least(p_stale_seconds,3600)));
  get diagnostics recovered=row_count; return recovered;
 end; $$;
-revoke all on function public.claim_nova_studio_job(text) from public,anon,authenticated;
+revoke all on function public.claim_nova_studio_job(text,text) from public,anon,authenticated;
 revoke all on function public.recover_stale_nova_studio_jobs(integer) from public,anon,authenticated;
-grant execute on function public.claim_nova_studio_job(text) to service_role;
+grant execute on function public.claim_nova_studio_job(text,text) to service_role;
 grant execute on function public.recover_stale_nova_studio_jobs(integer) to service_role;
 
 create table if not exists public.nova_studio_workers (
