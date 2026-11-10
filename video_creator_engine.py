@@ -398,7 +398,7 @@ def _build_narration(beats, video_type="humor", duration_mode="standard"):
 
 def _motion_filter(kind, index, video_type="humor", scene_seconds=SCENE_SECONDS):
     """Build the camera movement and fades without optional FFmpeg text filters."""
-    frames = int(scene_seconds * FPS)
+    frames = max(1, int(round(scene_seconds * FPS)))
     return ",".join([
         f"scale={W}:{H}",
         f"zoompan=z='1.025+0.012*sin(on/22)':"
