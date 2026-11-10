@@ -20,7 +20,7 @@ def media_duration(path):
         [engine.imageio_ffmpeg.get_ffmpeg_exe(), "-i", str(path), "-f", "null", "-"],
         capture_output=True, text=True, timeout=60
     )
-    match = re.search(r"Duration: (\\d+):(\\d+):(\\d+(?:\\.\\d+)?)", result.stderr)
+    match = re.search(r"Duration: (\d+):(\d+):(\d+(?:\.\d+)?)", result.stderr)
     assert match, result.stderr[-1500:]
     hours, minutes, seconds = match.groups()
     return int(hours) * 3600 + int(minutes) * 60 + float(seconds)
