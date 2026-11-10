@@ -20,9 +20,13 @@ def media_duration(path):
         [engine.imageio_ffmpeg.get_ffmpeg_exe(), "-i", str(path), "-f", "null", "-"],
         capture_output=True, text=True, timeout=60
     )
-    match = re.search(r"Duration: (\d+):(\d+):(\d+(?:\.\d+)?)", result.stderr)
-    assert match, result.stderr[-1500:]
-    hours, minutes, seconds = match.groups()
+    if result.returncode != 0:
+        raise AssertionError(result.stderr[-1500:])
+    # This bundled FFmpeg build omits the input "Duration:" banner.
+    # Its final progress record reliably reports the decoded end timestamp.
+    matches = re.findall(r"time=(\d+):(\d+):(\d+(?:\.\d+)?)", result.stderr)
+    assert matches, result.stderr[-1500:]
+    hours, minutes, seconds = matches[-1]
     return int(hours) * 3600 + int(minutes) * 60 + float(seconds)
 
 
