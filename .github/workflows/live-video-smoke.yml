@@ -1,6 +1,16 @@
 name: Live Video Production Smoke
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/live-video-smoke.yml"
+      - "video_creator_engine.py"
+      - "video_storage.py"
+      - "video_jobs.py"
+      - "video_assets.py"
+      - "video_research.py"
+      - "qa/smoke_live_video.py"
   workflow_dispatch:
 
 permissions:
