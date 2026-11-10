@@ -44,7 +44,7 @@ def main():
     assert "SLURP!" in animated_filter and "between(t," in animated_filter
     assert "ZZZ!" in engine._motion_filter("sleep", 0)
     assert "PANG!" in engine._motion_filter("generic", 1)
-    assert "scene_seconds-0.82" in engine._motion_filter("coffee", 0)
+    assert "between(t,4.38,5.12)" in engine._motion_filter("coffee", 0)
     start_pose = engine._draw_character_frame("coffee", 0, 0.2, 5.2)
     moving_pose = engine._draw_character_frame("coffee", 0, 1.4, 5.2)
     punchline_pose = engine._draw_character_frame("coffee", 0, 4.7, 5.2)
