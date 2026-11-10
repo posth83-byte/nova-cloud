@@ -82,6 +82,8 @@ def heartbeat(job_id:str,phase:str=Form(...),progress:int=Form(...),worker_id:st
   rows=db("PATCH","/rest/v1/nova_studio_jobs?id=eq.%s&worker_id=eq.%s&status=in.(leased,generating,assembling,uploading)"%(urllib.parse.quote(job_id),urllib.parse.quote(worker_id)),
    json.dumps({"status":phase,"phase":phase.capitalize(),"progress":progress,"locked_at":datetime.now(timezone.utc).isoformat(),
    "updated_at":datetime.now(timezone.utc).isoformat()}).encode(),prefer="return=representation")
+  db("PATCH","/rest/v1/nova_studio_workers?worker_id=eq.%s"%urllib.parse.quote(worker_id),
+     json.dumps({"status":"busy","current_job":job_id,"last_seen":datetime.now(timezone.utc).isoformat()}).encode())
   return {"updated":bool(rows) if isinstance(rows,list) else True}
  except Exception as exc: raise HTTPException(status_code=503,detail=str(exc)[:700]) from exc
 
@@ -109,6 +111,8 @@ async def complete(job_id:str,video:UploadFile=File(...),subtitles:UploadFile=Fi
   db("PATCH","/rest/v1/nova_studio_jobs?id=eq.%s&worker_id=eq.%s"%(urllib.parse.quote(job_id),urllib.parse.quote(worker_id)),
    json.dumps({"status":"completed","phase":"Färdig – MP4 sparad privat","progress":100,"result":result,
     "completed_at":datetime.now(timezone.utc).isoformat(),"updated_at":datetime.now(timezone.utc).isoformat()}).encode(),prefer="return=representation")
+  db("PATCH","/rest/v1/nova_studio_workers?worker_id=eq.%s"%urllib.parse.quote(worker_id),
+      json.dumps({"status":"idle","current_job":None,"last_seen":datetime.now(timezone.utc).isoformat()}).encode())
   return {"status":"completed","result":result}
  except HTTPException: raise
  except Exception as exc: raise HTTPException(status_code=503,detail=str(exc)[:700]) from exc
@@ -120,5 +124,39 @@ def fail(job_id:str,error:str=Form(...),worker_id:str=Form(...),authorization:st
   db("PATCH","/rest/v1/nova_studio_jobs?id=eq.%s&worker_id=eq.%s"%(urllib.parse.quote(job_id),urllib.parse.quote(worker_id)),
    json.dumps({"status":"failed","phase":"Arbetaren rapporterade fel","error":error[:1200],
     "updated_at":datetime.now(timezone.utc).isoformat()}).encode(),prefer="return=representation")
+  db("PATCH","/rest/v1/nova_studio_workers?worker_id=eq.%s"%urllib.parse.quote(worker_id),
+      json.dumps({"status":"idle","current_job":None,"last_seen":datetime.now(timezone.utc).isoformat()}).encode())
   return {"status":"failed"}
+ except Exception as exc: raise HTTPException(status_code=503,detail=str(exc)[:700]) from exc
+
+def _stream_private_object(path,media_type,filename):
+ if not URL or not KEY: raise HTTPException(status_code=503,detail="Privat lagring är inte konfigurerad.")
+ url=URL+"/storage/v1/object/"+BUCKET+"/"+path
+ req=urllib.request.Request(url,headers={"apikey":KEY,"Authorization":"Bearer "+KEY})
+ try: upstream=urllib.request.urlopen(req,timeout=60)
+ except urllib.error.HTTPError as exc:
+  if exc.code==404: raise HTTPException(status_code=404,detail="Filen finns inte i privat lagring.")
+  raise HTTPException(status_code=502,detail="Kunde inte hämta den färdiga filen.")
+ return StreamingResponse(iter(lambda:upstream.read(65536),b""),media_type=media_type,
+   headers={"Content-Disposition":'inline; filename="%s"'%filename},
+   background=BackgroundTask(upstream.close))
+
+@router.get("/api/nova-studio/jobs/{job_id}/video")
+def studio_video(job_id:str):
+ try:
+  row=get_row(job_id)
+  if not row or row.get("status")!="completed" or not (row.get("result") or {}).get("video_path"):
+   raise HTTPException(status_code=404,detail="Färdig video hittades inte.")
+  return _stream_private_object(row["result"]["video_path"],"video/mp4","nova-studio.mp4")
+ except HTTPException: raise
+ except Exception as exc: raise HTTPException(status_code=503,detail=str(exc)[:700]) from exc
+
+@router.get("/api/nova-studio/jobs/{job_id}/subtitles")
+def studio_subtitles(job_id:str):
+ try:
+  row=get_row(job_id)
+  path=(row.get("result") or {}).get("subtitles_path") if row else None
+  if not path: raise HTTPException(status_code=404,detail="Undertexter hittades inte.")
+  return _stream_private_object(path,"text/plain; charset=utf-8","nova-studio.srt")
+ except HTTPException: raise
  except Exception as exc: raise HTTPException(status_code=503,detail=str(exc)[:700]) from exc
