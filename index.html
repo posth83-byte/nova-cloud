@@ -2210,7 +2210,8 @@ async function sendMessage(event,assistant){
  if("speechSynthesis" in window)stopSpeech();
  const conversationHistory=getConversationHistory(assistant,14);
  const recentContextText=conversationHistory.slice(-4).map(item=>String(item&&item.content||"")).join(" ").toLowerCase();
- const videoKeyword=/(?:\b(?:video|short|film|klipp|avsnitt|tiktok|reel)\w*|\w*video\w*)/i;\n const explicitVideoRequest=/\b(skapa|gör(?:a)?|bygg|producera|framställ|ta fram|fixa)\b.{0,80}(?:\b(?:video|short|film|klipp|avsnitt|tiktok|reel)\w*|\w*video\w*)|(?:\b(?:video|short|film|klipp|avsnitt|tiktok|reel)\w*|\w*video\w*).{0,80}\b(skapa|gör|bygg|producera|fixa)\b/i.test(message);
+ const videoKeyword=/(?:\b(?:video|short|film|klipp|avsnitt|tiktok|reel)\w*|\w*video\w*)/i;
+ const explicitVideoRequest=/\b(skapa|gör(?:a)?|bygg|producera|framställ|ta fram|fixa)\b.{0,80}(?:\b(?:video|short|film|klipp|avsnitt|tiktok|reel)\w*|\w*video\w*)|(?:\b(?:video|short|film|klipp|avsnitt|tiktok|reel)\w*|\w*video\w*).{0,80}\b(skapa|gör|bygg|producera|fixa)\b/i.test(message);
  const videoFollowUp=/^(kör|kör på|gör det|fixa det|fortsätt|sätt igång|ja|ja kör|skapa den|ta fram den)[.! ]*$/i.test(message);
  let videoRequest=explicitVideoRequest||(assistant==="jarvis"&&videoFollowUp&&videoKeyword.test(recentContextText));
  const shownMessage=message+(isNova&&sceneFiles.length?"\n📎 "+sceneFiles.length+" referens-/scenbild"+(sceneFiles.length===1?" bifogad":"er bifogade"):"");
