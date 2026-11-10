@@ -83,7 +83,8 @@ def scene_prompt(topic,index,total,scene=None):
          "with large friendly eyes. Both have simple readable silhouettes and expressive faces. ")
  beats=["wide establishing shot introducing the setting","medium shot with clear character action and emotion",
         "dynamic cinematic angle showing the main turning point","warm expressive final shot with a visual punchline"]
- visual=str((scene or {}).get("visual_prompt") or "").strip()\n return base+(visual if visual else "Story subject: "+topic+". Shot "+str(index+1)+" of "+str(total)+": "+beats[index]+".")
+ visual=str((scene or {}).get("visual_prompt") or "").strip()
+ return base+(visual if visual else "Story subject: "+topic+". Shot "+str(index+1)+" of "+str(total)+": "+beats[index]+".")
 
 def run_ffmpeg(args):
  import subprocess
@@ -149,7 +150,8 @@ def process(job):
   for i in range(4):
    heartbeat(job_id,"generating",5+i*17)
    image=str(Path(directory)/("frame_%02d.png"%i))
-   scene=(job.get("scenes") or [])[i] if len(job.get("scenes") or [])>i else None\n   generate_image(scene_prompt(job["prompt"],i,4,scene),abs(hash(job_id+str(i)))%(2**32),width,height,image)
+   scene=(job.get("scenes") or [])[i] if len(job.get("scenes") or [])>i else None
+   generate_image(scene_prompt(job["prompt"],i,4,scene),abs(hash(job_id+str(i)))%(2**32),width,height,image)
    images.append(image)
   heartbeat(job_id,"assembling",78)
   video,srt=assemble(images,job,directory)
