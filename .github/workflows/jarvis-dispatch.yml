@@ -6,6 +6,7 @@ on:
       - jarvis-dispatch
     paths:
       - ".jarvis/dispatch.json"
+      - ".github/workflows/jarvis-dispatch.yml"
 
 permissions:
   contents: read
@@ -26,7 +27,10 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test -s .jarvis/dispatch.json
+          if [[ ! -s .jarvis/dispatch.json ]]; then
+            echo "No pending JARVIS dispatch payload; nothing to do."
+            exit 0
+          fi
           PAYLOAD="$(jq -c '{task: .task, history: (.history // [])}' .jarvis/dispatch.json)"
           RESPONSE="$(curl --fail-with-body --silent --show-error --retry 3 --retry-delay 2 -H 'Content-Type: application/json' -X POST 'https://nova-cloud-c4t9.onrender.com/api/jarvis/jobs' --data "$PAYLOAD")"
           JOB_ID="$(jq -er '.job_id' <<<"$RESPONSE")"
