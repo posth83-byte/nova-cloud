@@ -11,6 +11,10 @@ on:
       - "video_assets.py"
       - "video_research.py"
       - "qa/smoke_live_video.py"
+      - "qa/test_paid_video_guard.py"
+      - "runway_engine.py"
+      - "kling_engine.py"
+      - "video_cost_guard.py"
   workflow_dispatch:
 
 permissions:
