@@ -89,7 +89,7 @@ def claim(authorization:str=Header(default=""),x_worker_id:str=Header(default=""
   db("POST","/rest/v1/nova_studio_workers",json.dumps({"worker_id":worker_id,"status":"idle","last_seen":datetime.now(timezone.utc).isoformat(),"current_job":None,"planner_mode":x_planner_mode}).encode(),
      prefer="resolution=merge-duplicates,return=minimal")
   db("POST","/rest/v1/rpc/recover_stale_nova_studio_jobs",json.dumps({"p_stale_seconds":900}).encode())
-  rows=db("POST","/rest/v1/rpc/claim_nova_studio_job",json.dumps({"p_worker_id":worker_id}).encode())
+  rows=db("POST","/rest/v1/rpc/claim_nova_studio_job",json.dumps({"p_worker_id":worker_id,"p_planner_mode":x_planner_mode}).encode())
   if isinstance(rows,dict): rows=[rows]
   job=rows[0] if rows else None
   db("PATCH","/rest/v1/nova_studio_workers?worker_id=eq.%s"%urllib.parse.quote(worker_id),
