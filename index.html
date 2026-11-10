@@ -2169,9 +2169,20 @@ async function createJarvisChatVideo(message,loading){
   const health=healthResponse.ok?await healthResponse.json():{};
   if(Number(health.worker_online_count||0)>0){
    const durationSeconds=durationMode==="short"?20:40;
-   loading.textContent="NOVA Studio har hittat din lokala GPU. Skapar AI-scener, svensk berättarröst och MP4…";
+   loading.textContent="NOVA skriver manus och delar upp filmen i fyra scener…";
+   const planPrompt="Skapa ett originellt, visuellt tydligt manus för en kort animerad film utifrån användarens idé. Returnera ENDAST giltig JSON utan markdown med exakt format: {\\"scenes\\":[{\\"visual_prompt\\":\\"...\\",\\"voiceover\\":\\"...\\"} x4]}. Exakt fyra scener med tydlig början, utveckling, vändpunkt och avslutning. Varje visual_prompt ska vara en detaljerad engelsk bildprompt för en enda filmruta, med miljö, handling, känsla, kameravinkel och ljus. Varje voiceover ska vara en naturlig svensk berättarröst på 1–2 korta meningar, med variation och koppling till scenen. Håll samma karaktärsbeskrivning konsekvent i alla scener. Ingen text eller logotyp i bilden. Användarens idé: "+message;
+   const planResponse=await fetch("/api/nova",{method:"POST",headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({message:planPrompt,history:[]})});
+   const planData=await planResponse.json();
+   if(!planResponse.ok)throw new Error(planData.detail||"NOVA kunde inte skriva filmmanuset.");
+   const planText=String(planData.reply||"");
+   const jsonStart=planText.indexOf("{"),jsonEnd=planText.lastIndexOf("}");
+   if(jsonStart<0||jsonEnd<=jsonStart)throw new Error("NOVA returnerade inget giltigt scenmanus.");
+   const plan=JSON.parse(planText.slice(jsonStart,jsonEnd+1));
+   if(!Array.isArray(plan.scenes)||plan.scenes.length!==4||plan.scenes.some(scene=>!scene||typeof scene.visual_prompt!=="string"||typeof scene.voiceover!=="string"||scene.visual_prompt.length<12||scene.voiceover.length<2))throw new Error("NOVA:s manus måste innehålla fyra kompletta scener.");
+   loading.textContent="Manuset är klart. NOVA Studio skapar nu AI-scener på din lokala GPU…";
    const create=await fetch("/api/nova-studio/jobs",{method:"POST",headers:{"Content-Type":"application/json"},
-    body:JSON.stringify({prompt:message,style:"cinematic-family-animation",aspect,duration_seconds:durationSeconds})});
+    body:JSON.stringify({prompt:message,scenes:plan.scenes,style:"cinematic-family-animation",aspect,duration_seconds:durationSeconds})});
    let studio=await create.json();
    if(!create.ok)throw new Error(studio.detail||"NOVA Studio kunde inte köa jobbet.");
    const id=studio.job&&studio.job.id;
