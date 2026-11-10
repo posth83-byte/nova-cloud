@@ -2241,7 +2241,7 @@ async function sendMessage(event,assistant){
  event.preventDefault();
  const isNova=assistant==="nova",isWeb=assistant==="web",isGame=assistant==="game",input=$(assistant+"Input"),messages=assistant+"Messages",button=$(assistant+"Send");
  let response,data;
- const imageData=isNova?(window.novaChatImageData||""):"";
+ let imageData=isNova?(window.novaChatImageData||""):"";
  const sceneFiles=isNova?(window.novaChatSceneFiles||[]):[];
  const message=input.value.trim()||((isNova&&imageData)?"Skapa en kort, säljande produktreklam av den bifogade bilden. Gör en 15-sekunders reklamfilm i vertikalt format med svensk berättarröst.":"");
  if(!message)return;
@@ -2264,10 +2264,24 @@ async function sendMessage(event,assistant){
   }else if(isNova){
    const urlMatch=message.match(/https?:\/\/[^\s<>"']+/i);
    const referenceUrl=urlMatch?urlMatch[0].replace(/[),.]+$/,""):"";
+   if(!imageData&&referenceUrl&&/\.(?:jpe?g|png|webp)(?:[?#]|$)/i.test(referenceUrl)){
+    try{
+     const imageResponse=await fetch(referenceUrl,{mode:"cors"});
+     if(!imageResponse.ok)throw new Error("Bildlänken svarade inte.");
+     const blob=await imageResponse.blob();
+     if(!/^image\/(jpeg|png|webp)$/i.test(blob.type)||blob.size>4*1024*1024)throw new Error("Bildlänken måste vara JPG, PNG eller WebP och högst 4 MB.");
+     imageData=await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(String(reader.result||""));reader.onerror=()=>reject(new Error("Kunde inte läsa produktbilden."));reader.readAsDataURL(blob)});
+     const ext=blob.type.toLowerCase().includes("png")?"png":blob.type.toLowerCase().includes("webp")?"webp":"jpg";
+     sceneFiles.push(new File([blob],"produktbild."+ext,{type:blob.type}));
+     window.novaChatSceneFiles=sceneFiles;
+    }catch(imageLinkError){logActivity("Produktbildlänken kunde inte läsas direkt","⚠",imageLinkError.message)}
+   }
    if(videoRequest){
-    const isShort=/\bshort\b/i.test(message);
+    const isProductAd=/\b(reklam|annons|produktfilm|produktreklam)\b/i.test(message);
+    const isShort=/\bshort\b|\b15[- ]?sek|\b30[- ]?sek|\btiktok\b|\breels\b/i.test(message)||isProductAd;
     const sceneNote=sceneFiles.length?"\n\nBIFOGADE SCENBILDER: Använd bilderna i den ordning de bifogats som scenmaterial i den färdiga MP4-renderingen. Första bilden används även som visuell referens i analysen.":"";
-    const payload={prompt:message+sceneNote,channel:"Mikael Posth",format:isShort?"short":"long",duration_minutes:isShort?1:5,style:"Anpassad efter användarens idé och referensmaterial",audience:"Svensk publik",reference_url:referenceUrl,reference_image_data:imageData,history:conversationHistory};
+    const adDurationNote=isProductAd?"\n\nREKLAMLÄNGD: Skapa en mycket koncentrerad reklamfilm på cirka 15 sekunder. Berättarrösten ska vara cirka 30–40 svenska ord. Börja med en stark krok, lyft en konkret produktfördel och avsluta med en kort uppmaning. Ingen lång YouTube-struktur.":"";
+    const payload={prompt:message+sceneNote+adDurationNote,channel:"Mikael Posth",format:isShort?"short":"long",duration_minutes:isShort?1:5,style:"Anpassad efter användarens idé och referensmaterial",audience:"Svensk publik",reference_url:referenceUrl,reference_image_data:imageData,history:conversationHistory};
     response=await fetch("/api/video/plan",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});
    }else{
     response=await fetch("/api/nova",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({message,reference_url:referenceUrl,reference_image_data:imageData,history:conversationHistory})});
