@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JARVIS Web Delivery Test</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header class="site-header">
+        <div class="container nav-container">
+            <div class="logo">JARVIS <span>TEST SUITE</span></div>
+            <nav class="nav-menu" id="navMenu">
+                <a href="#home" class="nav-link active">Startsida</a>
+                <a href="#tasks" class="nav-link">Uppgifter</a>
+                <a href="#status" class="nav-link">Systemstatus</a>
+            </nav>
+            <button class="mobile-menu-btn" id="mobileMenuBtn" aria-label="Öppna meny">☰</button>
+        </div>
+    </header>
+
+    <main class ="main-content">
+        <section id="home" class="hero-section">
+            <div class="container">
+                <h1>JARVIS Web Delivery Test</h1>
+                <p>En fullständigt responsiv testhemsida byggd enligt strikta kvalitetskrav för att verifiera den nya leveransprocessen.</p>
+                <div class="hero-actions">
+                    <a href="#tasks" class="btn btn-primary">Testa Uppgiftslista</a>
+                </div>
+            </div>
+        </section>
+
+        <section id="tasks" class="task-section">
+            <div class="container">
+                <h2>Interaktiv Uppgiftslista</h2>
+                <p class="section-desc">Lägg till, hantera och ta bort uppgifter för att verifiera att JavaScript-motorn fungerar korrekt i klientsidan.</p>
+                
+                <div class="task-card">
+                    <form id="taskForm" class="task-form">
+                        <input type="text" id="taskInput" placeholder="Skriv en ny uppgift..." autocomplete="off" required>
+                        <button type="submit" class="btn btn-accent">Lägg till</button>
+                    </form>
+                    <ul id="taskList" class="task-list">
+                        <!-- Dynamiska uppgifter hamnar här -->
+                    </ul>
+                    <div class="task-counter">Antal aktiva uppgifter: <span id="taskCount">0</span></div>
+                </div>
+            </div>
+        </section>
+
+        <section id="status" class="status-section">
+            <div class="container">
+                <h2>Systemstatus & Verifiering</h2>
+                <div class="status-grid">
+                    <div class="status-box">
+                        <h3>HTML5 / CSS3</h3>
+                        <p class="status-ok">KLAR & VALIDERT</p>
+                    </div>
+                    <div class="status-box">
+                        <h3>JavaScript App</h3>
+                        <p class="status-ok">KLAR & AKTIV</p>
+                    </div>
+                    <div class="status-box">
+                        <h3>QA_ENGINEER Test</h3>
+                        <p class="status-pending">VÄNTAR PÅ MILJÖ</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="site-footer">
+        <div class="container">
+            <p>&copy; 2025 JARVIS Web Architecture. Alla rättigheter förbehållna.</p>
+        </div>
+    </footer>
+
+    <script src="app.js"></script>
+</body>
+</html>
