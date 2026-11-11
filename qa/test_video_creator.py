@@ -71,19 +71,34 @@ def main():
     assert "zoompan=" in animated_filter and "drawtext=" not in animated_filter
     assert "sin(on/" in animated_filter and "fade=t=in" in animated_filter
     assert engine.CHARACTER_REACTIONS["coffee"] == "VA?!"
-    assert engine._character_punchline_start(5.2) == 4.32
+    assert engine._character_punchline_start(5.2) == 4.02
     assert engine._character_punchline_start(2.0) == 1.12
+    punch_start = engine._character_punchline_start(5.2)
+    anticipation = engine._character_motion_state(punch_start - 0.20, 5.2)
+    impact = engine._character_motion_state(punch_start + 0.30, 5.2)
+    early_recoil = engine._character_motion_state(punch_start + 0.35, 5.2)
+    late_recoil = engine._character_motion_state(punch_start + 0.85, 5.2)
+    assert anticipation["anticipation"] > 0.95 and anticipation["punch"] == 0.0
+    assert impact["punch"] == 1.0
+    assert abs(late_recoil["recoil"]) < abs(early_recoil["recoil"])
+    assert engine._character_motion_state(0.1, 5.2)["stride"] * engine._character_motion_state(0.6, 5.2)["stride"] < 0
+    assert engine._character_motion_state(2.95, 5.2)["blink"] > 0.9
+    assert engine._character_motion_state(2.5, 5.2)["blink"] < 0.1
     assert (engine.W, engine.H, engine.FPS) == (540, 960, 20)
     assert engine.CHARACTER_FPS == 10
     for aspect in ("9:16", "16:9", "1:1"):
         assert 0 <= engine._character_overlay_x(aspect) <= engine.W - 184
     start_pose = engine._draw_character_frame("coffee", 0, 0.2, 5.2)
     moving_pose = engine._draw_character_frame("coffee", 0, 1.4, 5.2)
+    anticipation_pose = engine._draw_character_frame("coffee", 0, 3.82, 5.2)
     punchline_pose = engine._draw_character_frame("coffee", 0, 4.7, 5.2)
+    recovery_pose = engine._draw_character_frame("coffee", 0, 4.95, 5.2)
     assert start_pose.mode == "RGBA" and start_pose.size == (184, 250)
     assert start_pose.getbbox(), "The procedural character frame must not be empty."
     assert start_pose.tobytes() != moving_pose.tobytes(), "The character must move between frames."
-    assert moving_pose.tobytes() != punchline_pose.tobytes(), "The punchline must change the character pose."
+    assert moving_pose.tobytes() != anticipation_pose.tobytes(), "The anticipation dip must change the pose."
+    assert anticipation_pose.tobytes() != punchline_pose.tobytes(), "The punchline must change the character pose."
+    assert punchline_pose.tobytes() != recovery_pose.tobytes(), "The character must settle after the impact."
     # Every comedy archetype gets a distinct animated prop/reaction, not only a speech bubble.
     for kind in engine.CHARACTER_REACTIONS:
         accent = (255, 151, 91, 255)
