@@ -396,6 +396,22 @@ def _build_narration(beats, video_type="humor", duration_mode="standard"):
     )
 
 
+def _scene_durations(beats, audio_duration, video_type="humor", duration_mode="standard"):
+    """Allocate each scene in proportion to the words actually spoken in that beat."""
+    if not beats or audio_duration <= 0:
+        raise ValueError("Scenerna behöver repliker och en positiv ljudlängd.")
+    include_captions = duration_mode != "short" and video_type != "explainer"
+    word_counts = []
+    for heading, line, caption, _ in beats:
+        spoken = f"{heading}. {line}" + (f" {caption}" if include_captions and caption else "")
+        word_counts.append(max(1, len(spoken.split())))
+    total_words = sum(word_counts)
+    durations = [audio_duration * count / total_words for count in word_counts]
+    # Avoid cumulative floating-point drift at the end of the concatenated timeline.
+    durations[-1] = max(0.0, audio_duration - sum(durations[:-1]))
+    return durations
+
+
 def _motion_filter(kind, index, video_type="humor", scene_seconds=SCENE_SECONDS):
     """Build the camera movement and fades without optional FFmpeg text filters."""
     frames = max(1, int(round(scene_seconds * FPS)))
@@ -413,6 +429,22 @@ def _motion_filter(kind, index, video_type="humor", scene_seconds=SCENE_SECONDS)
 def _character_punchline_start(scene_seconds):
     """Keep the visual reaction for the final 0.88 seconds of a scene."""
     return max(0.0, scene_seconds - 0.88)
+
+
+def _character_reaction_timing(elapsed, scene_seconds):
+    """Return anticipation, held reaction and short impact burst for one frame."""
+    punch_start = _character_punchline_start(scene_seconds)
+
+    def smoothstep(value):
+        progress = max(0.0, min(1.0, value))
+        return progress * progress * (3.0 - 2.0 * progress)
+
+    anticipation = max(0.0, 1.0 - abs(elapsed - (punch_start - 0.12)) / 0.16)
+    impact = smoothstep((elapsed - punch_start) / 0.14)
+    recovery = smoothstep((elapsed - (punch_start + 0.28)) / 0.42)
+    reaction = impact * (1.0 - 0.45 * recovery)
+    impact_burst = impact * (1.0 - smoothstep((elapsed - (punch_start + 0.14)) / 0.22))
+    return anticipation, reaction, impact_burst
 
 CHARACTER_FPS = 10
 CHARACTER_REACTIONS = {
@@ -517,11 +549,8 @@ def _draw_character_frame(kind, index, elapsed, scene_seconds):
     draw = ImageDraw.Draw(frame)
     phase = index * 0.73
     wave = math.sin(elapsed * 5.1 + phase)
+    anticipation, reaction, impact_burst = _character_reaction_timing(elapsed, scene_seconds)
     punch_start = _character_punchline_start(scene_seconds)
-    punch_raw = max(0.0, min(1.0, (elapsed - punch_start) / 0.24))
-    punch = punch_raw * punch_raw * (3.0 - 2.0 * punch_raw)
-    # A short anticipation dip gives the audience a beat to read the reaction.
-    anticipation = max(0.0, 1.0 - abs(elapsed - (punch_start - 0.10)) / 0.14)
     recoil = math.sin(min(1.0, max(0.0, elapsed - punch_start) / 0.36) * math.pi)
     accent = {
         "coffee": (255, 151, 91, 255), "sleep": (142, 173, 239, 255),
@@ -532,15 +561,15 @@ def _draw_character_frame(kind, index, elapsed, scene_seconds):
 
     bob = 4.5 * math.sin(elapsed * (2.0 if kind == "sleep" else 5.1) + phase)
     bob -= 8.0 * anticipation
-    bob += 4.0 * punch - 3.0 * recoil
+    bob += 4.0 * reaction - 3.0 * recoil
     lean = 5.0 * math.sin(elapsed * 2.7 + phase)
-    lean += 7.0 * anticipation - 9.0 * punch
+    lean += 7.0 * anticipation - 9.0 * reaction
     left_raise = 0.18 + 0.13 * math.sin(elapsed * 3.8 + phase)
     right_raise = 0.18 + 0.13 * math.sin(elapsed * 4.2 + phase + 1.1)
     if kind == "coffee":
         right_raise += 0.38 * max(0.0, wave)
     elif kind == "sleep":
-        bob -= 7.0 * punch
+        bob -= 7.0 * reaction
         left_raise = right_raise = 0.10
     elif kind == "phone":
         right_raise += 0.30
@@ -550,8 +579,8 @@ def _draw_character_frame(kind, index, elapsed, scene_seconds):
     elif kind == "work":
         left_raise += 0.20 * max(0.0, wave)
         right_raise += 0.20 * max(0.0, -wave)
-    left_raise = left_raise * (1.0 - punch) + 0.94 * punch
-    right_raise = right_raise * (1.0 - punch) + 0.94 * punch
+    left_raise = left_raise * (1.0 - reaction) + 0.94 * reaction
+    right_raise = right_raise * (1.0 - reaction) + 0.94 * reaction
 
     cx = 92 + lean
     head_y = 39 + bob
@@ -566,7 +595,7 @@ def _draw_character_frame(kind, index, elapsed, scene_seconds):
 
     # Small contact shadow and legs make the mascot feel grounded.
     draw.ellipse((cx - 43, 226, cx + 43, 239), fill=(0, 0, 0, 75))
-    foot_bob = 4.0 * math.sin(elapsed * 5.1 + phase)
+    foot_bob = 4.0 * math.sin(elapsed * 5.1 + phase) + 5.0 * impact_burst
     left_foot = (cx - 39 + foot_bob, 220)
     right_foot = (cx + 39 - foot_bob, 220)
     for hip, knee, foot in (
@@ -592,7 +621,7 @@ def _draw_character_frame(kind, index, elapsed, scene_seconds):
               fill=(244, 248, 255, 255), width=18)
     draw.line((cx, shoulder_y + 3, cx + lean * 0.25, hip_y - 3),
               fill=accent, width=5)
-    head_radius = 26 + int(5 * punch)
+    head_radius = 26 + int(5 * reaction)
     draw.ellipse((cx - head_radius, head_y - head_radius,
                   cx + head_radius, head_y + head_radius),
                  fill=(244, 248, 255, 255), outline=accent, width=5)
@@ -600,21 +629,22 @@ def _draw_character_frame(kind, index, elapsed, scene_seconds):
     for eye_x in (cx - 9 + eye_shift, cx + 9 + eye_shift):
         draw.ellipse((eye_x - 3, head_y - 4, eye_x + 3, head_y + 3),
                      fill=(12, 20, 36, 255))
-    if punch > 0.35:
+    if reaction > 0.35:
         draw.ellipse((cx - 5, head_y + 8, cx + 5, head_y + 19),
                      fill=(12, 20, 36, 255))
-        # Comic impact rays appear only at the punchline.
+    else:
+        draw.arc((cx - 9, head_y + 4, cx + 9, head_y + 17),
+                 10, 170, fill=(12, 20, 36, 255), width=3)
+    if impact_burst > 0.35:
+        # Impact rays and a wider stance flash briefly, then settle into the reaction.
         for angle in (-2.45, -1.85, -1.25, -0.65, 0.0):
             x1 = cx + math.cos(angle) * 34
             y1 = head_y + math.sin(angle) * 34
             x2 = cx + math.cos(angle) * 46
             y2 = head_y + math.sin(angle) * 46
             draw.line((x1, y1, x2, y2), fill=accent, width=4)
-    else:
-        draw.arc((cx - 9, head_y + 4, cx + 9, head_y + 17),
-                 10, 170, fill=(12, 20, 36, 255), width=3)
 
-    _draw_character_gag(draw, kind, elapsed, punch, accent, phase)
+    _draw_character_gag(draw, kind, elapsed, reaction, accent, phase)
 
     # Floating sparkles replace FFmpeg drawtext so the bundled encoder stays compatible.
     sparkle_x = 27 + 7 * math.sin(elapsed * 2.4 + phase)
@@ -628,8 +658,8 @@ def _draw_character_frame(kind, index, elapsed, scene_seconds):
     draw.line((plus_x - 7, plus_y, plus_x + 7, plus_y), fill=accent, width=3)
     draw.line((plus_x, plus_y - 7, plus_x, plus_y + 7), fill=accent, width=3)
 
-    if punch > 0.2:
-        # A speech bubble lands with the final reaction, not throughout the scene.
+    if reaction > 0.2:
+        # The speech bubble holds while the impact rays have already disappeared.
         draw.rounded_rectangle((4, 4, 116, 42), radius=13,
                                fill=(255, 255, 255, 248), outline=accent, width=3)
         draw.polygon(((91, 39), (106, 53), (108, 38)),
@@ -825,12 +855,13 @@ async def _render_original_video(topic, mode, video_type, aspect, duration_mode,
         await edge_tts.Communicate(narration, VOICE).save(str(narration_path))
         audio_duration = _audio_duration(narration_path)
         logger.info("NOVA_VIDEO_TTS_READY job=%s seconds=%.1f", job_id, audio_duration)
-        scene_seconds = max(0.1, min(60.0, audio_duration / len(beats)))
+        scene_durations = _scene_durations(beats, audio_duration, video_type, duration_mode)
         clips = []
         attributions = []
         visual_assets = search_commons_images(topic, limit=min(3, len(beats)))
         logger.info("NOVA_VIDEO_ASSETS_READY job=%s count=%s", job_id, len(visual_assets))
         for i, (heading, line, caption, kind) in enumerate(beats):
+            scene_seconds = max(0.1, min(60.0, scene_durations[i]))
             still = job_dir / f"scene_{i:02}.jpg"
             background_path = None
             if i < len(visual_assets):
@@ -842,7 +873,7 @@ async def _render_original_video(topic, mode, video_type, aspect, duration_mode,
                     )})
             _make_scene(still, heading, line, caption, kind, i, background_path, scene_seconds, len(beats))
             clip = job_dir / f"clip_{i:02}.mp4"
-            frames = int(scene_seconds * FPS)
+            frames = max(1, int(round(scene_seconds * FPS)))
             # Add a transparent, independently moving mascot to original comedy scenes.
             motion = _motion_filter(kind, i, video_type, scene_seconds)
             character_pattern = (

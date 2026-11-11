@@ -73,6 +73,33 @@ def main():
     assert engine.CHARACTER_REACTIONS["coffee"] == "VA?!"
     assert engine._character_punchline_start(5.2) == 4.32
     assert engine._character_punchline_start(2.0) == 1.12
+    timing_start = engine._character_punchline_start(5.2)
+    anticipation, held_reaction, impact_burst = engine._character_reaction_timing(timing_start - 0.12, 5.2)
+    assert anticipation == 1.0 and held_reaction == 0.0 and impact_burst == 0.0
+    _, impact_reaction, impact_burst = engine._character_reaction_timing(timing_start + 0.16, 5.2)
+    assert impact_reaction > 0.95 and impact_burst > 0.9
+    _, settled_reaction, settled_burst = engine._character_reaction_timing(5.15, 5.2)
+    assert 0.5 <= settled_reaction < impact_reaction and settled_burst < 0.01
+
+    timing_beats = [
+        ("KORT", "Kort replik.", "kort skämt", "coffee"),
+        ("LÅNG", "Det här är en betydligt längre replik som behöver mer utrymme.",
+         "Och dessutom kommer en längre visuell punchline.", "work"),
+    ]
+    standard_scene_times = engine._scene_durations(timing_beats, 12.0, "humor", "standard")
+    short_scene_times = engine._scene_durations(timing_beats, 12.0, "humor", "short")
+    assert standard_scene_times[1] > standard_scene_times[0]
+    assert short_scene_times[1] > short_scene_times[0]
+    assert abs(sum(standard_scene_times) - 12.0) < 1e-9
+    assert abs(sum(short_scene_times) - 12.0) < 1e-9
+    explainer_scene_times = engine._scene_durations(timing_beats, 12.0, "explainer", "standard")
+    assert explainer_scene_times[1] > explainer_scene_times[0]
+    try:
+        engine._scene_durations([], 12.0)
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("Scene timing must reject an empty beat list.")
     assert (engine.W, engine.H, engine.FPS) == (540, 960, 20)
     assert engine.CHARACTER_FPS == 10
     for aspect in ("9:16", "16:9", "1:1"):
