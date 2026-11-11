@@ -411,8 +411,41 @@ def _motion_filter(kind, index, video_type="humor", scene_seconds=SCENE_SECONDS)
 
 
 def _character_punchline_start(scene_seconds):
-    """Keep the visual reaction for the final 0.88 seconds of a scene."""
-    return max(0.0, scene_seconds - 0.88)
+    """Reserve a readable anticipation and reaction window at the end of each gag."""
+    scene_seconds = max(0.0, float(scene_seconds))
+    reaction_window = min(1.18, max(0.88, scene_seconds * 0.23))
+    return max(0.0, scene_seconds - reaction_window)
+
+
+def _smoothstep01(value):
+    """Clamp a value to 0..1 and ease it without abrupt starts or stops."""
+    value = max(0.0, min(1.0, value))
+    return value * value * (3.0 - 2.0 * value)
+
+
+def _character_motion_state(elapsed, scene_seconds, phase=0.0):
+    """Return a deterministic walk, anticipation, impact, recoil and blink pose."""
+    elapsed = max(0.0, float(elapsed))
+    punch_start = _character_punchline_start(scene_seconds)
+    anticipation_in = _smoothstep01((elapsed - (punch_start - 0.34)) / 0.14)
+    anticipation_out = _smoothstep01((elapsed - (punch_start - 0.08)) / 0.12)
+    anticipation = anticipation_in * (1.0 - anticipation_out)
+    punch = _smoothstep01((elapsed - punch_start) / 0.18)
+    after_impact = max(0.0, elapsed - punch_start - 0.18)
+    recoil = (
+        math.exp(-after_impact * 4.5) * math.sin(after_impact * 17.0)
+        if after_impact > 0.0 else 0.0
+    )
+    stride = math.sin(elapsed * 6.2 + phase)
+    blink_phase = (elapsed + phase * 0.17) % 3.4
+    blink = max(0.0, 1.0 - abs(blink_phase - 2.95) / 0.075)
+    return {
+        "anticipation": anticipation,
+        "punch": punch,
+        "recoil": recoil,
+        "stride": stride,
+        "blink": blink,
+    }
 
 CHARACTER_FPS = 10
 CHARACTER_REACTIONS = {
@@ -425,7 +458,7 @@ CHARACTER_REACTIONS = {
 def _draw_character_gag(draw, kind, elapsed, punch, accent, phase):
     """Animate a small scene-specific prop so each reaction has its own visual joke."""
     drift = 3.0 * math.sin(elapsed * 3.1 + phase)
-    lift = 5.0 * punch
+    lift = 8.0 * punch + 2.0 * math.sin(elapsed * 5.8 + phase) * (1.0 - punch)
     x = 142 + drift
     y = 112 - lift
     ink = (12, 20, 36, 255)
@@ -443,11 +476,15 @@ def _draw_character_gag(draw, kind, elapsed, punch, accent, phase):
     elif kind == "sleep":
         # The Z drifts upward, then the final jolt turns it into a startled star.
         z_y = 35 - 13 * (0.5 + 0.5 * math.sin(elapsed * 2.5 + phase))
-        draw.text((x-2, z_y), "Z", font=_font(25 + int(5*punch), True),
-                  fill=accent, anchor="mm")
         if punch > 0.25:
-            draw.line((x-12, z_y-15, x-19, z_y-23), fill=white, width=3)
-            draw.line((x+13, z_y-14, x+21, z_y-22), fill=white, width=3)
+            draw.text((x-2, z_y), "!", font=_font(31, True),
+                      fill=accent, anchor="mm")
+            for dx, dy in ((-13, -15), (13, -14), (0, 18)):
+                draw.line((x+dx, z_y+dy, x+dx*1.45, z_y+dy*1.45),
+                          fill=white, width=3)
+        else:
+            draw.text((x-2, z_y), "Z", font=_font(25, True),
+                      fill=accent, anchor="mm")
     elif kind == "phone":
         # Notification screen flashes only on the punchline.
         draw.rounded_rectangle((x-7, y-23, x+19, y+20), radius=5,
@@ -511,18 +548,18 @@ def _draw_character_gag(draw, kind, elapsed, punch, accent, phase):
 
 
 def _draw_character_frame(kind, index, elapsed, scene_seconds):
-    """Draw one transparent, expressive mascot frame for the comic scenes."""
+    """Draw one transparent mascot frame with a readable walk and punchline arc."""
     width, height = 184, 250
     frame = Image.new("RGBA", (width, height), (0, 0, 0, 0))
     draw = ImageDraw.Draw(frame)
     phase = index * 0.73
+    state = _character_motion_state(elapsed, scene_seconds, phase)
     wave = math.sin(elapsed * 5.1 + phase)
-    punch_start = _character_punchline_start(scene_seconds)
-    punch_raw = max(0.0, min(1.0, (elapsed - punch_start) / 0.24))
-    punch = punch_raw * punch_raw * (3.0 - 2.0 * punch_raw)
-    # A short anticipation dip gives the audience a beat to read the reaction.
-    anticipation = max(0.0, 1.0 - abs(elapsed - (punch_start - 0.10)) / 0.14)
-    recoil = math.sin(min(1.0, max(0.0, elapsed - punch_start) / 0.36) * math.pi)
+    anticipation = state["anticipation"]
+    punch = state["punch"]
+    recoil = state["recoil"]
+    stride = state["stride"]
+    blink = state["blink"]
     accent = {
         "coffee": (255, 151, 91, 255), "sleep": (142, 173, 239, 255),
         "phone": (105, 187, 229, 255), "work": (105, 187, 229, 255),
@@ -530,13 +567,14 @@ def _draw_character_frame(kind, index, elapsed, scene_seconds):
         "food": (255, 181, 115, 255), "love": (255, 139, 177, 255),
     }.get(kind, (255, 151, 91, 255))
 
-    bob = 4.5 * math.sin(elapsed * (2.0 if kind == "sleep" else 5.1) + phase)
-    bob -= 8.0 * anticipation
-    bob += 4.0 * punch - 3.0 * recoil
-    lean = 5.0 * math.sin(elapsed * 2.7 + phase)
-    lean += 7.0 * anticipation - 9.0 * punch
-    left_raise = 0.18 + 0.13 * math.sin(elapsed * 3.8 + phase)
-    right_raise = 0.18 + 0.13 * math.sin(elapsed * 4.2 + phase + 1.1)
+    # A compact walk cycle gives the feet, arms and torso opposing motion.
+    bob = 3.2 * math.sin(elapsed * (2.0 if kind == "sleep" else 4.6) + phase)
+    bob -= 9.0 * anticipation
+    bob += 5.0 * punch + 4.0 * recoil
+    lean = 4.0 * math.sin(elapsed * 2.7 + phase)
+    lean += 8.0 * anticipation - 11.0 * punch + 3.0 * recoil
+    left_raise = 0.18 + 0.11 * math.sin(elapsed * 3.8 + phase) + 0.16 * stride
+    right_raise = 0.18 + 0.11 * math.sin(elapsed * 4.2 + phase + 1.1) - 0.16 * stride
     if kind == "coffee":
         right_raise += 0.38 * max(0.0, wave)
     elif kind == "sleep":
@@ -550,6 +588,8 @@ def _draw_character_frame(kind, index, elapsed, scene_seconds):
     elif kind == "work":
         left_raise += 0.20 * max(0.0, wave)
         right_raise += 0.20 * max(0.0, -wave)
+    left_raise = max(0.0, min(1.0, left_raise))
+    right_raise = max(0.0, min(1.0, right_raise))
     left_raise = left_raise * (1.0 - punch) + 0.94 * punch
     right_raise = right_raise * (1.0 - punch) + 0.94 * punch
 
@@ -564,21 +604,24 @@ def _draw_character_frame(kind, index, elapsed, scene_seconds):
     left_elbow = (cx - 31, shoulder_y + 25 - 35 * left_raise)
     right_elbow = (cx + 31, shoulder_y + 25 - 35 * right_raise)
 
-    # Small contact shadow and legs make the mascot feel grounded.
-    draw.ellipse((cx - 43, 226, cx + 43, 239), fill=(0, 0, 0, 75))
-    foot_bob = 4.0 * math.sin(elapsed * 5.1 + phase)
-    left_foot = (cx - 39 + foot_bob, 220)
-    right_foot = (cx + 39 - foot_bob, 220)
+    # Alternate foot lifts and a narrowing shadow sell the little bounce.
+    left_lift = max(0.0, stride) * 8.0 * (1.0 - punch)
+    right_lift = max(0.0, -stride) * 8.0 * (1.0 - punch)
+    shadow_width = 84 - int(max(left_lift, right_lift) * 1.6)
+    draw.ellipse((cx - shadow_width / 2, 226, cx + shadow_width / 2, 239),
+                 fill=(0, 0, 0, 75))
+    left_foot = (cx - 39 + stride * 3.0, 220 - left_lift)
+    right_foot = (cx + 39 - stride * 3.0, 220 - right_lift)
     for hip, knee, foot in (
-        ((cx - 8, hip_y), (cx - 22, hip_y + 31), left_foot),
-        ((cx + 8, hip_y), (cx + 22, hip_y + 31), right_foot),
+        ((cx - 8, hip_y), (cx - 22 + stride * 4.0, hip_y + 31 - left_lift * 0.35), left_foot),
+        ((cx + 8, hip_y), (cx + 22 - stride * 4.0, hip_y + 31 - right_lift * 0.35), right_foot),
     ):
         draw.line((hip, knee, foot), fill=(244, 248, 255, 255), width=12, joint="curve")
         draw.line((hip, knee, foot), fill=accent, width=4, joint="curve")
         draw.rounded_rectangle((foot[0] - 13, foot[1] - 3, foot[0] + 12, foot[1] + 7),
                                radius=5, fill=(244, 248, 255, 255), outline=accent, width=3)
 
-    # Arms move independently; the punchline lifts both hands in surprise.
+    # Opposing arm swings make the walk readable; impact raises both hands.
     for shoulder, elbow, hand in (
         (left_shoulder, left_elbow, left_hand),
         (right_shoulder, right_elbow, right_hand),
@@ -589,21 +632,27 @@ def _draw_character_frame(kind, index, elapsed, scene_seconds):
                      fill=(244, 248, 255, 255), outline=accent, width=3)
 
     draw.line((cx, shoulder_y, cx + lean * 0.25, hip_y),
-              fill=(244, 248, 255, 255), width=18)
+              fill=(244, 248, 255, 255), width=18 + int(3 * punch))
     draw.line((cx, shoulder_y + 3, cx + lean * 0.25, hip_y - 3),
               fill=accent, width=5)
-    head_radius = 26 + int(5 * punch)
+    head_radius = 26 + int(5 * punch) + int(2 * max(0.0, recoil))
     draw.ellipse((cx - head_radius, head_y - head_radius,
                   cx + head_radius, head_y + head_radius),
                  fill=(244, 248, 255, 255), outline=accent, width=5)
     eye_shift = 2 if kind == "phone" else 0
     for eye_x in (cx - 9 + eye_shift, cx + 9 + eye_shift):
-        draw.ellipse((eye_x - 3, head_y - 4, eye_x + 3, head_y + 3),
-                     fill=(12, 20, 36, 255))
+        if blink > 0.72 and punch < 0.25:
+            draw.line((eye_x - 4, head_y, eye_x + 4, head_y),
+                      fill=(12, 20, 36, 255), width=3)
+        else:
+            eye_radius = 3 + int(2 * punch)
+            draw.ellipse((eye_x - eye_radius, head_y - 4 - punch,
+                          eye_x + eye_radius, head_y + 3 + punch),
+                         fill=(12, 20, 36, 255))
     if punch > 0.35:
         draw.ellipse((cx - 5, head_y + 8, cx + 5, head_y + 19),
                      fill=(12, 20, 36, 255))
-        # Comic impact rays appear only at the punchline.
+        # Comic impact rays appear only after the audience has had time to read.
         for angle in (-2.45, -1.85, -1.25, -0.65, 0.0):
             x1 = cx + math.cos(angle) * 34
             y1 = head_y + math.sin(angle) * 34
@@ -629,15 +678,14 @@ def _draw_character_frame(kind, index, elapsed, scene_seconds):
     draw.line((plus_x, plus_y - 7, plus_x, plus_y + 7), fill=accent, width=3)
 
     if punch > 0.2:
-        # A speech bubble lands with the final reaction, not throughout the scene.
-        draw.rounded_rectangle((4, 4, 116, 42), radius=13,
+        # The reaction bubble lands after the anticipation dip and impact.
+        draw.rounded_rectangle((4, 4, 120, 42), radius=13,
                                fill=(255, 255, 255, 248), outline=accent, width=3)
-        draw.polygon(((91, 39), (106, 53), (108, 38)),
+        draw.polygon(((94, 39), (109, 53), (111, 38)),
                      fill=(255, 255, 255, 248))
-        draw.text((60, 23), CHARACTER_REACTIONS.get(kind, "OJ?!"),
+        draw.text((62, 23), CHARACTER_REACTIONS.get(kind, "OJ?!"),
                   font=_font(17, True), fill=(12, 20, 36, 255), anchor="mm")
     return frame
-
 
 def _character_overlay_x(aspect):
     """Keep the animated mascot fully inside the portrait source frame."""
