@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="sv" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>JARVIS System Hub & Arcade - PR #26 (Slutversion)</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;800&family=Inter:wght@300;400;600&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0b0f19;
+            color: #f3f4f6;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        .font-orbitron { font-family: 'Orbitron', sans-serif; }
+        .neon-glow { box-shadow: 0 0 25px rgba(6, 182, 212, 0.2); }
+        .neon-text { text-shadow: 0 0 12px rgba(6, 182, 212, 0.5); }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between selection:bg-cyan-500 selection:text-black">
+
+    <!-- Header & Navigation -->
+    <header class="border-b border-cyan-900/50 bg-slate-950/90 backdrop-blur-md sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
+            <div class="flex items-center space-x-3">
+                <div class="w-3 h-3 bg-cyan-400 rounded-full animate-ping" id="system-pulse"></div>
+                <h1 class="font-orbitron font-extrabold text-xl md:text-2xl tracking-wider text-cyan-400 neon-text">
+                    JARVIS <span class="text-white">SYSTEM HUB</span>
+                </h1>
+            </div>
+            <!-- Status & Mobilmeny-knapp -->
+            <div class="flex items-center space-x-2">
+                <div id="diagnostic-badge" class="text-xs font-orbitron text-yellow-400 border border-yellow-800/60 px-3 py-1 rounded-full bg-yellow-950/30">
+                    DIAGNOSTIK EJ KÖRD
+                </div>
+                <button id="mobile-menu-btn" class="md:hidden text-cyan-400 p-2 focus:outline-none" aria-label="Meny">
+                    ☰
+                </button>
+            </div>
+        </div>
+        <!-- Mobilmeny-låda -->
+        <div id="mobile-menu" class="hidden md:hidden bg-slate-900 border-b border-cyan-900 px-4 py-3 flex flex-col space-y-2 font-orbitron text-xs">
+            <a href="#diagnostics-section" class="text-cyan-400 hover:text-white py-1">Diagnostik</a>
+            <a href="#arcade-section" class="text-cyan-400 hover:text-white py-1">Arkad (Catcher)</a>
+            <a href="#tasks-section" class="text-cyan-400 hover:text-white py-1">Uppgiftshanterare</a>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="max-w-4xl mx-auto px-4 py-6 flex-grow w-full flex flex-col gap-6">
+        
+        <!-- Sektion 1: Systemdiagnostik (Verklig kontroll utan falska API:er) -->
+        <section id="diagnostics-section" class="bg-slate-900/80 border border-cyan-500/30 rounded-2xl p-5 neon-glow">
+            <div class="flex justify-between items-center mb-4 border-b border-cyan-900/40 pb-2">
+                <h2 class="font-orbitron text-lg font-bold text-white">SYSTEMDIAGNOSTIK</h2>
+                <button id="run-diagnostics-btn" class="font-orbitron text-xs bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold px-4 py-2 rounded-lg transition-all cursor-pointer">
+                    KÖR HÄLSOMÄTNING
+                </button>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 font-orbitron text-xs">
+                <div class="bg-slate-950 p-3 rounded-xl border border-slate-800">
+                    <div class="text-slate-400 mb-1">GEMINI API</div>
+                    <div id="status-gemini" class="text-yellow-400 font-bold">EJ VERIFIERAT</div>
+                </div>
+                <div class="bg-slate-950 p-3 rounded-xl border border-slate-800">
+                    <div class="text-slate-400 mb-1">SUPABASE DB</div>
+                    <div id="status-supabase" class="text-yellow-400 font-bold">EJ VERIFIERAT</div>
+                </div>
+                <div class="bg-slate-950 p-3 rounded-xl border border-slate-800">
+                    <div class="text-slate-400 mb-1">LOKALT MINNE</div>
+                    <div id="status-storage" class="text-cyan-400 font-bold">TILLGÄNGLIGT</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Sektion 2: Uppgiftshanteraren (Krav för Playwright-tester och funktionalitet) -->
+        <section id="tasks-section" class="bg-slate-900/80 border border-cyan-500/30 rounded-2xl p-5 neon-glow">
+            <div class="flex justify-between items-center mb-4 border-b border-cyan-900/40 pb-2">
+                <h2 class="font-orbitron text-lg font-bold text-white">UPPGIFTSHANTERARE</h2>
+                <span class="font-orbitron text-xs text-cyan-400">AKTIVA: <span id="task-counter">0</span></span>
+            </div>
+            <div class="flex gap-2 mb-4">
+                <input type="text" id="task-input" placeholder="Skriv ny uppgift..." class="flex-grow bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-cyan-500">
+                <button id="task-add-btn" class="font-orbitron text-xs bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold px-5 py-2 rounded-xl transition-all cursor-pointer">
+                     LÄGG TILL
+                </button>
+            </div>
+            <ul id="task-list" class="space-y-2 max-h-48 overflow-y-auto pr-1">
+                <!-- Dynamiska uppgifter hamnar här -->
+            </ul>
+        </section>
+
+        <!-- Sektion 3: Spelmodul / JARVIS Catcher -->
+        <section id="arcade-section" class="bg-slate-900/90 border border-cyan-500/30 rounded-2xl p-5 neon-glow flex flex-col items-center">
+            <div class="w-full text-center mb-3">
+                <h3 class="font-orbitron text-xl font-bold text-white">JARVIS <span class="text-cyan-400">Catcher</span></h3>
+                <p class="text-slate-400 text-xs">Styr plattformen och samla energiklotten.</p>
+            </div>
+
+            <div class="w-full max-w-xl">
+                <!-- HUD -->
+                <div class="flex justify-between items-center mb-3 font-orbitron text-xs border-b border-cyan-900/40 pb-2">
+                    <div>POÄNG: <span id="jarvis-score" class="text-cyan-400 font-bold">0</span></div>
+                    <div>LIV: <span id="jarvis-lives" class="text-red-400 font-bold">3</span></div>
+                    <div>STATUS: <span id="jarvis-status" class="text-yellow-400 font-semibold">REDO</span></div>
+                </div>
+
+                <!-- Canvas Wrapper -->
+                <div id="canvas-container" class="relative w-full aspect-[4/3] bg-slate-950 rounded-xl overflow-hidden border border-cyan-900/50 flex items-center justify-center">
+                    <canvas id="jarvis-canvas" class="w-full h-full block cursor-crosshair"></canvas>
+                    <div id="game-overlay" class="absolute inset-0 bg-slate-950/80 backdrop-blur-sm flex flex-col items-center justify-center space-y-3">
+                        <span id="overlay-title" class="font-orbitron text-cyan-400 font-bold text-lg">SPELMODUL KLAR</span>
+                        <button id="start-game-btn" class="font-orbitron text-xs bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold px-6 py-3 rounded-xl transition-all cursor-pointer shadow-lg shadow-cyan-500/2://0">
+                            STARTA SPEL
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Spelkontroller (Touch/Mobil) -->
+                <div class="flex justify-between mt-3 gap-2">
+                    <button id="game-left-btn" class="flex-grow bg-slate-800 hover:bg-slate-700 text-cyan-400 font-orbitron py-2 rounded-xl text-xs font-bold active:bg-cyan-500 active:text-slate-950">VÄNSTER</button>
+                    <button id="game-right-btn" class="flex-grow bg-slate-800 hover:bg-slate-700 text-cyan-400 font-orbitron py-2 rounded-xl text-xs font-bold active:bg-cyan-500 active:text-slate-950">HÖGER</button>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="border-t border-cyan-900/50 bg-slate-950 py-4 text-center font-orbitron text-[10px] text-slate-500">
+        <p>JARVIS SYSTEM HUB &bull; PR #26 SLUTVERSION &bull; <a href="index.html" class="text-cyan-400 hover:underline">INDEX</a> &bull; <a href="app.js" class="text-cyan-400 hover:underline">APP.JS</a></p>
+    </footer>
+
+    <!-- Länk till extern app.js -->
+    <script src="app.js"></script>
+</body>
+</html>
