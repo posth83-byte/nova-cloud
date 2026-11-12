@@ -2160,6 +2160,60 @@ async function createJarvisChatVideo(message,loading){
   /\b(berättelse|story|saga)\b/.test(lowered)?"story":"humor";
  const aspect=/\b(16:9|liggande|landscape|youtube långfilm)\b/.test(lowered)?"16:9":"9:16";
  const durationMode=/\b(kort|short|15 sek|30 sek|tiktok|reels)\b/.test(lowered)?"short":"standard";
+
+ // Prefer NOVA Studio's private local GPU worker when it is actually online.
+ // Otherwise keep the existing verified procedural renderer as fallback.
+ let studioJobStarted=false;
+ try{
+  const healthResponse=await fetch("/api/nova-studio/health",{cache:"no-store"});
+  const health=healthResponse.ok?await healthResponse.json():{};
+  if(Number(health.worker_online_count||0)>0){
+   const durationSeconds=durationMode==="short"?20:40;
+   let scenes=[];
+   if(Number(health.local_planner_online||0)>0){
+    loading.textContent="Lokal Ollama skriver filmmanuset. Ingen molnkvot används för manus eller bildgenerering…";
+   }else{
+    loading.textContent="NOVA skriver manus och delar upp filmen i fyra scener…";
+    const planPrompt="Skapa ett originellt, visuellt tydligt manus för en kort animerad film utifrån användarens idé. Returnera ENDAST giltig JSON utan markdown med ett scenes-fält som innehåller exakt fyra objekt. Varje objekt ska ha visual_prompt (detaljerad engelsk bildprompt för en filmruta) och voiceover (1–2 korta naturliga svenska meningar). Scenerna ska ha början, utveckling, vändpunkt och avslutning. Håll karaktärernas utseende konsekvent. Ingen text eller logotyp i bilden. Användarens idé: "+message;
+    const planResponse=await fetch("/api/nova",{method:"POST",headers:{"Content-Type":"application/json"},
+     body:JSON.stringify({message:planPrompt,history:[]})});
+    const planData=await planResponse.json();
+    if(!planResponse.ok)throw new Error(planData.detail||"NOVA kunde inte skriva filmmanuset.");
+    const planText=String(planData.reply||"");
+    const jsonStart=planText.indexOf("{"),jsonEnd=planText.lastIndexOf("}");
+    if(jsonStart<0||jsonEnd<=jsonStart)throw new Error("NOVA returnerade inget giltigt scenmanus.");
+    const plan=JSON.parse(planText.slice(jsonStart,jsonEnd+1));
+    if(!Array.isArray(plan.scenes)||plan.scenes.length!==4||plan.scenes.some(scene=>!scene||typeof scene.visual_prompt!=="string"||typeof scene.voiceover!=="string"||scene.visual_prompt.length<12||scene.voiceover.length<2))throw new Error("NOVA:s manus måste innehålla fyra kompletta scener.");
+    scenes=plan.scenes;
+   }
+   loading.textContent="Manuset är klart. NOVA Studio skapar nu AI-scener på din lokala GPU…";
+   const create=await fetch("/api/nova-studio/jobs",{method:"POST",headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({prompt:message,scenes,style:"cinematic-family-animation",aspect,duration_seconds:durationSeconds})});
+   let studio=await create.json();
+   if(!create.ok)throw new Error(studio.detail||"NOVA Studio kunde inte köa jobbet.");
+   const id=studio.job&&studio.job.id;
+   if(!id)throw new Error("NOVA Studio returnerade inget jobb-ID.");
+   studioJobStarted=true;
+   const deadline=Date.now()+25*60*1000;
+   while(Date.now()<deadline){
+    await new Promise(resolve=>setTimeout(resolve,4000));
+    const statusResponse=await fetch("/api/nova-studio/jobs/"+encodeURIComponent(id),{cache:"no-store"});
+    if(!statusResponse.ok)throw new Error("Kunde inte läsa NOVA Studio-jobbet (HTTP "+statusResponse.status+").");
+    studio=await statusResponse.json();
+    if(studio.status==="failed")throw new Error(studio.error||"NOVA Studio kunde inte färdigställa filmen.");
+    if(studio.status==="completed"){
+     const base="/api/nova-studio/jobs/"+encodeURIComponent(id);
+     return {status:"completed",video_url:base+"/video",subtitles_url:base+"/subtitles",video_delivery:true,
+      reply:"✓ NOVA Studio har skapat din AI-film med lokalt genererade scener, svensk berättarröst och undertexter."};
+    }
+    loading.textContent="NOVA Studio arbetar lokalt: "+(studio.phase||studio.status)+" · "+(studio.progress||0)+" %";
+   }
+   throw new Error("NOVA Studio arbetar fortfarande. Jobb-ID: "+id);
+  }
+ }catch(studioError){
+  if(studioJobStarted)throw studioError;
+  console.warn("NOVA Studio ej tillgänglig; använder reservmotorn.",studioError);
+ }
  const formData=new FormData();
  formData.append("topic",message);
  formData.append("mode","original");
