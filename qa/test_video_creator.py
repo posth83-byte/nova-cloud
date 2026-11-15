@@ -71,7 +71,7 @@ def main():
     assert "zoompan=" in animated_filter and "drawtext=" not in animated_filter
     assert "sin(on/" in animated_filter and "fade=t=in" in animated_filter
     assert engine.CHARACTER_REACTIONS["coffee"] == "VA?!"
-    assert engine._character_punchline_start(5.2) == 4.02
+    assert abs(engine._character_punchline_start(5.2) - 4.02) < 1e-9
     assert engine._character_punchline_start(2.0) == 1.12
     punch_start = engine._character_punchline_start(5.2)
     anticipation = engine._character_motion_state(punch_start - 0.20, 5.2)
