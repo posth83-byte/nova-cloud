@@ -83,7 +83,7 @@ def generate_image(prompt,seed,width,height,out_path,job_id=None,progress=5):
 
 def plan_scenes_local(topic):
  prompt=("Write a four-scene animated short film based on this idea: "+topic+
-  ". Return only JSON with exactly this schema: {\\"scenes\\":[{\\"visual_prompt\\":\\"detailed English visual prompt\\",\\"voiceover\\":\\"short natural Swedish narration\\"},...]}."
+  '. Return only JSON with exactly this schema: {"scenes":[{"visual_prompt":"detailed English visual prompt","voiceover":"short natural Swedish narration"},...] }.'
   " Give a beginning, development, turning point and ending. Keep character descriptions identical across scenes. No text in images.")
  response=http_json(OLLAMA_URL+"/api/generate",{"model":OLLAMA_MODEL,"prompt":prompt,"format":"json","stream":False,"keep_alive":0},timeout=240)
  raw=str(response.get("response") or "")
