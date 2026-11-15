@@ -28,13 +28,14 @@ from runway_engine import router as runway_router
 from kling_engine import router as kling_router
 from video_team_engine import router as video_team_router
 from video_creator_engine import router as video_creator_router
+from nova_studio_engine import router as nova_studio_router
 
 
 # ==========================================
 # NOVA CLOUD – VERSION 2.2.0
 # ==========================================
 
-APP_VERSION = "3.5.0"
+APP_VERSION = "3.6.0"
 
 app = FastAPI(
     title="NOVA Cloud",
@@ -47,6 +48,7 @@ app.include_router(runway_router)
 app.include_router(kling_router)
 app.include_router(video_team_router)
 app.include_router(video_creator_router)
+app.include_router(nova_studio_router)
 
 # Temporary previews are cleared when the service restarts.
 preview_pages = {}
