@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="sv" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>JARVIS Arcade Hub - Quantum Dash</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="min-h-screen flex flex-col justify-between">
+    <header class="border-b border-cyan-900/50 bg-slate-950/90 backdrop-blur-md sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
+            <h1 class="font-orbitron font-extrabold text-lg md:text-xl text-cyan-400 neon-text">JARVIS <span class="text-white">QUANTUM DASH</span></h1>
+            <div class="text-xs font-orbitron text-cyan-300 border border-cyan-800/60 px-3 py-1 rounded-full bg-cyan-950/30">MOTOR: AKTIV</div>
+        </div>
+    </header>
+
+    <main class="max-w-xl mx-auto px-4 py-4 flex-grow w-full flex flex-col items-center justify-center">
+        <div class="text-center mb-3">
+            <h2 class="font-orbitron text-xl md:text-2xl font-bold text-white">Quantum <span class="text-cyan-400">Dash</span></h2>
+            <p class="text-slate-400 text-xs">Tryck på skärmen eller mellanslag för att hoppa!</p>
+        </div>
+        <div class="w-full bg-slate-900/90 border border-cyan-500/30 rounded-2xl p-3 neon-glow relative">
+            <div class="flex justify-between items-center mb-2 font-orbitron text-xs border-b border-cyan-900/40 pb-2">
+                <div>POÄNG: <span id="j-score" class="text-cyan-400 font-bold">0</span></div>
+                <div>HIGH SCORE: <span id="j-hs" class="text-yellow-400 font-bold">0</span></div>
+                <div>STATUS: <span id="j-status" class="text-yellow-400">REDO</span></div>
+            </div>
+            <div class="relative w-full aspect-[16/9] bg-slate-950 rounded-xl overflow-hidden border border-cyan-900/50 flex items-center justify-center">
+                <canvas id="j-canvas" class="w-full h-full block cursor-pointer"></canvas>
+                <div id="j-overlay" class="absolute inset-0 bg-slate-950/90 backdrop-blur-sm flex flex-col items-center justify-center p-4 text-center z-20">
+                    <h3 id="j-overlay-title" class="font-orbitron text-lg font-bold text-white mb-2">KLAR ATT SPELA?</h3>
+                    <button id="j-btn" class="font-orbitron bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold px-6 py-2.5 rounded-xl transition-all shadow-lg shadow-cyan-500/30 cursor-pointer">STARTA</button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="text-center py-3 text-slate-600 text-xs font-orbitron border-t border-slate-900">JARVIS AI &copy; 2025</footer>
+
+    <script src="game.js"></script>
+</body>
+</html>
