@@ -85,7 +85,9 @@ button { cursor: pointer; }
 .result-card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
 .result-card h3 { margin: 0; font-size: 12px; line-height: 1.4; }
 .result-tag { display: inline-flex; border-radius: 99px; background: #f0f5f1; color: #66806e; padding: 4px 7px; font-size: 8px; font-weight: 800; letter-spacing: .6px; text-transform: uppercase; white-space: nowrap; }
-.result-card p { margin: 0; color: #59675e; font-size: 11px; line-height: 1.65; white-space: pre-line; overflow-wrap: anywhere; }
+.result-card-body { min-height: 42px; margin: 0; padding: 2px 3px; border-radius: 6px; color: #59675e; font-size: 11px; line-height: 1.65; white-space: pre-wrap; overflow-wrap: anywhere; outline: none; }
+.result-card-body:focus { background: #fbfdfb; box-shadow: 0 0 0 2px rgba(65, 133, 94, .18); }
+.result-card-body:empty::before { content: "Skriv din text här…"; color: #9aa59d; }
 .copy-button { margin-top: 13px; border: 0; padding: 0; background: transparent; color: var(--green); font-size: 10px; font-weight: 800; }
 .copy-button:hover { text-decoration: underline; }
 .quality-note { margin: 16px 0 0; color: #8a948d; font-size: 10px; line-height: 1.5; }
@@ -122,5 +124,5 @@ button { cursor: pointer; }
   .panel-heading { margin-bottom: 12px; }
   .result-grid { grid-template-columns: 1fr 1fr; }
   .result-card { break-inside: avoid; }
-  .result-card p { color: #222; }
+  .result-card-body { color: #222; }
 }
