@@ -38,7 +38,7 @@
 
   function saveDraft() {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(getFormData()));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...getFormData(), cards: currentCards }));
       formStatus.textContent = "Utkast sparat på den här enheten.";
     } catch (error) {
       formStatus.textContent = "Webbläsaren kunde inte spara utkastet. Du kan ändå skapa och exportera.";
@@ -55,7 +55,13 @@
       form.querySelectorAll('input[name="channels"]').forEach((item) => {
         item.checked = Array.isArray(saved.channels) ? saved.channels.includes(item.value) : false;
       });
-      formStatus.textContent = "Ditt senaste utkast har hämtats från den här enheten.";
+      if (Array.isArray(saved.cards) && saved.cards.length && saved.cards.every((card) => card && typeof card.title === "string" && typeof card.body === "string")) {
+        currentCards = saved.cards;
+        displayCards();
+      }
+      formStatus.textContent = currentCards.length
+        ? "Ditt senaste utkast och dina redigerade texter har hämtats från den här enheten."
+        : "Ditt senaste utkast har hämtats från den här enheten.";
     } catch (error) {
       formStatus.textContent = "Ett tidigare utkast kunde inte läsas.";
     }
@@ -187,8 +193,19 @@
     tag.textContent = card.tag;
     head.append(title, tag);
 
-    const body = document.createElement("p");
+    const body = document.createElement("div");
+    body.className = "result-card-body";
+    body.dataset.cardBody = "true";
+    body.contentEditable = "true";
+    body.setAttribute("role", "textbox");
+    body.setAttribute("aria-label", "Redigera " + card.title);
+    body.setAttribute("aria-multiline", "true");
+    body.spellcheck = true;
     body.textContent = card.body;
+    body.addEventListener("input", () => {
+      card.body = body.innerText.replace(/\\r/g, "");
+      saveDraft();
+    });
 
     const copy = document.createElement("button");
     copy.type = "button";
@@ -231,15 +248,19 @@
     return currentCards.map((card) => card.title + "\n" + card.body).join("\n\n------------------------------\n\n");
   }
 
-  function render() {
+  function displayCards() {
     const data = getFormData();
-    currentCards = buildCards(data);
     resultCards.replaceChildren(...currentCards.map(createCard));
     byId("resultSummary").textContent = currentCards.length + " delar skapade för " + data.businessName + ". Mål: " + ({
       visits: "fler besök", bookings: "fler bokningar", sales: "ökad försäljning", leads: "fler förfrågningar"
     }[data.goal] || "mer synlighet") + ".";
     emptyState.hidden = true;
     resultsContent.hidden = false;
+  }
+
+  function render() {
+    currentCards = buildCards(getFormData());
+    displayCards();
     saveDraft();
     resultsContent.scrollIntoView({ behavior: "smooth", block: "start" });
   }
