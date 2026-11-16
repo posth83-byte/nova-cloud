@@ -108,7 +108,7 @@
     const postIdeas = [
       {
         title: "Erbjudandet i fokus",
-        instagram: "✨ Något extra att se fram emot!\n\n" + offer + ".\n\nHos " + name + (area ? " i" + area : "") + " vill vi göra det enkelt att hitta något som passar just dig.\n\n" + cta + ".",
+        instagram: "✨ Något extra att se fram emot!\n\n" + offer + ".\n\nHos " + name + area + " vill vi göra det enkelt att hitta något som passar just dig.\n\n" + cta + ".",
         facebook: "Vi vill gärna dela något med dig!\n\n" + offer + ".\n\n" + (area ? "Du hittar oss" + area + ". " : "") + "Har du frågor eller vill veta mer är du varmt välkommen att höra av dig.\n\n" + cta + ".",
         linkedin: name + (area ? " · " + data.location : "") + "\n\nVi vill lyfta fram ett erbjudande som kan vara relevant för " + audience + ": " + offer + ".\n\nVårt fokus är ett tydligt erbjudande och ett personligt bemötande. " + cta + "."
       },
