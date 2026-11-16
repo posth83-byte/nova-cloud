@@ -181,6 +181,7 @@ try {
             const generatedText = await page.locator("#resultCards").innerText();
             if (!generatedText.includes("QA Testbutik")) localFailures.push("Generated campaign does not include the business name.");
             if (!generatedText.includes("vårens nyheter")) localFailures.push("Generated campaign does not include the supplied offer.");
+            if (generatedText.includes("QA Testbutik i i Örebro")) localFailures.push("Generated Instagram copy duplicated the location preposition.");
             const editable = page.locator("#resultCards [data-card-body]").first();
             await editable.fill("QA redigerad kampanjtext");
             const downloadPromise = page.waitForEvent("download", { timeout: 6000 });
