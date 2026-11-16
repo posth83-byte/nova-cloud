@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="sv">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f5f7f4">
+  <meta name="description" content="Skapa ett färdigt kampanjpaket för din verksamhet direkt i webbläsaren.">
+  <title>Kampanjstudio – skapa ditt nästa kampanjpaket</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <a class="brand" href="#" aria-label="Kampanjstudio startsida">
+        <span class="brand-mark" aria-hidden="true">✳</span>
+        <span>Kampanjstudio</span>
+      </a>
+      <span class="top-note"><span class="status-dot"></span> Redo att skapa</span>
+    </header>
+
+    <main>
+      <section class="hero">
+        <p class="eyebrow">EN ENKLARE VARDAG FÖR SMÅFÖRETAG</p>
+        <h1>En veckas marknadsföring.<br><span>På några minuter.</span></h1>
+        <p class="hero-copy">Fyll i några rader om din verksamhet och få ett användbart första utkast till inlägg, annonser och stories – klart att anpassa och publicera.</p>
+        <div class="hero-points">
+          <span>✓ Ingen inloggning</span>
+          <span>✓ Inga externa AI-anrop</span>
+          <span>✓ Spara och exportera</span>
+        </div>
+      </section>
+
+      <div class="workspace">
+        <section class="panel form-panel" aria-labelledby="formTitle">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">STEG 1</p>
+              <h2 id="formTitle">Berätta om företaget</h2>
+            </div>
+            <span class="step-number">01</span>
+          </div>
+
+          <form id="campaignForm">
+            <div class="field">
+              <label for="businessName">Företagsnamn <span>*</span></label>
+              <input id="businessName" name="businessName" maxlength="70" placeholder="Ex. Lilla Bageriet" required>
+            </div>
+
+            <div class="field-row">
+              <div class="field">
+                <label for="businessType">Typ av verksamhet</label>
+                <select id="businessType" name="businessType">
+                  <option value="butik">Butik</option>
+                  <option value="cafe">Café eller restaurang</option>
+                  <option value="salon">Salong eller skönhet</option>
+                  <option value="service">Tjänsteföretag</option>
+                  <option value="craft">Hantverk eller bygg</option>
+                  <option value="consultant">Konsult eller rådgivare</option>
+                  <option value="other">Annat</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="location">Ort eller område</label>
+                <input id="location" name="location" maxlength="60" placeholder="Ex. Örebro">
+              </div>
+            </div>
+
+            <div class="field">
+              <label for="audience">Vem vill du nå?</label>
+              <input id="audience" name="audience" maxlength="100" placeholder="Ex. personer som bor i närområdet">
+            </div>
+
+            <div class="field">
+              <label for="offer">Vad vill du lyfta fram? <span>*</span></label>
+              <textarea id="offer" name="offer" rows="3" maxlength="220" placeholder="Ex. nybakade bullar, kostnadsfri konsultation eller vårens nyheter" required></textarea>
+              <small>Beskriv ett erbjudande, en tjänst eller något kunderna bör känna till.</small>
+            </div>
+
+            <div class="field-row">
+              <div class="field">
+                <label for="tone">Ton</label>
+                <select id="tone" name="tone">
+                  <option value="warm">Varm och personlig</option>
+                  <option value="professional">Trygg och professionell</option>
+                  <option value="playful">Lättsam och lekfull</option>
+                  <option value="premium">Lugn och exklusiv</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="goal">Målet med kampanjen</label>
+                <select id="goal" name="goal">
+                  <option value="visits">Få fler besök</option>
+                  <option value="bookings">Få fler bokningar</option>
+                  <option value="sales">Öka försäljningen</option>
+                  <option value="leads">Få fler förfrågningar</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="field">
+              <label for="cta">Vad ska kunden göra?</label>
+              <input id="cta" name="cta" maxlength="90" placeholder="Ex. Besök oss i dag eller boka din tid">
+            </div>
+
+            <fieldset class="field channel-field">
+              <legend>Var vill du synas?</legend>
+              <div class="channel-options">
+                <label class="check-pill"><input type="checkbox" name="channels" value="Instagram" checked><span>Instagram</span></label>
+                <label class="check-pill"><input type="checkbox" name="channels" value="Facebook" checked><span>Facebook</span></label>
+                <label class="check-pill"><input type="checkbox" name="channels" value="LinkedIn"><span>LinkedIn</span></label>
+              </div>
+            </fieldset>
+
+            <div class="form-actions">
+              <button class="button button-primary" id="generateBtn" type="submit">Skapa kampanjpaket <span aria-hidden="true">→</span></button>
+              <button class="button button-quiet" id="sampleBtn" type="button">Fyll i exempel</button>
+            </div>
+            <p class="form-status" id="formStatus" role="status" aria-live="polite">Ditt utkast sparas bara i den här webbläsaren.</p>
+          </form>
+        </section>
+
+        <section class="panel output-panel" aria-labelledby="outputTitle">
+          <div class="panel-heading output-heading">
+            <div>
+              <p class="eyebrow">STEG 2</p>
+              <h2 id="outputTitle">Ditt kampanjpaket</h2>
+            </div>
+            <span class="step-number">02</span>
+          </div>
+
+          <div class="empty-state" id="emptyState">
+            <div class="empty-illustration" aria-hidden="true">
+              <span class="paper paper-back"></span>
+              <span class="paper paper-front"><i></i><i></i><i></i></span>
+              <span class="sparkle">✦</span>
+            </div>
+            <h3>Här börjar nästa kampanj</h3>
+            <p>Fyll i företagsinformationen och tryck på <strong>Skapa kampanjpaket</strong>. Du får flera utkast att välja mellan och redigera.</p>
+            <div class="empty-tip"><span>Tips</span> Börja med ett konkret erbjudande eller en tjänst du vill lyfta fram.</div>
+          </div>
+
+          <div id="resultsContent" hidden>
+            <div class="result-toolbar">
+              <p id="resultSummary"></p>
+              <div class="toolbar-actions">
+                <button class="button button-small button-outline" id="copyAllBtn" type="button">Kopiera allt</button>
+                <button class="button button-small button-outline" id="exportBtn" type="button">Ladda ner .txt</button>
+                <button class="button button-small button-outline" id="printBtn" type="button">Skriv ut / PDF</button>
+              </div>
+            </div>
+            <div class="result-grid" id="resultCards"></div>
+            <p class="quality-note">Det här är mallbaserade utkast. Kontrollera alltid fakta, priser, villkor och erbjudanden innan du publicerar.</p>
+          </div>
+        </section>
+      </div>
+    </main>
+
+    <footer class="footer">
+      <span>Kampanjstudio</span>
+      <span>Enkel, privat och kostnadsfri verktygsversion</span>
+    </footer>
+  </div>
+</body>
+</html>

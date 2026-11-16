@@ -167,6 +167,27 @@ try {
             const canvasSize = await page.locator("#wf-canvas").evaluate(canvas => ({ width: canvas.width, height: canvas.height }));
             if (canvasSize.width < 1 || canvasSize.height < 1) localFailures.push("Game canvas has invalid dimensions.");
           }
+          if (route.includes("/projects/jarvis-led-confidential-surprise-project/")) {
+            await page.locator("#businessName").fill("QA Testbutik");
+            await page.locator("#businessType").selectOption("butik");
+            await page.locator("#location").fill("Örebro");
+            await page.locator("#audience").fill("lokala kunder");
+            await page.locator("#offer").fill("vårens nyheter och personlig service");
+            await page.locator("#generateBtn").click();
+            await page.waitForFunction(() => {
+              const root = document.querySelector("#resultsContent");
+              return root && !root.hidden && document.querySelectorAll("#resultCards [data-output-card]").length >= 9;
+            }, null, { timeout: 6000 });
+            const generatedText = await page.locator("#resultCards").innerText();
+            if (!generatedText.includes("QA Testbutik")) localFailures.push("Generated campaign does not include the business name.");
+            if (!generatedText.includes("vårens nyheter")) localFailures.push("Generated campaign does not include the supplied offer.");
+            const downloadPromise = page.waitForEvent("download", { timeout: 6000 });
+            await page.locator("#exportBtn").click();
+            const download = await downloadPromise;
+            if (!download.suggestedFilename().endsWith(".txt")) localFailures.push("Campaign export did not produce a text file.");
+            await page.reload({ waitUntil: "domcontentloaded" });
+            if (await page.locator("#businessName").inputValue() !== "QA Testbutik") localFailures.push("Campaign draft was not restored after reload.");
+          }
         }
         if (route === "/") {
           // Navigate through the real home-screen control instead of force-opening the studio.
