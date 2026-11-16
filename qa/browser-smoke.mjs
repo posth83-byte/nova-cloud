@@ -187,6 +187,13 @@ try {
             await page.locator("#exportBtn").click();
             const download = await downloadPromise;
             if (!download.suggestedFilename().endsWith(".txt")) localFailures.push("Campaign export did not produce a text file.");
+            const exportedPath = await download.path();
+            const exportedText = exportedPath ? fs.readFileSync(exportedPath, "utf8") : "";
+            if (!exportedText.includes("QA redigerad kampanjtext")) localFailures.push("Campaign export did not include the edited card text.");
+            if (!generatedText.includes("Instagram · Erbjudandet i fokus") || !generatedText.includes("Facebook · Erbjudandet i fokus")) localFailures.push("Selected channels did not receive their own tailored post cards.");
+            const instagramCard = page.locator("#resultCards [data-output-card]").filter({ hasText: "Instagram · Erbjudandet i fokus" }).first();
+            const facebookCard = page.locator("#resultCards [data-output-card]").filter({ hasText: "Facebook · Erbjudandet i fokus" }).first();
+            if ((await instagramCard.innerText()) === (await facebookCard.innerText())) localFailures.push("Instagram and Facebook copy was not differentiated.");
             await page.reload({ waitUntil: "domcontentloaded" });
             if (await page.locator("#businessName").inputValue() !== "QA Testbutik") localFailures.push("Campaign draft was not restored after reload.");
             if (!(await page.locator("#resultCards [data-card-body]").first().innerText()).includes("QA redigerad kampanjtext")) localFailures.push("Edited campaign text was not restored after reload.");
