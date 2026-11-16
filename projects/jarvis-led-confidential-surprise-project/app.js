@@ -105,23 +105,31 @@
       leads: "fler förfrågningar"
     }[data.goal] || "mer synlighet";
 
-    const posts = [
+    const postIdeas = [
       {
-        title: "Inlägg 1 · Lyft erbjudandet",
-        tag: "Sociala medier",
-        body: hello + "\n\nHos " + name + " vill vi göra det enkelt att upptäcka vad som passar dig. Just nu lyfter vi fram: " + offer + ".\n\n" + cta + (area ? " – vi finns" + area + "." : ".")
+        title: "Erbjudandet i fokus",
+        instagram: "✨ Något extra att se fram emot!\n\n" + offer + ".\n\nHos " + name + (area ? " i" + area : "") + " vill vi göra det enkelt att hitta något som passar just dig.\n\n" + cta + ".",
+        facebook: "Vi vill gärna dela något med dig!\n\n" + offer + ".\n\n" + (area ? "Du hittar oss" + area + ". " : "") + "Har du frågor eller vill veta mer är du varmt välkommen att höra av dig.\n\n" + cta + ".",
+        linkedin: name + (area ? " · " + data.location : "") + "\n\nVi vill lyfta fram ett erbjudande som kan vara relevant för " + audience + ": " + offer + ".\n\nVårt fokus är ett tydligt erbjudande och ett personligt bemötande. " + cta + "."
       },
       {
-        title: "Inlägg 2 · Behov och lösning",
-        tag: "Sociala medier",
-        body: "Letar du efter en " + businessLabel(data.businessType) + area + "? " + name + " hjälper dig att komma vidare med ett tydligt och personligt bemötande.\n\n" + offer + ".\n\nSpara inlägget eller skicka det till någon som kan ha nytta av det. " + cta + "."
+        title: "Kundens behov",
+        instagram: "💡 Letar du efter " + businessLabel(data.businessType) + (area ? " " + data.location : "") + "?\n\n" + name + " hjälper dig med " + offer + ".\n\nSpara gärna inlägget så hittar du tillbaka när det passar.\n" + cta + ".",
+        facebook: "Ibland är det skönt när det är enkelt att hitta rätt. Hos " + name + " får du hjälp med " + offer + ".\n\nVi finns här för " + audience + (area ? " " + area : "") + " och svarar gärna på dina frågor.\n\n" + cta + ".",
+        linkedin: "Ett vanligt behov hos " + audience + " är att hitta en pålitlig lösning. " + name + " erbjuder " + offer + ".\n\nVi tror på tydlig kommunikation, kvalitet och ett bra bemötande. Kontakta oss gärna om du vill veta mer.\n" + cta + "."
       },
       {
-        title: "Inlägg 3 · Påminnelse",
-        tag: "Sociala medier",
-        body: "En liten påminnelse från " + name + ": " + offer + ".\n\nKanske är det precis det du har letat efter? Vi välkomnar " + audience + " att ta nästa steg.\n\n" + cta + "."
+        title: "En personlig påminnelse",
+        instagram: "🌿 En liten påminnelse från oss på " + name + ":\n\n" + offer + ".\n\nKanske är det precis vad du behöver just nu?\n\n" + cta + ".",
+        facebook: "Har du hunnit kika på vårt erbjudande?\n\n" + offer + ". Vi hjälper gärna till om du funderar på om det passar dig.\n\nDela gärna inlägget med någon som kan vara intresserad.\n" + cta + ".",
+        linkedin: "Vi vill påminna om vad " + name + " kan erbjuda: " + offer + ".\n\nOm det här är relevant för dig eller din verksamhet tar vi gärna en dialog.\n\n" + cta + "."
       }
     ];
+    const posts = data.channels.flatMap((channel) => postIdeas.map((idea) => ({
+      title: channel + " · " + idea.title,
+      tag: channel,
+      body: idea[channel.toLowerCase()] || idea.facebook
+    })));
 
     const ads = [
       {
