@@ -181,12 +181,15 @@ try {
             const generatedText = await page.locator("#resultCards").innerText();
             if (!generatedText.includes("QA Testbutik")) localFailures.push("Generated campaign does not include the business name.");
             if (!generatedText.includes("vårens nyheter")) localFailures.push("Generated campaign does not include the supplied offer.");
+            const editable = page.locator("#resultCards [data-card-body]").first();
+            await editable.fill("QA redigerad kampanjtext");
             const downloadPromise = page.waitForEvent("download", { timeout: 6000 });
             await page.locator("#exportBtn").click();
             const download = await downloadPromise;
             if (!download.suggestedFilename().endsWith(".txt")) localFailures.push("Campaign export did not produce a text file.");
             await page.reload({ waitUntil: "domcontentloaded" });
             if (await page.locator("#businessName").inputValue() !== "QA Testbutik") localFailures.push("Campaign draft was not restored after reload.");
+            if (!(await page.locator("#resultCards [data-card-body]").first().innerText()).includes("QA redigerad kampanjtext")) localFailures.push("Edited campaign text was not restored after reload.");
           }
         }
         if (route === "/") {
