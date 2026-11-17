@@ -53,6 +53,7 @@ preview_pages = {}
 
 # Live team status for the shared JARVIS workspace (per running server process).
 jarvis_worker_task = None
+jarvis_active_job_task = None
 jarvis_worker_state = {
     "status": "starting", "worker_id": None, "started_at": None,
     "last_poll_at": None, "last_job_id": None, "last_job_status": None,
@@ -835,7 +836,11 @@ async def jarvis_job_heartbeat(job_id, stop_event):
 async def persist_jarvis_job_progress():
     """Persist live specialist/phase state immediately instead of waiting for the 30s heartbeat."""
     job_id = jarvis_worker_state.get("last_job_id")
-    if not job_id or jarvis_worker_state.get("last_job_status") != "running":
+    if (
+        not job_id
+        or jarvis_worker_state.get("last_job_status") != "running"
+        or team_runtime_state.get("task") != jarvis_active_job_task
+    ):
         return
     try:
         await asyncio.to_thread(
@@ -855,6 +860,7 @@ async def persist_jarvis_job_progress():
 
 
 async def jarvis_job_worker_loop():
+    global jarvis_active_job_task
     worker_id = "render-" + uuid.uuid4().hex[:12]
     jarvis_worker_state.update({
         "status": "running", "worker_id": worker_id,
@@ -885,6 +891,7 @@ async def jarvis_job_worker_loop():
                 "last_error": None
             })
             task = str(job.get("task") or "").strip()
+            jarvis_active_job_task = task
             history = job.get("history") if isinstance(job.get("history"), list) else []
             stop_event = asyncio.Event()
             heartbeat = asyncio.create_task(jarvis_job_heartbeat(job_id, stop_event))
@@ -1058,6 +1065,7 @@ async def jarvis_job_worker_loop():
                     await heartbeat
                 except asyncio.CancelledError:
                     pass
+                jarvis_active_job_task = None
         except asyncio.CancelledError:
             jarvis_worker_state.update({"status": "stopping"})
             raise
