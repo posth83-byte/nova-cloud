@@ -3999,6 +3999,12 @@ Delegering ger inte tillstånd att köpa, publicera, betala eller utföra extern
             })
             previous.append(f"{target} FÖRSTA ANALYS:\n{result['reply'][:7000]}")
 
+        if qa_evidence_summary:
+            post_qa_runtime = await asyncio.to_thread(build_qa_runtime_evidence)
+            qa_evidence_summary["post_qa_runtime_captured_at"] = post_qa_runtime.get("captured_at")
+            qa_evidence_summary["post_qa_job_snapshot"] = post_qa_runtime.get("job_snapshot")
+            qa_evidence_summary["post_qa_job_snapshot_error"] = post_qa_runtime.get("job_snapshot_error")
+
         # RÅDSRUNDA 2: specialisterna granskar varandras förslag och förbättrar planen.
         council_reviews = []
         if len(ordered) > 1:
@@ -4080,15 +4086,19 @@ ABSOLUT BEVISKRAV:
 - Specialisternas egna påståenden om att de testat eller verifierat något är inte bevis.
 - Endast konkreta verktygsresultat, körloggar, faktiska fil-/HTTP-resultat eller direktlästa
   databasrader i underlaget räknas som verifiering. Modelltext och tidigare minnen räknas aldrig.
-- För ett uttryckligt test av JARVIS bakgrundskö är "runtime_job_snapshot" en direktläst
-  Supabase-rad. Om den visar status="running", attempts minst 1, worker_id och started_at
-  är mottagningen verifierad. Om active innehåller "QA_ENGINEER" och completed senare
-  innehåller "QA_ENGINEER" är delegeringen verifierad. Kräv inte terminal-loggar för dessa
-  databasregistrerade händelser.
+- För ett uttryckligt test av JARVIS bakgrundskö är "runtime_job_snapshot" och
+  "post_qa_job_snapshot" direkta Supabase-rader. Om den första visar status="running",
+  attempts minst 1, worker_id, started_at och active innehåller "QA_ENGINEER", är
+  mottagning och aktiv delegering verifierade. Om post_qa_job_snapshot visar samma jobb
+  med completed innehållande "QA_ENGINEER", är specialistens slutförande verifierat.
+  Kräv inte terminal-loggar för dessa databasregistrerade händelser.
+- Om source_snapshot_status är "fetched", source_commit_sha finns och source_files_fetched
+  innehåller "main.py", är källkodssnapshoten verifierad för den angivna committen.
 - Slutlig resultat-readback utförs av bakgrundsarbetaren efter kvalitetsgrinden. Behandla
   den som väntande, inte som misslyckad, när den ännu inte kan finnas i underlaget.
-- Om andra dynamiska produkt-/kodtester saknas ska du tydligt skilja dem från det specifika
-  kö-/delegeringstestet; påstå inte att sådana tester har körts.
+- För ett sådant kö-/delegeringstest ska saknade dynamiska produkt-/kodtester redovisas
+  som ej körda, men inte blockera godkännande av just köflödet när alla ovanstående
+  direkta DB- och GitHub-bevis finns. Påstå inte att produktkodens dynamiska tester körts.
 - AI-genererad kod eller plan är inte implementerad kod. Förhandsvisning är inte publicering.
 - Markera kriterier som uppfyllda endast när underlaget visar det.
 - Om en specialist kan rätta en konkret brist i sitt eget material, skriv en kort
