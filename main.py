@@ -872,7 +872,8 @@ async def jarvis_job_worker_loop():
             job_id = job["id"]
             jarvis_worker_state.update({
                 "status": "working", "last_job_id": str(job_id),
-                "last_job_status": "running", "last_error": None
+                "last_job_status": "running", "last_job_result_persisted": None,
+                "last_error": None
             })
             task = str(job.get("task") or "").strip()
             history = job.get("history") if isinstance(job.get("history"), list) else []
@@ -953,7 +954,10 @@ async def jarvis_job_worker_loop():
                         "completed_at": datetime.now(timezone.utc).isoformat(),
                         "updated_at": datetime.now(timezone.utc).isoformat()
                     },
-                    urllib.parse.urlencode({"id": "eq." + str(job_id)}),
+                    urllib.parse.urlencode({
+                        "id": "eq." + str(job_id),
+                        "select": "id,status,result"
+                    }),
                     "return=representation"
                 )
                 persisted_job = persisted_rows[0] if isinstance(persisted_rows, list) and persisted_rows else None
@@ -963,6 +967,22 @@ async def jarvis_job_worker_loop():
                     and persisted_job.get("result") is not None
                     and persisted_job.get("status") == ("completed" if completed else "failed")
                 )
+                if not result_persisted:
+                    verified_rows, _ = await asyncio.to_thread(
+                        supabase_jobs_request, "GET", "jarvis_jobs", None,
+                        urllib.parse.urlencode({
+                            "id": "eq." + str(job_id),
+                            "select": "id,status,result",
+                            "limit": "1"
+                        })
+                    )
+                    verified_job = verified_rows[0] if isinstance(verified_rows, list) and verified_rows else None
+                    result_persisted = bool(
+                        isinstance(verified_job, dict)
+                        and str(verified_job.get("id")) == str(job_id)
+                        and verified_job.get("result") is not None
+                        and verified_job.get("status") == ("completed" if completed else "failed")
+                    )
                 jarvis_worker_state["last_job_result_persisted"] = result_persisted
                 if not result_persisted:
                     jarvis_worker_state["last_error"] = (
