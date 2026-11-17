@@ -3998,6 +3998,11 @@ Delegering ger inte tillstånd att köpa, publicera, betala eller utföra extern
                 "reply": result["reply"], "engine": result["engine"]
             })
             previous.append(f"{target} FÖRSTA ANALYS:\n{result['reply'][:7000]}")
+            set_team_runtime(
+                "working", task, f"{target} har slutfört sin första analys",
+                [], [item["target"] for item in results]
+            )
+            await persist_jarvis_job_progress()
 
         if qa_evidence_summary:
             post_qa_runtime = await asyncio.to_thread(build_qa_runtime_evidence)
