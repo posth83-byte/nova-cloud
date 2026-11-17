@@ -773,7 +773,12 @@ async def jarvis_job_worker_loop():
                             + "\n\nGitHub-implementeringen är blockerad: "
                             + str(delivery.get("reason") or "GitHub-anslutningen är inte klar.")
                         )
-                completed = outcome.get("status") in ("delegated", "needs_discussion")
+                quality_gate = str(outcome.get("quality_gate") or "").strip().casefold()
+                quality_blocked = quality_gate in ("needs_changes", "failed", "blocked", "rejected")
+                completed = (
+                    outcome.get("status") in ("delegated", "needs_discussion")
+                    and not quality_blocked
+                )
                 delivery_status = (outcome.get("github_delivery") or {}).get("status")
                 if delivery_status == "pull_request_created":
                     result_phase = "Kodändring sparad på separat GitHub-gren – utkast-PR skapad; CI och granskning återstår"
