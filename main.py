@@ -3388,7 +3388,7 @@ async def team_status():
                 rows, _ = await asyncio.to_thread(
                     supabase_jobs_request, "GET", "jarvis_jobs", None,
                     urllib.parse.urlencode({
-                        "select": "id,task,status,phase,active,completed,created_at,updated_at,started_at,completed_at,error",
+                        "select": "id,task,status,phase,active,completed,result,created_at,updated_at,started_at,completed_at,error",
                         "order": "created_at.desc",
                         "limit": "1"
                     })
