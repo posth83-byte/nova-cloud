@@ -311,7 +311,7 @@ def collect_qa_repository_evidence(task):
         try:
             item = github_api_request(
                 "GET",
-                f"/repos/{repository}/contents/{urllib.parse.quote(path, safe='/')}?ref={urllib.parse.quote(branch, safe='')}"
+                f"/repos/{repository}/contents/{urllib.parse.quote(path, safe='/')}?ref={urllib.parse.quote(commit_sha, safe='')}"
             )
             encoded = str(item.get("content") or "").replace("\n", "")
             raw = base64.b64decode(encoded) if encoded else b""
