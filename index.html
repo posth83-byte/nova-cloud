@@ -1312,8 +1312,10 @@ async function refreshTeamRuntime(){
   updateTeamBoard(live.status,live.task||"Inget aktivt uppdrag",targets,phase);
   const boardState=$("teamBoardState");
   if(boardState&&live.job_status==="queued")boardState.textContent="● UPPDRAG VÄNTAR PÅ ARBETARE";
-  if(boardState&&live.job_status==="running")boardState.textContent="● BAKGRUNDSARBETE PÅGÅR";
-  if(boardState&&live.job_status==="completed")boardState.textContent="● SENASTE UPPDRAG SLUTFÖRT";
+   if(boardState&&live.job_status==="running"&&(live.active||[]).includes("QA_ENGINEER"))boardState.textContent="● QA_ENGINEER GRANSKAR AKTIVT";
+  if(boardState&&live.job_status==="running"&&!(live.active||[]).includes("QA_ENGINEER"))boardState.textContent="● BAKGRUNDSARBETE PÅGÅR";
+  if(boardState&&live.job_status==="completed")boardState.textContent=live.result_saved?"● KLART – RESULTAT SPARAT":"● KLART – RESULTAT EJ BEKRÄFTAT";
+   if(boardState&&live.job_status==="failed")boardState.textContent=live.result_saved?"● GRANSKNINGEN AVSLUTADES MED FEL – RESULTAT SPARAT":"● UPPDRAGET MISSLYCKADES – RESULTAT EJ BEKRÄFTAT";
   const workers=$("teamWorkers");if(workers){
    workers.querySelectorAll(".team-worker").forEach(card=>{
     const name=card.querySelector("strong")?.textContent||"";
