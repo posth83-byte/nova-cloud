@@ -4070,7 +4070,7 @@ Delegering ger inte tillstånd att köpa, publicera, betala eller utföra extern
         )
         if qa_evidence_summary:
             quality_input += (
-                "\\n\\nVERIFIERAT QA-UNDERLAG FRÅN ORKESTRATORN:\\n"
+                "\n\nVERIFIERAT QA-UNDERLAG FRÅN ORKESTRATORN:\n"
                 + json.dumps(qa_evidence_summary, ensure_ascii=False)
             )
         quality_prompt = """
