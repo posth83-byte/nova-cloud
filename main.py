@@ -322,18 +322,27 @@ def collect_qa_repository_evidence(task):
         if path == "main.py":
             lines = content.splitlines()
             markers = (
+                "async def persist_jarvis_job_progress",
                 "async def jarvis_job_worker_loop",
+                "persisted_rows, _",
                 "@app.get(\"/api/worker/status\")",
                 "@app.get(\"/api/team/status\")",
                 "@app.post(\"/api/jarvis/delegate\")",
+                "for target in ordered:",
                 "QA_ENGINEER_PROMPT ="
+            )
+            search_from = next(
+                (index for index, line in enumerate(lines)
+                 if line.startswith("async def jarvis_job_heartbeat")),
+                0
             )
             windows = []
             for marker in markers:
-                for index, line in enumerate(lines):
-                    if marker in line:
-                        start = max(0, index - 12)
-                        end = min(len(lines), index + 72)
+                for index in range(search_from, len(lines)):
+                    if marker in lines[index]:
+                        start = max(search_from, index - 12)
+                        window_size = 130 if marker == "async def jarvis_job_worker_loop" else 95
+                        end = min(len(lines), index + window_size)
                         windows.append((start, end))
                         break
             merged = []
@@ -348,7 +357,7 @@ def collect_qa_repository_evidence(task):
                     f"{number + 1}: {lines[number]}" for number in range(start, end)
                 ))
             content = "\n\n[QA SOURCE EXCERPT]\n\n".join(excerpts)
-            content = content[:22000]
+            content = content[:28000]
         else:
             content = content[:5500]
 
