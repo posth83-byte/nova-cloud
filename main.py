@@ -56,7 +56,7 @@ jarvis_worker_task = None
 jarvis_worker_state = {
     "status": "starting", "worker_id": None, "started_at": None,
     "last_poll_at": None, "last_job_id": None, "last_job_status": None,
-    "last_error": None
+    "last_job_result_persisted": None, "last_error": None
 }
 
 team_runtime_state = {
@@ -823,6 +823,28 @@ async def jarvis_job_heartbeat(job_id, stop_event):
                 pass
 
 
+async def persist_jarvis_job_progress():
+    """Persist live specialist/phase state immediately instead of waiting for the 30s heartbeat."""
+    job_id = jarvis_worker_state.get("last_job_id")
+    if not job_id or jarvis_worker_state.get("last_job_status") != "running":
+        return
+    try:
+        await asyncio.to_thread(
+            supabase_jobs_request, "PATCH", "jarvis_jobs",
+            {
+                "phase": team_runtime_state.get("phase", "JARVIS arbetar"),
+                "active": team_runtime_state.get("active", []),
+                "completed": team_runtime_state.get("completed", []),
+                "locked_at": datetime.now(timezone.utc).isoformat(),
+                "updated_at": datetime.now(timezone.utc).isoformat()
+            },
+            urllib.parse.urlencode({"id": "eq." + str(job_id), "status": "eq.running"}),
+            "return=minimal"
+        )
+    except Exception as error:
+        jarvis_worker_state["last_error"] = "Kunde inte uppdatera live-teamstatus: " + str(error)[:300]
+
+
 async def jarvis_job_worker_loop():
     worker_id = "render-" + uuid.uuid4().hex[:12]
     jarvis_worker_state.update({
@@ -917,7 +939,7 @@ async def jarvis_job_worker_loop():
                         "AI-rådet är klart – resultatet är sparat; ingen publicering eller GitHub-ändring har verifierats"
                         if completed else "AI-rådet kunde inte slutföra arbetsomgången"
                     )
-                await asyncio.to_thread(
+                persisted_rows, _ = await asyncio.to_thread(
                     supabase_jobs_request, "PATCH", "jarvis_jobs",
                     {
                         "status": "completed" if completed else "failed",
@@ -932,8 +954,20 @@ async def jarvis_job_worker_loop():
                         "updated_at": datetime.now(timezone.utc).isoformat()
                     },
                     urllib.parse.urlencode({"id": "eq." + str(job_id)}),
-                    "return=minimal"
+                    "return=representation"
                 )
+                persisted_job = persisted_rows[0] if isinstance(persisted_rows, list) and persisted_rows else None
+                result_persisted = bool(
+                    isinstance(persisted_job, dict)
+                    and str(persisted_job.get("id")) == str(job_id)
+                    and persisted_job.get("result") is not None
+                    and persisted_job.get("status") == ("completed" if completed else "failed")
+                )
+                jarvis_worker_state["last_job_result_persisted"] = result_persisted
+                if not result_persisted:
+                    jarvis_worker_state["last_error"] = (
+                        "Supabase bekräftade inte att jobbresultatet sparades via return=representation."
+                    )
                 jarvis_worker_state.update({
                     "status": "idle" if completed else "error",
                     "last_job_status": "completed" if completed else "failed",
@@ -3324,7 +3358,7 @@ async def team_status():
                 supabase_jobs_request, "GET", "jarvis_jobs", None,
                 urllib.parse.urlencode({
                     "status": "in.(queued,running)",
-                    "select": "id,task,status,phase,active,completed,created_at,updated_at,started_at,completed_at,error",
+                    "select": "id,task,status,phase,active,completed,result,created_at,updated_at,started_at,completed_at,error",
                     "order": "created_at.desc",
                     "limit": "1"
                 })
@@ -3366,6 +3400,7 @@ async def team_status():
                     "phase": phase,
                     "active": active,
                     "completed": completed,
+                    "result_saved": job.get("result") is not None,
                     "created": job.get("created_at"),
                     "started": job.get("started_at"),
                     "completed_at": job.get("completed_at"),
@@ -3828,6 +3863,7 @@ Delegering ger inte tillstånd att köpa, publicera, betala eller utföra extern
         set_team_runtime("working", task, "Specialisterna gör sina första analyser", [ordered[0]], [])
         for target in ordered:
             set_team_runtime("working", task, f"{target} arbetar med sin specialistanalys", [target], [r["target"] for r in results])
+            await persist_jarvis_job_progress()
             assigned = str(tasks.get(target, "")).strip() or f"Bidra till projektet: {task}"
             handoff = (
                 "DU DELTAR I JARVIS INTERNA AI-RÅD. Gör en självständig första analys "
@@ -3922,6 +3958,7 @@ Delegering ger inte tillstånd att köpa, publicera, betala eller utföra extern
                 })
 
         set_team_runtime("working", task, "JARVIS sammanställer rådets gemensamma beslut", ["JARVIS"], ordered)
+        await persist_jarvis_job_progress()
         summary_input = (
             "PROJEKT:\n" + task + "\n\n"
             + "ACCEPTANSKRITERIER:\n" + "\n".join("- " + item for item in acceptance_criteria) + "\n\n"
@@ -3949,6 +3986,7 @@ Delegering ger inte tillstånd att köpa, publicera, betala eller utföra extern
 
         # SISTA KVALITETSGRINDEN: även en ensam specialist får sitt resultat granskat.
         set_team_runtime("working", task, "JARVIS gör slutlig kvalitetskontroll", ["JARVIS"], ordered)
+        await persist_jarvis_job_progress()
         quality_input = (
             "UPPDRAG:\n" + task + "\n\n"
             "JARVIS FÖRSLAG:\n" + summary["reply"][:9000] + "\n\n"
@@ -4048,6 +4086,7 @@ Visa aldrig råkod, kodblock eller interna granskningsanteckningar.
             else "AI-rådet är klart – slutgranskningen kunde inte köras; underlaget behöver granskas"
         )
         set_team_runtime("done", task, final_phase, [], ordered)
+        await persist_jarvis_job_progress()
         return {
             "status": "delegated",
             "delivery_level": "ai_generated_proposal_or_preview",
