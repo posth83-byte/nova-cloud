@@ -1073,16 +1073,20 @@ async def jarvis_job_worker_loop():
                     "last_error": None if completed else str(outcome.get("reply", ""))[:500]
                 })
                 if completed and job.get("push_subscription"):
-                    sent = await asyncio.to_thread(
-                        send_jarvis_job_notification, job_id, job.get("push_subscription"), outcome
-                    )
-                    if sent:
-                        await asyncio.to_thread(
-                            supabase_jobs_request, "PATCH", "jarvis_jobs",
-                            {"notification_sent_at": datetime.now(timezone.utc).isoformat()},
-                            urllib.parse.urlencode({"id": "eq." + str(job_id)}),
-                            "return=minimal"
+                    try:
+                        sent = await asyncio.to_thread(
+                            send_jarvis_job_notification, job_id, job.get("push_subscription"), outcome
                         )
+                        if sent:
+                            await asyncio.to_thread(
+                                supabase_jobs_request, "PATCH", "jarvis_jobs",
+                                {"notification_sent_at": datetime.now(timezone.utc).isoformat()},
+                                urllib.parse.urlencode({"id": "eq." + str(job_id)}),
+                                "return=minimal"
+                            )
+                    except Exception as notification_error:
+                        # Push delivery is best-effort; it must never undo a persisted job result.
+                        jarvis_worker_state["last_notification_error"] = str(notification_error)[:500]
             except Exception as error:
                 attempts = int(job.get("attempts") or 1)
                 max_attempts = int(job.get("max_attempts") or 3)
@@ -1094,6 +1098,7 @@ async def jarvis_job_worker_loop():
                 jarvis_worker_state.update({
                     "status": "idle" if retrying else "error",
                     "last_job_status": "queued" if retrying else "failed",
+                    "last_job_result_persisted": False if retrying else jarvis_worker_state.get("last_job_result_persisted"),
                     "last_error": final_error,
                     "last_poll_at": now_iso
                 })
