@@ -1032,8 +1032,13 @@ async def jarvis_job_worker_loop():
                         "status": "completed" if completed else "failed",
                         "verified_at": datetime.now(timezone.utc).isoformat()
                     }
+                    final_reply_text = str(outcome.get("reply") or "")
+                    final_reply_text = final_reply_text.replace(
+                        "Slutlig readback behandlas i enlighet med instruktionerna som väntande på bakgrundsarbetarens cykel.",
+                        "Slutlig readback verifierades efter att bakgrundsarbetaren sparat resultatet."
+                    )
                     outcome["reply"] = (
-                        str(outcome.get("reply") or "").rstrip()
+                        final_reply_text.rstrip()
                         + "\n\nSlutlig databasverifiering: Supabase har bekräftat att "
                         + "jobbresultatet är sparat och kan läsas tillbaka. "
                         + "Detta verifierar bakgrundsflödets resultatlagring, inte "
