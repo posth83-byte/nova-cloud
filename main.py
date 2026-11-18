@@ -958,7 +958,7 @@ async def jarvis_job_worker_loop():
                             + str(delivery.get("reason") or "GitHub-anslutningen är inte klar.")
                         )
                 quality_gate = str(outcome.get("quality_gate") or "").strip().casefold()
-                quality_blocked = quality_gate in ("needs_changes", "failed", "blocked", "rejected")
+                quality_blocked = quality_gate in ("needs_changes", "failed", "blocked", "rejected", "unavailable")
                 completed = (
                     outcome.get("status") in ("delegated", "needs_discussion")
                     and not quality_blocked
@@ -1016,11 +1016,57 @@ async def jarvis_job_worker_loop():
                         and verified_job.get("result") is not None
                         and verified_job.get("status") == ("completed" if completed else "failed")
                     )
-                jarvis_worker_state["last_job_result_persisted"] = result_persisted
                 if not result_persisted:
-                    jarvis_worker_state["last_error"] = (
-                        "Supabase bekräftade inte att jobbresultatet sparades via return=representation."
+                    raise RuntimeError(
+                        "Supabase bekräftade inte att jobbresultatet sparades via readback; "
+                        "uppdraget lämnas för automatiskt nytt försök."
                     )
+
+                # The final QA report is created before this worker writes the terminal
+                # job row. Add the authoritative readback only after the row is actually
+                # persisted, then persist and verify that enriched result as well.
+                if isinstance(outcome.get("qa_evidence"), dict):
+                    outcome["qa_evidence"]["final_result_readback"] = {
+                        "verified": True,
+                        "job_id": str(job_id),
+                        "status": "completed" if completed else "failed",
+                        "verified_at": datetime.now(timezone.utc).isoformat()
+                    }
+                    outcome["reply"] = (
+                        str(outcome.get("reply") or "").rstrip()
+                        + "\\n\\nSlutlig databasverifiering: Supabase har bekräftat att "
+                        + "jobbresultatet är sparat och kan läsas tillbaka. "
+                        + "Detta verifierar bakgrundsflödets resultatlagring, inte "
+                        + "produktkodens separata dynamiska tester."
+                    )
+                    final_rows, _ = await asyncio.to_thread(
+                        supabase_jobs_request, "PATCH", "jarvis_jobs",
+                        {
+                            "result": outcome,
+                            "updated_at": datetime.now(timezone.utc).isoformat()
+                        },
+                        urllib.parse.urlencode({
+                            "id": "eq." + str(job_id),
+                            "status": "eq." + ("completed" if completed else "failed"),
+                            "select": "id,status,result"
+                        }),
+                        "return=representation"
+                    )
+                    final_row = final_rows[0] if isinstance(final_rows, list) and final_rows else None
+                    final_result_persisted = bool(
+                        isinstance(final_row, dict)
+                        and str(final_row.get("id")) == str(job_id)
+                        and final_row.get("status") == ("completed" if completed else "failed")
+                        and isinstance(final_row.get("result"), dict)
+                        and (final_row["result"].get("qa_evidence") or {}).get("final_result_readback", {}).get("verified") is True
+                    )
+                    if not final_result_persisted:
+                        raise RuntimeError(
+                            "Supabase kunde inte bekräfta den slutliga QA-readback-rapporten."
+                        )
+
+                result_persisted = True
+                jarvis_worker_state["last_job_result_persisted"] = True
                 jarvis_worker_state.update({
                     "status": "idle" if completed else "error",
                     "last_job_status": "completed" if completed else "failed",
