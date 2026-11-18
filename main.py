@@ -23,6 +23,9 @@ from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 from job_dedup import normalize_job_task, job_task_fingerprint, is_duplicate_job_task
+from jarvis_worker_persistence import (
+    persisted_job_matches, final_qa_readback_matches, build_worker_retry_update
+)
 from video_engine import router as video_router
 from runway_engine import router as runway_router
 from kling_engine import router as kling_router
@@ -994,11 +997,9 @@ async def jarvis_job_worker_loop():
                     "return=representation"
                 )
                 persisted_job = persisted_rows[0] if isinstance(persisted_rows, list) and persisted_rows else None
-                result_persisted = bool(
-                    isinstance(persisted_job, dict)
-                    and str(persisted_job.get("id")) == str(job_id)
-                    and persisted_job.get("result") is not None
-                    and persisted_job.get("status") == ("completed" if completed else "failed")
+                terminal_status = "completed" if completed else "failed"
+                result_persisted = persisted_job_matches(
+                    persisted_job, job_id, terminal_status
                 )
                 if not result_persisted:
                     verified_rows, _ = await asyncio.to_thread(
@@ -1010,11 +1011,8 @@ async def jarvis_job_worker_loop():
                         })
                     )
                     verified_job = verified_rows[0] if isinstance(verified_rows, list) and verified_rows else None
-                    result_persisted = bool(
-                        isinstance(verified_job, dict)
-                        and str(verified_job.get("id")) == str(job_id)
-                        and verified_job.get("result") is not None
-                        and verified_job.get("status") == ("completed" if completed else "failed")
+                    result_persisted = persisted_job_matches(
+                        verified_job, job_id, terminal_status
                     )
                 if not result_persisted:
                     raise RuntimeError(
@@ -1058,12 +1056,8 @@ async def jarvis_job_worker_loop():
                         "return=representation"
                     )
                     final_row = final_rows[0] if isinstance(final_rows, list) and final_rows else None
-                    final_result_persisted = bool(
-                        isinstance(final_row, dict)
-                        and str(final_row.get("id")) == str(job_id)
-                        and final_row.get("status") == ("completed" if completed else "failed")
-                        and isinstance(final_row.get("result"), dict)
-                        and (final_row["result"].get("qa_evidence") or {}).get("final_result_readback", {}).get("verified") is True
+                    final_result_persisted = final_qa_readback_matches(
+                        final_row, job_id, terminal_status
                     )
                     if not final_result_persisted:
                         raise RuntimeError(
@@ -1092,25 +1086,20 @@ async def jarvis_job_worker_loop():
             except Exception as error:
                 attempts = int(job.get("attempts") or 1)
                 max_attempts = int(job.get("max_attempts") or 3)
-                retrying = attempts < max_attempts
                 final_error = str(error)[:1500]
+                now_iso = datetime.now(timezone.utc).isoformat()
+                retrying, retry_update = build_worker_retry_update(
+                    attempts, max_attempts, final_error, now_iso
+                )
                 jarvis_worker_state.update({
                     "status": "idle" if retrying else "error",
                     "last_job_status": "queued" if retrying else "failed",
                     "last_error": final_error,
-                    "last_poll_at": datetime.now(timezone.utc).isoformat()
+                    "last_poll_at": now_iso
                 })
                 await asyncio.to_thread(
                     supabase_jobs_request, "PATCH", "jarvis_jobs",
-                    {
-                        "status": "queued" if retrying else "failed",
-                        "phase": f"Automatiskt nytt försök {attempts + 1}/{max_attempts}" if retrying else "Bakgrundsarbetet misslyckades efter flera försök",
-                        "error": final_error,
-                        "locked_at": None,
-                        "worker_id": None,
-                        "completed_at": None if retrying else datetime.now(timezone.utc).isoformat(),
-                        "updated_at": datetime.now(timezone.utc).isoformat()
-                    },
+                    retry_update,
                     urllib.parse.urlencode({"id": "eq." + str(job_id)}),
                     "return=minimal"
                 )
