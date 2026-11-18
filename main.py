@@ -1034,7 +1034,7 @@ async def jarvis_job_worker_loop():
                     }
                     outcome["reply"] = (
                         str(outcome.get("reply") or "").rstrip()
-                        + "\\n\\nSlutlig databasverifiering: Supabase har bekräftat att "
+                        + "\n\nSlutlig databasverifiering: Supabase har bekräftat att "
                         + "jobbresultatet är sparat och kan läsas tillbaka. "
                         + "Detta verifierar bakgrundsflödets resultatlagring, inte "
                         + "produktkodens separata dynamiska tester."
