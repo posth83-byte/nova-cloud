@@ -3300,6 +3300,7 @@ async def create_shopping_list(request: ShoppingListCreateRequest):
         raise HTTPException(status_code=503, detail="Delad lagring är inte tillgänglig just nu.")
     token = uuid.uuid4().hex + uuid.uuid4().hex
     token_hash = hashlib.sha256(token.encode("utf-8")).hexdigest()
+    list_id = None
     try:
         rows, _ = await asyncio.to_thread(
             supabase_shopping_request, "POST", "shopping_lists",
@@ -3338,6 +3339,14 @@ async def create_shopping_list(request: ShoppingListCreateRequest):
     except HTTPException:
         raise
     except Exception as error:
+        if list_id:
+            try:
+                await asyncio.to_thread(
+                    supabase_shopping_request, "DELETE", "shopping_lists", None,
+                    urllib.parse.urlencode({"id": "eq." + str(list_id)}), "return=minimal"
+                )
+            except Exception:
+                pass
         raise HTTPException(status_code=502, detail=f"Kunde inte skapa den delade listan: {str(error)[:400]}")
 
 
