@@ -804,7 +804,7 @@ def send_jarvis_job_notification(job_id, subscription, outcome):
             "title": "JARVIS – testnotis" if is_test else ("JARVIS – uppdraget behöver åtgärd" if failed else "JARVIS – arbetsresultat klart"),
             "body": "Pushnotiser fungerar på den här enheten." if is_test else ("Ett bakgrundsjobb misslyckades. Öppna JARVIS för felstatus." if failed else "JARVIS har sammanställt ett resultat. Öppna kontrollcentralen för detaljer."),
             "url": "/",
-            "tag": "jarvis-test" if is_test else ("jarvis-job-failed" if failed else "jarvis-job-complete")
+            "tag": "jarvis-test" if is_test else f"jarvis-job-{job_id}"
         }
         temp_path = None
         try:
@@ -1027,9 +1027,12 @@ async def jarvis_job_worker_loop():
                     "last_poll_at": datetime.now(timezone.utc).isoformat(),
                     "last_error": None if completed else str(outcome.get("reply", ""))[:500]
                 })
-                if completed and job.get("push_subscription"):
+                # Notify only after the terminal result has been confirmed in Supabase.
+                # Send for both successful completion and final failure (never for retries).
+                if result_persisted and job.get("push_subscription"):
+                    notification_outcome = outcome if completed else {**outcome, "status": "failed"}
                     sent = await asyncio.to_thread(
-                        send_jarvis_job_notification, job_id, job.get("push_subscription"), outcome
+                        send_jarvis_job_notification, job_id, job.get("push_subscription"), notification_outcome
                     )
                     if sent:
                         await asyncio.to_thread(
