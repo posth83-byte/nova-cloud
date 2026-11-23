@@ -212,6 +212,72 @@ def supabase_jobs_request(method, path, payload=None, query="", prefer=""):
         raise RuntimeError(f"JARVIS jobbkö svarade med HTTP {error.code}: {detail}") from error
 
 
+def supabase_shopping_request(method, table, payload=None, query="", prefer=""):
+    """Private shopping-list API; all access is mediated by server-side bearer tokens."""
+    allowed_tables = {"shopping_lists", "shopping_list_items"}
+    if table not in allowed_tables:
+        raise ValueError("Okänd inköpslistetabell.")
+    if not USE_SUPABASE_MEMORY:
+        raise RuntimeError("Supabase är inte konfigurerat.")
+    url = SUPABASE_URL + "/rest/v1/" + table
+    if query:
+        url += "?" + query
+    body = None if payload is None else json.dumps(payload, ensure_ascii=False).encode("utf-8")
+    headers = {
+        "apikey": SUPABASE_SECRET_KEY,
+        "Authorization": "Bearer " + SUPABASE_SECRET_KEY,
+        "Accept": "application/json"
+    }
+    if body is not None:
+        headers["Content-Type"] = "application/json"
+    if prefer:
+        headers["Prefer"] = prefer
+    request = urllib.request.Request(url, data=body, headers=headers, method=method)
+    try:
+        with urllib.request.urlopen(request, timeout=20) as response:
+            raw = response.read().decode("utf-8")
+            return json.loads(raw) if raw else [], dict(response.headers)
+    except urllib.error.HTTPError as error:
+        detail = error.read().decode("utf-8", errors="replace")[:1000]
+        raise RuntimeError(
+            f"Inköpslistans databas svarade med HTTP {error.code}: {detail}"
+        ) from error
+
+
+def resolve_shopping_list_token(authorization):
+    token = str(authorization or "").strip()
+    if not token.lower().startswith("bearer "):
+        raise HTTPException(status_code=401, detail="Delningslänken saknas eller är ogiltig.")
+    token = token[7:].strip()
+    if len(token) < 40 or len(token) > 200:
+        raise HTTPException(status_code=401, detail="Delningslänken är ogiltig.")
+    token_hash = hashlib.sha256(token.encode("utf-8")).hexdigest()
+    rows, _ = supabase_shopping_request(
+        "GET", "shopping_lists", None,
+        urllib.parse.urlencode({
+            "token_hash": "eq." + token_hash,
+            "select": "id,updated_at",
+            "limit": "1"
+        })
+    )
+    if not isinstance(rows, list) or not rows:
+        raise HTTPException(status_code=404, detail="Den delade inköpslistan hittades inte.")
+    return rows[0]
+
+
+def get_shopping_list_items(list_id):
+    rows, _ = supabase_shopping_request(
+        "GET", "shopping_list_items", None,
+        urllib.parse.urlencode({
+            "list_id": "eq." + str(list_id),
+            "select": "id,name,category,qty,done,created_at,updated_at",
+            "order": "created_at.desc",
+            "limit": "500"
+        })
+    )
+    return rows if isinstance(rows, list) else []
+
+
 def enqueue_jarvis_job(task, history=None, push_subscription=None):
     """Atomically deduplicate/reuse a durable job and append its access token."""
     clean_task = str(task or "").strip()
@@ -1717,6 +1783,31 @@ class ChatRequest(BaseModel):
 class PushTestRequest(BaseModel):
     subscription: dict
 
+class ShoppingListSeedItem(BaseModel):
+    name: str = Field(min_length=1, max_length=120)
+    category: str = Field(default="Övrigt", max_length=40)
+    qty: str = Field(default="", max_length=40)
+    done: bool = False
+
+
+class ShoppingListCreateRequest(BaseModel):
+    items: list[ShoppingListSeedItem] = Field(default_factory=list, max_length=300)
+
+
+class ShoppingListItemCreateRequest(BaseModel):
+    name: str = Field(min_length=1, max_length=120)
+    category: str = Field(default="Övrigt", max_length=40)
+    qty: str = Field(default="", max_length=40)
+
+
+class ShoppingListItemUpdateRequest(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=120)
+    category: str | None = Field(default=None, max_length=40)
+    qty: str | None = Field(default=None, max_length=40)
+    done: bool | None = None
+
+
+
 
 class MemoryCreateRequest(BaseModel):
     text: str = Field(min_length=3, max_length=12000)
@@ -3190,6 +3281,182 @@ async def health():
         "version": APP_VERSION,
         "time": datetime.now(timezone.utc).isoformat()
     }
+
+
+# ==========================================
+# DELAD INKÖPSLISTA
+# ==========================================
+
+SHOPPING_LIST_CATEGORIES = {
+    "Frukt & grönt", "Mejeri", "Kött & fisk", "Skafferi",
+    "Frys", "Hushåll", "Övrigt"
+}
+
+
+@app.post("/api/shopping-list")
+async def create_shopping_list(request: ShoppingListCreateRequest):
+    """Create a shared list and optionally migrate the creator's local items."""
+    if not USE_SUPABASE_MEMORY:
+        raise HTTPException(status_code=503, detail="Delad lagring är inte tillgänglig just nu.")
+    token = uuid.uuid4().hex + uuid.uuid4().hex
+    token_hash = hashlib.sha256(token.encode("utf-8")).hexdigest()
+    try:
+        rows, _ = await asyncio.to_thread(
+            supabase_shopping_request, "POST", "shopping_lists",
+            {"token_hash": token_hash}, "", "return=representation"
+        )
+        if not isinstance(rows, list) or not rows:
+            raise RuntimeError("Databasen skapade ingen inköpslista.")
+        list_id = rows[0]["id"]
+        seed_items = []
+        for item in request.items:
+            name = item.name.strip()
+            if not name:
+                continue
+            seed_items.append({
+                "list_id": list_id,
+                "name": name,
+                "category": item.category if item.category in SHOPPING_LIST_CATEGORIES else "Övrigt",
+                "qty": item.qty.strip(),
+                "done": bool(item.done)
+            })
+        if seed_items:
+            await asyncio.to_thread(
+                supabase_shopping_request, "POST", "shopping_list_items",
+                seed_items, "", "return=minimal"
+            )
+        list_rows, _ = await asyncio.to_thread(
+            supabase_shopping_request, "GET", "shopping_lists", None,
+            urllib.parse.urlencode({"id": "eq." + str(list_id), "select": "id,updated_at", "limit": "1"})
+        )
+        return {
+            "token": token,
+            "list_id": list_id,
+            "updated_at": list_rows[0].get("updated_at") if list_rows else None,
+            "items": await asyncio.to_thread(get_shopping_list_items, list_id)
+        }
+    except HTTPException:
+        raise
+    except Exception as error:
+        raise HTTPException(status_code=502, detail=f"Kunde inte skapa den delade listan: {str(error)[:400]}")
+
+
+@app.get("/api/shopping-list")
+async def read_shopping_list(authorization: str = Header(default="")):
+    if not USE_SUPABASE_MEMORY:
+        raise HTTPException(status_code=503, detail="Delad lagring är inte tillgänglig just nu.")
+    try:
+        list_row = await asyncio.to_thread(resolve_shopping_list_token, authorization)
+        return {
+            "list_id": list_row["id"],
+            "updated_at": list_row.get("updated_at"),
+            "items": await asyncio.to_thread(get_shopping_list_items, list_row["id"])
+        }
+    except HTTPException:
+        raise
+    except Exception as error:
+        raise HTTPException(status_code=502, detail=f"Kunde inte läsa inköpslistan: {str(error)[:400]}")
+
+
+@app.post("/api/shopping-list/items")
+async def add_shopping_list_item(
+    request: ShoppingListItemCreateRequest,
+    authorization: str = Header(default="")
+):
+    try:
+        list_row = await asyncio.to_thread(resolve_shopping_list_token, authorization)
+        name = request.name.strip()
+        if not name:
+            raise HTTPException(status_code=422, detail="Varans namn får inte vara tomt.")
+        rows, _ = await asyncio.to_thread(
+            supabase_shopping_request, "POST", "shopping_list_items",
+            {
+                "list_id": list_row["id"],
+                "name": name,
+                "category": request.category if request.category in SHOPPING_LIST_CATEGORIES else "Övrigt",
+                "qty": request.qty.strip(),
+                "done": False
+            }, "", "return=representation"
+        )
+        return {"item": rows[0] if isinstance(rows, list) and rows else None}
+    except HTTPException:
+        raise
+    except Exception as error:
+        raise HTTPException(status_code=502, detail=f"Kunde inte lägga till varan: {str(error)[:400]}")
+
+
+@app.patch("/api/shopping-list/items/{item_id}")
+async def update_shopping_list_item(
+    item_id: str,
+    request: ShoppingListItemUpdateRequest,
+    authorization: str = Header(default="")
+):
+    changes = request.dict(exclude_unset=True)
+    if not changes:
+        raise HTTPException(status_code=400, detail="Ingen ändring skickades.")
+    if "name" in changes and changes["name"] is not None:
+        changes["name"] = changes["name"].strip()
+        if not changes["name"]:
+            raise HTTPException(status_code=422, detail="Varans namn får inte vara tomt.")
+    if "category" in changes and changes["category"] is not None:
+        if changes["category"] not in SHOPPING_LIST_CATEGORIES:
+            changes["category"] = "Övrigt"
+    if "qty" in changes and changes["qty"] is not None:
+        changes["qty"] = changes["qty"].strip()
+    try:
+        list_row = await asyncio.to_thread(resolve_shopping_list_token, authorization)
+        rows, _ = await asyncio.to_thread(
+            supabase_shopping_request, "PATCH", "shopping_list_items", changes,
+            urllib.parse.urlencode({
+                "id": "eq." + item_id,
+                "list_id": "eq." + str(list_row["id"])
+            }), "return=representation"
+        )
+        if not isinstance(rows, list) or not rows:
+            raise HTTPException(status_code=404, detail="Varan hittades inte i den delade listan.")
+        return {"item": rows[0]}
+    except HTTPException:
+        raise
+    except Exception as error:
+        raise HTTPException(status_code=502, detail=f"Kunde inte uppdatera varan: {str(error)[:400]}")
+
+
+@app.delete("/api/shopping-list/items/{item_id}")
+async def delete_shopping_list_item(item_id: str, authorization: str = Header(default="")):
+    try:
+        list_row = await asyncio.to_thread(resolve_shopping_list_token, authorization)
+        rows, _ = await asyncio.to_thread(
+            supabase_shopping_request, "DELETE", "shopping_list_items", None,
+            urllib.parse.urlencode({
+                "id": "eq." + item_id,
+                "list_id": "eq." + str(list_row["id"])
+            }), "return=representation"
+        )
+        if not isinstance(rows, list) or not rows:
+            raise HTTPException(status_code=404, detail="Varan hittades inte i den delade listan.")
+        return {"deleted": True}
+    except HTTPException:
+        raise
+    except Exception as error:
+        raise HTTPException(status_code=502, detail=f"Kunde inte ta bort varan: {str(error)[:400]}")
+
+
+@app.post("/api/shopping-list/clear-completed")
+async def clear_completed_shopping_list_items(authorization: str = Header(default="")):
+    try:
+        list_row = await asyncio.to_thread(resolve_shopping_list_token, authorization)
+        rows, _ = await asyncio.to_thread(
+            supabase_shopping_request, "DELETE", "shopping_list_items", None,
+            urllib.parse.urlencode({
+                "list_id": "eq." + str(list_row["id"]),
+                "done": "eq.true"
+            }), "return=representation"
+        )
+        return {"deleted": len(rows) if isinstance(rows, list) else 0}
+    except HTTPException:
+        raise
+    except Exception as error:
+        raise HTTPException(status_code=502, detail=f"Kunde inte rensa avklarade varor: {str(error)[:400]}")
 
 
 # ==========================================
