@@ -296,6 +296,9 @@ try {
           await partner.waitForFunction(() => document.querySelector("#list")?.innerText.includes("Mjölk"), null, { timeout: 5000 });
           if (await partner.evaluate(() => localStorage.getItem("shoppingListToken")) !== token) partnerFailures.push("Partner device did not store the shared token.");
           await partner.locator('[data-check="item-1"]').click();
+          console.log("SHOPPING QA: waiting for partner checkbox mutation");
+          await partner.waitForFunction(() => document.querySelector("#list .item.done .name")?.textContent === "Mjölk", null, { timeout: 5000 });
+          console.log("SHOPPING QA: partner state changed", JSON.stringify(sharedItems));
           await page.bringToFront();
           console.log("SHOPPING QA: waiting for first device to see partner check-off");
           await page.waitForFunction(() => document.querySelector("#list .item.done .name")?.textContent === "Mjölk", null, { timeout: 7000 });
