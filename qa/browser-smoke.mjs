@@ -203,6 +203,7 @@ try {
         if (route === "/shopping-list/") {
           let sharedItems = [];
           let itemSequence = 0;
+          let mainReadCount = 0;
           let updatedAt = "2026-11-23T19:00:00.000Z";
           const token = "a".repeat(64);
           await page.evaluate(() => {
@@ -226,6 +227,7 @@ try {
                 token, list_id: "shared-list-1", updated_at: updatedAt, items: sharedItems
               }) });
             }
+            mainReadCount++;
             if (route.request().headers()["authorization"] !== "Bearer " + token) {
               localFailures.push("Shared list read did not send its bearer token.");
             }
@@ -301,7 +303,16 @@ try {
           console.log("SHOPPING QA: partner state changed", JSON.stringify(sharedItems));
           await page.bringToFront();
           console.log("SHOPPING QA: waiting for first device to see partner check-off");
-          await page.waitForFunction(() => document.querySelector("#list .item.done .name")?.textContent === "Mjölk", null, { timeout: 7000 });
+          await page.waitForTimeout(3500);
+          const ownerSyncDebug = await page.evaluate(() => ({
+            hidden: document.hidden,
+            token: localStorage.getItem("shoppingListToken"),
+            doneName: document.querySelector("#list .item.done .name")?.textContent || "",
+            listText: document.querySelector("#list")?.innerText || "",
+            syncStatus: document.querySelector("#syncStatus")?.textContent || ""
+          }));
+          console.log("SHOPPING QA DEBUG OWNER", JSON.stringify({mainReadCount, ownerSyncDebug, sharedItems}));
+          if (ownerSyncDebug.doneName !== "Mjölk") localFailures.push("Owner did not receive partner checkbox update within one poll interval.");
 
           await page.locator("#itemInput").fill("Bröd");
           await page.locator('#addForm button[type="submit"]').click();
