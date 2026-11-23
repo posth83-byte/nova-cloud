@@ -90,6 +90,11 @@ PROJECTS_DIR = BASE_DIR / "projects"
 if PROJECTS_DIR.is_dir():
     app.mount("/projects", StaticFiles(directory=str(PROJECTS_DIR), html=True), name="projects")
 
+# Serve the installable shared shopping-list PWA and its service worker.
+SHOPPING_LIST_DIR = BASE_DIR / "shopping-list"
+if SHOPPING_LIST_DIR.is_dir():
+    app.mount("/shopping-list", StaticFiles(directory=str(SHOPPING_LIST_DIR), html=True), name="shopping-list")
+
 # ==========================================
 # JARVIS MEMORY CORE – SUPABASE + SQLITE FALLBACK
 # ==========================================
