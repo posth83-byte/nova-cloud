@@ -266,6 +266,7 @@ try {
           await page.locator('#addForm button[type="submit"]').click();
           if (await page.locator("#list").getByText("Mjölk").count() !== 1) localFailures.push("Local shopping-list add failed.");
           await page.locator("#share").click();
+          console.log("SHOPPING QA: waiting for share link");
           await page.waitForFunction(() => !!window.__sharedPayload?.url, null, { timeout: 5000 });
           const shareData = await page.evaluate(() => window.__sharedPayload);
           if (!shareData.url.includes("#list=" + token)) localFailures.push("Share URL did not contain the private fragment token.");
@@ -291,17 +292,21 @@ try {
             return route.fulfill({ status: 405, body: "Method not allowed" });
           });
           await partner.goto(shareData.url, { waitUntil: "domcontentloaded", timeout: 10000 });
+          console.log("SHOPPING QA: waiting for partner initial list");
           await partner.waitForFunction(() => document.querySelector("#list")?.innerText.includes("Mjölk"), null, { timeout: 5000 });
           if (await partner.evaluate(() => localStorage.getItem("shoppingListToken")) !== token) partnerFailures.push("Partner device did not store the shared token.");
           await partner.locator('[data-check="item-1"]').click();
           await page.bringToFront();
+          console.log("SHOPPING QA: waiting for first device to see partner check-off");
           await page.waitForFunction(() => document.querySelector("#list .item.done .name")?.textContent === "Mjölk", null, { timeout: 7000 });
 
           await page.locator("#itemInput").fill("Bröd");
           await page.locator('#addForm button[type="submit"]').click();
           await partner.bringToFront();
+          console.log("SHOPPING QA: waiting for partner to see new item");
           await partner.waitForFunction(() => document.querySelector("#list")?.innerText.includes("Bröd"), null, { timeout: 7000 });
           await page.locator("#clear").click();
+          console.log("SHOPPING QA: waiting for partner to see completed item removed");
           await partner.waitForFunction(() => !document.querySelector("#list")?.innerText.includes("Mjölk"), null, { timeout: 7000 });
           if (partnerFailures.length) localFailures.push(...partnerFailures);
           await partner.close();
