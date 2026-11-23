@@ -201,6 +201,17 @@ try {
           }
         }
         if (route === "/shopping-list/") {
+          await page.evaluate(async () => {
+            const registrations = await navigator.serviceWorker?.getRegistrations?.() || [];
+            await Promise.all(registrations.map(registration => registration.unregister()));
+          });
+          await page.addInitScript(() => {
+            Object.defineProperty(navigator, "serviceWorker", {
+              configurable: true,
+              value: { register: async () => ({}) }
+            });
+          });
+          await page.reload({ waitUntil: "domcontentloaded" });
           let sharedItems = [];
           let itemSequence = 0;
           let mainReadCount = 0;
@@ -276,6 +287,12 @@ try {
           if (!(await page.locator("#syncStatus").innerText()).includes("synkas automatiskt")) localFailures.push("Shared sync status was not displayed.");
 
           const partner = await browser.newPage({ viewport: { width: viewport.width, height: viewport.height } });
+          await partner.addInitScript(() => {
+            Object.defineProperty(navigator, "serviceWorker", {
+              configurable: true,
+              value: { register: async () => ({}) }
+            });
+          });
           const partnerFailures = [];
           partner.on("pageerror", error => partnerFailures.push(error.message));
           partner.on("request", request => {
