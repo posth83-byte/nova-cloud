@@ -1066,7 +1066,29 @@ async def jarvis_job_worker_loop():
                     urllib.parse.urlencode({"id": "eq." + str(job_id)}),
                     "return=minimal"
                 )
-                if not retrying and job.get("push_subscription"):
+                failure_persisted = False
+                if not retrying:
+                    verified_failure_rows, _ = await asyncio.to_thread(
+                        supabase_jobs_request, "GET", "jarvis_jobs", None,
+                        urllib.parse.urlencode({
+                            "id": "eq." + str(job_id),
+                            "select": "id,status,completed_at",
+                            "limit": "1"
+                        })
+                    )
+                    verified_failure = (
+                        verified_failure_rows[0]
+                        if isinstance(verified_failure_rows, list) and verified_failure_rows
+                        else None
+                    )
+                    failure_persisted = bool(
+                        isinstance(verified_failure, dict)
+                        and str(verified_failure.get("id")) == str(job_id)
+                        and verified_failure.get("status") == "failed"
+                        and verified_failure.get("completed_at")
+                    )
+                    jarvis_worker_state["last_job_result_persisted"] = failure_persisted
+                if failure_persisted and job.get("push_subscription"):
                     sent = await asyncio.to_thread(
                         send_jarvis_job_notification, job_id, job.get("push_subscription"),
                         {"status": "failed", "message": final_error}
