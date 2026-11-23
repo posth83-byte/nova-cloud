@@ -4,7 +4,7 @@ import { chromium } from "playwright";
 
 const root = process.cwd();
 const baseUrl = "http://127.0.0.1:4173";
-const entrypoints = ["/"];
+const entrypoints = ["/", "/shopping-list/"];
 const projectEntrypoints = [];
 
 // Keep Swedish compound forms such as "testvideo", "humorvideo" and
@@ -46,7 +46,7 @@ try {
       { name: "desktop", width: 1365, height: 900 },
       { name: "mobile", width: 390, height: 844 }
     ]) {
-      const page = await browser.newPage({ viewport: { width: viewport.width, height: viewport.height } });
+      const page = await browser.newPage({ viewport: { width: viewport.width, height: viewport.height }, serviceWorkers: "block" });
       await page.route("**/api/status", route => route.fulfill({
         status: 200, contentType: "application/json",
         body: JSON.stringify({ version: "browser-qa", gemini_configured: false, youtube_api_configured: false,
@@ -200,6 +200,163 @@ try {
             if (!(await page.locator("#resultCards [data-card-body]").first().innerText()).includes("QA redigerad kampanjtext")) localFailures.push("Edited campaign text was not restored after reload.");
           }
         }
+        if (route === "/shopping-list/") {
+          await page.evaluate(async () => {
+            const registrations = await navigator.serviceWorker?.getRegistrations?.() || [];
+            await Promise.all(registrations.map(registration => registration.unregister()));
+          });
+          await page.addInitScript(() => {
+            Object.defineProperty(navigator, "serviceWorker", {
+              configurable: true,
+              value: { register: async () => ({}) }
+            });
+          });
+          await page.reload({ waitUntil: "domcontentloaded" });
+          let sharedItems = [];
+          let itemSequence = 0;
+          let mainReadCount = 0;
+          let updatedAt = "2026-11-23T19:00:00.000Z";
+          const token = "a".repeat(64);
+          await page.evaluate(() => {
+            Object.defineProperty(navigator, "share", {
+              configurable: true,
+              value: async data => { window.__sharedPayload = data; }
+            });
+            Object.defineProperty(navigator, "clipboard", {
+              configurable: true,
+              value: { writeText: async text => { window.__sharedPayload = { url: text }; } }
+            });
+          });
+          await page.route("**/api/shopping-list", async route => {
+            if (route.request().method() === "POST") {
+              const body = route.request().postDataJSON();
+              sharedItems = (body.items || []).map((item, index) => ({
+                ...item, id: "item-" + (index + 1), created_at: updatedAt, updated_at: updatedAt
+              }));
+              itemSequence = sharedItems.length;
+              return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({
+                token, list_id: "shared-list-1", updated_at: updatedAt, items: sharedItems
+              }) });
+            }
+            mainReadCount++;
+            if (route.request().headers()["authorization"] !== "Bearer " + token) {
+              localFailures.push("Shared list read did not send its bearer token.");
+            }
+            return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({
+              list_id: "shared-list-1", updated_at: updatedAt, items: sharedItems
+            }) });
+          });
+          await page.route("**/api/shopping-list/items", async route => {
+            if (route.request().method() !== "POST") return route.fulfill({ status: 405, body: "Method not allowed" });
+            const body = route.request().postDataJSON();
+            const item = { ...body, id: "item-" + (++itemSequence), done: false, created_at: updatedAt, updated_at: updatedAt };
+            sharedItems.unshift(item);
+            updatedAt = new Date(Date.parse(updatedAt) + 1000).toISOString();
+            return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ item }) });
+          });
+          await page.route("**/api/shopping-list/items/*", async route => {
+            const id = route.request().url().split("/").pop();
+            if (route.request().method() === "PATCH") {
+              const item = sharedItems.find(entry => entry.id === id);
+              if (item) Object.assign(item, route.request().postDataJSON());
+              updatedAt = new Date(Date.parse(updatedAt) + 1000).toISOString();
+              return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ item }) });
+            }
+            if (route.request().method() === "DELETE") {
+              sharedItems = sharedItems.filter(entry => entry.id !== id);
+              updatedAt = new Date(Date.parse(updatedAt) + 1000).toISOString();
+              return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ deleted: true }) });
+            }
+            return route.fulfill({ status: 405, body: "Method not allowed" });
+          });
+          await page.route("**/api/shopping-list/clear-completed", async route => {
+            sharedItems = sharedItems.filter(item => !item.done);
+            updatedAt = new Date(Date.parse(updatedAt) + 1000).toISOString();
+            return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ deleted: 1 }) });
+          });
+
+          await page.locator("#itemInput").fill("Mjölk");
+          await page.locator('#addForm button[type="submit"]').click();
+          if (await page.locator("#list").getByText("Mjölk").count() !== 1) localFailures.push("Local shopping-list add failed.");
+          await page.locator("#share").click();
+          console.log("SHOPPING QA: waiting for share link");
+          await page.waitForFunction(() => !!window.__sharedPayload?.url, null, { timeout: 5000 });
+          const shareData = await page.evaluate(() => window.__sharedPayload);
+          if (!shareData.url.includes("#list=" + token)) localFailures.push("Share URL did not contain the private fragment token.");
+          if (await page.evaluate(() => localStorage.getItem("shoppingListToken")) !== token) localFailures.push("Shared-list token was not saved locally.");
+          if (!(await page.locator("#syncStatus").innerText()).includes("synkas automatiskt")) localFailures.push("Shared sync status was not displayed.");
+
+          const partner = await browser.newPage({ viewport: { width: viewport.width, height: viewport.height } });
+          await partner.addInitScript(() => {
+            Object.defineProperty(navigator, "serviceWorker", {
+              configurable: true,
+              value: { register: async () => ({}) }
+            });
+          });
+          const partnerFailures = [];
+          partner.on("pageerror", error => partnerFailures.push(error.message));
+          partner.on("request", request => {
+            if (request.url().includes("/api/shopping-list")) console.log("SHOPPING QA: partner request", request.method(), request.url());
+          });
+          partner.on("response", response => {
+            if (response.url().includes("/api/shopping-list")) console.log("SHOPPING QA: partner response", response.status(), response.url());
+          });
+          partner.on("console", message => {
+            if (message.type() === "error") console.log("SHOPPING QA: partner console error", message.text());
+          });
+          await partner.route(/\/api\/shopping-list(?:\/.*)?$/, async route => {
+            const requestUrl = new URL(route.request().url());
+            const method = route.request().method();
+            if (requestUrl.pathname === "/api/shopping-list" && method === "GET") {
+              return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({
+                list_id: "shared-list-1", updated_at: updatedAt, items: sharedItems
+              }) });
+            }
+            if (requestUrl.pathname.startsWith("/api/shopping-list/items/") && method === "PATCH") {
+              const id = requestUrl.pathname.split("/").pop();
+              const item = sharedItems.find(entry => entry.id === id);
+              if (item) Object.assign(item, route.request().postDataJSON());
+              updatedAt = new Date(Date.parse(updatedAt) + 1000).toISOString();
+              return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ item }) });
+            }
+            return route.fulfill({ status: 404, contentType: "application/json", body: JSON.stringify({ detail: "Unhandled partner test route" }) });
+          });
+          await partner.goto(shareData.url, { waitUntil: "domcontentloaded", timeout: 10000 });
+          console.log("SHOPPING QA: waiting for partner initial list");
+          await partner.waitForFunction(() => document.querySelector("#list")?.innerText.includes("Mjölk"), null, { timeout: 5000 });
+          if (await partner.evaluate(() => localStorage.getItem("shoppingListToken")) !== token) partnerFailures.push("Partner device did not store the shared token.");
+          console.log("SHOPPING QA: checkbox before click", await partner.locator('[data-check="item-1"]').evaluate(el => el.outerHTML));
+          await partner.locator('[data-check="item-1"]').click();
+          await partner.waitForTimeout(500);
+          console.log("SHOPPING QA: state after click", JSON.stringify(sharedItems), await partner.locator("#list").innerText(), await partner.locator("#list").innerHTML());
+          console.log("SHOPPING QA: waiting for partner checkbox mutation");
+          await partner.waitForFunction(() => document.querySelector("#list .item.done .name")?.textContent === "Mjölk", null, { timeout: 5000 });
+          console.log("SHOPPING QA: partner state changed", JSON.stringify(sharedItems));
+          await page.bringToFront();
+          console.log("SHOPPING QA: waiting for first device to see partner check-off");
+          await page.waitForTimeout(3500);
+          const ownerSyncDebug = await page.evaluate(() => ({
+            hidden: document.hidden,
+            token: localStorage.getItem("shoppingListToken"),
+            doneName: document.querySelector("#list .item.done .name")?.textContent || "",
+            listText: document.querySelector("#list")?.innerText || "",
+            syncStatus: document.querySelector("#syncStatus")?.textContent || ""
+          }));
+          console.log("SHOPPING QA DEBUG OWNER", JSON.stringify({mainReadCount, ownerSyncDebug, sharedItems}));
+          if (ownerSyncDebug.doneName !== "Mjölk") localFailures.push("Owner did not receive partner checkbox update within one poll interval.");
+
+          await page.locator("#itemInput").fill("Bröd");
+          await page.locator('#addForm button[type="submit"]').click();
+          await partner.bringToFront();
+          console.log("SHOPPING QA: waiting for partner to see new item");
+          await partner.waitForFunction(() => document.querySelector("#list")?.innerText.includes("Bröd"), null, { timeout: 7000 });
+          await page.locator("#clear").click();
+          console.log("SHOPPING QA: waiting for partner to see completed item removed");
+          await partner.waitForFunction(() => !document.querySelector("#list")?.innerText.includes("Mjölk"), null, { timeout: 7000 });
+          if (partnerFailures.length) localFailures.push(...partnerFailures);
+          await partner.close();
+        }
+
         if (route === "/") {
           // Navigate through the real home-screen control instead of force-opening the studio.
           await page.locator(".jarvis-nova-link").click();

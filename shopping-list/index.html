@@ -16,7 +16,7 @@ header{padding:14px 4px 20px;display:flex;align-items:center;justify-content:spa
 .empty{text-align:center;color:var(--muted);padding:36px 20px;background:#fff;border-radius:18px}.empty div{font-size:35px;margin-bottom:8px}.footer{display:flex;justify-content:space-between;align-items:center;padding:18px 4px;color:var(--muted);font-size:13px}.footer button{border:0;background:transparent;color:var(--green);font-weight:700;padding:8px}.install{display:none;background:#fff;border:1px solid var(--line);padding:14px;border-radius:16px;margin-bottom:14px;font-size:13px;color:var(--muted)}.install strong{color:var(--ink)}.toast{position:fixed;bottom:calc(22px + env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);background:#24332a;color:white;padding:12px 18px;border-radius:99px;box-shadow:var(--shadow);opacity:0;pointer-events:none;transition:.2s}.toast.show{opacity:1}
 @media(min-width:600px){main{padding-top:30px}.summary{padding:24px}}
 </style></head><body><main>
-<header><div class="brand"><div class="logo">🛒</div><div><h1>Vår inköpslista</h1><p>En lista, två personer ❤️</p></div></div><button class="share" id="share" aria-label="Dela listan">↗</button></header>
+<header><div class="brand"><div class="logo">🛒</div><div><h1>Vår inköpslista</h1><p id="syncStatus">Bara på den här telefonen · tryck ↗ för att dela</p></div></div><button class="share" id="share" aria-label="Dela listan">↗</button></header>
 <div class="install" id="install"><strong>📲 Lägg till på hemskärmen</strong><br>På iPhone: tryck på Dela i Safari och välj ”Lägg till på hemskärmen”.</div>
 <section class="summary"><div class="summary-top"><h2>Att handla</h2><strong id="count">0 varor</strong></div><p id="progressText">Lägg till det ni behöver</p><div class="progress"><div id="progressBar"></div></div></section>
 <form class="add" id="addForm"><input id="itemInput" placeholder="Vad behöver vi köpa?" autocomplete="off" required><button type="submit">＋ Lägg till</button></form>
@@ -26,26 +26,96 @@ header{padding:14px 4px 20px;display:flex;align-items:center;justify-content:spa
 <script>
 const categories=["Allt","Frukt & grönt","Mejeri","Kött & fisk","Skafferi","Frys","Hushåll","Övrigt"];
 let items=JSON.parse(localStorage.getItem("shoppingItems")||"[]"),filter="Allt";
+let listToken=localStorage.getItem("shoppingListToken")||"",lastUpdated=null,pollBusy=false;
 const $=id=>document.getElementById(id);
-function save(){localStorage.setItem("shoppingItems",JSON.stringify(items));render()}
+const incoming=new URLSearchParams(location.hash.slice(1)).get("list");
+if(incoming){listToken=incoming;localStorage.setItem("shoppingListToken",listToken);history.replaceState(null,"",location.pathname+location.search)}
+function setSyncStatus(message){$("syncStatus").textContent=message}
+function esc(s){return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
+async function api(path,method="GET",body){
+ const headers={};
+ if(listToken)headers.Authorization="Bearer "+listToken;
+ if(body!==undefined)headers["Content-Type"]="application/json";
+ const response=await fetch(path,{method,headers,body:body===undefined?undefined:JSON.stringify(body),cache:"no-store"});
+ if(!response.ok){let message="Serverfel ("+response.status+")";try{const data=await response.json();message=data.detail||message}catch{}throw new Error(message)}
+ return response.status===204?null:response.json();
+}
+function saveLocal(){localStorage.setItem("shoppingItems",JSON.stringify(items));render()}
+async function refreshSharedList(silent=false){
+ if(!listToken)return;
+ try{
+  const data=await api("/api/shopping-list");
+  items=Array.isArray(data.items)?data.items:[];
+  lastUpdated=data.updated_at||null;
+  localStorage.setItem("shoppingItems",JSON.stringify(items));
+  setSyncStatus("Delad lista · synkas automatiskt");
+  render();
+ }catch(error){
+  setSyncStatus("Återansluter till den delade listan…");
+  if(!silent)toast("Kunde inte synka: "+error.message);
+  throw error;
+ }
+}
+async function mutateShared(path,method,body){
+ try{await api(path,method,body);await refreshSharedList(true)}
+ catch(error){toast("Ändringen sparades inte: "+error.message);setSyncStatus("Anslutningen saknas – försöker igen")}
+}
 function render(){
- $("filters").innerHTML=categories.map(c=>'<button class="chip '+(filter===c?"active":"")+'" data-filter="'+c+'">'+c+'</button>').join("");
+ $("filters").innerHTML=categories.map(c=>'<button class="chip '+(filter===c?"active":"")+'" data-filter="'+esc(c)+'">'+esc(c)+'</button>').join("");
  $("filters").querySelectorAll("button").forEach(b=>b.onclick=()=>{filter=b.dataset.filter;render()});
- let shown=items.filter(x=>filter==="Allt"||x.category===filter),unchecked=items.filter(x=>!x.done).length,done=items.length-unchecked;
+ const shown=items.filter(x=>filter==="Allt"||x.category===filter),unchecked=items.filter(x=>!x.done).length,done=items.length-unchecked;
  $("count").textContent=items.length+" varor";$("remaining").textContent=unchecked+" kvar";
  $("progressText").textContent=items.length?done+" av "+items.length+" avklarade":"Lägg till det ni behöver";
  $("progressBar").style.width=(items.length?done/items.length*100:0)+"%";
- $("list").innerHTML=shown.length?shown.map(x=>'<article class="item '+(x.done?"done":"")+'"><button class="check" data-check="'+x.id+'">'+(x.done?"✓":"")+'</button><div class="item-main"><div class="name">'+esc(x.name)+'</div><div class="meta">'+x.category+(x.qty?" · "+esc(x.qty):"")+'</div></div><button class="del" data-del="'+x.id+'" aria-label="Ta bort">×</button></article>').join():'<div class="empty"><div>'+(items.length?'✨':'🧺')+'</div>'+(items.length?'Inga varor i den här kategorin.':'Listan är tom. Lägg till något ni behöver!')+'</div>';
- $("list").querySelectorAll("[data-check]").forEach(b=>b.onclick=()=>{let x=items.find(x=>x.id===b.dataset.check);x.done=!x.done;save()});
- $("list").querySelectorAll("[data-del]").forEach(b=>b.onclick=()=>{items=items.filter(x=>x.id!==b.dataset.del);save()});
+ $("list").innerHTML=shown.length?shown.map(x=>'<article class="item '+(x.done?"done":"")+'"><button class="check" data-check="'+esc(x.id)+'">'+(x.done?"✓":"")+'</button><div class="item-main"><div class="name">'+esc(x.name)+'</div><div class="meta">'+esc(x.category)+(x.qty?" · "+esc(x.qty):"")+'</div></div><button class="del" data-del="'+esc(x.id)+'" aria-label="Ta bort">×</button></article>').join():'<div class="empty"><div>'+(items.length?'✨':'🧺')+'</div>'+(items.length?'Inga varor i den här kategorin.':'Listan är tom. Lägg till något ni behöver!')+'</div>';
+ $("list").querySelectorAll("[data-check]").forEach(b=>b.onclick=async()=>{
+  const x=items.find(x=>x.id===b.dataset.check);if(!x)return;
+  if(listToken)await mutateShared("/api/shopping-list/items/"+encodeURIComponent(x.id),"PATCH",{done:!x.done});
+  else{x.done=!x.done;saveLocal()}
+ });
+ $("list").querySelectorAll("[data-del]").forEach(b=>b.onclick=async()=>{
+  if(listToken)await mutateShared("/api/shopping-list/items/"+encodeURIComponent(b.dataset.del),"DELETE");
+  else{items=items.filter(x=>x.id!==b.dataset.del);saveLocal()}
+ });
 }
-function esc(s){return s.replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
 function guessCategory(name){let s=name.toLowerCase();if(/mjölk|ost|smör|yoghurt|grädde|ägg|fil/.test(s))return"Mejeri";if(/äpple|banan|tomat|gurka|potatis|sallad|lök|frukt|grön/.test(s))return"Frukt & grönt";if(/kött|kyckling|fisk|korv|färs|bacon/.test(s))return"Kött & fisk";if(/bröd|pasta|ris|mjöl|kaffe|te|socker|konserv|sås/.test(s))return"Skafferi";if(/glass|fryst|frys/.test(s))return"Frys";if(/disk|tvätt|toalett|papper|såpa|rengör/.test(s))return"Hushåll";return"Övrigt"}
-$("addForm").onsubmit=e=>{e.preventDefault();let name=$("itemInput").value.trim();if(!name)return;items.unshift({id:crypto.randomUUID(),name,category:guessCategory(name),qty:"",done:false});$("itemInput").value="";save();$("itemInput").focus()};
-$("clear").onclick=()=>{items=items.filter(x=>!x.done);save()};
-$("share").onclick=async()=>{let text="🛒 Vår inköpslista\n"+items.filter(x=>!x.done).map(x=>"• "+x.name+(x.qty?" ("+x.qty+")":"")).join("\n");if(!items.filter(x=>!x.done).length)text+="\nListan är tom";try{if(navigator.share)await navigator.share({title:"Vår inköpslista",text});else{await navigator.clipboard.writeText(text);toast("Listan kopierad!")}}catch{}};
-function toast(s){$("toast").textContent=s;$("toast").classList.add("show");setTimeout(()=>$("toast").classList.remove("show"),1800)}
+$("addForm").onsubmit=async e=>{
+ e.preventDefault();let name=$("itemInput").value.trim();if(!name)return;
+ const item={name,category:guessCategory(name),qty:""};
+ if(listToken)await mutateShared("/api/shopping-list/items","POST",item);
+ else{items.unshift({id:crypto.randomUUID(),...item,done:false});saveLocal()}
+ $("itemInput").value="";$("itemInput").focus();
+};
+$("clear").onclick=async()=>{
+ if(listToken)await mutateShared("/api/shopping-list/clear-completed","POST",{});
+ else{items=items.filter(x=>!x.done);saveLocal()}
+};
+async function shareList(){
+ try{
+  if(!listToken){
+   const response=await fetch("/api/shopping-list",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({items})});
+   if(!response.ok){const data=await response.json().catch(()=>({}));throw new Error(data.detail||"Kunde inte skapa delad lista")}
+   const data=await response.json();listToken=data.token;lastUpdated=data.updated_at;
+   localStorage.setItem("shoppingListToken",listToken);items=data.items||[];
+   localStorage.setItem("shoppingItems",JSON.stringify(items));render();
+   setSyncStatus("Delad lista · synkas automatiskt");
+  }
+  const url=location.origin+location.pathname+"#list="+encodeURIComponent(listToken);
+  if(navigator.share)await navigator.share({title:"Vår inköpslista",text:"Öppna vår gemensamma inköpslista",url});
+  else{await navigator.clipboard.writeText(url);toast("Delningslänken kopierad!")}
+ }catch(error){if(error.name!=="AbortError")toast(error.message||"Kunde inte dela listan")}
+}
+$("share").onclick=shareList;
+function toast(s){$("toast").textContent=s;$("toast").classList.add("show");setTimeout(()=>$("toast").classList.remove("show"),2200)}
 render();
-if(!navigator.standalone&&/iPhone|iPad/.test(navigator.userAgent)) $("install").style.display="block";
-if("serviceWorker" in navigator)navigator.serviceWorker.register("./sw.js");
+if(!navigator.standalone&&!window.matchMedia("(display-mode: standalone)").matches&&/iPhone|iPad/.test(navigator.userAgent))$("install").style.display="block";
+if("serviceWorker" in navigator)navigator.serviceWorker.register("./sw.js").catch(()=>{});
+if(listToken){
+ setSyncStatus("Ansluter till den delade listan…");
+ refreshSharedList(false).catch(()=>{});
+}else{
+ setSyncStatus("Bara på den här telefonen · tryck ↗ för att dela");
+}
+setInterval(async()=>{if(listToken&&!pollBusy){pollBusy=true;try{await refreshSharedList(true)}catch{}finally{pollBusy=false}}},3000);
+document.addEventListener("visibilitychange",()=>{if(!document.hidden&&listToken)refreshSharedList(true).catch(()=>{})});
 </script></body></html>
