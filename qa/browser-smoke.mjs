@@ -287,7 +287,7 @@ try {
           partner.on("console", message => {
             if (message.type() === "error") console.log("SHOPPING QA: partner console error", message.text());
           });
-          await partner.route(/\\/api\\/shopping-list(?:\\/.*)?$/, async route => {
+          await partner.route(/\/api\/shopping-list(?:\/.*)?$/, async route => {
             const requestUrl = new URL(route.request().url());
             const method = route.request().method();
             if (requestUrl.pathname === "/api/shopping-list" && method === "GET") {
