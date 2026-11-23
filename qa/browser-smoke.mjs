@@ -279,7 +279,10 @@ try {
           const partnerFailures = [];
           partner.on("pageerror", error => partnerFailures.push(error.message));
           partner.on("request", request => {
-            if (request.url().includes("/api/shopping-list/items")) console.log("SHOPPING QA: partner request", request.method(), request.url());
+            if (request.url().includes("/api/shopping-list")) console.log("SHOPPING QA: partner request", request.method(), request.url());
+          });
+          partner.on("response", response => {
+            if (response.url().includes("/api/shopping-list")) console.log("SHOPPING QA: partner response", response.status(), response.url());
           });
           partner.on("console", message => {
             if (message.type() === "error") console.log("SHOPPING QA: partner console error", message.text());
@@ -306,7 +309,7 @@ try {
           console.log("SHOPPING QA: checkbox before click", await partner.locator('[data-check="item-1"]').evaluate(el => el.outerHTML));
           await partner.locator('[data-check="item-1"]').click();
           await partner.waitForTimeout(500);
-          console.log("SHOPPING QA: state after click", JSON.stringify(sharedItems), await partner.locator("#list").innerText());
+          console.log("SHOPPING QA: state after click", JSON.stringify(sharedItems), await partner.locator("#list").innerText(), await partner.locator("#list").innerHTML());
           console.log("SHOPPING QA: waiting for partner checkbox mutation");
           await partner.waitForFunction(() => document.querySelector("#list .item.done .name")?.textContent === "Mjölk", null, { timeout: 5000 });
           console.log("SHOPPING QA: partner state changed", JSON.stringify(sharedItems));
