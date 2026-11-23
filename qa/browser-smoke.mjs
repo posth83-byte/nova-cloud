@@ -287,20 +287,22 @@ try {
           partner.on("console", message => {
             if (message.type() === "error") console.log("SHOPPING QA: partner console error", message.text());
           });
-          await partner.route("**/api/shopping-list", route => route.fulfill({
-            status: 200, contentType: "application/json", body: JSON.stringify({
-              list_id: "shared-list-1", updated_at: updatedAt, items: sharedItems
-            })
-          }));
-          await partner.route("**/api/shopping-list/items/*", async route => {
-            const id = route.request().url().split("/").pop();
-            if (route.request().method() === "PATCH") {
+          await partner.route(/\\/api\\/shopping-list(?:\\/.*)?$/, async route => {
+            const requestUrl = new URL(route.request().url());
+            const method = route.request().method();
+            if (requestUrl.pathname === "/api/shopping-list" && method === "GET") {
+              return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({
+                list_id: "shared-list-1", updated_at: updatedAt, items: sharedItems
+              }) });
+            }
+            if (requestUrl.pathname.startsWith("/api/shopping-list/items/") && method === "PATCH") {
+              const id = requestUrl.pathname.split("/").pop();
               const item = sharedItems.find(entry => entry.id === id);
               if (item) Object.assign(item, route.request().postDataJSON());
               updatedAt = new Date(Date.parse(updatedAt) + 1000).toISOString();
               return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ item }) });
             }
-            return route.fulfill({ status: 405, body: "Method not allowed" });
+            return route.fulfill({ status: 404, contentType: "application/json", body: JSON.stringify({ detail: "Unhandled partner test route" }) });
           });
           await partner.goto(shareData.url, { waitUntil: "domcontentloaded", timeout: 10000 });
           console.log("SHOPPING QA: waiting for partner initial list");
