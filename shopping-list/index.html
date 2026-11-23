@@ -116,6 +116,6 @@ if(listToken){
 }else{
  setSyncStatus("Bara på den här telefonen · tryck ↗ för att dela");
 }
-setInterval(async()=>{if(listToken&&!document.hidden&&!pollBusy){pollBusy=true;try{await refreshSharedList(true)}catch{}finally{pollBusy=false}}},3000);
+setInterval(async()=>{if(listToken&&!pollBusy){pollBusy=true;try{await refreshSharedList(true)}catch{}finally{pollBusy=false}}},3000);
 document.addEventListener("visibilitychange",()=>{if(!document.hidden&&listToken)refreshSharedList(true).catch(()=>{})});
 </script></body></html>
