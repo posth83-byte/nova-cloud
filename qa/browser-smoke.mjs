@@ -294,10 +294,12 @@ try {
           await partner.waitForFunction(() => document.querySelector("#list")?.innerText.includes("Mjölk"), null, { timeout: 5000 });
           if (await partner.evaluate(() => localStorage.getItem("shoppingListToken")) !== token) partnerFailures.push("Partner device did not store the shared token.");
           await partner.locator('[data-check="item-1"]').click();
+          await page.bringToFront();
           await page.waitForFunction(() => document.querySelector("#list .item.done .name")?.textContent === "Mjölk", null, { timeout: 7000 });
 
           await page.locator("#itemInput").fill("Bröd");
           await page.locator('#addForm button[type="submit"]').click();
+          await partner.bringToFront();
           await partner.waitForFunction(() => document.querySelector("#list")?.innerText.includes("Bröd"), null, { timeout: 7000 });
           await page.locator("#clear").click();
           await partner.waitForFunction(() => !document.querySelector("#list")?.innerText.includes("Mjölk"), null, { timeout: 7000 });
