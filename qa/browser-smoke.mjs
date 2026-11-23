@@ -46,7 +46,7 @@ try {
       { name: "desktop", width: 1365, height: 900 },
       { name: "mobile", width: 390, height: 844 }
     ]) {
-      const page = await browser.newPage({ viewport: { width: viewport.width, height: viewport.height } });
+      const page = await browser.newPage({ viewport: { width: viewport.width, height: viewport.height }, serviceWorkers: "block" });
       await page.route("**/api/status", route => route.fulfill({
         status: 200, contentType: "application/json",
         body: JSON.stringify({ version: "browser-qa", gemini_configured: false, youtube_api_configured: false,
