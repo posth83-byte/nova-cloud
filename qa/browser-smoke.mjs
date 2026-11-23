@@ -205,12 +205,15 @@ try {
           let itemSequence = 0;
           let updatedAt = "2026-11-23T19:00:00.000Z";
           const token = "a".repeat(64);
-          const sharedUrl = await page.evaluate(() => {
+          await page.evaluate(() => {
             Object.defineProperty(navigator, "share", {
               configurable: true,
               value: async data => { window.__sharedPayload = data; }
             });
-            return true;
+            Object.defineProperty(navigator, "clipboard", {
+              configurable: true,
+              value: { writeText: async text => { window.__sharedPayload = { url: text }; } }
+            });
           });
           await page.route("**/api/shopping-list", async route => {
             if (route.request().method() === "POST") {
