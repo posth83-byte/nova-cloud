@@ -278,6 +278,12 @@ try {
           const partner = await browser.newPage({ viewport: { width: viewport.width, height: viewport.height } });
           const partnerFailures = [];
           partner.on("pageerror", error => partnerFailures.push(error.message));
+          partner.on("request", request => {
+            if (request.url().includes("/api/shopping-list/items")) console.log("SHOPPING QA: partner request", request.method(), request.url());
+          });
+          partner.on("console", message => {
+            if (message.type() === "error") console.log("SHOPPING QA: partner console error", message.text());
+          });
           await partner.route("**/api/shopping-list", route => route.fulfill({
             status: 200, contentType: "application/json", body: JSON.stringify({
               list_id: "shared-list-1", updated_at: updatedAt, items: sharedItems
@@ -297,7 +303,10 @@ try {
           console.log("SHOPPING QA: waiting for partner initial list");
           await partner.waitForFunction(() => document.querySelector("#list")?.innerText.includes("Mjölk"), null, { timeout: 5000 });
           if (await partner.evaluate(() => localStorage.getItem("shoppingListToken")) !== token) partnerFailures.push("Partner device did not store the shared token.");
+          console.log("SHOPPING QA: checkbox before click", await partner.locator('[data-check="item-1"]').evaluate(el => el.outerHTML));
           await partner.locator('[data-check="item-1"]').click();
+          await partner.waitForTimeout(500);
+          console.log("SHOPPING QA: state after click", JSON.stringify(sharedItems), await partner.locator("#list").innerText());
           console.log("SHOPPING QA: waiting for partner checkbox mutation");
           await partner.waitForFunction(() => document.querySelector("#list .item.done .name")?.textContent === "Mjölk", null, { timeout: 5000 });
           console.log("SHOPPING QA: partner state changed", JSON.stringify(sharedItems));
