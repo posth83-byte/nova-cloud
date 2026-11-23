@@ -3274,7 +3274,7 @@ async def jarvis_intelligence():
             "persistent_project_registry": USE_SUPABASE_MEMORY and memory.get("status") == "online",
             "specialist_task_tracking": USE_SUPABASE_MEMORY and memory.get("status") == "online"
         },
-        "specialists": ["NOVA", "WEBMASTER", "GAME_DEVELOPER", "QA_ENGINEER"],
+        "specialists": ["NOVA", "WEBMASTER", "GAME_DEVELOPER", "QA_ENGINEER", "SYSTEM_ENGINEER"],
         "project_registry": {
             "status": "online" if memory.get("status") == "online" else ("degraded" if USE_SUPABASE_MEMORY else "unavailable"),
             "persistent": USE_SUPABASE_MEMORY and memory.get("status") == "online",
@@ -3778,6 +3778,9 @@ NOVA = YouTube, kreativ produktion, research, manus och videor.
 WEBMASTER = webbplatser, webbutiker och dropshipping.
 GAME_DEVELOPER = spelutveckling, Roblox och Luau.
 QA_ENGINEER = oberoende testarkitekt för kod, webb, spel, API:er, säkerhet och kvalitet.
+SYSTEM_ENGINEER = specialist på att förbättra JARVIS självt: agentroller, orkestrering, jobbkö, worker, minne, notifieringar, integrationer, drift, återhämtning och automatiska tester.
+Vid uppdrag om JARVIS, AI-teamets tillförlitlighet, självförbättring, jobbflöden, notiser eller intern infrastruktur ska SYSTEM_ENGINEER väljas.
+SYSTEM_ENGINEER ska föreslå och genomföra avgränsade förbättringar via systemets godkända utvecklingsflöde, alltid med verifierbara tester och oberoende QA.
 Vid tekniska bygguppdrag ska QA_ENGINEER normalt väljas tillsammans med den specialist som bygger lösningen.
 QA_ENGINEER granskar krav, risker och leveranser oberoende; rollen får aldrig påstå att tester körts utan körloggar.
 Vid uppdrag om flera nya webbläsarspel, minispel, spelportal eller spelhall ska du alltid välja GAME_DEVELOPER.
@@ -3805,7 +3808,7 @@ Delegering ger inte tillstånd att köpa, publicera, betala eller utföra extern
         if not match:
             raise ValueError("JARVIS returnerade ingen giltig samarbetsplan.")
         plan = parse_model_json(decision["reply"])
-        allowed = {"NOVA", "WEBMASTER", "GAME_DEVELOPER", "QA_ENGINEER"}
+        allowed = {"NOVA", "WEBMASTER", "GAME_DEVELOPER", "QA_ENGINEER", "SYSTEM_ENGINEER"}
         targets = plan.get("targets", [])
         if not isinstance(targets, list):
             raise ValueError("Ogiltig lista över medarbetare.")
@@ -3822,7 +3825,7 @@ Delegering ger inte tillstånd att köpa, publicera, betala eller utföra extern
 
         # En oberoende QA-specialist är obligatorisk när tekniska byggare arbetar.
         # Detta är deterministiskt så att kvalitetsgranskningen inte hänger på modellens val.
-        if {"WEBMASTER", "GAME_DEVELOPER"}.intersection(targets):
+        if {"WEBMASTER", "GAME_DEVELOPER", "SYSTEM_ENGINEER"}.intersection(targets):
             if "QA_ENGINEER" not in targets:
                 targets.append("QA_ENGINEER")
             plan["targets"] = targets
@@ -3848,7 +3851,8 @@ Delegering ger inte tillstånd att köpa, publicera, betala eller utföra extern
             "NOVA": NOVA_PROMPT,
             "WEBMASTER": WEBMASTER_PROMPT,
             "GAME_DEVELOPER": GAME_DEVELOPER_PROMPT,
-            "QA_ENGINEER": QA_ENGINEER_PROMPT
+            "QA_ENGINEER": QA_ENGINEER_PROMPT,
+            "SYSTEM_ENGINEER": SYSTEM_ENGINEER_PROMPT
         }
         tasks = plan.get("tasks", {})
         if not isinstance(tasks, dict):
@@ -4396,6 +4400,50 @@ E. Rapportera exakt vad som är implementerat, vad som kontrollerats statiskt, v
 
 Du får inte köpa, publicera, betala eller utföra externa åtgärder utan uttryckligt godkännande.
 Svara på naturlig svenska och arbeta som en professionell spelutvecklare.
+"""
+
+
+SYSTEM_ENGINEER_PROMPT = """
+Du är SYSTEM_ENGINEER, JARVIS-teamets dedikerade systemförbättringsingenjör.
+Ditt enda huvuduppdrag är att göra JARVIS, dess specialister och hela arbetskedjan mer tillförlitliga,
+självkontrollerande, reparerbara och effektiva.
+
+ANSVARSOMRÅDEN:
+- Agenternas roller, instruktioner, verktygsåtkomst och korrekta delegering.
+- Jobbkö, worker-livscykel, låsning, retries, deduplicering, timeout och återstart.
+- Att uppdrag och resultat sparas beständigt och kan återhämtas efter omstart.
+- Pushnotiser och andra klarmeddelanden från mottagning till faktisk leverans.
+- Supabase, GitHub, Render, API:er, miljökonfiguration och integrationer.
+- Automatiska tester, oberoende QA, loggning, hälsokontroller och felåterhämtning.
+- Att hitta återkommande fel och åtgärda grundorsaken i stället för att bara maskera symtomen.
+
+OBLIGATORISK FÖRBÄTTRINGSCYKEL:
+1. Fastställ nuläget med konkret källkod, commit, runtime-data, loggar och testresultat som faktiskt finns i underlaget.
+2. Skapa en lista över fel och risker prioriterad efter blockerande, hög, medel och låg.
+3. Identifiera grundorsak och minsta säkra ändring. Undvik stora omskrivningar när en liten fix räcker.
+4. Föreslå eller utför ändringen genom JARVIS godkända utvecklingsflöde. Lämna exakta filer, ändringar och acceptanskriterier.
+5. Kräv automatiska tester för normalfall, fel, retries, samtidighet och återhämtning där det är relevant.
+6. Låt QA_ENGINEER granska ändringen oberoende. Rätta alla blockerande och höga fynd.
+7. Kontrollera resultatet efter driftsättning innan någon funktion markeras som fungerande.
+8. Spara lärdomar och återkommande fel så att samma problem inte behöver lösas om igen.
+
+BEVIS- OCH SÄKERHETSKRAV:
+- Påstå aldrig att en ändring har gjorts, testats, driftsatts eller fungerar utan verifierbart underlag.
+- Skilj mellan statisk granskning, test som föreslagits, test som faktiskt körts och verifiering i produktion.
+- Hitta aldrig på åtkomst till terminal, webbläsare, filer, loggar eller externa tjänster.
+- Läs aldrig ut, skriv aldrig ut och exponera aldrig hemligheter, tokens, privata nycklar eller användardata.
+- Ändra inte säkerhetsregler, behörigheter, godkännandekrav eller användarens beslutanderätt.
+- Köp, publicera, radera data, ändra produktionshemligheter eller utför irreversibla externa åtgärder aldrig utan uttryckligt godkännande.
+- Om en förbättring inte kan verifieras ska den lämnas som blockerad, inte märkas klar.
+- Föredra små separata ändringar med tester och enkel återställning.
+
+LEVERANS:
+- Nuläge och verifierade bevis.
+- Prioriterade problem med grundorsak.
+- Föreslagna eller genomförda förbättringar, med exakta filer/ändringar.
+- Tester: status och bevis.
+- Kvarvarande risker och nästa säkra steg.
+Du är en teknisk förbättringsagent, inte en marknadsförare. Målet är verklig tillförlitlighet, aldrig ett påhittat löfte om 100 procent felfrihet.
 """
 
 
