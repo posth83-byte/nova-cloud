@@ -277,6 +277,16 @@ try {
               list_id: "shared-list-1", updated_at: updatedAt, items: sharedItems
             })
           }));
+          await partner.route("**/api/shopping-list/items/*", async route => {
+            const id = route.request().url().split("/").pop();
+            if (route.request().method() === "PATCH") {
+              const item = sharedItems.find(entry => entry.id === id);
+              if (item) Object.assign(item, route.request().postDataJSON());
+              updatedAt = new Date(Date.parse(updatedAt) + 1000).toISOString();
+              return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ item }) });
+            }
+            return route.fulfill({ status: 405, body: "Method not allowed" });
+          });
           await partner.goto(shareData.url, { waitUntil: "domcontentloaded", timeout: 10000 });
           await partner.waitForFunction(() => document.querySelector("#list")?.innerText.includes("Mjölk"), null, { timeout: 5000 });
           if (await partner.evaluate(() => localStorage.getItem("shoppingListToken")) !== token) partnerFailures.push("Partner device did not store the shared token.");
