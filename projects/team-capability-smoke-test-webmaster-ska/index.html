@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teamdiagnostik</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="bg-gray-100 min-h-screen flex flex-col justify-between">
+
+<header class="bg-blue-600 text-white p-4 text-center shadow">
+    <h1 class="text-2xl font-bold">Teamdiagnostik & Smoke Test</h1>
+</header>
+
+<main class="container mx-auto p-4 flex-grow max-w-2xl">
+    <section class="mb-6">
+        <h2 class="text-xl font-semibold mb-2 text-gray-700">Systemstatus</h2>
+        <div id="status" class="p-4 bg-white shadow-md rounded border-l-4 border-blue-500">
+            <p class="text-gray-600">Väntar på diagnostisk körning...</p>
+        </div>
+    </section>
+    
+    <section class="bg-white p-6 rounded-lg shadow-md mb-6">
+        <h2 class="text-xl font-semibold mb-4 text-gray-700">Interaktiva kontroller</h2>
+        <div class="flex flex-col sm:flex-row gap-3">
+            <button id="check-status" class="bg-blue-500 hover:bg-blue-600 text-white font-medium px-4 py-2 rounded transition duration-200">Kör Diagnostik</button>
+            <button id="reset-status" class="bg-gray-300 hover:bg-gray-400 text-gray-700 font-medium px-4 py-2 rounded transition duration-200">Återställ</button>
+        </div>
+    </section>
+
+    <section class="bg-white p-6 rounded-lg shadow-md">
+        <h2 class="text-xl font-semibold mb-2 text-gray-700">Om projektet</h2>
+        <p class="text-gray-600 text-sm leading-relaxed">
+            Detta är en komplett och responsiv testmiljö skapad för QA_ENGINEER och WEBMASTER. Syftet är att verifiera grundläggande funktionalitet, HTML-struktur och JavaScript-interaktion i en isolerad miljö utan externa betalda beroenden.
+        </p>
+    </section>
+</main>
+
+<footer class="bg-gray-800 text-white text-center p-4">
+    <p class="text-sm">&copy; 2025 Team Capability Smoke Test. Alla rättigheter reserverade.</p>
+</footer>
+
+<script src="app.js"></script>
+</body>
+</html>
