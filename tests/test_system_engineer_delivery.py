@@ -5,6 +5,62 @@ from system_engineer_delivery import select_independent_review_provider
 
 
 class SystemEngineerDeliveryTests(unittest.TestCase):
+    def test_runtime_quality_review_ignores_secondary_commit_false_positive(self):
+        from system_engineer_delivery import normalize_runtime_quality_review
+        evidence = {
+            "runtime_verified": True,
+            "requested_endpoints": [
+                "/api/status", "/api/jarvis/intelligence", "/api/worker/status",
+                "/api/memory/status", "/api/team/status"
+            ],
+            "endpoint_captures": [
+                {"endpoint": path, "verified": True, "http_status": 200}
+                for path in (
+                    "/api/jarvis/intelligence", "/api/worker/status",
+                    "/api/memory/status", "/api/team/status"
+                )
+                for _ in ("runtime_endpoints", "post_qa_runtime_endpoints")
+            ],
+        }
+        review = {
+            "passed": False,
+            "gaps": ["Sekundära endpoints saknar deployment_commit"],
+            "final_report": "Sekundära endpoints saknar deployment_commit.",
+            "repair_instructions": {"QA_ENGINEER": "Lägg till commitfält."},
+        }
+        normalized = normalize_runtime_quality_review(
+            review, evidence,
+            ["/api/status deployment_commit måste matcha committen"]
+        )
+        self.assertTrue(normalized["passed"])
+        self.assertEqual(normalized["gaps"], [])
+        self.assertEqual(normalized["repair_instructions"], {})
+
+    def test_runtime_quality_review_keeps_real_unrelated_gaps(self):
+        from system_engineer_delivery import normalize_runtime_quality_review
+        evidence = {
+            "runtime_verified": True,
+            "requested_endpoints": ["/api/status", "/api/worker/status"],
+            "endpoint_captures": [
+                {"endpoint": "/api/worker/status", "verified": True, "http_status": 200},
+                {"endpoint": "/api/worker/status", "verified": True, "http_status": 200},
+            ],
+        }
+        review = {
+            "passed": False,
+            "gaps": [
+                "Sekundär endpoint saknar deployment_commit",
+                "Mobil layout har ett konkret navigeringsfel",
+            ],
+            "final_report": "Ett mobilnavigeringsfel kvarstår.",
+        }
+        normalized = normalize_runtime_quality_review(
+            review, evidence,
+            ["/api/status deployment_commit matchar committen"]
+        )
+        self.assertFalse(normalized["passed"])
+        self.assertEqual(normalized["gaps"], ["Mobil layout har ett konkret navigeringsfel"])
+
     def test_runtime_payload_summary_keeps_only_safe_fields(self):
         from system_engineer_delivery import summarize_runtime_payload
         payload = {
