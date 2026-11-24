@@ -42,7 +42,7 @@ async function api(path,method="GET",body){
  return response.status===204?null:response.json();
 }
 function saveLocal(){localStorage.setItem("shoppingItems",JSON.stringify(items));render()}
-async function refreshSharedList(silent=false){
+async function refreshSharedList(silent=false,suppressNotifications=false){
  if(!listToken)return;
  try{
   const data=await api("/api/shopping-list");
@@ -58,7 +58,7 @@ async function refreshSharedList(silent=false){
  }
 }
 async function mutateShared(path,method,body){
- try{await api(path,method,body);await refreshSharedList(true)}
+ try{await api(path,method,body);await refreshSharedList(true,true)}
  catch(error){toast("Ändringen sparades inte: "+error.message);setSyncStatus("Anslutningen saknas – försöker igen")}
 }
 function render(){
