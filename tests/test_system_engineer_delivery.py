@@ -1,0 +1,60 @@
+import unittest
+
+from system_engineer_delivery import apply_exact_text_patches, build_source_excerpt
+
+
+class SystemEngineerDeliveryTests(unittest.TestCase):
+    def test_applies_one_exact_replacement(self):
+        updated, applied = apply_exact_text_patches(
+            "alpha = 1\nbeta = 2\n",
+            [{"path": "main.py", "old_text": "beta = 2", "new_text": "beta = 3"}],
+        )
+        self.assertEqual(updated, "alpha = 1\nbeta = 3\n")
+        self.assertEqual(len(applied), 1)
+
+    def test_rejects_missing_anchor(self):
+        with self.assertRaisesRegex(ValueError, "0 förekomster"):
+            apply_exact_text_patches(
+                "alpha = 1",
+                [{"path": "main.py", "old_text": "missing", "new_text": "present"}],
+            )
+
+    def test_rejects_ambiguous_anchor(self):
+        with self.assertRaisesRegex(ValueError, "2 förekomster"):
+            apply_exact_text_patches(
+                "alpha = 1\nalpha = 1",
+                [{"path": "main.py", "old_text": "alpha = 1", "new_text": "alpha = 2"}],
+            )
+
+    def test_rejects_path_outside_allowlist(self):
+        with self.assertRaisesRegex(ValueError, "Otillåten filväg"):
+            apply_exact_text_patches(
+                "alpha = 1",
+                [{"path": "requirements.txt", "old_text": "alpha = 1", "new_text": "alpha = 2"}],
+            )
+
+    def test_rejects_empty_or_oversized_patch_lists(self):
+        with self.assertRaises(ValueError):
+            apply_exact_text_patches("alpha = 1", [])
+        with self.assertRaises(ValueError):
+            apply_exact_text_patches(
+                "alpha = 1",
+                [{"path": "main.py", "old_text": "alpha = 1", "new_text": "x" * 10001}],
+            )
+
+    def test_source_excerpt_keeps_relevant_worker_context(self):
+        source = (
+            "start\n"
+            "async def jarvis_job_worker_loop():\n"
+            "    return True\n"
+            '@app.post("/api/jarvis/jobs")\n'
+            "def create_job():\n"
+            "    return True\n"
+        )
+        excerpt = build_source_excerpt(source)
+        self.assertIn("async def jarvis_job_worker_loop", excerpt)
+        self.assertIn('/api/jarvis/jobs', excerpt)
+
+
+if __name__ == "__main__":
+    unittest.main()
