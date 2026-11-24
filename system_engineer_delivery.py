@@ -96,6 +96,31 @@ def apply_exact_text_patches(source: str, changes: Iterable[dict], allowed_paths
     return updated, applied
 
 
+def is_runtime_evidence_verified(
+    evidence: dict,
+    source_commit_sha: str,
+    status_route_in_source: bool,
+    required: bool = True,
+) -> bool:
+    """Fail closed unless machine-captured HTTP and source evidence match the locked commit."""
+    if not required:
+        return True
+    if not isinstance(evidence, dict) or not status_route_in_source:
+        return False
+    try:
+        http_status = int(evidence.get("http_status") or 0)
+    except (TypeError, ValueError):
+        return False
+    expected_commit = str(source_commit_sha or "")[:12]
+    actual_commit = str(evidence.get("deployment_commit") or "")
+    return bool(
+        evidence.get("status") == "verified"
+        and http_status == 200
+        and len(expected_commit) == 12
+        and actual_commit == expected_commit
+    )
+
+
 def is_verified_noop_review(review: dict) -> bool:
     """Accept a no-op only when independent review explicitly confirms no change is needed."""
     if not isinstance(review, dict):

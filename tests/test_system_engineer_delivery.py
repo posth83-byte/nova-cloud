@@ -82,6 +82,35 @@ class SystemEngineerDeliveryTests(unittest.TestCase):
             "passed": True, "no_change_needed": True, "blockers": ["runtime not verified"]
         }))
         self.assertFalse(is_verified_noop_review({"passed": True}))
+    def test_runtime_evidence_accepts_exact_machine_verified_match(self):
+        from system_engineer_delivery import is_runtime_evidence_verified
+        self.assertTrue(is_runtime_evidence_verified({
+            "status": "verified",
+            "http_status": 200,
+            "deployment_commit": "e00f3408175e",
+        }, "e00f3408175ec6717ca58497f6dba59627c418e4", True))
+
+    def test_runtime_evidence_rejects_false_or_incomplete_approval(self):
+        from system_engineer_delivery import is_runtime_evidence_verified
+        commit = "e00f3408175ec6717ca58497f6dba59627c418e4"
+        valid = {"status": "verified", "http_status": 200, "deployment_commit": "e00f3408175e"}
+        invalid_cases = [
+            ({**valid, "deployment_commit": "fc15ba55b186"}, True),
+            ({**valid, "http_status": 500}, True),
+            ({**valid, "status": "failed"}, True),
+            ({**valid, "deployment_commit": ""}, True),
+            ({**valid, "http_status": "not-a-number"}, True),
+            (valid, False),
+            ({"status": "verified", "http_status": 200}, True),
+        ]
+        for evidence, source_verified in invalid_cases:
+            with self.subTest(evidence=evidence, source_verified=source_verified):
+                self.assertFalse(is_runtime_evidence_verified(evidence, commit, source_verified))
+
+    def test_runtime_evidence_is_not_required_for_unrelated_tasks(self):
+        from system_engineer_delivery import is_runtime_evidence_verified
+        self.assertTrue(is_runtime_evidence_verified({}, "", False, required=False))
+
     def test_source_excerpt_keeps_relevant_worker_context(self):
         source = (
             "start\n"
