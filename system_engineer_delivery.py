@@ -43,6 +43,28 @@ def build_source_excerpt(source: str, max_chars: int = 28000) -> str:
     return excerpt[:max_chars]
 
 
+def normalize_patch_spec(spec):
+    """Normalize common model patch-list aliases without weakening patch validation."""
+    if isinstance(spec, list):
+        return {"summary": "Patchlista returnerad som rotlista.", "changes": spec}
+    if not isinstance(spec, dict):
+        raise ValueError("SYSTEM_ENGINEER-svaret måste vara ett JSON-objekt med changes-lista.")
+    normalized = dict(spec)
+    changes = normalized.get("changes")
+    if not isinstance(changes, list):
+        for alias in ("patches", "edits", "patch_list", "operations"):
+            candidate = normalized.get(alias)
+            if isinstance(candidate, list):
+                normalized["changes"] = candidate
+                break
+    if not isinstance(normalized.get("changes"), list):
+        raise ValueError(
+            "SYSTEM_ENGINEER-svaret saknar en giltig changes-lista. "
+            "Returnera changes som en lista med 1–4 patchobjekt, eller [] endast vid verklig no-op."
+        )
+    return normalized
+
+
 def apply_exact_text_patches(source: str, changes: Iterable[dict], allowed_paths=("main.py",)):
     """Apply only bounded, exact, unique text replacements to explicitly allowed files."""
     if not isinstance(changes, list) or not 1 <= len(changes) <= 4:
