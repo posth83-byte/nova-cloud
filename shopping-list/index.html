@@ -27,7 +27,8 @@ header{padding:14px 4px 20px;display:flex;align-items:center;justify-content:spa
 const API_BASE="https://nova-cloud-c4t9.onrender.com";
 const categories=["Allt","Frukt & grönt","Mejeri","Kött & fisk","Skafferi","Frys","Hushåll","Övrigt"];
 let items=JSON.parse(localStorage.getItem("shoppingItems")||"[]"),filter="Allt";
-let listToken=localStorage.getItem("shoppingListToken")||"",lastUpdated=null,pollBusy=false;\nlet knownItemIds=null,suppressNewItemNotifications=false;
+let listToken=localStorage.getItem("shoppingListToken")||"",lastUpdated=null,pollBusy=false;
+let knownItemIds=null;\nlet knownItemIds=null,suppressNewItemNotifications=false;
 const $=id=>document.getElementById(id);
 const incoming=new URLSearchParams(location.hash.slice(1)).get("list");
 if(incoming){listToken=incoming;localStorage.setItem("shoppingListToken",listToken);history.replaceState(null,"",location.pathname+location.search)}
@@ -46,7 +47,15 @@ async function refreshSharedList(silent=false,suppressNotifications=false){
  if(!listToken)return;
  try{
   const data=await api("/api/shopping-list");
-  items=Array.isArray(data.items)?data.items:[];
+  const nextItems=Array.isArray(data.items)?data.items:[];
+  if(knownItemIds===null){knownItemIds=new Set(nextItems.map(item=>String(item.id)));}
+  else{
+   const previousIds=knownItemIds;
+   const nextIds=new Set(nextItems.map(item=>String(item.id)));
+   if(!suppressNotifications){for(const item of nextItems){if(!previousIds.has(String(item.id)))notifyAddedItem(item)}}
+   knownItemIds=nextIds;
+  }
+  items=nextItems;
   lastUpdated=data.updated_at||null;
   localStorage.setItem("shoppingItems",JSON.stringify(items));
   setSyncStatus("Delad lista · synkas automatiskt");
