@@ -24,6 +24,7 @@ from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 from job_dedup import normalize_job_task, job_task_fingerprint, is_duplicate_job_task
+from ai_provider_fallback import run_openrouter_with_budget_fallback
 from jarvis_worker_persistence import (
     persisted_job_matches, final_qa_readback_matches, build_worker_retry_update
 )
@@ -2912,16 +2913,19 @@ def generate_reply(
 
     if OPENROUTER_API_KEY:
         try:
-            return {
-                "reply": ask_openrouter(
-                    message,
-                    system_prompt,
-                    max_tokens,
-                    json_mode,
-                    image_data
-                ),
-                "engine": "OpenRouter"
-            }
+            answer, used_tokens = run_openrouter_with_budget_fallback(
+                ask_openrouter,
+                message,
+                system_prompt,
+                max_tokens,
+                json_mode,
+                image_data
+            )
+            engine = (
+                "OpenRouter" if used_tokens == max_tokens
+                else f"OpenRouter (reducerad tokenbudget: {used_tokens})"
+            )
+            return {"reply": answer, "engine": engine}
 
         except Exception as error:
             raise HTTPException(
