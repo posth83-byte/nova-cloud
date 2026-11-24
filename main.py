@@ -1110,6 +1110,7 @@ def create_system_engineer_pull_request(task, outcome, job_id):
                     + "\n\nVERIFIERAD BAS-COMMIT:\n" + base_sha
                     + "\n\nKÄLLKODSUTDRAG:\n" + source_excerpt
                     + "\n\nVERIFIERAT QA-UNDERLAG:\n" + json.dumps(outcome.get("qa_evidence") or {}, ensure_ascii=False)[:6000]
+                    + "\n\nBEVISREGEL: QA-underlagets runtime_status_endpoint är ett maskininsamlat HTTP-resultat från den körande Render-processen, inte ett påstående från språkmodellen. Om status='verified', http_status=200, deployment_commit exakt matchar de första 12 tecknen i bas-committen och status_route_in_qa_source=true, är HTTP- och källkodsbeviset uppfyllt. Kräv då INTE ett separat nätverksverktyg från granskningsmodellen. Om något av dessa fält saknas eller inte matchar ska no-op underkännas."
                 )
                 noop_review = generate_independent_review(
                     noop_review_prompt,
@@ -4918,6 +4919,7 @@ ABSOLUT BEVISKRAV:
   Kräv inte terminal-loggar för dessa databasregistrerade händelser.
 - Om source_snapshot_status är "fetched", source_commit_sha finns och source_files_fetched
   innehåller "main.py", är källkodssnapshoten verifierad för den angivna committen.
+- För ett uttryckligt /api/status-runtime-test är runtime_status_endpoint ett direkt maskininsamlat HTTP-resultat från den körande Render-processen. Godta verifieringen endast om status="verified", http_status=200, deployment_commit matchar de första 12 tecknen i source_commit_sha och status_route_in_qa_source=true. Kräv inte att språkmodellen själv har ett nätverksverktyg när dessa konkreta fält finns. Saknas eller avviker något fält ska runtime-verifieringen markeras blockerad.
 - Slutlig resultat-readback utförs av bakgrundsarbetaren efter kvalitetsgrinden. Behandla
   den som väntande, inte som misslyckad, när den ännu inte kan finnas i underlaget.
 - För ett sådant kö-/delegeringstest ska saknade dynamiska produkt-/kodtester redovisas
