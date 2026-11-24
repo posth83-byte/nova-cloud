@@ -28,7 +28,6 @@ const API_BASE="https://nova-cloud-c4t9.onrender.com";
 const categories=["Allt","Frukt & grönt","Mejeri","Kött & fisk","Skafferi","Frys","Hushåll","Övrigt"];
 let items=JSON.parse(localStorage.getItem("shoppingItems")||"[]"),filter="Allt";
 let listToken=localStorage.getItem("shoppingListToken")||"",lastUpdated=null,pollBusy=false;
-let knownItemIds=null;
 const $=id=>document.getElementById(id);
 const incoming=new URLSearchParams(location.hash.slice(1)).get("list");
 if(incoming){listToken=incoming;localStorage.setItem("shoppingListToken",listToken);history.replaceState(null,"",location.pathname+location.search)}
@@ -48,13 +47,7 @@ async function refreshSharedList(silent=false,suppressNotifications=false){
  try{
   const data=await api("/api/shopping-list");
   const nextItems=Array.isArray(data.items)?data.items:[];
-  if(knownItemIds===null){knownItemIds=new Set(nextItems.map(item=>String(item.id)));}
-  else{
-   const previousIds=knownItemIds;
-   const nextIds=new Set(nextItems.map(item=>String(item.id)));
-   if(!suppressNotifications){for(const item of nextItems){if(!previousIds.has(String(item.id)))notifyAddedItem(item)}}
-   knownItemIds=nextIds;
-  }
+  // Notifications arrive through Web Push, including when this page is closed.
   items=nextItems;
   lastUpdated=data.updated_at||null;
   localStorage.setItem("shoppingItems",JSON.stringify(items));
@@ -92,7 +85,7 @@ function guessCategory(name){let s=name.toLowerCase();if(/mjölk|ost|smör|yoghu
 $("addForm").onsubmit=async e=>{
  e.preventDefault();let name=$("itemInput").value.trim();if(!name)return;
  const item={name,category:guessCategory(name),qty:""};
- if(listToken)await mutateShared("/api/shopping-list/items","POST",item);
+ if(listToken)await mutateShared("/api/shopping-list/items","POST",{...item,source_endpoint:await currentPushEndpoint()});
  else{items.unshift({id:crypto.randomUUID(),...item,done:false});saveLocal()}
  $("itemInput").value="";$("itemInput").focus();
 };
@@ -110,6 +103,9 @@ async function shareList(){
    localStorage.setItem("shoppingItems",JSON.stringify(items));render();
    setSyncStatus("Delad lista · synkas automatiskt");
   }
+  if(localStorage.getItem("shoppingNotificationsEnabled")==="yes"){
+   try{await ensurePushSubscription()}catch(error){toast("Listan delades, men notiser kunde inte kopplas: "+error.message)}
+  }
   const url=location.origin+location.pathname+"#list="+encodeURIComponent(listToken);
   if(navigator.share)await navigator.share({title:"Vår inköpslista",text:"Öppna vår gemensamma inköpslista",url});
   else{await navigator.clipboard.writeText(url);toast("Delningslänken kopierad!")}
@@ -117,27 +113,51 @@ async function shareList(){
 }
 $("share").onclick=shareList;
 
+function urlBase64ToUint8Array(value){
+ const padding="=".repeat((4-value.length%4)%4);
+ const raw=atob((value+padding).replace(/-/g,"+").replace(/_/g,"/"));
+ return Uint8Array.from([...raw].map(char=>char.charCodeAt(0)));
+}
+async function ensurePushSubscription(){
+ if(!("serviceWorker" in navigator)||!("PushManager" in window)||!("Notification" in window)||Notification.permission!=="granted")return null;
+ const registration=await navigator.serviceWorker.register("./sw.js");
+ await navigator.serviceWorker.ready;
+ const keyResponse=await fetch(API_BASE+"/api/push/public-key",{cache:"no-store"});
+ if(!keyResponse.ok)throw new Error("Pushnotiser är inte konfigurerade på servern.");
+ const keyData=await keyResponse.json();
+ let subscription=await registration.pushManager.getSubscription();
+ if(!subscription){
+  subscription=await registration.pushManager.subscribe({
+   userVisibleOnly:true,
+   applicationServerKey:urlBase64ToUint8Array(keyData.public_key)
+  });
+ }
+ if(listToken){
+  await api("/api/shopping-list/push/subscribe","POST",{subscription:subscription.toJSON()});
+ }
+ return subscription;
+}
+async function currentPushEndpoint(){
+ if(localStorage.getItem("shoppingNotificationsEnabled")!=="yes"||!("serviceWorker" in navigator))return "";
+ try{
+  const registration=await navigator.serviceWorker.ready;
+  const subscription=await registration.pushManager.getSubscription();
+  return subscription?subscription.endpoint:"";
+ }catch{return ""}
+}
 async function enableNotifications(){
- if(!("Notification" in window)){toast("Den här webbläsaren stöder inte notiser.");return}
- if(!("serviceWorker" in navigator)){toast("Notiser stöds inte här.");return}
+ if(!("Notification" in window)||!("serviceWorker" in navigator)||!("PushManager" in window)){
+  toast("Den här webbläsaren stöder inte bakgrundsnotiser.");return;
+ }
  try{
   const permission=await Notification.requestPermission();
   if(permission!=="granted"){toast("Notiser tilläts inte. Du kan ändra det i inställningarna.");return}
-  await navigator.serviceWorker.ready;
   localStorage.setItem("shoppingNotificationsEnabled","yes");
+  const subscription=await ensurePushSubscription();
+  if(!subscription)throw new Error("Kunde inte skapa en pushprenumeration.");
   $("notify").setAttribute("aria-pressed","true");
-  toast("Notiser aktiverade på den här enheten");
+  toast(listToken?"Bakgrundsnotiser aktiverade på den här enheten":"Tillåtet! Notiser kopplas till listan när den delas.");
  }catch(error){toast("Kunde inte aktivera notiser: "+error.message)}
-}
-function notifyAddedItem(item){
- if(localStorage.getItem("shoppingNotificationsEnabled")!=="yes"||!("Notification" in window)||Notification.permission!=="granted")return;
- const title="Ny vara i inköpslistan";
- const body=(item&&item.name?item.name:"En vara")+" har lagts till";
- if(navigator.serviceWorker&&navigator.serviceWorker.controller){
-  navigator.serviceWorker.ready.then(reg=>reg.showNotification(title,{body,icon:"./icon.svg",tag:"shopping-item-"+item.id})).catch(()=>{});
- }else{
-  try{new Notification(title,{body})}catch{}
- }
 }
 $("notify").onclick=enableNotifications;
 if(localStorage.getItem("shoppingNotificationsEnabled")==="yes"&&"Notification" in window&&Notification.permission==="granted")$("notify").setAttribute("aria-pressed","true");
@@ -149,6 +169,9 @@ if("serviceWorker" in navigator)navigator.serviceWorker.register("./sw.js").catc
 if(listToken){
  setSyncStatus("Ansluter till den delade listan…");
  refreshSharedList(false).catch(()=>{});
+ if(localStorage.getItem("shoppingNotificationsEnabled")==="yes"&&"Notification" in window&&Notification.permission==="granted"){
+  ensurePushSubscription().catch(error=>toast("Notiser kunde inte återanslutas: "+error.message));
+ }
 }else{
  setSyncStatus("Bara på den här telefonen · tryck ↗ för att dela");
 }
