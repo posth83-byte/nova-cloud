@@ -26,7 +26,7 @@ from job_dedup import normalize_job_task, job_task_fingerprint, is_duplicate_job
 from jarvis_worker_persistence import (
     persisted_job_matches, final_qa_readback_matches, build_worker_retry_update
 )
-from system_engineer_delivery import apply_exact_text_patches, build_source_excerpt, select_independent_review_provider, is_verified_noop_review, is_runtime_evidence_verified, normalize_patch_spec, build_evidence_reconciliation, task_requires_live_runtime_evidence, has_route_decorator
+from system_engineer_delivery import apply_exact_text_patches, build_source_excerpt, select_independent_review_provider, is_verified_noop_review, is_runtime_evidence_verified, normalize_patch_spec, build_evidence_reconciliation, task_requires_live_runtime_evidence, has_route_decorator, summarize_runtime_payload
 from video_engine import router as video_router
 from runway_engine import router as runway_router
 from kling_engine import router as kling_router
@@ -523,6 +523,7 @@ def build_qa_runtime_evidence():
                     "http_status": response.status,
                     "deployment_commit": str(payload.get("deployment_commit") or "") if isinstance(payload, dict) else "",
                     "version": str(payload.get("version") or "") if isinstance(payload, dict) else "",
+                    "payload_summary": summarize_runtime_payload(path, payload),
                     "url": url,
                 }
         except Exception as error:
@@ -4853,9 +4854,11 @@ Delegering ger inte tillstånd att köpa, publicera, betala eller utföra extern
                         "runtime_snapshot": qa_runtime_evidence
                     }, ensure_ascii=False)[:42000]
                     + "\n\nKällkodssnapshoten kommer från GitHubs API och är knuten till angiven commit. "
-                    + "Runtime-snapshoten är processens faktiska status vid insamlingstillfället. "
+                    + "Runtime-snapshoten innehåller faktiska HTTP-svar och säkra payload_summary-fält från den körande Render-processen. "
+                    + "Varje endpoint med status=verified och http_status=200 är ett direkt maskininsamlat runtime-bevis; redovisa dess payload_summary och påstå inte att HTTP-underlag saknas. "
+                    + "deployment_commit krävs endast från /api/status; sekundära statusrutter ska bedömas utifrån HTTP 200 och sina dokumenterade payload_summary-fält. "
                     + "Använd dessa konkreta underlag; säg inte att repo- eller filunderlag saknas om snapshoten innehåller filer. "
-                    + "Källkod ger endast statiskt granskningsunderlag. Runtime-status bevisar inte att ett separat test har körts.\n"
+                    + "Källkod ger statiskt granskningsunderlag. Runtime-status bevisar inte att ett separat produktkodstest har körts.\n"
                 )
 
             result = await asyncio.to_thread(
@@ -4992,6 +4995,7 @@ ABSOLUT BEVISKRAV:
 - Om source_snapshot_status är "fetched", source_commit_sha finns och source_files_fetched
   innehåller "main.py", är källkodssnapshoten verifierad för den angivna committen.
 - För ett uttryckligt /api/status-runtime-test är runtime_status_endpoint ett direkt maskininsamlat HTTP-resultat från den körande Render-processen. Godta verifieringen endast om status="verified", http_status=200, deployment_commit matchar de första 12 tecknen i source_commit_sha och status_route_in_qa_source=true. Kräv inte att språkmodellen själv har ett nätverksverktyg när dessa konkreta fält finns. Saknas eller avviker något fält ska runtime-verifieringen markeras blockerad.
+- För varje uttryckligen begärd sekundär endpoint är respektive runtime_endpoints och post_qa_runtime_endpoints direkt maskininsamlat HTTP-bevis. Om båda har status="verified" och http_status=200 är endpointen runtime-verifierad. Granska payload_summary för statusfält; kräv inte deployment_commit från sekundära endpoints. Påstå aldrig att runtime-bevis saknas när dessa fält finns.
 - Slutlig resultat-readback utförs av bakgrundsarbetaren efter kvalitetsgrinden. Behandla
   den som väntande, inte som misslyckad, när den ännu inte kan finnas i underlaget.
 - För ett sådant kö-/delegeringstest ska saknade dynamiska produkt-/kodtester redovisas
@@ -5340,7 +5344,10 @@ BEVISKRAV:
 - Du har inte en egen terminal eller interaktiv webbläsare. JARVIS-ORKESTRATORN kan däremot bifoga ett verifierat källkodsurval från GitHubs API och en faktisk runtime-snapshot under rubriken "VERIFIERAT QA-UNDERLAG".
 - Om ett källkodsurval finns: granska det faktiska innehållet, ange exakt filväg och commit-SHA och säg inte att filerna saknas eller att du saknar allt repo-underlag.
 - En GitHub-källkodssnapshot räcker för statisk granskning, men bevisar inte att kod har körts eller att ett live-test har passerat.
-- Runtime-snapshoten är en tidsstämplad avläsning av den aktuella serverprocessen.
+- Runtime-snapshoten är en tidsstämplad avläsning av den aktuella serverprocessen och innehåller faktiska HTTP-svar samt allowlistade payload_summary-fält.
+- Om runtime_snapshot.endpoints innehåller en endpoint med status="verified" och http_status=200 är dess HTTP-anrop faktiskt utfört och godkänt. Redovisa payload_summary som direkt runtime-evidens; påstå inte att svar eller körloggar saknas.
+- deployment_commit ska kontrolleras exakt på /api/status. Kräv inte deployment_commit från /api/jarvis/intelligence, /api/worker/status, /api/memory/status eller /api/team/status om deras dokumenterade payload inte exponerar fältet.
+- Bedöm worker_running, Supabase-minne och teamstatus utifrån respektive payload_summary när fälten finns.
 - Ett bifogat "job_snapshot" är en faktisk, direktläst Supabase-rad för det aktuella bakgrundsjobbet – inte modelltext. Vid ett uttryckligt test av JARVIS kö-/delegeringsflöde ska du markera mottagning som verifierad om raden visar status="running", attempts minst 1, worker_id och started_at. Delegering till QA_ENGINEER är verifierad om active innehåller "QA_ENGINEER" och completed därefter innehåller "QA_ENGINEER".
 - Kräv inte terminal- eller pytest-loggar för att bevisa just dessa databasregistrerade köhändelser när job_snapshot visar dem. Skilj detta från dynamiska tester av själva produktkoden.
 - Resultatets slutliga Supabase-readback sker av JARVIS-arbetaren efter att du lämnat din QA-rapport. Markera därför readback som "väntar på arbetaren" om den ännu inte finns i underlaget; hitta inte på att den redan passerat.
