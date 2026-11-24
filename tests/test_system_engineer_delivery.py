@@ -52,6 +52,18 @@ class SystemEngineerDeliveryTests(unittest.TestCase):
         self.assertIsNone(select_independent_review_provider("OpenRouter", False, True))
         self.assertIsNone(select_independent_review_provider("unknown", True, True))
 
+    def test_verified_noop_requires_explicit_independent_approval(self):
+        from system_engineer_delivery import is_verified_noop_review
+        self.assertTrue(is_verified_noop_review({
+            "passed": True, "no_change_needed": True, "blockers": []
+        }))
+        self.assertFalse(is_verified_noop_review({
+            "passed": True, "no_change_needed": False, "blockers": []
+        }))
+        self.assertFalse(is_verified_noop_review({
+            "passed": True, "no_change_needed": True, "blockers": ["runtime not verified"]
+        }))
+        self.assertFalse(is_verified_noop_review({"passed": True}))
     def test_source_excerpt_keeps_relevant_worker_context(self):
         source = (
             "start\n"

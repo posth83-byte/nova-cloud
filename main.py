@@ -23,7 +23,10 @@ from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 from job_dedup import normalize_job_task, job_task_fingerprint, is_duplicate_job_task
-from system_engineer_delivery import apply_exact_text_patches, build_source_excerpt, select_independent_review_provider
+from jarvis_worker_persistence import (
+    persisted_job_matches, final_qa_readback_matches, build_worker_retry_update
+)
+from system_engineer_delivery import apply_exact_text_patches, build_source_excerpt, select_independent_review_provider, is_verified_noop_review
 from video_engine import router as video_router
 from runway_engine import router as runway_router
 from kling_engine import router as kling_router
@@ -1029,6 +1032,47 @@ def create_system_engineer_pull_request(task, outcome, job_id):
         )
         try:
             patch_spec = extract_json(generated.get("reply") or "")
+            if isinstance(patch_spec, dict) and patch_spec.get("changes") == []:
+                noop_review_prompt = (
+                    "Bedöm oberoende om användarens uppdrag redan är uppfyllt av den befintliga koden på den angivna bas-committen. "
+                    "Godkänn endast en verklig no-op: befintlig implementation uppfyller redan uppdraget och ingen kodändring behövs. "
+                    "Om uppdraget kräver runtime- eller driftsbevis som saknas, om en ändring behövs eller om underlaget är otillräckligt ska du underkänna. "
+                    "Förväxla aldrig att en säker patch inte kan skapas med att ingen patch behövs. "
+                    "Returnera ENDAST JSON med fälten passed, no_change_needed, blockers och reason. "
+                    "Godkänd no-op kräver passed=true, no_change_needed=true och blockers=[]. Vid hinder ska passed=false.\n\n"
+                    + "UPPDRAG:\n" + str(task)[:5000]
+                    + "\n\nSYSTEM_ENGINEER-BEDÖMNING:\n" + str(patch_spec.get("summary") or "")[:2500]
+                    + "\n\nVERIFIERAD BAS-COMMIT:\n" + base_sha
+                    + "\n\nKÄLLKODSUTDRAG:\n" + source_excerpt
+                    + "\n\nVERIFIERAT QA-UNDERLAG:\n" + json.dumps(outcome.get("qa_evidence") or {}, ensure_ascii=False)[:6000]
+                )
+                noop_review = generate_independent_review(
+                    noop_review_prompt,
+                    "Du är en oberoende senior granskare. Godkänn inte en no-op utan tydligt stöd i källkoden.",
+                    generated.get("engine"),
+                    max_tokens=1800,
+                    json_mode=True
+                )
+                noop_data = extract_json(noop_review.get("reply") or "")
+                if not is_verified_noop_review(noop_data):
+                    blockers = noop_data.get("blockers", []) if isinstance(noop_data, dict) else []
+                    raise RuntimeError(
+                        "SYSTEM_ENGINEER returnerade ingen kodpatch och oberoende granskning kunde inte bekräfta en säker no-op: "
+                        + json.dumps(blockers or noop_data, ensure_ascii=False)[:700]
+                    )
+                return {
+                    "status": "verified_noop",
+                    "repository": repo,
+                    "files": [],
+                    "branch": None,
+                    "commit_sha": base_sha,
+                    "pull_request_number": None,
+                    "pull_request_url": None,
+                    "validation": {"patches": 0, "independent_static_review": "passed", "no_op": True},
+                    "repository_changes": False,
+                    "published": False,
+                    "verification": "Oberoende granskning bekräftade att befintlig kod redan uppfyller uppdraget; ingen PR eller kodändring behövdes."
+                }
             updated_source, applied = apply_exact_text_patches(source, patch_spec.get("changes"))
             if not applied or updated_source == source:
                 raise RuntimeError("SYSTEM_ENGINEER skapade ingen verifierbar kodändring i main.py.")
@@ -1317,6 +1361,14 @@ async def jarvis_job_worker_loop():
                             + "och skapat en utkast-PR. CI och granskning återstår före eventuell publicering. "
                             + "PR-länk: " + str(delivery.get("pull_request_url") or "länken kunde inte hämtas.")
                         )
+                    elif delivery.get("status") == "verified_noop":
+                        outcome["delivery_level"] = "verified_noop"
+                        outcome["repository_changes"] = False
+                        outcome["published"] = False
+                        outcome["reply"] = (
+                            str(outcome.get("reply") or "")
+                            + "\n\nSYSTEM_ENGINEER och en oberoende granskare bekräftade att befintlig kod redan uppfyller uppdraget. Ingen PR eller driftsättning behövdes."
+                        )
                     elif delivery.get("status") == "blocked":
                         outcome["delivery_level"] = "proposal_only_github_blocked"
                         outcome["repository_changes"] = False
@@ -1334,7 +1386,7 @@ async def jarvis_job_worker_loop():
                         {"SYSTEM_ENGINEER", "GAME_DEVELOPER", "WEBMASTER"}
                     )
                 )
-                delivery_blocked = delivery_required and delivery_status != "merged"
+                delivery_blocked = delivery_required and delivery_status not in ("merged", "verified_noop")
                 completed = (
                     outcome.get("status") in ("delegated", "needs_discussion")
                     and not quality_blocked
@@ -1342,6 +1394,8 @@ async def jarvis_job_worker_loop():
                 )
                 if delivery_status == "merged":
                     result_phase = "Kodändringen är mergad efter godkänd oberoende granskning och gröna GitHub-kontroller; Render-driftsättning återstår att verifiera"
+                elif delivery_status == "verified_noop":
+                    result_phase = "Oberoende granskning bekräftade att ingen kodändring behövdes; ingen PR eller driftsättning utfördes"
                 elif delivery_status == "blocked":
                     result_phase = "AI-rådet är klart, men GitHub-ändringen är blockerad – se resultatet"
                 else:
@@ -1370,12 +1424,8 @@ async def jarvis_job_worker_loop():
                     "return=representation"
                 )
                 persisted_job = persisted_rows[0] if isinstance(persisted_rows, list) and persisted_rows else None
-                result_persisted = bool(
-                    isinstance(persisted_job, dict)
-                    and str(persisted_job.get("id")) == str(job_id)
-                    and persisted_job.get("result") is not None
-                    and persisted_job.get("status") == ("completed" if completed else "failed")
-                )
+                terminal_status = "completed" if completed else "failed"
+                result_persisted = persisted_job_matches(persisted_job, job_id, terminal_status)
                 if not result_persisted:
                     verified_rows, _ = await asyncio.to_thread(
                         supabase_jobs_request, "GET", "jarvis_jobs", None,
@@ -1386,17 +1436,50 @@ async def jarvis_job_worker_loop():
                         })
                     )
                     verified_job = verified_rows[0] if isinstance(verified_rows, list) and verified_rows else None
-                    result_persisted = bool(
-                        isinstance(verified_job, dict)
-                        and str(verified_job.get("id")) == str(job_id)
-                        and verified_job.get("result") is not None
-                        and verified_job.get("status") == ("completed" if completed else "failed")
-                    )
-                jarvis_worker_state["last_job_result_persisted"] = result_persisted
+                    result_persisted = persisted_job_matches(verified_job, job_id, terminal_status)
                 if not result_persisted:
-                    jarvis_worker_state["last_error"] = (
-                        "Supabase bekräftade inte att jobbresultatet sparades via return=representation."
+                    raise RuntimeError(
+                        "Supabase bekräftade inte att jobbresultatet sparades via readback; "
+                        "uppdraget lämnas för automatiskt nytt försök."
                     )
+
+                # Add final QA evidence only after the first terminal row has been read back.
+                if isinstance(outcome.get("qa_evidence"), dict):
+                    outcome["qa_evidence"]["final_result_readback"] = {
+                        "verified": True,
+                        "job_id": str(job_id),
+                        "status": terminal_status,
+                        "verified_at": datetime.now(timezone.utc).isoformat()
+                    }
+                    final_reply_text = str(outcome.get("reply") or "")
+                    final_reply_text = final_reply_text.replace(
+                        "Slutlig readback behandlas i enlighet med instruktionerna som väntande på bakgrundsarbetarens cykel.",
+                        "Slutlig readback verifierades efter att bakgrundsarbetaren sparat resultatet."
+                    )
+                    outcome["reply"] = (
+                        final_reply_text.rstrip()
+                        + "\n\nSlutlig databasverifiering: Supabase har bekräftat att "
+                        + "jobbresultatet är sparat och kan läsas tillbaka. Detta verifierar "
+                        + "resultatlagringen, inte produktkodens separata dynamiska tester."
+                    )
+                    final_rows, _ = await asyncio.to_thread(
+                        supabase_jobs_request, "PATCH", "jarvis_jobs",
+                        {"result": outcome, "updated_at": datetime.now(timezone.utc).isoformat()},
+                        urllib.parse.urlencode({
+                            "id": "eq." + str(job_id),
+                            "status": "eq." + terminal_status,
+                            "select": "id,status,result"
+                        }),
+                        "return=representation"
+                    )
+                    final_row = final_rows[0] if isinstance(final_rows, list) and final_rows else None
+                    if not final_qa_readback_matches(final_row, job_id, terminal_status):
+                        raise RuntimeError(
+                            "Supabase kunde inte bekräfta den slutliga QA-readback-rapporten."
+                        )
+
+                result_persisted = True
+                jarvis_worker_state["last_job_result_persisted"] = True
                 jarvis_worker_state.update({
                     "status": "idle" if completed else "error",
                     "last_job_status": "completed" if completed else "failed",
@@ -1420,25 +1503,21 @@ async def jarvis_job_worker_loop():
             except Exception as error:
                 attempts = int(job.get("attempts") or 1)
                 max_attempts = int(job.get("max_attempts") or 3)
-                retrying = attempts < max_attempts
                 final_error = str(error)[:1500]
+                now_iso = datetime.now(timezone.utc).isoformat()
+                retrying, retry_update = build_worker_retry_update(
+                    attempts, max_attempts, final_error, now_iso
+                )
                 jarvis_worker_state.update({
                     "status": "idle" if retrying else "error",
                     "last_job_status": "queued" if retrying else "failed",
+                    "last_job_result_persisted": False if retrying else jarvis_worker_state.get("last_job_result_persisted"),
                     "last_error": final_error,
-                    "last_poll_at": datetime.now(timezone.utc).isoformat()
+                    "last_poll_at": now_iso
                 })
                 await asyncio.to_thread(
                     supabase_jobs_request, "PATCH", "jarvis_jobs",
-                    {
-                        "status": "queued" if retrying else "failed",
-                        "phase": f"Automatiskt nytt försök {attempts + 1}/{max_attempts}" if retrying else "Bakgrundsarbetet misslyckades efter flera försök",
-                        "error": final_error,
-                        "locked_at": None,
-                        "worker_id": None,
-                        "completed_at": None if retrying else datetime.now(timezone.utc).isoformat(),
-                        "updated_at": datetime.now(timezone.utc).isoformat()
-                    },
+                    retry_update,
                     urllib.parse.urlencode({"id": "eq." + str(job_id)}),
                     "return=minimal"
                 )
