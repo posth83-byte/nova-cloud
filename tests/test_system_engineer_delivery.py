@@ -111,6 +111,66 @@ class SystemEngineerDeliveryTests(unittest.TestCase):
         from system_engineer_delivery import is_runtime_evidence_verified
         self.assertTrue(is_runtime_evidence_verified({}, "", False, required=False))
 
+    def test_evidence_reconciliation_accepts_machine_verified_runtime_despite_specialist_tool_limit(self):
+        from system_engineer_delivery import build_evidence_reconciliation
+        evidence = {
+            "source_snapshot_status": "fetched",
+            "source_commit_sha": "a5e2696656d3b0adc8bcdaa3e1b4671860066ec8",
+            "source_files_fetched": ["main.py"],
+            "status_route_in_qa_source": True,
+            "runtime_status_endpoint": {
+                "status": "verified", "http_status": 200,
+                "deployment_commit": "a5e2696656d3"
+            },
+            "post_qa_status_endpoint": {
+                "status": "verified", "http_status": 200,
+                "deployment_commit": "a5e2696656d3"
+            }
+        }
+        result = build_evidence_reconciliation(
+            "Verifiera /api/status live efter driftsättning och HTTP",
+            evidence,
+            [{"target": "SYSTEM_ENGINEER", "reply": "Jag saknar direkt nätverksåtkomst."}]
+        )
+        self.assertEqual(result["runtime_status"], "verified")
+        self.assertTrue(result["runtime_verified"])
+        self.assertTrue(result["specialist_reports_are_not_runtime_evidence"])
+
+    def test_evidence_reconciliation_fails_closed_on_mismatch_or_missing_source(self):
+        from system_engineer_delivery import build_evidence_reconciliation
+        base = {
+            "source_snapshot_status": "fetched",
+            "source_commit_sha": "a5e2696656d3b0adc8bcdaa3e1b4671860066ec8",
+            "source_files_fetched": ["main.py"],
+            "status_route_in_qa_source": True,
+            "runtime_status_endpoint": {
+                "status": "verified", "http_status": 200,
+                "deployment_commit": "a5e2696656d3"
+            }
+        }
+        mismatched = {**base, "post_qa_status_endpoint": {
+            "status": "verified", "http_status": 200, "deployment_commit": "deadbeefdead"
+        }}
+        result = build_evidence_reconciliation(
+            "Verifiera /api/status live efter driftsättning",
+            mismatched
+        )
+        self.assertEqual(result["runtime_status"], "blocked")
+        self.assertFalse(result["runtime_verified"])
+        missing_source = {**base, "source_files_fetched": []}
+        result = build_evidence_reconciliation(
+            "Verifiera /api/status live efter driftsättning",
+            missing_source
+        )
+        self.assertEqual(result["runtime_status"], "blocked")
+        self.assertFalse(result["runtime_verified"])
+
+    def test_evidence_reconciliation_marks_unrelated_tasks_not_required(self):
+        from system_engineer_delivery import build_evidence_reconciliation
+        result = build_evidence_reconciliation("Bygg en inköpslista", {})
+        self.assertEqual(result["runtime_status"], "not_required")
+        self.assertIsNone(result["runtime_verified"])
+
     def test_source_excerpt_keeps_relevant_worker_context(self):
         source = (
             "start\n"
