@@ -343,20 +343,25 @@ def normalize_runtime_quality_review(review: dict, evidence_reconciliation: dict
     )
     if report_claims_secondary_commit_gap:
         removed_contract_false_positive = True
-        report = (
-            "Godkänd: /api/status rapporterar exakt verifierad deployment_commit. "
-            "Samtliga uttryckligen begärda sekundära status-endpoints har HTTP 200 i båda "
-            "runtime-avläsningarna och deras payloads har granskats. API-kontraktet kräver "
-            "inte deployment_commit från sekundära endpoints."
-        )
+        if not kept_gaps:
+            report = (
+                "Godkänd: /api/status rapporterar exakt verifierad deployment_commit. "
+                "Samtliga uttryckligen begärda sekundära status-endpoints har HTTP 200 i båda "
+                "runtime-avläsningarna och deras payloads har granskats. API-kontraktet kräver "
+                "inte deployment_commit från sekundära endpoints."
+            )
+        else:
+            report = (
+                "Kvarstående brister: " + "; ".join(str(item) for item in kept_gaps)
+                + ". En felaktig invändning om deployment_commit på sekundära endpoints "
+                + "har avskrivits eftersom API-kontraktet inte kräver det."
+            )
     if removed_contract_false_positive:
         result["gaps"] = kept_gaps
         if not kept_gaps:
             result["passed"] = True
             result["repair_instructions"] = {}
-            result["final_report"] = report or (
-                "Godkänd: maskinverifierad runtime-evidens uppfyller API-kontraktet."
-            )
+        result["final_report"] = report or str(result.get("final_report") or "")
     return result
 
 def is_verified_noop_review(review: dict) -> bool:
