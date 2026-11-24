@@ -81,5 +81,5 @@ def is_verified_noop_review(review: dict) -> bool:
     return bool(
         review.get("passed") is True
         and review.get("no_change_needed") is True
-        and (not isinstance(blockers, list) or len(blockers) == 0)
+        and blockers == []
     )
