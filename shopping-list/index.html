@@ -24,6 +24,7 @@ header{padding:14px 4px 20px;display:flex;align-items:center;justify-content:spa
 <div class="footer"><span id="remaining">0 kvar</span><button id="clear">Rensa avklarade</button></div>
 </main><div class="toast" id="toast"></div>
 <script>
+const API_BASE="https://nova-cloud-c4t9.onrender.com";
 const categories=["Allt","Frukt & grönt","Mejeri","Kött & fisk","Skafferi","Frys","Hushåll","Övrigt"];
 let items=JSON.parse(localStorage.getItem("shoppingItems")||"[]"),filter="Allt";
 let listToken=localStorage.getItem("shoppingListToken")||"",lastUpdated=null,pollBusy=false;
@@ -36,7 +37,7 @@ async function api(path,method="GET",body){
  const headers={};
  if(listToken)headers.Authorization="Bearer "+listToken;
  if(body!==undefined)headers["Content-Type"]="application/json";
- const response=await fetch(path,{method,headers,body:body===undefined?undefined:JSON.stringify(body),cache:"no-store"});
+ const response=await fetch(API_BASE+path,{method,headers,body:body===undefined?undefined:JSON.stringify(body),cache:"no-store"});
  if(!response.ok){let message="Serverfel ("+response.status+")";try{const data=await response.json();message=data.detail||message}catch{}throw new Error(message)}
  return response.status===204?null:response.json();
 }
@@ -93,7 +94,7 @@ $("clear").onclick=async()=>{
 async function shareList(){
  try{
   if(!listToken){
-   const response=await fetch("/api/shopping-list",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({items})});
+   const response=await fetch(API_BASE+"/api/shopping-list",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({items})});
    if(!response.ok){const data=await response.json().catch(()=>({}));throw new Error(data.detail||"Kunde inte skapa delad lista")}
    const data=await response.json();listToken=data.token;lastUpdated=data.updated_at;
    localStorage.setItem("shoppingListToken",listToken);items=data.items||[];
