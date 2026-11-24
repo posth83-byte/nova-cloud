@@ -1027,10 +1027,29 @@ def create_system_engineer_pull_request(task, outcome, job_id):
             max_tokens=7000,
             json_mode=True
         )
-        patch_spec = extract_json(generated.get("reply") or "")
-        updated_source, applied = apply_exact_text_patches(source, patch_spec.get("changes"))
-        if not applied or updated_source == source:
-            raise RuntimeError("SYSTEM_ENGINEER skapade ingen verifierbar kodändring i main.py.")
+        try:
+            patch_spec = extract_json(generated.get("reply") or "")
+            updated_source, applied = apply_exact_text_patches(source, patch_spec.get("changes"))
+            if not applied or updated_source == source:
+                raise RuntimeError("SYSTEM_ENGINEER skapade ingen verifierbar kodändring i main.py.")
+        except Exception as error:
+            if repair_attempt == 1:
+                raise RuntimeError(
+                    "SYSTEM_ENGINEER kunde inte skapa en giltig, verifierbar patch efter en automatisk formaträttning: "
+                    + str(error)[:700]
+                ) from error
+            review_feedback = json.dumps({
+                "blockers": [
+                    "Förra svaret underkändes av patchvalideringen: " + str(error)[:700],
+                    "Returnera ett JSON-objekt med en changes-lista som innehåller 1–4 objekt. "
+                    "Varje objekt måste ha path='main.py', old_text och new_text. "
+                    "old_text måste vara ett exakt, unikt utdrag ur källkoden. "
+                    "Om ingen säker ändring kan göras ska uppdraget stoppas utan att försöka skapa en PR."
+                ],
+                "risks": [],
+                "test_suggestions": []
+            }, ensure_ascii=False)
+            continue
 
         diff_text = "\n\n".join(
             "FIL: main.py\nFÖRE:\n" + item["old_text"][:5000] + "\nEFTER:\n" + item["new_text"][:7000]
