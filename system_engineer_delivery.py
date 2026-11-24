@@ -121,6 +121,60 @@ def is_runtime_evidence_verified(
     )
 
 
+
+def build_evidence_reconciliation(task: str, qa_evidence: dict, specialist_results=None) -> dict:
+    """Reconcile machine-captured QA facts before an AI reviewer can approve a delivery."""
+    task_text = str(task or "").casefold()
+    runtime_required = (
+        "/api/status" in task_text
+        and any(term in task_text for term in ("driftsatt", "live", "runtime", "returnerar", "http"))
+    )
+    evidence = qa_evidence if isinstance(qa_evidence, dict) else {}
+    source_commit = str(evidence.get("source_commit_sha") or "")
+    source_files = evidence.get("source_files_fetched")
+    source_verified = bool(
+        evidence.get("source_snapshot_status") == "fetched"
+        and len(source_commit) >= 12
+        and isinstance(source_files, list)
+        and "main.py" in source_files
+        and evidence.get("status_route_in_qa_source") is True
+    )
+    captures = []
+    for key in ("runtime_status_endpoint", "post_qa_status_endpoint"):
+        capture = evidence.get(key)
+        if isinstance(capture, dict) and capture:
+            captures.append({"stage": key, "verified": is_runtime_evidence_verified(
+                capture, source_commit, source_verified, required=True
+            ), "http_status": capture.get("http_status"),
+                "deployment_commit": str(capture.get("deployment_commit") or ""),
+                "status": str(capture.get("status") or "")})
+    if not runtime_required:
+        runtime_verified = None
+        status = "not_required"
+    else:
+        runtime_verified = bool(
+            source_verified
+            and captures
+            and all(item["verified"] for item in captures)
+        )
+        status = "verified" if runtime_verified else "blocked"
+    return {
+        "runtime_required": runtime_required,
+        "runtime_status": status,
+        "runtime_verified": runtime_verified,
+        "source_snapshot_verified": source_verified,
+        "source_commit_sha": source_commit or None,
+        "runtime_captures": captures,
+        "specialist_reports_are_not_runtime_evidence": True,
+        "interpretation": (
+            "Specialisterna saknar direkt nätverksverktyg i sina textanalyser. "
+            "Deras beskrivning av egen verktygsåtkomst motsäger inte ett separat "
+            "maskininsamlat QA-resultat. Endast QA-underlagets verifierade HTTP- och "
+            "källkodsbevis avgör runtime-status."
+        )
+    }
+
+
 def is_verified_noop_review(review: dict) -> bool:
     """Accept a no-op only when independent review explicitly confirms no change is needed."""
     if not isinstance(review, dict):
