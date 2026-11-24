@@ -1039,10 +1039,14 @@ def create_system_engineer_pull_request(task, outcome, job_id):
     )
     runtime_status_check = (outcome.get("qa_evidence") or {}).get("runtime_status_endpoint") or {}
     qa_status_source_verified = bool((outcome.get("qa_evidence") or {}).get("status_route_in_qa_source"))
+    try:
+        runtime_http_status = int(runtime_status_check.get("http_status") or 0)
+    except (TypeError, ValueError):
+        runtime_http_status = 0
     runtime_evidence_verified = bool(
         qa_status_source_verified
         and runtime_status_check.get("status") == "verified"
-        and int(runtime_status_check.get("http_status") or 0) == 200
+        and runtime_http_status == 200
         and str(runtime_status_check.get("deployment_commit") or "") == base_sha[:12]
     )
     if requires_live_status_check and not runtime_evidence_verified:
@@ -1113,13 +1117,14 @@ def create_system_engineer_pull_request(task, outcome, job_id):
                     + "\n\nKÄLLKODSUTDRAG:\n" + source_excerpt
                     + "\n\nVERIFIERAT QA-UNDERLAG:\n" + json.dumps(outcome.get("qa_evidence") or {}, ensure_ascii=False)[:6000]
                     + "\n\nMASKINVERIFIERAT RUNTIMEBEVIS: " + json.dumps({
+                        "required": requires_live_status_check,
                         "verified": runtime_evidence_verified,
                         "http_status": runtime_status_check.get("http_status"),
                         "expected_deployment_commit": base_sha[:12],
                         "actual_deployment_commit": runtime_status_check.get("deployment_commit"),
                         "status_route_in_qa_source": qa_status_source_verified
                     }, ensure_ascii=False)
-                    + "\nBEVISREGEL: Python har redan gjort den exakta jämförelsen. Om verified=true är HTTP-status, deployment_commit och källrouten deterministiskt verifierade. Då ska du INTE ompröva commitjämförelsen eller kräva nätverksverktyg. Granska endast om befintlig källkod redan uppfyller uppdraget. Om verified=false ska no-op underkännas."
+                    + "\nBEVISREGEL: Om required=false gäller inget live-runtimekrav för detta uppdrag och runtimebeviset ska ignoreras. Om required=true och verified=true har Python redan gjort den exakta jämförelsen av HTTP-status, deployment_commit och källrouten; ompröva INTE commitjämförelsen och kräv INTE nätverksverktyg. Granska då endast om befintlig källkod redan uppfyller uppdraget. Om required=true och verified=false ska no-op underkännas."
                 )
                 noop_review = generate_independent_review(
                     noop_review_prompt,
@@ -1129,7 +1134,7 @@ def create_system_engineer_pull_request(task, outcome, job_id):
                     json_mode=True
                 )
                 noop_data = extract_json(noop_review.get("reply") or "")
-                if runtime_evidence_verified and isinstance(noop_data, dict):
+                if requires_live_status_check and runtime_evidence_verified and isinstance(noop_data, dict):
                     raw_blockers = noop_data.get("blockers") or []
                     if not isinstance(raw_blockers, list):
                         raw_blockers = [raw_blockers]
