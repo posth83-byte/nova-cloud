@@ -19,6 +19,7 @@ from datetime import datetime, timezone, timedelta
 from urllib.parse import quote
 
 from fastapi import FastAPI, HTTPException, Header
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
@@ -44,6 +45,16 @@ app = FastAPI(
     title="NOVA Cloud",
     description="JARVIS och NOVA – personlig AI-central",
     version=APP_VERSION
+)
+
+# The shopping-list PWA is hosted on a separate Render static-site origin.
+# Allow only that origin to call the shared-list API from browsers.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["https://var-inkopslista.onrender.com"],
+    allow_credentials=False,
+    allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type"],
 )
 
 app.include_router(video_router)
