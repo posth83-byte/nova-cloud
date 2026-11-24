@@ -10,11 +10,11 @@ class SystemEngineerDeliveryTests(unittest.TestCase):
         decoy = 'markers = (\n    \'@app.get("/api/status")\',\n)'
         self.assertFalse(has_route_decorator(decoy, "/api/status"))
         self.assertTrue(has_route_decorator(
-            '@app.get("/api/status")\nasync def status():\n    return {"status": "online"}',
+            '4015: @app.get("/api/status")',
             "/api/status"
         ))
         self.assertFalse(has_route_decorator(
-            '@app.post("/api/status")\nasync def status():\n    pass',
+            '4015: @app.post("/api/status")',
             "/api/status"
         ))
 
