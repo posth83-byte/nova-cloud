@@ -437,18 +437,32 @@ def collect_qa_repository_evidence(task):
                     f"{number + 1}: {lines[number]}" for number in range(start, end)
                 ))
             content = "\n\n[QA SOURCE EXCERPT]\n\n".join(excerpts)
-            status_route_index = next(
-                (index for index, line in enumerate(lines) if '@app.get("/api/status")' in line),
-                None
+            runtime_route_paths = (
+                "/api/status",
+                "/api/jarvis/intelligence",
+                "/api/worker/status",
+                "/api/memory/status",
+                "/api/team/status",
             )
-            if status_route_index is not None:
-                status_start = max(0, status_route_index - 8)
-                status_end = min(len(lines), status_route_index + 90)
-                status_excerpt = "\n".join(
-                    f"{number + 1}: {lines[number]}" for number in range(status_start, status_end)
+            runtime_route_excerpts = []
+            for route_path in runtime_route_paths:
+                route_index = next(
+                    (index for index, line in enumerate(lines)
+                     if f'@app.get("{route_path}")' in line),
+                    None
                 )
-                content = content[:21000] + "\n\n[QA STATUS ROUTE — PRIORITERAT]\n\n" + status_excerpt
-            content = content[:28000]
+                if route_index is not None:
+                    route_start = max(0, route_index - 8)
+                    route_end = min(len(lines), route_index + 55)
+                    runtime_route_excerpts.append("\n".join(
+                        f"{number + 1}: {lines[number]}"
+                        for number in range(route_start, route_end)
+                    ))
+            content = (
+                content[:12000]
+                + "\n\n[QA RUNTIME ROUTES — PRIORITERAT]\n\n"
+                + "\n\n".join(runtime_route_excerpts)
+            )[:28000]
         else:
             content = content[:5500]
 
