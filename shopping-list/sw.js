@@ -1,4 +1,4 @@
-const CACHE="shopping-list-v4";
+const CACHE="shopping-list-v5";
 const APP_FILES=["./","./index.html","./manifest.webmanifest","./icon.svg"];
 self.addEventListener("install",event=>event.waitUntil((async()=>{
  const cache=await caches.open(CACHE);
@@ -21,6 +21,21 @@ self.addEventListener("fetch",event=>{
   return;
  }
  event.respondWith(caches.match(request).then(cached=>cached||fetch(request)));
+});
+
+self.addEventListener("push",event=>{
+ let data={};
+ try{data=event.data?event.data.json():{}}catch(_){}
+ const title=data.title||"Ny vara i inköpslistan";
+ const options={
+  body:data.body||"En ny vara har lagts till",
+  icon:"./icon.svg",
+  badge:"./icon.svg",
+  tag:data.tag||"shopping-list-update",
+  renotify:true,
+  data:{url:data.url||"./"}
+ };
+ event.waitUntil(self.registration.showNotification(title,options));
 });
 
 self.addEventListener("notificationclick",event=>{
