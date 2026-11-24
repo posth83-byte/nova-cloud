@@ -18,7 +18,7 @@ from pathlib import Path
 from datetime import datetime, timezone, timedelta
 from urllib.parse import quote
 
-from fastapi import FastAPI, HTTPException, Header
+from fastapi import FastAPI, HTTPException, Header, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
@@ -235,7 +235,7 @@ def supabase_jobs_request(method, path, payload=None, query="", prefer=""):
 
 def supabase_shopping_request(method, table, payload=None, query="", prefer=""):
     """Private shopping-list API; all access is mediated by server-side bearer tokens."""
-    allowed_tables = {"shopping_lists", "shopping_list_items"}
+    allowed_tables = {"shopping_lists", "shopping_list_items", "shopping_list_push_subscriptions"}
     if table not in allowed_tables:
         raise ValueError("Okänd inköpslistetabell.")
     if not USE_SUPABASE_MEMORY:
@@ -1327,8 +1327,8 @@ def create_system_engineer_pull_request(task, outcome, job_id):
     }
 
 
-def send_jarvis_job_notification(job_id, subscription, outcome):
-    """Send one standards-based Web Push notification when a queued task completes."""
+def send_web_push_notification(subscription, payload):
+    """Send a standards-based Web Push message using the shared VAPID configuration."""
     if not isinstance(subscription, dict) or not subscription.get("endpoint"):
         return False
     private_key = os.getenv("VAPID_PRIVATE_KEY", "").strip()
@@ -1342,36 +1342,65 @@ def send_jarvis_job_notification(job_id, subscription, outcome):
     subject = os.getenv("VAPID_CLAIMS_EMAIL", "mailto:admin@example.com").strip()
     if not private_key or not public_key:
         return False
+    temp_path = None
     try:
         from pywebpush import webpush
-        failed = isinstance(outcome, dict) and outcome.get("status") in ("failed", "error")
-        is_test = str(job_id) == "test"
-        payload = {
-            "title": "JARVIS – testnotis" if is_test else ("JARVIS – uppdraget behöver åtgärd" if failed else "JARVIS – arbetsresultat klart"),
-            "body": "Pushnotiser fungerar på den här enheten." if is_test else ("Ett bakgrundsjobb misslyckades. Öppna JARVIS för felstatus." if failed else "JARVIS har sammanställt ett resultat. Öppna kontrollcentralen för detaljer."),
-            "url": "/",
-            "tag": "jarvis-test" if is_test else f"jarvis-job-{job_id}"
-        }
-        temp_path = None
-        try:
-            with tempfile.NamedTemporaryFile(mode="w", suffix=".pem", encoding="utf-8", delete=False) as key_file:
-                key_file.write(private_key)
-                temp_path = key_file.name
-            webpush(
-                subscription_info=subscription,
-                data=json.dumps(payload, ensure_ascii=False),
-                vapid_private_key=temp_path,
-                vapid_claims={"sub": subject}
-            )
-            return True
-        finally:
-            if temp_path:
-                try:
-                    os.unlink(temp_path)
-                except OSError:
-                    pass
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".pem", encoding="utf-8", delete=False) as key_file:
+            key_file.write(private_key)
+            temp_path = key_file.name
+        webpush(
+            subscription_info=subscription,
+            data=json.dumps(payload, ensure_ascii=False),
+            vapid_private_key=temp_path,
+            vapid_claims={"sub": subject}
+        )
+        return True
     except Exception:
         return False
+    finally:
+        if temp_path:
+            try:
+                os.unlink(temp_path)
+            except OSError:
+                pass
+
+
+def send_jarvis_job_notification(job_id, subscription, outcome):
+    """Send one standards-based Web Push notification when a queued task completes."""
+    failed = isinstance(outcome, dict) and outcome.get("status") in ("failed", "error")
+    is_test = str(job_id) == "test"
+    return send_web_push_notification(subscription, {
+        "title": "JARVIS – testnotis" if is_test else ("JARVIS – uppdraget behöver åtgärd" if failed else "JARVIS – arbetsresultat klart"),
+        "body": "Pushnotiser fungerar på den här enheten." if is_test else ("Ett bakgrundsjobb misslyckades. Öppna JARVIS för felstatus." if failed else "JARVIS har sammanställt ett resultat. Öppna kontrollcentralen för detaljer."),
+        "url": "/",
+        "tag": "jarvis-test" if is_test else f"jarvis-job-{job_id}"
+    })
+
+
+def send_shopping_list_item_notification(list_id, item, source_endpoint=""):
+    """Push a newly added item to all subscribed devices except the author."""
+    try:
+        rows, _ = supabase_shopping_request(
+            "GET", "shopping_list_push_subscriptions", None,
+            urllib.parse.urlencode({"list_id": "eq." + str(list_id), "select": "endpoint,subscription"})
+        )
+        name = str((item or {}).get("name") or "En vara")[:120]
+        item_id = str((item or {}).get("id") or uuid.uuid4().hex)
+        payload = {
+            "title": "Ny vara i inköpslistan",
+            "body": name + " har lagts till",
+            "url": "/",
+            "tag": "shopping-item-" + item_id
+        }
+        for row in rows if isinstance(rows, list) else []:
+            endpoint = str(row.get("endpoint") or "")
+            if source_endpoint and endpoint == source_endpoint:
+                continue
+            send_web_push_notification(row.get("subscription"), payload)
+    except Exception:
+        # A notification outage must never undo a successfully saved list item.
+        pass
+
 
 
 async def jarvis_job_heartbeat(job_id, stop_event):
@@ -2331,6 +2360,15 @@ class ShoppingListItemCreateRequest(BaseModel):
     name: str = Field(min_length=1, max_length=120)
     category: str = Field(default="Övrigt", max_length=40)
     qty: str = Field(default="", max_length=40)
+    source_endpoint: str = Field(default="", max_length=2048)
+
+
+class ShoppingListPushSubscriptionRequest(BaseModel):
+    subscription: dict
+
+
+class ShoppingListPushUnsubscribeRequest(BaseModel):
+    endpoint: str = Field(min_length=20, max_length=2048)
 
 
 class ShoppingListItemUpdateRequest(BaseModel):
@@ -3924,9 +3962,49 @@ async def read_shopping_list(authorization: str = Header(default="")):
         raise HTTPException(status_code=502, detail=f"Kunde inte läsa inköpslistan: {str(error)[:400]}")
 
 
+@app.post("/api/shopping-list/push/subscribe")
+async def subscribe_shopping_list_push(
+    request: ShoppingListPushSubscriptionRequest,
+    authorization: str = Header(default="")
+):
+    list_row = await asyncio.to_thread(resolve_shopping_list_token, authorization)
+    subscription = request.subscription
+    endpoint = str(subscription.get("endpoint") or "").strip()
+    keys = subscription.get("keys") if isinstance(subscription.get("keys"), dict) else {}
+    if not endpoint.startswith("https://") or not keys.get("p256dh") or not keys.get("auth"):
+        raise HTTPException(status_code=422, detail="Pushprenumerationen är ogiltig.")
+    try:
+        await asyncio.to_thread(
+            supabase_shopping_request, "POST", "shopping_list_push_subscriptions",
+            {"list_id": list_row["id"], "endpoint": endpoint, "subscription": subscription},
+            "on_conflict=endpoint", "resolution=merge-duplicates,return=minimal"
+        )
+        return {"status": "subscribed"}
+    except Exception as error:
+        raise HTTPException(status_code=502, detail=f"Kunde inte spara notisinställningen: {str(error)[:300]}")
+
+
+@app.delete("/api/shopping-list/push/subscribe")
+async def unsubscribe_shopping_list_push(
+    request: ShoppingListPushUnsubscribeRequest,
+    authorization: str = Header(default="")
+):
+    list_row = await asyncio.to_thread(resolve_shopping_list_token, authorization)
+    try:
+        await asyncio.to_thread(
+            supabase_shopping_request, "DELETE", "shopping_list_push_subscriptions", None,
+            urllib.parse.urlencode({"list_id": "eq." + str(list_row["id"]), "endpoint": "eq." + request.endpoint}),
+            "return=minimal"
+        )
+        return {"status": "unsubscribed"}
+    except Exception as error:
+        raise HTTPException(status_code=502, detail=f"Kunde inte ta bort notisinställningen: {str(error)[:300]}")
+
+
 @app.post("/api/shopping-list/items")
 async def add_shopping_list_item(
     request: ShoppingListItemCreateRequest,
+    background_tasks: BackgroundTasks,
     authorization: str = Header(default="")
 ):
     try:
@@ -3944,7 +4022,15 @@ async def add_shopping_list_item(
                 "done": False
             }, "", "return=representation"
         )
-        return {"item": rows[0] if isinstance(rows, list) and rows else None}
+        created_item = rows[0] if isinstance(rows, list) and rows else None
+        if created_item:
+            background_tasks.add_task(
+                send_shopping_list_item_notification,
+                list_row["id"],
+                created_item,
+                request.source_endpoint
+            )
+        return {"item": created_item}
     except HTTPException:
         raise
     except Exception as error:

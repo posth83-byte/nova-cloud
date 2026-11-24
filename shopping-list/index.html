@@ -8,7 +8,7 @@
 <style>
 :root{--bg:#f5f7f2;--card:#fff;--ink:#1e2822;--muted:#77827a;--green:#3f8057;--green2:#e7f3e9;--line:#e8ece7;--shadow:0 8px 28px #263c2410}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:16px system-ui,-apple-system,sans-serif;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}button,input,select{font:inherit}main{max-width:620px;margin:auto;padding:20px 16px 40px}
-header{padding:14px 4px 20px;display:flex;align-items:center;justify-content:space-between}.brand{display:flex;gap:12px;align-items:center}.logo{width:48px;height:48px;border-radius:16px;background:var(--green2);display:grid;place-items:center;font-size:25px}.brand h1{font-size:22px;margin:0}.brand p{margin:2px 0 0;color:var(--muted);font-size:13px}.share{border:0;background:#fff;padding:12px;border-radius:14px;box-shadow:var(--shadow);font-size:19px}
+header{padding:14px 4px 20px;display:flex;align-items:center;justify-content:space-between}.brand{display:flex;gap:12px;align-items:center}.logo{width:48px;height:48px;border-radius:16px;background:var(--green2);display:grid;place-items:center;font-size:25px}.brand h1{font-size:22px;margin:0}.brand p{margin:2px 0 0;color:var(--muted);font-size:13px}.header-actions{display:flex;gap:8px;align-items:center}.share,.notify{border:0;background:#fff;padding:12px;border-radius:14px;box-shadow:var(--shadow);font-size:19px}.notify{font-size:16px;color:var(--green)}.notify[aria-pressed="true"]{background:var(--green2)}
 .summary{background:var(--green);color:white;border-radius:22px;padding:20px;margin-bottom:16px;box-shadow:var(--shadow)}.summary-top{display:flex;justify-content:space-between;align-items:center}.summary h2{font-size:18px;margin:0}.summary p{margin:8px 0 0;color:#e5f4e8;font-size:14px}.progress{height:7px;background:#ffffff40;border-radius:20px;margin-top:16px;overflow:hidden}.progress>div{height:100%;background:#fff;border-radius:20px;width:0;transition:width .2s}
 .add{display:flex;gap:8px;background:var(--card);padding:10px;border-radius:18px;box-shadow:var(--shadow);margin-bottom:14px}.add input{min-width:0;flex:1;border:0;outline:0;padding:10px 8px;background:transparent}.add button{border:0;border-radius:13px;background:var(--green);color:#fff;font-weight:700;padding:0 18px}
 .filters{display:flex;gap:8px;overflow:auto;padding:2px 0 14px}.chip{white-space:nowrap;border:1px solid var(--line);background:#fff;color:var(--muted);padding:9px 13px;border-radius:99px;font-size:13px}.chip.active{background:var(--green2);color:var(--green);border-color:#cde4d1;font-weight:700}
@@ -16,7 +16,7 @@ header{padding:14px 4px 20px;display:flex;align-items:center;justify-content:spa
 .empty{text-align:center;color:var(--muted);padding:36px 20px;background:#fff;border-radius:18px}.empty div{font-size:35px;margin-bottom:8px}.footer{display:flex;justify-content:space-between;align-items:center;padding:18px 4px;color:var(--muted);font-size:13px}.footer button{border:0;background:transparent;color:var(--green);font-weight:700;padding:8px}.install{display:none;background:#fff;border:1px solid var(--line);padding:14px;border-radius:16px;margin-bottom:14px;font-size:13px;color:var(--muted)}.install strong{color:var(--ink)}.toast{position:fixed;bottom:calc(22px + env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);background:#24332a;color:white;padding:12px 18px;border-radius:99px;box-shadow:var(--shadow);opacity:0;pointer-events:none;transition:.2s}.toast.show{opacity:1}
 @media(min-width:600px){main{padding-top:30px}.summary{padding:24px}}
 </style></head><body><main>
-<header><div class="brand"><div class="logo">🛒</div><div><h1>Vår inköpslista</h1><p id="syncStatus">Bara på den här telefonen · tryck ↗ för att dela</p></div></div><button class="share" id="share" aria-label="Dela listan">↗</button></header>
+<header><div class="brand"><div class="logo">🛒</div><div><h1>Vår inköpslista</h1><p id="syncStatus">Bara på den här telefonen · tryck ↗ för att dela</p></div></div><div class="header-actions"><button class="notify" id="notify" aria-label="Aktivera notiser" aria-pressed="false" title="Aktivera notiser">🔔</button><button class="share" id="share" aria-label="Dela listan">↗</button></div></header>
 <div class="install" id="install"><strong>📲 Lägg till på hemskärmen</strong><br>På iPhone: tryck på Dela i Safari och välj ”Lägg till på hemskärmen”.</div>
 <section class="summary"><div class="summary-top"><h2>Att handla</h2><strong id="count">0 varor</strong></div><p id="progressText">Lägg till det ni behöver</p><div class="progress"><div id="progressBar"></div></div></section>
 <form class="add" id="addForm"><input id="itemInput" placeholder="Vad behöver vi köpa?" autocomplete="off" required><button type="submit">＋ Lägg till</button></form>
@@ -42,11 +42,13 @@ async function api(path,method="GET",body){
  return response.status===204?null:response.json();
 }
 function saveLocal(){localStorage.setItem("shoppingItems",JSON.stringify(items));render()}
-async function refreshSharedList(silent=false){
+async function refreshSharedList(silent=false,suppressNotifications=false){
  if(!listToken)return;
  try{
   const data=await api("/api/shopping-list");
-  items=Array.isArray(data.items)?data.items:[];
+  const nextItems=Array.isArray(data.items)?data.items:[];
+  // Notifications arrive through Web Push, including when this page is closed.
+  items=nextItems;
   lastUpdated=data.updated_at||null;
   localStorage.setItem("shoppingItems",JSON.stringify(items));
   setSyncStatus("Delad lista · synkas automatiskt");
@@ -58,7 +60,7 @@ async function refreshSharedList(silent=false){
  }
 }
 async function mutateShared(path,method,body){
- try{await api(path,method,body);await refreshSharedList(true)}
+ try{await api(path,method,body);await refreshSharedList(true,true)}
  catch(error){toast("Ändringen sparades inte: "+error.message);setSyncStatus("Anslutningen saknas – försöker igen")}
 }
 function render(){
@@ -83,7 +85,7 @@ function guessCategory(name){let s=name.toLowerCase();if(/mjölk|ost|smör|yoghu
 $("addForm").onsubmit=async e=>{
  e.preventDefault();let name=$("itemInput").value.trim();if(!name)return;
  const item={name,category:guessCategory(name),qty:""};
- if(listToken)await mutateShared("/api/shopping-list/items","POST",item);
+ if(listToken)await mutateShared("/api/shopping-list/items","POST",{...item,source_endpoint:await currentPushEndpoint()});
  else{items.unshift({id:crypto.randomUUID(),...item,done:false});saveLocal()}
  $("itemInput").value="";$("itemInput").focus();
 };
@@ -101,12 +103,65 @@ async function shareList(){
    localStorage.setItem("shoppingItems",JSON.stringify(items));render();
    setSyncStatus("Delad lista · synkas automatiskt");
   }
+  if(localStorage.getItem("shoppingNotificationsEnabled")==="yes"){
+   try{await ensurePushSubscription()}catch(error){toast("Listan delades, men notiser kunde inte kopplas: "+error.message)}
+  }
   const url=location.origin+location.pathname+"#list="+encodeURIComponent(listToken);
   if(navigator.share)await navigator.share({title:"Vår inköpslista",text:"Öppna vår gemensamma inköpslista",url});
   else{await navigator.clipboard.writeText(url);toast("Delningslänken kopierad!")}
  }catch(error){if(error.name!=="AbortError")toast(error.message||"Kunde inte dela listan")}
 }
 $("share").onclick=shareList;
+
+function urlBase64ToUint8Array(value){
+ const padding="=".repeat((4-value.length%4)%4);
+ const raw=atob((value+padding).replace(/-/g,"+").replace(/_/g,"/"));
+ return Uint8Array.from([...raw].map(char=>char.charCodeAt(0)));
+}
+async function ensurePushSubscription(){
+ if(!("serviceWorker" in navigator)||!("PushManager" in window)||!("Notification" in window)||Notification.permission!=="granted")return null;
+ const registration=await navigator.serviceWorker.register("./sw.js");
+ await navigator.serviceWorker.ready;
+ const keyResponse=await fetch(API_BASE+"/api/push/public-key",{cache:"no-store"});
+ if(!keyResponse.ok)throw new Error("Pushnotiser är inte konfigurerade på servern.");
+ const keyData=await keyResponse.json();
+ let subscription=await registration.pushManager.getSubscription();
+ if(!subscription){
+  subscription=await registration.pushManager.subscribe({
+   userVisibleOnly:true,
+   applicationServerKey:urlBase64ToUint8Array(keyData.public_key)
+  });
+ }
+ if(listToken){
+  await api("/api/shopping-list/push/subscribe","POST",{subscription:subscription.toJSON()});
+ }
+ return subscription;
+}
+async function currentPushEndpoint(){
+ if(localStorage.getItem("shoppingNotificationsEnabled")!=="yes"||!("serviceWorker" in navigator))return "";
+ try{
+  const registration=await navigator.serviceWorker.ready;
+  const subscription=await registration.pushManager.getSubscription();
+  return subscription?subscription.endpoint:"";
+ }catch{return ""}
+}
+async function enableNotifications(){
+ if(!("Notification" in window)||!("serviceWorker" in navigator)||!("PushManager" in window)){
+  toast("Den här webbläsaren stöder inte bakgrundsnotiser.");return;
+ }
+ try{
+  const permission=await Notification.requestPermission();
+  if(permission!=="granted"){toast("Notiser tilläts inte. Du kan ändra det i inställningarna.");return}
+  localStorage.setItem("shoppingNotificationsEnabled","yes");
+  const subscription=await ensurePushSubscription();
+  if(!subscription)throw new Error("Kunde inte skapa en pushprenumeration.");
+  $("notify").setAttribute("aria-pressed","true");
+  toast(listToken?"Bakgrundsnotiser aktiverade på den här enheten":"Tillåtet! Notiser kopplas till listan när den delas.");
+ }catch(error){toast("Kunde inte aktivera notiser: "+error.message)}
+}
+$("notify").onclick=enableNotifications;
+if(localStorage.getItem("shoppingNotificationsEnabled")==="yes"&&"Notification" in window&&Notification.permission==="granted")$("notify").setAttribute("aria-pressed","true");
+
 function toast(s){$("toast").textContent=s;$("toast").classList.add("show");setTimeout(()=>$("toast").classList.remove("show"),2200)}
 render();
 if(!navigator.standalone&&!window.matchMedia("(display-mode: standalone)").matches&&/iPhone|iPad/.test(navigator.userAgent))$("install").style.display="block";
@@ -114,6 +169,9 @@ if("serviceWorker" in navigator)navigator.serviceWorker.register("./sw.js").catc
 if(listToken){
  setSyncStatus("Ansluter till den delade listan…");
  refreshSharedList(false).catch(()=>{});
+ if(localStorage.getItem("shoppingNotificationsEnabled")==="yes"&&"Notification" in window&&Notification.permission==="granted"){
+  ensurePushSubscription().catch(error=>toast("Notiser kunde inte återanslutas: "+error.message));
+ }
 }else{
  setSyncStatus("Bara på den här telefonen · tryck ↗ för att dela");
 }
