@@ -23,7 +23,7 @@ from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 from job_dedup import normalize_job_task, job_task_fingerprint, is_duplicate_job_task
-from system_engineer_delivery import apply_exact_text_patches, build_source_excerpt
+from system_engineer_delivery import apply_exact_text_patches, build_source_excerpt, select_independent_review_provider
 from video_engine import router as video_router
 from runway_engine import router as runway_router
 from kling_engine import router as kling_router
@@ -2573,16 +2573,6 @@ def generate_reply(
             "OpenRouter är inte konfigurerat."
         )
     )
-
-
-def select_independent_review_provider(generation_engine, gemini_available, openrouter_available):
-    """Choose a different provider for code review; never silently self-review."""
-    engine = str(generation_engine or "").strip().lower()
-    if engine.startswith("gemini"):
-        return "OpenRouter" if openrouter_available else None
-    if engine.startswith("openrouter"):
-        return "Gemini" if gemini_available else None
-    return None
 
 
 def generate_independent_review(message, system_prompt, generation_engine, max_tokens=2200, json_mode=True):
