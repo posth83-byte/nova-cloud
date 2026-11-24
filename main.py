@@ -934,9 +934,12 @@ def create_system_engineer_pull_request(task, outcome, job_id):
         + "\n\nSYSTEM_ENGINEER-ANALYS:\n" + str(engineer.get("reply") or "")[:5000]
         + "\n\nKODPATCH:\n" + diff_text
     )
-    qa = generate_reply(
+    qa = generate_independent_review(
         qa_prompt,
-        "Du är en oberoende senior kodgranskare. Påstå aldrig att du har kört tester.",
+        "Du är en oberoende senior kodgranskare. Du får inte anta att utvecklarens analys är korrekt. "
+        "Kontrollera patchen mot uppdraget och leta aktivt efter fel, säkerhetsproblem och saknade krav. "
+        "Påstå aldrig att du har kört tester.",
+        generated.get("engine"),
         max_tokens=2200,
         json_mode=True
     )
@@ -2390,7 +2393,8 @@ def ask_openrouter(
     system_prompt,
     max_tokens=2048,
     json_mode=False,
-    image_data=""
+    image_data="",
+    model=None
 ):
 
     url = "https://openrouter.ai/api/v1/chat/completions"
@@ -2403,7 +2407,7 @@ def ask_openrouter(
         ]
 
     payload = {
-        "model": OPENROUTER_MODEL,
+        "model": model or OPENROUTER_MODEL,
         "messages": [
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_content}
@@ -2568,6 +2572,35 @@ def generate_reply(
             f"Gemini: {gemini_error}. "
             "OpenRouter är inte konfigurerat."
         )
+    )
+
+
+def select_independent_review_provider(generation_engine, gemini_available, openrouter_available):
+    """Choose a different provider for code review; never silently self-review."""
+    engine = str(generation_engine or "").strip().lower()
+    if engine.startswith("gemini"):
+        return "OpenRouter" if openrouter_available else None
+    if engine.startswith("openrouter"):
+        return "Gemini" if gemini_available else None
+    return None
+
+
+def generate_independent_review(message, system_prompt, generation_engine, max_tokens=2200, json_mode=True):
+    """Run review through a provider different from the one that generated the patch."""
+    provider = select_independent_review_provider(
+        generation_engine,
+        bool(GEMINI_API_KEY),
+        bool(OPENROUTER_API_KEY)
+    )
+    if provider == "OpenRouter":
+        answer = ask_openrouter(message, system_prompt, max_tokens, json_mode)
+        return {"reply": answer, "engine": "OpenRouter (independent review)"}
+    if provider == "Gemini":
+        answer = ask_gemini(message, system_prompt, max_tokens, json_mode)
+        return {"reply": answer, "engine": "Gemini (independent review)"}
+    raise RuntimeError(
+        "Oberoende kodgranskning kan inte köras: en separat AI-leverantör saknas. "
+        "Patchen stoppas i stället för att granskas av samma motor."
     )
 
 
