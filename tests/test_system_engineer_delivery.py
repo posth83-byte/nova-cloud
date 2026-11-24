@@ -5,6 +5,24 @@ from system_engineer_delivery import select_independent_review_provider
 
 
 class SystemEngineerDeliveryTests(unittest.TestCase):
+    def test_runtime_payload_summary_keeps_only_safe_fields(self):
+        from system_engineer_delivery import summarize_runtime_payload
+        payload = {
+            "status": "online",
+            "worker_running": True,
+            "queue_storage": "supabase",
+            "access_token": "must-not-be-copied",
+            "service_role_key": "must-not-be-copied",
+        }
+        summary = summarize_runtime_payload("/api/worker/status", payload)
+        self.assertEqual(summary, {
+            "status": "online",
+            "worker_running": True,
+            "queue_storage": "supabase",
+        })
+        self.assertNotIn("access_token", summary)
+        self.assertNotIn("service_role_key", summary)
+
     def test_route_detector_ignores_string_mentions_and_requires_real_decorator(self):
         from system_engineer_delivery import has_route_decorator
         decoy = 'markers = (\n    \'@app.get("/api/status")\',\n)'
