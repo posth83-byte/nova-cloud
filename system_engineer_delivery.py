@@ -5,6 +5,16 @@ from __future__ import annotations
 from typing import Iterable
 
 
+def select_independent_review_provider(generation_engine: str, gemini_available: bool, openrouter_available: bool):
+    """Choose a different provider for code review; never silently self-review."""
+    engine = str(generation_engine or "").strip().lower()
+    if engine.startswith("gemini"):
+        return "OpenRouter" if openrouter_available else None
+    if engine.startswith("openrouter"):
+        return "Gemini" if gemini_available else None
+    return None
+
+
 def build_source_excerpt(source: str, max_chars: int = 28000) -> str:
     """Return bounded, line-numbered source windows around the JARVIS execution pipeline."""
     lines = str(source or "").splitlines()
