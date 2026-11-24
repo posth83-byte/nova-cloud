@@ -26,7 +26,7 @@ from job_dedup import normalize_job_task, job_task_fingerprint, is_duplicate_job
 from jarvis_worker_persistence import (
     persisted_job_matches, final_qa_readback_matches, build_worker_retry_update
 )
-from system_engineer_delivery import apply_exact_text_patches, build_source_excerpt, select_independent_review_provider, is_verified_noop_review, is_runtime_evidence_verified, normalize_patch_spec, build_evidence_reconciliation
+from system_engineer_delivery import apply_exact_text_patches, build_source_excerpt, select_independent_review_provider, is_verified_noop_review, is_runtime_evidence_verified, normalize_patch_spec, build_evidence_reconciliation, task_requires_live_runtime_evidence
 from video_engine import router as video_router
 from runway_engine import router as runway_router
 from kling_engine import router as kling_router
@@ -402,6 +402,8 @@ def collect_qa_repository_evidence(task):
                 "async def jarvis_job_worker_loop",
                 "persisted_rows, _",
                 '@app.get("/api/status")',
+                '@app.get("/api/jarvis/intelligence")',
+                '@app.get("/api/memory/status")',
                 "@app.get(\"/api/worker/status\")",
                 "@app.get(\"/api/team/status\")",
                 "@app.post(\"/api/jarvis/delegate\")",
@@ -415,9 +417,10 @@ def collect_qa_repository_evidence(task):
             )
             windows = []
             for marker in markers:
-                for index in range(search_from, len(lines)):
+                marker_search_from = 0 if marker == '@app.get("/api/memory/status")' else search_from
+                for index in range(marker_search_from, len(lines)):
                     if marker in lines[index]:
-                        start = max(search_from, index - 12)
+                        start = max(marker_search_from, index - 12)
                         window_size = 130 if marker == "async def jarvis_job_worker_loop" else 95
                         end = min(len(lines), index + window_size)
                         windows.append((start, end))
@@ -434,18 +437,32 @@ def collect_qa_repository_evidence(task):
                     f"{number + 1}: {lines[number]}" for number in range(start, end)
                 ))
             content = "\n\n[QA SOURCE EXCERPT]\n\n".join(excerpts)
-            status_route_index = next(
-                (index for index, line in enumerate(lines) if '@app.get("/api/status")' in line),
-                None
+            runtime_route_paths = (
+                "/api/status",
+                "/api/jarvis/intelligence",
+                "/api/worker/status",
+                "/api/memory/status",
+                "/api/team/status",
             )
-            if status_route_index is not None:
-                status_start = max(0, status_route_index - 8)
-                status_end = min(len(lines), status_route_index + 90)
-                status_excerpt = "\n".join(
-                    f"{number + 1}: {lines[number]}" for number in range(status_start, status_end)
+            runtime_route_excerpts = []
+            for route_path in runtime_route_paths:
+                route_index = next(
+                    (index for index, line in enumerate(lines)
+                     if f'@app.get("{route_path}")' in line),
+                    None
                 )
-                content = content[:21000] + "\n\n[QA STATUS ROUTE — PRIORITERAT]\n\n" + status_excerpt
-            content = content[:28000]
+                if route_index is not None:
+                    route_start = max(0, route_index - 8)
+                    route_end = min(len(lines), route_index + 55)
+                    runtime_route_excerpts.append("\n".join(
+                        f"{number + 1}: {lines[number]}"
+                        for number in range(route_start, route_end)
+                    ))
+            content = (
+                content[:12000]
+                + "\n\n[QA RUNTIME ROUTES — PRIORITERAT]\n\n"
+                + "\n\n".join(runtime_route_excerpts)
+            )[:28000]
         else:
             content = content[:5500]
 
@@ -475,36 +492,42 @@ def collect_qa_repository_evidence(task):
 
 
 def build_qa_runtime_evidence():
-    """Return non-secret process state, live status endpoint evidence, and the authoritative job row."""
-    status_endpoint = {
-        "status": "unavailable",
-        "reason": "RENDER_EXTERNAL_URL saknas i Render-miljön."
-    }
+    """Capture live JSON evidence for all core JARVIS runtime endpoints."""
     external_url = os.getenv("RENDER_EXTERNAL_URL", "").strip().rstrip("/")
-    if external_url:
-        status_url = external_url + "/api/status"
+    endpoint_paths = (
+        "/api/status",
+        "/api/jarvis/intelligence",
+        "/api/worker/status",
+        "/api/memory/status",
+        "/api/team/status",
+    )
+    endpoints = {}
+    for path in endpoint_paths:
+        if not external_url:
+            endpoints[path] = {"status": "unavailable", "reason": "RENDER_EXTERNAL_URL saknas i Render-miljön."}
+            continue
+        url = external_url + path
         try:
             request = urllib.request.Request(
-                status_url,
+                url,
                 headers={"Accept": "application/json", "User-Agent": "JARVIS-QA-Runtime-Check"}
             )
             with urllib.request.urlopen(request, timeout=12) as response:
                 payload = json.loads(response.read().decode("utf-8"))
-                valid_payload = isinstance(payload, dict) and payload.get("status") == "online"
-                status_endpoint = {
+                valid_payload = isinstance(payload, dict)
+                if path == "/api/status":
+                    valid_payload = valid_payload and payload.get("status") == "online"
+                endpoints[path] = {
                     "status": "verified" if response.status == 200 and valid_payload else "failed",
                     "http_status": response.status,
                     "deployment_commit": str(payload.get("deployment_commit") or "") if isinstance(payload, dict) else "",
                     "version": str(payload.get("version") or "") if isinstance(payload, dict) else "",
-                    "url": status_url
+                    "url": url,
                 }
         except Exception as error:
-            status_endpoint = {
-                "status": "failed",
-                "reason": str(error)[:300],
-                "url": status_url
-            }
+            endpoints[path] = {"status": "failed", "reason": str(error)[:300], "url": url}
 
+    status_endpoint = endpoints.get("/api/status", {"status": "unavailable"})
     job_id = jarvis_worker_state.get("last_job_id")
     job_snapshot = None
     job_snapshot_error = None
@@ -525,6 +548,7 @@ def build_qa_runtime_evidence():
         "app_version": APP_VERSION,
         "captured_at": datetime.now(timezone.utc).isoformat(),
         "status_endpoint": status_endpoint,
+        "endpoints": endpoints,
         "worker": {
             "status": jarvis_worker_state.get("status"),
             "worker_id": jarvis_worker_state.get("worker_id"),
@@ -546,6 +570,7 @@ def build_qa_runtime_evidence():
         "github_configured": bool(GITHUB_TOKEN),
         "github_repository": GITHUB_REPOSITORY
     }
+
 
 def find_existing_github_pull_request(branch):
     """Recover an earlier delivery when a worker retries after creating its PR."""
@@ -1032,11 +1057,7 @@ def create_system_engineer_pull_request(task, outcome, job_id):
     source = base64.b64decode(encoded_source).decode("utf-8")
     source_excerpt = build_source_excerpt(source)
 
-    task_lower = str(task or "").casefold()
-    requires_live_status_check = (
-        "/api/status" in task_lower
-        and any(term in task_lower for term in ("driftsatt", "live", "runtime", "returnerar", "http"))
-    )
+    requires_live_status_check = task_requires_live_runtime_evidence(task)
     runtime_status_check = (outcome.get("qa_evidence") or {}).get("runtime_status_endpoint") or {}
     qa_status_source_verified = bool((outcome.get("qa_evidence") or {}).get("status_route_in_qa_source"))
     runtime_evidence_verified = is_runtime_evidence_verified(
@@ -4807,7 +4828,19 @@ Delegering ger inte tillstånd att köpa, publicera, betala eller utföra extern
                         and '"deployment_commit"' in str(item.get("content") or "")
                         for item in qa_source_evidence.get("files", [])
                     ),
+                    "runtime_routes_in_qa_source": [
+                        path for path in (
+                            "/api/status", "/api/jarvis/intelligence", "/api/worker/status",
+                            "/api/memory/status", "/api/team/status"
+                        ) if any(
+                            item.get("path") == "main.py"
+                            and item.get("status") == "fetched"
+                            and ('@app.get("' + path + '")') in str(item.get("content") or "")
+                            for item in qa_source_evidence.get("files", [])
+                        )
+                    ],
                     "runtime_status_endpoint": qa_runtime_evidence.get("status_endpoint"),
+                    "runtime_endpoints": qa_runtime_evidence.get("endpoints", {}),
                     "runtime_captured_at": qa_runtime_evidence.get("captured_at"),
                     "runtime_job_snapshot": qa_job_snapshot,
                     "runtime_job_snapshot_error": qa_runtime_evidence.get("job_snapshot_error")
@@ -4842,6 +4875,7 @@ Delegering ger inte tillstånd att köpa, publicera, betala eller utföra extern
             post_qa_runtime = await asyncio.to_thread(build_qa_runtime_evidence)
             qa_evidence_summary["post_qa_runtime_captured_at"] = post_qa_runtime.get("captured_at")
             qa_evidence_summary["post_qa_status_endpoint"] = post_qa_runtime.get("status_endpoint")
+            qa_evidence_summary["post_qa_runtime_endpoints"] = post_qa_runtime.get("endpoints", {})
             qa_evidence_summary["post_qa_job_snapshot"] = post_qa_runtime.get("job_snapshot")
             qa_evidence_summary["post_qa_job_snapshot_error"] = post_qa_runtime.get("job_snapshot_error")
         evidence_reconciliation = build_evidence_reconciliation(

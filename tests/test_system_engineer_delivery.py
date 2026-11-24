@@ -165,6 +165,63 @@ class SystemEngineerDeliveryTests(unittest.TestCase):
         self.assertEqual(result["runtime_status"], "blocked")
         self.assertFalse(result["runtime_verified"])
 
+    def test_driftbevis_task_requires_runtime_even_without_the_word_live(self):
+        from system_engineer_delivery import build_evidence_reconciliation
+        task = (
+            "Kontrollera endast tillgängliga driftbevis för /api/status, "
+            "/api/jarvis/intelligence, /api/worker/status, /api/memory/status "
+            "och /api/team/status. Rapportera deployment_commit och worker_running."
+        )
+        result = build_evidence_reconciliation(task, {
+            "source_snapshot_status": "fetched",
+            "source_commit_sha": "1a367f84acb61cb5fe48fc01c658e3d19f0a38a9",
+            "source_files_fetched": ["main.py"],
+            "status_route_in_qa_source": True,
+            "runtime_routes_in_qa_source": [
+                "/api/status", "/api/jarvis/intelligence", "/api/worker/status",
+                "/api/memory/status", "/api/team/status"
+            ],
+            "runtime_status_endpoint": {
+                "status": "verified", "http_status": 200,
+                "deployment_commit": "1a367f84acb6"
+            },
+            "post_qa_status_endpoint": {
+                "status": "verified", "http_status": 200,
+                "deployment_commit": "1a367f84acb6"
+            }
+        })
+        self.assertTrue(result["runtime_required"])
+        self.assertFalse(result["runtime_verified"])
+        self.assertEqual(result["runtime_status"], "blocked")
+        self.assertEqual(len(result["endpoint_captures"]), 8)
+
+    def test_evidence_reconciliation_requires_each_requested_endpoint_twice(self):
+        from system_engineer_delivery import build_evidence_reconciliation
+        task = "Verifiera /api/status live samt /api/worker/status och /api/team/status"
+        evidence = {
+            "source_snapshot_status": "fetched",
+            "source_commit_sha": "1a367f84acb61cb5fe48fc01c658e3d19f0a38a9",
+            "source_files_fetched": ["main.py"],
+            "status_route_in_qa_source": True,
+            "runtime_routes_in_qa_source": ["/api/status", "/api/worker/status", "/api/team/status"],
+            "runtime_status_endpoint": {"status": "verified", "http_status": 200, "deployment_commit": "1a367f84acb6"},
+            "post_qa_status_endpoint": {"status": "verified", "http_status": 200, "deployment_commit": "1a367f84acb6"},
+            "runtime_endpoints": {
+                "/api/worker/status": {"status": "verified", "http_status": 200},
+                "/api/team/status": {"status": "verified", "http_status": 200}
+            },
+            "post_qa_runtime_endpoints": {
+                "/api/worker/status": {"status": "verified", "http_status": 200},
+                "/api/team/status": {"status": "verified", "http_status": 200}
+            }
+        }
+        result = build_evidence_reconciliation(task, evidence)
+        self.assertTrue(result["runtime_verified"])
+        evidence["post_qa_runtime_endpoints"]["/api/team/status"]["http_status"] = 503
+        result = build_evidence_reconciliation(task, evidence)
+        self.assertFalse(result["runtime_verified"])
+        self.assertEqual(result["runtime_status"], "blocked")
+
     def test_evidence_reconciliation_marks_unrelated_tasks_not_required(self):
         from system_engineer_delivery import build_evidence_reconciliation
         result = build_evidence_reconciliation("Bygg en inköpslista", {})
