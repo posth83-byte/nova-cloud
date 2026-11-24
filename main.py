@@ -1044,6 +1044,7 @@ def create_system_engineer_pull_request(task, outcome, job_id):
                     + "\n\nSYSTEM_ENGINEER-BEDÖMNING:\n" + str(patch_spec.get("summary") or "")[:2500]
                     + "\n\nVERIFIERAD BAS-COMMIT:\n" + base_sha
                     + "\n\nKÄLLKODSUTDRAG:\n" + source_excerpt
+                    + "\n\nVERIFIERAT QA-UNDERLAG:\n" + json.dumps(outcome.get("qa_evidence") or {}, ensure_ascii=False)[:6000]
                 )
                 noop_review = generate_independent_review(
                     noop_review_prompt,
