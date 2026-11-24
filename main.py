@@ -922,9 +922,9 @@ def create_system_engineer_pull_request(task, outcome, job_id):
         current_patch_prompt = patch_prompt
         if review_feedback:
             current_patch_prompt += (
-                "\\n\\nOBLIGATORISK RÄTTNING EFTER OBEROENDE GRANSKNING:\\n"
+                "\n\nOBLIGATORISK RÄTTNING EFTER OBEROENDE GRANSKNING:\n"
                 + review_feedback
-                + "\\nRätta samtliga blockerare utan att vidga ändringens omfattning. "
+                + "\nRätta samtliga blockerare utan att vidga ändringens omfattning. "
                 + "Om en säker rättning inte går, returnera tom changes-lista."
             )
 
@@ -939,8 +939,8 @@ def create_system_engineer_pull_request(task, outcome, job_id):
         if not applied or updated_source == source:
             raise RuntimeError("SYSTEM_ENGINEER skapade ingen verifierbar kodändring i main.py.")
 
-        diff_text = "\\n\\n".join(
-            "FIL: main.py\\nFÖRE:\\n" + item["old_text"][:5000] + "\\nEFTER:\\n" + item["new_text"][:7000]
+        diff_text = "\n\n".join(
+            "FIL: main.py\nFÖRE:\n" + item["old_text"][:5000] + "\nEFTER:\n" + item["new_text"][:7000]
             for item in applied
         )
         qa_prompt = (
@@ -948,10 +948,10 @@ def create_system_engineer_pull_request(task, outcome, job_id):
             "bakåtkompatibilitet, felhantering och om ändringen är rimligt avgränsad. "
             "Du har inte kört koden. Godkänn inte en patch som tar bort säkerhetsgrindar, exponerar hemligheter, "
             "gör osäkra externa åtgärder eller saknar tydlig koppling till uppdraget. "
-            "Returnera ENDAST JSON: {\\"passed\\":true,\\"blockers\\":[],\\"risks\\":[],\\"test_suggestions\\":[]} .\\n\\n"
-            + "UPPDRAG:\\n" + str(task)[:5000]
-            + "\\n\\nSYSTEM_ENGINEER-ANALYS:\\n" + str(engineer.get("reply") or "")[:5000]
-            + "\\n\\nKODPATCH:\\n" + diff_text
+            "Returnera ENDAST JSON: {\"passed\":true,\"blockers\":[],\"risks\":[],\"test_suggestions\":[]} .\n\n"
+            + "UPPDRAG:\n" + str(task)[:5000]
+            + "\n\nSYSTEM_ENGINEER-ANALYS:\n" + str(engineer.get("reply") or "")[:5000]
+            + "\n\nKODPATCH:\n" + diff_text
         )
         qa = generate_independent_review(
             qa_prompt,
