@@ -1035,15 +1035,15 @@ def create_system_engineer_pull_request(task, outcome, job_id):
             if isinstance(patch_spec, dict) and patch_spec.get("changes") == []:
                 noop_review_prompt = (
                     "Bedöm oberoende om användarens uppdrag redan är uppfyllt av den befintliga koden på den angivna bas-committen. "
-                    "Godkänn endast en verklig no-op: den befintliga implementationen uppfyller redan uppdraget och ingen kodändring behövs. "
+                    "Godkänn endast en verklig no-op: befintlig implementation uppfyller redan uppdraget och ingen kodändring behövs. "
                     "Om uppdraget kräver runtime- eller driftsbevis som saknas, om en ändring behövs eller om underlaget är otillräckligt ska du underkänna. "
                     "Förväxla aldrig att en säker patch inte kan skapas med att ingen patch behövs. "
-                    "Returnera ENDAST JSON: {\\"passed\\":true,\\"no_change_needed\\":true,\\"blockers\\":[],\\"reason\\":\\"...\\"}. "
-                    "Vid blockerare ska passed=false, no_change_needed=false och blockers beskriva hindret.\\n\\n"
-                    + "UPPDRAG:\\n" + str(task)[:5000]
-                    + "\\n\\nSYSTEM_ENGINEER-BEDÖMNING:\\n" + str(patch_spec.get("summary") or "")[:2500]
-                    + "\\n\\nVERIFIERAD BAS-COMMIT:\\n" + base_sha
-                    + "\\n\\nKÄLLKODSUTDRAG:\\n" + source_excerpt
+                    "Returnera ENDAST JSON med fälten passed, no_change_needed, blockers och reason. "
+                    "Godkänd no-op kräver passed=true, no_change_needed=true och blockers=[]. Vid hinder ska passed=false.\n\n"
+                    + "UPPDRAG:\n" + str(task)[:5000]
+                    + "\n\nSYSTEM_ENGINEER-BEDÖMNING:\n" + str(patch_spec.get("summary") or "")[:2500]
+                    + "\n\nVERIFIERAD BAS-COMMIT:\n" + base_sha
+                    + "\n\nKÄLLKODSUTDRAG:\n" + source_excerpt
                 )
                 noop_review = generate_independent_review(
                     noop_review_prompt,
