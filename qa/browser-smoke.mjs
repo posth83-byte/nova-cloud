@@ -307,10 +307,20 @@ try {
           await partner.route(/\/api\/shopping-list(?:\/.*)?$/, async route => {
             const requestUrl = new URL(route.request().url());
             const method = route.request().method();
+            if (route.request().headers()["authorization"] !== "Bearer " + token) {
+              partnerFailures.push("Partner request did not send the shared bearer token.");
+            }
             if (requestUrl.pathname === "/api/shopping-list" && method === "GET") {
               return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({
                 list_id: "shared-list-1", updated_at: updatedAt, items: sharedItems
               }) });
+            }
+            if (requestUrl.pathname === "/api/shopping-list/items" && method === "POST") {
+              const body = route.request().postDataJSON();
+              const item = { ...body, id: "item-" + (++itemSequence), done: false, created_at: updatedAt, updated_at: updatedAt };
+              sharedItems.unshift(item);
+              updatedAt = new Date(Date.parse(updatedAt) + 1000).toISOString();
+              return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ item }) });
             }
             if (requestUrl.pathname.startsWith("/api/shopping-list/items/") && method === "PATCH") {
               const id = requestUrl.pathname.split("/").pop();
@@ -318,6 +328,12 @@ try {
               if (item) Object.assign(item, route.request().postDataJSON());
               updatedAt = new Date(Date.parse(updatedAt) + 1000).toISOString();
               return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ item }) });
+            }
+            if (requestUrl.pathname.startsWith("/api/shopping-list/items/") && method === "DELETE") {
+              const id = requestUrl.pathname.split("/").pop();
+              sharedItems = sharedItems.filter(entry => entry.id !== id);
+              updatedAt = new Date(Date.parse(updatedAt) + 1000).toISOString();
+              return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ deleted: true }) });
             }
             return route.fulfill({ status: 404, contentType: "application/json", body: JSON.stringify({ detail: "Unhandled partner test route" }) });
           });
@@ -345,12 +361,25 @@ try {
           console.log("SHOPPING QA DEBUG OWNER", JSON.stringify({mainReadCount, ownerSyncDebug, sharedItems}));
           if (ownerSyncDebug.doneName !== "Mjölk") localFailures.push("Owner did not receive partner checkbox update within one poll interval.");
 
+          await partner.locator("#itemInput").fill("Ägg");
+          await partner.locator('#addForm button[type="submit"]').click();
+          await page.bringToFront();
+          console.log("SHOPPING QA: waiting for owner to see partner-added item");
+          await page.waitForFunction(() => document.querySelector("#list")?.innerText.includes("Ägg"), null, { timeout: 7000 });
+
           await page.locator("#itemInput").fill("Bröd");
           await page.locator('#addForm button[type="submit"]').click();
           await partner.bringToFront();
-          console.log("SHOPPING QA: waiting for partner to see new item");
+          console.log("SHOPPING QA: waiting for partner to see owner-added item");
           await partner.waitForFunction(() => document.querySelector("#list")?.innerText.includes("Bröd"), null, { timeout: 7000 });
+          const breadDelete = partner.locator(".item").filter({ hasText: "Bröd" }).locator("[data-del]");
+          await breadDelete.click();
+          await page.bringToFront();
+          console.log("SHOPPING QA: waiting for owner to see partner deletion");
+          await page.waitForFunction(() => !document.querySelector("#list")?.innerText.includes("Bröd"), null, { timeout: 7000 });
+
           await page.locator("#clear").click();
+          await partner.bringToFront();
           console.log("SHOPPING QA: waiting for partner to see completed item removed");
           await partner.waitForFunction(() => !document.querySelector("#list")?.innerText.includes("Mjölk"), null, { timeout: 7000 });
           if (partnerFailures.length) localFailures.push(...partnerFailures);
