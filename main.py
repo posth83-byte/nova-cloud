@@ -26,7 +26,7 @@ from job_dedup import normalize_job_task, job_task_fingerprint, is_duplicate_job
 from jarvis_worker_persistence import (
     persisted_job_matches, final_qa_readback_matches, build_worker_retry_update
 )
-from system_engineer_delivery import apply_exact_text_patches, build_source_excerpt, select_independent_review_provider, is_verified_noop_review, is_runtime_evidence_verified, normalize_patch_spec, build_evidence_reconciliation, task_requires_live_runtime_evidence
+from system_engineer_delivery import apply_exact_text_patches, build_source_excerpt, select_independent_review_provider, is_verified_noop_review, is_runtime_evidence_verified, normalize_patch_spec, build_evidence_reconciliation, task_requires_live_runtime_evidence, has_route_decorator
 from video_engine import router as video_router
 from runway_engine import router as runway_router
 from kling_engine import router as kling_router
@@ -4836,8 +4836,8 @@ Delegering ger inte tillstånd att köpa, publicera, betala eller utföra extern
                         ) if any(
                             item.get("path") == "main.py"
                             and item.get("status") == "fetched"
-                            and re.search(
-                                r'(?m)^\s*@app\.get\("' + re.escape(path) + r'"\)\s*
+                            and has_route_decorator(str(item.get("content") or ""), path)
+                            for item in qa_source_evidence.get("files", [])
                         )
                     ],
                     "runtime_status_endpoint": qa_runtime_evidence.get("status_endpoint"),
