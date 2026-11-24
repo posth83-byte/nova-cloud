@@ -67,7 +67,7 @@ try {
   await owner.waitForFunction(() => !!window.__sharedPayload?.url, null, { timeout: 15000 });
   const shareUrl = await owner.evaluate(() => window.__sharedPayload.url);
   const parsedShareUrl = new URL(shareUrl);
-  const tokenMatch = parsedShareUrl.hash.match(/(?:^|&)list=([^&]+)/);
+  const tokenMatch = parsedShareUrl.hash.match(/(?:#|&)list=([^&]+)/);
   if (!tokenMatch) throw new Error("Share link did not contain the shared-list token.");
   token = decodeURIComponent(tokenMatch[1]);
   if (await owner.evaluate(() => localStorage.getItem("shoppingListToken")) !== token) {
