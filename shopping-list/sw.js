@@ -1,4 +1,4 @@
-const CACHE="shopping-list-v2";
+const CACHE="shopping-list-v3";
 const APP_FILES=["./","./index.html","./manifest.webmanifest","./icon.svg"];
 self.addEventListener("install",event=>event.waitUntil((async()=>{
  const cache=await caches.open(CACHE);
