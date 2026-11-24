@@ -5,6 +5,64 @@ from system_engineer_delivery import select_independent_review_provider
 
 
 class SystemEngineerDeliveryTests(unittest.TestCase):
+
+    def test_report_only_qa_passes_when_out_of_scope_limits_are_documented(self):
+        from system_engineer_delivery import normalize_report_only_quality_review
+        task = (
+            "QA-rapport: sammanställ resultat från GitHub Actions live-test SUCCESS, "
+            "HTTP 200 och 12/12 viewport-kontroller. Ingen ny testkörning, inga kodändringar "
+            "och ingen PR. Redovisa begränsningarna."
+        )
+        review = {
+            "passed": False,
+            "gaps": [
+                "Fysisk iPhone/Safari har inte testats",
+                "Offline-synk har ej verifierats",
+            ],
+            "final_report": (
+                "Kärnfunktionaliteten för online-synk passerade i Chromium. "
+                "Safari och offline har inte testats."
+            ),
+            "repair_instructions": {"QA_ENGINEER": "Kör Safari och offline."},
+        }
+        normalized = normalize_report_only_quality_review(review, task)
+        self.assertTrue(normalized["passed"])
+        self.assertEqual(normalized["gaps"], [])
+        self.assertEqual(normalized["repair_instructions"], {})
+        self.assertEqual(normalized["scope_normalization"], "report_only_documented_limitations")
+
+    def test_report_only_qa_does_not_hide_unrelated_findings(self):
+        from system_engineer_delivery import normalize_report_only_quality_review
+        task = (
+            "QA-rapport: GitHub Actions live-test SUCCESS, HTTP 200, 12/12. "
+            "Ingen ny testkörning, inga kodändringar och ingen PR."
+        )
+        review = {
+            "passed": False,
+            "gaps": [
+                "Safari har inte testats",
+                "Offline har inte testats",
+                "Delningsknappen fungerar inte på mobil",
+            ],
+            "final_report": (
+                "Online-synk passerade i Chromium. Safari och offline har inte testats. "
+                "Delningsknappen fungerar inte på mobil."
+            ),
+        }
+        normalized = normalize_report_only_quality_review(review, task)
+        self.assertFalse(normalized["passed"])
+        self.assertEqual(normalized["gaps"], review["gaps"])
+
+    def test_report_only_normalization_requires_explicit_report_only_scope(self):
+        from system_engineer_delivery import normalize_report_only_quality_review
+        review = {
+            "passed": False,
+            "gaps": ["Safari har inte testats"],
+            "final_report": "Online-synk passerade i Chromium. Safari har inte testats.",
+        }
+        task = "Bygg och verifiera en komplett app. GitHub Actions SUCCESS HTTP 200 12/12."
+        self.assertFalse(normalize_report_only_quality_review(review, task)["passed"])
+
     def test_runtime_quality_review_ignores_secondary_commit_false_positive(self):
         from system_engineer_delivery import normalize_runtime_quality_review
         evidence = {
