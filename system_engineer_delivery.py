@@ -150,6 +150,40 @@ def task_requires_live_runtime_evidence(task: str) -> bool:
     )
 
 
+
+def summarize_runtime_payload(path: str, payload: dict) -> dict:
+    """Keep only non-secret operational fields from a live JARVIS status payload."""
+    fields = {
+        "/api/status": (
+            "status", "version", "deployment_commit", "memory_core",
+            "memory_items", "memory_storage", "intelligence_core",
+        ),
+        "/api/jarvis/intelligence": (
+            "assistant", "status", "version", "core", "capabilities",
+            "specialists", "project_registry", "memory",
+        ),
+        "/api/worker/status": (
+            "status", "worker_running", "last_job_status", "last_poll_at",
+            "supabase_configured", "push_configured", "queue_storage",
+            "github_configured", "github_delivery_mode",
+        ),
+        "/api/memory/status": (
+            "status", "items", "last_updated", "storage",
+            "memory_intelligence", "retrieval",
+        ),
+        "/api/team/status": (
+            "status", "job_status", "phase", "active", "completed",
+            "result_saved", "source",
+        ),
+    }
+    if not isinstance(payload, dict):
+        return {}
+    return {
+        key: payload[key]
+        for key in fields.get(str(path or ""), ())
+        if key in payload
+    }
+
 def build_evidence_reconciliation(task: str, qa_evidence: dict, specialist_results=None) -> dict:
     """Reconcile every explicitly requested endpoint against source and two runtime captures."""
     task_text = str(task or "").casefold()
