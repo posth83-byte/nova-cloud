@@ -1,4 +1,4 @@
 {
-  "task": "READ-ONLY ACCEPTANSTEST AV JARVIS JOBBKÖ OCH TEAMFLÖDE EFTER PR #97. Detta är en ren QA-kontroll, inte ett utvecklingsuppdrag. Kontrollera om du kan genomföra ett riktigt JARVIS-uppdrag via den permanenta jobbköen och slutföra det. Välj QA_ENGINEER för kontrollen; välj inte SYSTEM_ENGINEER, WEBMASTER, NOVA eller GAME_DEVELOPER. Kontrollera endast tillgängliga driftbevis för /api/status, /api/jarvis/intelligence, /api/worker/status, /api/memory/status och /api/team/status. Rapportera tydligt vad som faktiskt kunde verifieras, aktuell deployment_commit om den är tillgänglig, worker_running, köstatus och eventuella hinder. Gör INGA kodändringar, skapa INGA PR:ar, gör INGA driftsättningar, skapa INGA videor, använd INGA betalda externa tjänster och utför INGA externa åtgärder. Om du saknar möjlighet att läsa en endpoint ska du säga det uttryckligen och aldrig hitta på ett resultat. Slutför uppdraget med en kort QA-rapport.",
+  "task": "",
   "history": []
 }
