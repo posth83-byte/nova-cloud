@@ -23,6 +23,7 @@ def build_source_excerpt(source: str, max_chars: int = 28000) -> str:
         ('@app.post("/api/jarvis/jobs")', 115),
         ('@app.post("/api/jarvis/delegate")', 145),
         ("SYSTEM_ENGINEER_PROMPT =", 115),
+        ('@app.get("/api/status")', 100),
     )
     windows = []
     for marker, size in markers:

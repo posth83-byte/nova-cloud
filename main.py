@@ -3895,6 +3895,7 @@ async def status():
     return {
         "status": "online",
         "assistant": "JARVIS",
+        "deployment_commit": os.getenv("RENDER_GIT_COMMIT", "")[:12],
         "nova": "online",
         "jarvis": "online",
         "gemini_configured": bool(GEMINI_API_KEY),
