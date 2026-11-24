@@ -4552,9 +4552,24 @@ Delegering ger inte tillstånd att köpa, publicera, betala eller utföra extern
                     + next((item["reply"][:6000] for item in results if item["target"] == target), "")
                     + "\n\nÖVRIGA SPECIALISTERS FÖRSLAG:\n" + peer_material
                 )
-                review = await asyncio.to_thread(
-                    generate_reply, review_prompt, prompts[target], max_tokens=5000
+                initial_analysis = next(
+                    (item for item in results if item["target"] == target), {}
                 )
+                try:
+                    review = await asyncio.to_thread(
+                        generate_independent_review,
+                        review_prompt,
+                        prompts[target],
+                        initial_analysis.get("engine"),
+                        max_tokens=5000,
+                        json_mode=False
+                    )
+                except Exception as review_error:
+                    review = {
+                        "reply": "Oberoende kollegial granskning kunde inte köras: "
+                                 + str(review_error)[:500],
+                        "engine": "unavailable"
+                    }
                 council_reviews.append({
                     "target": target, "reply": review["reply"], "engine": review["engine"]
                 })
@@ -4642,8 +4657,12 @@ Visa aldrig råkod, kodblock eller interna granskningsanteckningar.
         final_reply = summary["reply"]
         try:
             quality = await asyncio.to_thread(
-                generate_reply, quality_input, quality_prompt,
-                max_tokens=3500, json_mode=True
+                generate_independent_review,
+                quality_input,
+                quality_prompt,
+                summary.get("engine"),
+                max_tokens=3500,
+                json_mode=True
             )
             quality_data = extract_json(quality["reply"])
             # En enda självrättningsrunda: återöppna endast leveranser där QA hittat en konkret brist.
