@@ -28,7 +28,7 @@ const API_BASE="https://nova-cloud-c4t9.onrender.com";
 const categories=["Allt","Frukt & grönt","Mejeri","Kött & fisk","Skafferi","Frys","Hushåll","Övrigt"];
 let items=JSON.parse(localStorage.getItem("shoppingItems")||"[]"),filter="Allt";
 let listToken=localStorage.getItem("shoppingListToken")||"",lastUpdated=null,pollBusy=false;
-let knownItemIds=null;\nlet knownItemIds=null,suppressNewItemNotifications=false;
+let knownItemIds=null;
 const $=id=>document.getElementById(id);
 const incoming=new URLSearchParams(location.hash.slice(1)).get("list");
 if(incoming){listToken=incoming;localStorage.setItem("shoppingListToken",listToken);history.replaceState(null,"",location.pathname+location.search)}
@@ -141,7 +141,8 @@ function notifyAddedItem(item){
 }
 $("notify").onclick=enableNotifications;
 if(localStorage.getItem("shoppingNotificationsEnabled")==="yes"&&"Notification" in window&&Notification.permission==="granted")$("notify").setAttribute("aria-pressed","true");
-\nfunction toast(s){$("toast").textContent=s;$("toast").classList.add("show");setTimeout(()=>$("toast").classList.remove("show"),2200)}
+
+function toast(s){$("toast").textContent=s;$("toast").classList.add("show");setTimeout(()=>$("toast").classList.remove("show"),2200)}
 render();
 if(!navigator.standalone&&!window.matchMedia("(display-mode: standalone)").matches&&/iPhone|iPad/.test(navigator.userAgent))$("install").style.display="block";
 if("serviceWorker" in navigator)navigator.serviceWorker.register("./sw.js").catch(()=>{});
