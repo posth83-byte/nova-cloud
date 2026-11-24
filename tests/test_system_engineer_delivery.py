@@ -5,6 +5,19 @@ from system_engineer_delivery import select_independent_review_provider
 
 
 class SystemEngineerDeliveryTests(unittest.TestCase):
+    def test_route_detector_ignores_string_mentions_and_requires_real_decorator(self):
+        from system_engineer_delivery import has_route_decorator
+        decoy = 'markers = (\n    \'@app.get("/api/status")\',\n)'
+        self.assertFalse(has_route_decorator(decoy, "/api/status"))
+        self.assertTrue(has_route_decorator(
+            '4015: @app.get("/api/status")',
+            "/api/status"
+        ))
+        self.assertFalse(has_route_decorator(
+            '4015: @app.post("/api/status")',
+            "/api/status"
+        ))
+
     def test_applies_one_exact_replacement(self):
         updated, applied = apply_exact_text_patches(
             "alpha = 1\nbeta = 2\n",

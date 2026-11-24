@@ -4,6 +4,22 @@ from __future__ import annotations
 
 from typing import Iterable
 
+def has_route_decorator(source: str, path: str) -> bool:
+    """Match an actual FastAPI GET decorator, not a string or comment mention."""
+    route_path = str(path or "").strip()
+    if not route_path.startswith("/") or '"' in route_path:
+        return False
+    expected = f'@app.get("{route_path}")'
+    for line in str(source or "").splitlines():
+        candidate = line.strip()
+        if candidate == expected:
+            return True
+        prefix, separator, remainder = candidate.partition(": ")
+        if separator and prefix.isdigit() and remainder.strip() == expected:
+            return True
+    return False
+
+
 
 def select_independent_review_provider(generation_engine: str, gemini_available: bool, openrouter_available: bool):
     """Choose a different provider for code review; never silently self-review."""

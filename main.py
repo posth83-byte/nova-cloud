@@ -26,7 +26,7 @@ from job_dedup import normalize_job_task, job_task_fingerprint, is_duplicate_job
 from jarvis_worker_persistence import (
     persisted_job_matches, final_qa_readback_matches, build_worker_retry_update
 )
-from system_engineer_delivery import apply_exact_text_patches, build_source_excerpt, select_independent_review_provider, is_verified_noop_review, is_runtime_evidence_verified, normalize_patch_spec, build_evidence_reconciliation, task_requires_live_runtime_evidence
+from system_engineer_delivery import apply_exact_text_patches, build_source_excerpt, select_independent_review_provider, is_verified_noop_review, is_runtime_evidence_verified, normalize_patch_spec, build_evidence_reconciliation, task_requires_live_runtime_evidence, has_route_decorator
 from video_engine import router as video_router
 from runway_engine import router as runway_router
 from kling_engine import router as kling_router
@@ -446,9 +446,10 @@ def collect_qa_repository_evidence(task):
             )
             runtime_route_excerpts = []
             for route_path in runtime_route_paths:
+                route_decorator = f'@app.get("{route_path}")'
                 route_index = next(
                     (index for index, line in enumerate(lines)
-                     if f'@app.get("{route_path}")' in line),
+                     if line.strip() == route_decorator),
                     None
                 )
                 if route_index is not None:
@@ -4824,7 +4825,7 @@ Delegering ger inte tillstånd att köpa, publicera, betala eller utföra extern
                     "status_route_in_qa_source": any(
                         item.get("path") == "main.py"
                         and item.get("status") == "fetched"
-                        and '@app.get("/api/status")' in str(item.get("content") or "")
+                        and has_route_decorator(str(item.get("content") or ""), "/api/status")
                         and '"deployment_commit"' in str(item.get("content") or "")
                         for item in qa_source_evidence.get("files", [])
                     ),
@@ -4835,7 +4836,7 @@ Delegering ger inte tillstånd att köpa, publicera, betala eller utföra extern
                         ) if any(
                             item.get("path") == "main.py"
                             and item.get("status") == "fetched"
-                            and ('@app.get("' + path + '")') in str(item.get("content") or "")
+                            and has_route_decorator(str(item.get("content") or ""), path)
                             for item in qa_source_evidence.get("files", [])
                         )
                     ],
