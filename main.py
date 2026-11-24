@@ -401,6 +401,7 @@ def collect_qa_repository_evidence(task):
                 "async def persist_jarvis_job_progress",
                 "async def jarvis_job_worker_loop",
                 "persisted_rows, _",
+                '@app.get("/api/status")',
                 "@app.get(\"/api/worker/status\")",
                 "@app.get(\"/api/team/status\")",
                 "@app.post(\"/api/jarvis/delegate\")",
@@ -433,6 +434,17 @@ def collect_qa_repository_evidence(task):
                     f"{number + 1}: {lines[number]}" for number in range(start, end)
                 ))
             content = "\n\n[QA SOURCE EXCERPT]\n\n".join(excerpts)
+            status_route_index = next(
+                (index for index, line in enumerate(lines) if '@app.get("/api/status")' in line),
+                None
+            )
+            if status_route_index is not None:
+                status_start = max(0, status_route_index - 8)
+                status_end = min(len(lines), status_route_index + 90)
+                status_excerpt = "\n".join(
+                    f"{number + 1}: {lines[number]}" for number in range(status_start, status_end)
+                )
+                content = content[:21000] + "\n\n[QA STATUS ROUTE — PRIORITERAT]\n\n" + status_excerpt
             content = content[:28000]
         else:
             content = content[:5500]
@@ -463,7 +475,36 @@ def collect_qa_repository_evidence(task):
 
 
 def build_qa_runtime_evidence():
-    """Return non-secret process state and the authoritative live Supabase job row."""
+    """Return non-secret process state, live status endpoint evidence, and the authoritative job row."""
+    status_endpoint = {
+        "status": "unavailable",
+        "reason": "RENDER_EXTERNAL_URL saknas i Render-miljön."
+    }
+    external_url = os.getenv("RENDER_EXTERNAL_URL", "").strip().rstrip("/")
+    if external_url:
+        status_url = external_url + "/api/status"
+        try:
+            request = urllib.request.Request(
+                status_url,
+                headers={"Accept": "application/json", "User-Agent": "JARVIS-QA-Runtime-Check"}
+            )
+            with urllib.request.urlopen(request, timeout=12) as response:
+                payload = json.loads(response.read().decode("utf-8"))
+                valid_payload = isinstance(payload, dict) and payload.get("status") == "online"
+                status_endpoint = {
+                    "status": "verified" if response.status == 200 and valid_payload else "failed",
+                    "http_status": response.status,
+                    "deployment_commit": str(payload.get("deployment_commit") or "") if isinstance(payload, dict) else "",
+                    "version": str(payload.get("version") or "") if isinstance(payload, dict) else "",
+                    "url": status_url
+                }
+        except Exception as error:
+            status_endpoint = {
+                "status": "failed",
+                "reason": str(error)[:300],
+                "url": status_url
+            }
+
     job_id = jarvis_worker_state.get("last_job_id")
     job_snapshot = None
     job_snapshot_error = None
@@ -483,6 +524,7 @@ def build_qa_runtime_evidence():
     return {
         "app_version": APP_VERSION,
         "captured_at": datetime.now(timezone.utc).isoformat(),
+        "status_endpoint": status_endpoint,
         "worker": {
             "status": jarvis_worker_state.get("status"),
             "worker_id": jarvis_worker_state.get("worker_id"),
@@ -990,6 +1032,29 @@ def create_system_engineer_pull_request(task, outcome, job_id):
     source = base64.b64decode(encoded_source).decode("utf-8")
     source_excerpt = build_source_excerpt(source)
 
+    task_lower = str(task or "").casefold()
+    requires_live_status_check = (
+        "/api/status" in task_lower
+        and any(term in task_lower for term in ("driftsatt", "live", "runtime", "returnerar", "http"))
+    )
+    runtime_status_check = (outcome.get("qa_evidence") or {}).get("runtime_status_endpoint") or {}
+    qa_status_source_verified = bool((outcome.get("qa_evidence") or {}).get("status_route_in_qa_source"))
+    if requires_live_status_check and (
+        not qa_status_source_verified
+        or runtime_status_check.get("status") != "verified"
+        or runtime_status_check.get("deployment_commit") != base_sha[:12]
+    ):
+        return {
+            "status": "blocked",
+            "reason": (
+                "No-op eller leverans stoppades: QA saknar verifierat källutdrag för /api/status "
+                "eller ett HTTP 200-svar vars deployment_commit matchar bas-committen."
+            ),
+            "repository_changes": False,
+            "published": False,
+            "verification": "Krav på livebevis uppfylldes inte; ingen kodändring eller PR skapades."
+        }
+
     patch_prompt = (
         "Du är SYSTEM_ENGINEER:s implementeringsmotor i JARVIS. Gör en liten, säker och konkret kodändring "
         "i den befintliga backendfilen main.py utifrån uppdraget och SYSTEM_ENGINEER:s analys. "
@@ -1068,7 +1133,16 @@ def create_system_engineer_pull_request(task, outcome, job_id):
                     "commit_sha": base_sha,
                     "pull_request_number": None,
                     "pull_request_url": None,
-                    "validation": {"patches": 0, "independent_static_review": "passed", "no_op": True},
+                    "validation": {
+                        "patches": 0,
+                        "independent_static_review": "passed",
+                        "no_op": True,
+                        "runtime_status": (
+                            "passed" if runtime_status_check.get("status") == "verified"
+                            and runtime_status_check.get("deployment_commit") == base_sha[:12]
+                            else "not_required"
+                        )
+                    },
                     "repository_changes": False,
                     "published": False,
                     "verification": "Oberoende granskning bekräftade att befintlig kod redan uppfyller uppdraget; ingen PR eller kodändring behövdes."
@@ -1363,6 +1437,10 @@ async def jarvis_job_worker_loop():
                         )
                     elif delivery.get("status") == "verified_noop":
                         outcome["delivery_level"] = "verified_noop"
+                        outcome["implementation_verified"] = True
+                        outcome["runtime_verified"] = bool(
+                            delivery.get("validation", {}).get("runtime_status") == "passed"
+                        )
                         outcome["repository_changes"] = False
                         outcome["published"] = False
                         outcome["reply"] = (
@@ -4691,6 +4769,14 @@ Delegering ger inte tillstånd att köpa, publicera, betala eller utföra extern
                         item.get("path") for item in qa_source_evidence.get("files", [])
                         if item.get("status") == "fetched"
                     ],
+                    "status_route_in_qa_source": any(
+                        item.get("path") == "main.py"
+                        and item.get("status") == "fetched"
+                        and '@app.get("/api/status")' in str(item.get("content") or "")
+                        and '"deployment_commit"' in str(item.get("content") or "")
+                        for item in qa_source_evidence.get("files", [])
+                    ),
+                    "runtime_status_endpoint": qa_runtime_evidence.get("status_endpoint"),
                     "runtime_captured_at": qa_runtime_evidence.get("captured_at"),
                     "runtime_job_snapshot": qa_job_snapshot,
                     "runtime_job_snapshot_error": qa_runtime_evidence.get("job_snapshot_error")
@@ -4724,6 +4810,7 @@ Delegering ger inte tillstånd att köpa, publicera, betala eller utföra extern
         if qa_evidence_summary:
             post_qa_runtime = await asyncio.to_thread(build_qa_runtime_evidence)
             qa_evidence_summary["post_qa_runtime_captured_at"] = post_qa_runtime.get("captured_at")
+            qa_evidence_summary["post_qa_status_endpoint"] = post_qa_runtime.get("status_endpoint")
             qa_evidence_summary["post_qa_job_snapshot"] = post_qa_runtime.get("job_snapshot")
             qa_evidence_summary["post_qa_job_snapshot_error"] = post_qa_runtime.get("job_snapshot_error")
 
