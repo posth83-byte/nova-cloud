@@ -90,10 +90,14 @@ class SystemEngineerDeliveryTests(unittest.TestCase):
             '@app.post("/api/jarvis/jobs")\n'
             "def create_job():\n"
             "    return True\n"
+            '@app.get("/api/status")\n'
+            "async def status():\n"
+            "    return {\"status\": \"online\"}\n"
         )
         excerpt = build_source_excerpt(source)
         self.assertIn("async def jarvis_job_worker_loop", excerpt)
         self.assertIn('/api/jarvis/jobs', excerpt)
+        self.assertIn('/api/status', excerpt)
 
 
 if __name__ == "__main__":
