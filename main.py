@@ -909,44 +909,77 @@ def create_system_engineer_pull_request(task, outcome, job_id):
         + "\n\nVERIFIERADE KÄLLKODSUTDRAG FRÅN BAS-COMMIT " + base_sha + ":\n"
         + source_excerpt
     )
-    generated = generate_reply(
-        patch_prompt,
-        "Du är en senior Python/FastAPI-utvecklare. Följ patchformatet exakt.",
-        max_tokens=7000,
-        json_mode=True
-    )
-    patch_spec = extract_json(generated.get("reply") or "")
-    updated_source, applied = apply_exact_text_patches(source, patch_spec.get("changes"))
-    if not applied or updated_source == source:
-        raise RuntimeError("SYSTEM_ENGINEER skapade ingen verifierbar kodändring i main.py.")
+    review_feedback = ""
+    qa_data = None
+    generated = None
+    patch_spec = None
+    updated_source = source
+    applied = []
 
-    diff_text = "\n\n".join(
-        "FIL: main.py\nFÖRE:\n" + item["old_text"][:5000] + "\nEFTER:\n" + item["new_text"][:7000]
-        for item in applied
-    )
-    qa_prompt = (
-        "Granska den faktiska kodpatchen oberoende mot uppdraget. Bedöm korrekthet, säkerhet, "
-        "bakåtkompatibilitet, felhantering och om ändringen är rimligt avgränsad. "
-        "Du har inte kört koden. Godkänn inte en patch som tar bort säkerhetsgrindar, exponerar hemligheter, "
-        "gör osäkra externa åtgärder eller saknar tydlig koppling till uppdraget. "
-        "Returnera ENDAST JSON: {\"passed\":true,\"blockers\":[],\"risks\":[],\"test_suggestions\":[]}.\n\n"
-        + "UPPDRAG:\n" + str(task)[:5000]
-        + "\n\nSYSTEM_ENGINEER-ANALYS:\n" + str(engineer.get("reply") or "")[:5000]
-        + "\n\nKODPATCH:\n" + diff_text
-    )
-    qa = generate_independent_review(
-        qa_prompt,
-        "Du är en oberoende senior kodgranskare. Du får inte anta att utvecklarens analys är korrekt. "
-        "Kontrollera patchen mot uppdraget och leta aktivt efter fel, säkerhetsproblem och saknade krav. "
-        "Påstå aldrig att du har kört tester.",
-        generated.get("engine"),
-        max_tokens=2200,
-        json_mode=True
-    )
-    qa_data = extract_json(qa.get("reply") or "")
-    if qa_data.get("passed") is not True:
-        blockers = qa_data.get("blockers") or ["Oberoende kodgranskning godkände inte patchen."]
-        raise RuntimeError("SYSTEM_ENGINEER-patchen stoppades av kodgranskningen: " + "; ".join(map(str, blockers))[:900])
+    # One automatic repair attempt: independent QA findings are fed back to the
+    # implementation model, then the revised patch is reviewed again.
+    for repair_attempt in range(2):
+        current_patch_prompt = patch_prompt
+        if review_feedback:
+            current_patch_prompt += (
+                "\\n\\nOBLIGATORISK RÄTTNING EFTER OBEROENDE GRANSKNING:\\n"
+                + review_feedback
+                + "\\nRätta samtliga blockerare utan att vidga ändringens omfattning. "
+                + "Om en säker rättning inte går, returnera tom changes-lista."
+            )
+
+        generated = generate_reply(
+            current_patch_prompt,
+            "Du är en senior Python/FastAPI-utvecklare. Följ patchformatet exakt.",
+            max_tokens=7000,
+            json_mode=True
+        )
+        patch_spec = extract_json(generated.get("reply") or "")
+        updated_source, applied = apply_exact_text_patches(source, patch_spec.get("changes"))
+        if not applied or updated_source == source:
+            raise RuntimeError("SYSTEM_ENGINEER skapade ingen verifierbar kodändring i main.py.")
+
+        diff_text = "\\n\\n".join(
+            "FIL: main.py\\nFÖRE:\\n" + item["old_text"][:5000] + "\\nEFTER:\\n" + item["new_text"][:7000]
+            for item in applied
+        )
+        qa_prompt = (
+            "Granska den faktiska kodpatchen oberoende mot uppdraget. Bedöm korrekthet, säkerhet, "
+            "bakåtkompatibilitet, felhantering och om ändringen är rimligt avgränsad. "
+            "Du har inte kört koden. Godkänn inte en patch som tar bort säkerhetsgrindar, exponerar hemligheter, "
+            "gör osäkra externa åtgärder eller saknar tydlig koppling till uppdraget. "
+            "Returnera ENDAST JSON: {\\"passed\\":true,\\"blockers\\":[],\\"risks\\":[],\\"test_suggestions\\":[]} .\\n\\n"
+            + "UPPDRAG:\\n" + str(task)[:5000]
+            + "\\n\\nSYSTEM_ENGINEER-ANALYS:\\n" + str(engineer.get("reply") or "")[:5000]
+            + "\\n\\nKODPATCH:\\n" + diff_text
+        )
+        qa = generate_independent_review(
+            qa_prompt,
+            "Du är en oberoende senior kodgranskare. Du får inte anta att utvecklarens analys är korrekt. "
+            "Kontrollera patchen mot uppdraget och leta aktivt efter fel, säkerhetsproblem och saknade krav. "
+            "Påstå aldrig att du har kört tester.",
+            generated.get("engine"),
+            max_tokens=2200,
+            json_mode=True
+        )
+        qa_data = extract_json(qa.get("reply") or "")
+        if isinstance(qa_data, dict) and qa_data.get("passed") is True:
+            break
+
+        blockers = qa_data.get("blockers") if isinstance(qa_data, dict) else None
+        review_feedback = json.dumps({
+            "blockers": blockers or ["Granskaren kunde inte godkänna patchen."],
+            "risks": qa_data.get("risks", []) if isinstance(qa_data, dict) else [],
+            "test_suggestions": qa_data.get("test_suggestions", []) if isinstance(qa_data, dict) else []
+        }, ensure_ascii=False)
+        if repair_attempt == 1:
+            raise RuntimeError(
+                "SYSTEM_ENGINEER-patchen stoppades efter en automatisk rättningsrunda: "
+                + review_feedback[:900]
+            )
+
+    if not isinstance(qa_data, dict) or qa_data.get("passed") is not True:
+        raise RuntimeError("SYSTEM_ENGINEER-patchen saknar godkänd oberoende granskning.")
 
     github_api_request(
         "POST",
