@@ -622,7 +622,9 @@ def create_game_portal_pull_request(task, outcome, job_id):
         branch = "jarvis/arcade-" + re.sub(r"[^a-f0-9]", "", str(job_id).lower())[:12]
         existing_delivery = find_existing_github_pull_request(branch)
         if existing_delivery:
-            return existing_delivery
+            if existing_delivery.get("merged"):
+                return existing_delivery
+            return wait_for_github_checks_and_merge(existing_delivery)
         github_api_request(
             "POST", f"/repos/{encoded_repo}/git/refs",
             {"ref": "refs/heads/" + branch, "sha": base_sha}
@@ -652,8 +654,9 @@ def create_game_portal_pull_request(task, outcome, job_id):
                 )
             }
         )
+        delivery = wait_for_github_checks_and_merge(pr)
         return {
-            "status": "pull_request_created",
+            "status": delivery["status"],
             "repository": repo,
             "path": file_path,
             "branch": branch,
