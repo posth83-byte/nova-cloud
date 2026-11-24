@@ -71,3 +71,15 @@ def apply_exact_text_patches(source: str, changes: Iterable[dict], allowed_paths
     if len(updated.encode("utf-8")) > 400000:
         raise ValueError("Den uppdaterade filen överskrider 400 KB.")
     return updated, applied
+
+
+def is_verified_noop_review(review: dict) -> bool:
+    """Accept a no-op only when independent review explicitly confirms no change is needed."""
+    if not isinstance(review, dict):
+        return False
+    blockers = review.get("blockers")
+    return bool(
+        review.get("passed") is True
+        and review.get("no_change_needed") is True
+        and (not isinstance(blockers, list) or len(blockers) == 0)
+    )
