@@ -86,6 +86,17 @@ jobs:
               raise RuntimeError(f"{path} failed after retries: {last_error}")
 
           results = {path: get_json(path) for path in paths}
+          # Wait for the new CI-gated delivery mode to become visible on Render.
+          # A healthy response from the previous deployment is not sufficient.
+          for attempt in range(30):
+              github_status = get_json("/api/github/status")
+              if github_status.get("mode") == "ci_gated_auto_merge":
+                  results["/api/github/status"] = github_status
+                  break
+              if attempt < 29:
+                  time.sleep(5)
+          else:
+              raise SystemExit("Render is healthy but the CI-gated delivery version is not live yet.")
           dashboard_html = get_text("/")
           health = results["/health"]
           api = results["/api/status"]
@@ -110,6 +121,7 @@ jobs:
               "supabase_queue_configured": worker.get("supabase_configured") is True,
               "github_configured": worker.get("github_configured") is True,
               "github_draft_only": github.get("direct_push_to_main") is False,
+              "github_ci_gated_auto_merge": github.get("mode") == "ci_gated_auto_merge",
               "memory_online": memory.get("status") == "online",
               "team_status_available": team.get("status") in {"idle", "working", "done", "error"},
           }
