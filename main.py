@@ -26,7 +26,7 @@ from job_dedup import normalize_job_task, job_task_fingerprint, is_duplicate_job
 from jarvis_worker_persistence import (
     persisted_job_matches, final_qa_readback_matches, build_worker_retry_update
 )
-from system_engineer_delivery import apply_exact_text_patches, build_source_excerpt, select_independent_review_provider, is_verified_noop_review
+from system_engineer_delivery import apply_exact_text_patches, build_source_excerpt, select_independent_review_provider, is_verified_noop_review, normalize_patch_spec
 from video_engine import router as video_router
 from runway_engine import router as runway_router
 from kling_engine import router as kling_router
@@ -1031,7 +1031,7 @@ def create_system_engineer_pull_request(task, outcome, job_id):
             json_mode=True
         )
         try:
-            patch_spec = extract_json(generated.get("reply") or "")
+            patch_spec = normalize_patch_spec(extract_json(generated.get("reply") or ""))
             if isinstance(patch_spec, dict) and patch_spec.get("changes") == []:
                 noop_review_prompt = (
                     "Bedöm oberoende om användarens uppdrag redan är uppfyllt av den befintliga koden på den angivna bas-committen. "
