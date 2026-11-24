@@ -1403,52 +1403,6 @@ def send_shopping_list_item_notification(list_id, item, source_endpoint=""):
 
 
 
-    """Send one standards-based Web Push notification when a queued task completes."""
-    if not isinstance(subscription, dict) or not subscription.get("endpoint"):
-        return False
-    private_key = os.getenv("VAPID_PRIVATE_KEY", "").strip()
-    private_key_b64 = os.getenv("VAPID_PRIVATE_KEY_B64", "").strip()
-    if private_key_b64:
-        try:
-            private_key = base64.b64decode(private_key_b64).decode("utf-8")
-        except Exception:
-            return False
-    public_key = os.getenv("VAPID_PUBLIC_KEY", "").strip()
-    subject = os.getenv("VAPID_CLAIMS_EMAIL", "mailto:admin@example.com").strip()
-    if not private_key or not public_key:
-        return False
-    try:
-        from pywebpush import webpush
-        failed = isinstance(outcome, dict) and outcome.get("status") in ("failed", "error")
-        is_test = str(job_id) == "test"
-        payload = {
-            "title": "JARVIS – testnotis" if is_test else ("JARVIS – uppdraget behöver åtgärd" if failed else "JARVIS – arbetsresultat klart"),
-            "body": "Pushnotiser fungerar på den här enheten." if is_test else ("Ett bakgrundsjobb misslyckades. Öppna JARVIS för felstatus." if failed else "JARVIS har sammanställt ett resultat. Öppna kontrollcentralen för detaljer."),
-            "url": "/",
-            "tag": "jarvis-test" if is_test else f"jarvis-job-{job_id}"
-        }
-        temp_path = None
-        try:
-            with tempfile.NamedTemporaryFile(mode="w", suffix=".pem", encoding="utf-8", delete=False) as key_file:
-                key_file.write(private_key)
-                temp_path = key_file.name
-            webpush(
-                subscription_info=subscription,
-                data=json.dumps(payload, ensure_ascii=False),
-                vapid_private_key=temp_path,
-                vapid_claims={"sub": subject}
-            )
-            return True
-        finally:
-            if temp_path:
-                try:
-                    os.unlink(temp_path)
-                except OSError:
-                    pass
-    except Exception:
-        return False
-
-
 async def jarvis_job_heartbeat(job_id, stop_event):
     while not stop_event.is_set():
         try:
