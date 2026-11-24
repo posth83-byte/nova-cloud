@@ -23,7 +23,7 @@ jobs:
         with:
           python-version: "3.12"
       - name: Compile Python modules
-        run: python -m py_compile main.py jarvis_worker_persistence.py video_engine.py video_team_engine.py video_creator_engine.py video_assets.py video_storage.py video_research.py video_jobs.py qa/smoke_live_video.py qa/test_video_jobs.py runway_engine.py kling_engine.py
+        run: python -m py_compile main.py jarvis_worker_persistence.py system_engineer_delivery.py video_engine.py video_team_engine.py video_creator_engine.py video_assets.py video_storage.py video_research.py video_jobs.py qa/smoke_live_video.py qa/test_video_jobs.py runway_engine.py kling_engine.py
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
@@ -123,6 +123,7 @@ jobs:
         run: |
           python -m pip install --disable-pip-version-check -r requirements.txt
           python -m unittest tests/test_jarvis_worker_persistence.py
+          python -m unittest tests/test_system_engineer_delivery.py
           python qa/test_video_assets.py
           python qa/test_video_storage.py
           python qa/test_video_jobs.py
