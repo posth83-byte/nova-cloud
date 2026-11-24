@@ -417,9 +417,10 @@ def collect_qa_repository_evidence(task):
             )
             windows = []
             for marker in markers:
-                for index in range(search_from, len(lines)):
+                marker_search_from = 0 if marker == '@app.get("/api/memory/status")' else search_from
+                for index in range(marker_search_from, len(lines)):
                     if marker in lines[index]:
-                        start = max(search_from, index - 12)
+                        start = max(marker_search_from, index - 12)
                         window_size = 130 if marker == "async def jarvis_job_worker_loop" else 95
                         end = min(len(lines), index + window_size)
                         windows.append((start, end))
