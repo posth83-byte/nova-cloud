@@ -402,6 +402,8 @@ def collect_qa_repository_evidence(task):
                 "async def jarvis_job_worker_loop",
                 "persisted_rows, _",
                 '@app.get("/api/status")',
+                '@app.get("/api/jarvis/intelligence")',
+                '@app.get("/api/memory/status")',
                 "@app.get(\"/api/worker/status\")",
                 "@app.get(\"/api/team/status\")",
                 "@app.post(\"/api/jarvis/delegate\")",
