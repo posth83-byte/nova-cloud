@@ -49,3 +49,14 @@ def build_worker_retry_update(attempts, max_attempts, error, now_iso):
     if retrying:
         update.update({"result": None, "active": [], "completed": []})
     return retrying, update
+
+
+
+def project_task_status(quality_status):
+    """Mark specialist work complete only after the final quality gate passes."""
+    status = str(quality_status or "").strip().casefold()
+    if status == "passed":
+        return "completed"
+    if status == "needs_changes":
+        return "needs_changes"
+    return "review_required"
