@@ -26,7 +26,7 @@ from job_dedup import normalize_job_task, job_task_fingerprint, is_duplicate_job
 from jarvis_worker_persistence import (
     persisted_job_matches, final_qa_readback_matches, build_worker_retry_update
 )
-from system_engineer_delivery import apply_exact_text_patches, build_source_excerpt, select_independent_review_provider, is_verified_noop_review, is_runtime_evidence_verified, normalize_patch_spec
+from system_engineer_delivery import apply_exact_text_patches, build_source_excerpt, select_independent_review_provider, is_verified_noop_review, is_runtime_evidence_verified, normalize_patch_spec, build_evidence_reconciliation
 from video_engine import router as video_router
 from runway_engine import router as runway_router
 from kling_engine import router as kling_router
@@ -4844,6 +4844,9 @@ Delegering ger inte tillstånd att köpa, publicera, betala eller utföra extern
             qa_evidence_summary["post_qa_status_endpoint"] = post_qa_runtime.get("status_endpoint")
             qa_evidence_summary["post_qa_job_snapshot"] = post_qa_runtime.get("job_snapshot")
             qa_evidence_summary["post_qa_job_snapshot_error"] = post_qa_runtime.get("job_snapshot_error")
+        evidence_reconciliation = build_evidence_reconciliation(
+            task, qa_evidence_summary or {}, results
+        )
 
         # RÅDSRUNDA 2: specialisterna granskar varandras förslag och förbättrar planen.
         council_reviews = []
@@ -4934,6 +4937,10 @@ Delegering ger inte tillstånd att köpa, publicera, betala eller utföra extern
                 "\n\nVERIFIERAT QA-UNDERLAG FRÅN ORKESTRATORN:\n"
                 + json.dumps(qa_evidence_summary, ensure_ascii=False)
             )
+        quality_input += (
+            "\n\nDETERMINISTISK BEVISAVSTÄMNING (maskinberäknad):\n"
+            + json.dumps(evidence_reconciliation, ensure_ascii=False)
+        )
         quality_prompt = """
 Du är JARVIS oberoende kvalitetsansvarige. Granska leveransen mot uppdraget
 och varje acceptanskriterium. Var strikt och försök hitta verkliga brister.
@@ -4956,6 +4963,8 @@ ABSOLUT BEVISKRAV:
   som ej körda, men inte blockera godkännande av just köflödet när alla ovanstående
   direkta DB- och GitHub-bevis finns. Påstå inte att produktkodens dynamiska tester körts.
 - AI-genererad kod eller plan är inte implementerad kod. Förhandsvisning är inte publicering.
+- BEVISAVSTÄMNINGEN är maskinberäknad och auktoritativ: om runtime_required=true och runtime_verified=false måste passed=false. Om runtime_verified=true ska en specialists uppgift om att den själv saknar nätverksverktyg INTE beskrivas som ett misslyckat runtime-test; QA-orkestratorn utförde då det separata HTTP-anropet. Skilj alltid mellan specialistens verktygsåtkomst och QA:s maskinbevis.
+- Ändra aldrig eller tona ned maskinbevis utifrån en specialists formulering.
 - Markera kriterier som uppfyllda endast när underlaget visar det.
 - Om en specialist kan rätta en konkret brist i sitt eget material, skriv en kort
   repair_instruction för den specialisten. Begär inte åtgärder som saknar verktyg.
@@ -5008,8 +5017,12 @@ Visa aldrig råkod, kodblock eller interna granskningsanteckningar.
                     + "\n\n".join(f"{item['target']}:\n{item['reply'][:6500]}" for item in results)
                 )
                 quality = await asyncio.to_thread(
-                    generate_reply, repaired_input, quality_prompt,
-                    max_tokens=3500, json_mode=True
+                    generate_independent_review,
+                    repaired_input,
+                    quality_prompt,
+                    summary.get("engine"),
+                    max_tokens=3500,
+                    json_mode=True
                 )
                 quality_data = extract_json(quality["reply"])
             final_reply = str(quality_data.get("final_report") or "").strip() or summary["reply"]
@@ -5019,6 +5032,15 @@ Visa aldrig råkod, kodblock eller interna granskningsanteckningar.
             final_reply = summary["reply"]
             quality_status = "unavailable"
             quality_error = str(error)[:400]
+
+        # Deterministisk fail-closed: språkmodellen får aldrig godkänna saknade runtime-bevis.
+        if evidence_reconciliation.get("runtime_required") and not evidence_reconciliation.get("runtime_verified"):
+            quality_status = "needs_changes"
+            final_reply = (
+                "Blockerat: JARVIS kunde inte verifiera live-status med ett HTTP 200-svar "
+                "och en deployment_commit som matchar den verifierade källkodssnapshoten. "
+                "Specialisttexter kan inte ersätta dessa maskinbevis."
+            )
 
         registry = None
         registry_error = None
@@ -5057,6 +5079,7 @@ Visa aldrig råkod, kodblock eller interna granskningsanteckningar.
             "deliverables": deliverables,
             "workflow": ["routing", "specialist_analysis", "peer_review" if council_reviews else "self_review", "synthesis", "quality_gate"] + (["specialist_repair", "quality_recheck"] if any(item.get("repair_round") for item in results) else []),
             "qa_evidence": qa_evidence_summary,
+            "evidence_reconciliation": evidence_reconciliation,
             "results": results,
             "reviews": council_reviews,
             "reply": final_reply,
