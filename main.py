@@ -3590,6 +3590,7 @@ async def health():
         "status": "online",
         "service": "NOVA Cloud",
         "version": APP_VERSION,
+        "deployment_commit": os.getenv("RENDER_GIT_COMMIT", ""),
         "time": datetime.now(timezone.utc).isoformat()
     }
 
