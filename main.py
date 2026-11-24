@@ -28,7 +28,7 @@ from ai_provider_fallback import run_openrouter_with_budget_fallback
 from jarvis_worker_persistence import (
     persisted_job_matches, final_qa_readback_matches, build_worker_retry_update
 )
-from system_engineer_delivery import apply_exact_text_patches, build_source_excerpt, select_independent_review_provider, is_verified_noop_review, is_runtime_evidence_verified, normalize_patch_spec, build_evidence_reconciliation, task_requires_live_runtime_evidence, has_route_decorator, summarize_runtime_payload, normalize_runtime_quality_review
+from system_engineer_delivery import apply_exact_text_patches, build_source_excerpt, select_independent_review_provider, is_verified_noop_review, is_runtime_evidence_verified, normalize_patch_spec, build_evidence_reconciliation, task_requires_live_runtime_evidence, has_route_decorator, summarize_runtime_payload, normalize_runtime_quality_review, normalize_report_only_quality_review
 from video_engine import router as video_router
 from runway_engine import router as runway_router
 from kling_engine import router as kling_router
@@ -5045,6 +5045,7 @@ Visa aldrig råkod, kodblock eller interna granskningsanteckningar.
             quality_data = normalize_runtime_quality_review(
                 quality_data, evidence_reconciliation, acceptance_criteria
             )
+            quality_data = normalize_report_only_quality_review(quality_data, task)
             # En enda självrättningsrunda: återöppna endast leveranser där QA hittat en konkret brist.
             repair_instructions = quality_data.get("repair_instructions", {})
             if not quality_data.get("passed") and isinstance(repair_instructions, dict):
@@ -5085,6 +5086,7 @@ Visa aldrig råkod, kodblock eller interna granskningsanteckningar.
                 quality_data = normalize_runtime_quality_review(
                     quality_data, evidence_reconciliation, acceptance_criteria
                 )
+                quality_data = normalize_report_only_quality_review(quality_data, task)
             final_reply = str(quality_data.get("final_report") or "").strip() or summary["reply"]
             quality_status = "passed" if quality_data.get("passed") else "needs_changes"
         except Exception as error:
