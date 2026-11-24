@@ -541,7 +541,7 @@ def find_existing_github_pull_request(branch):
 def create_game_portal_pull_request(task, outcome, job_id):
     """
     Turn GAME_DEVELOPER's reviewed proposal into a complete arcade.html update
-    on an isolated branch and open a draft PR. Never writes directly to main.
+    on an isolated branch and open a CI-gated PR. Never writes directly to main.
     """
     task_lower = str(task or "").casefold()
     portal_terms = (
@@ -917,7 +917,7 @@ def wait_for_github_checks_and_merge(pull_request, timeout_seconds=1200):
 
 
 def create_system_engineer_pull_request(task, outcome, job_id):
-    """Turn SYSTEM_ENGINEER's reviewed implementation proposal into a guarded draft PR."""
+    """Turn SYSTEM_ENGINEER's reviewed implementation proposal into a CI-gated PR."""
     if not GITHUB_TOKEN:
         return {"status": "blocked", "reason": "GITHUB_TOKEN saknas i Render.", "repository_changes": False, "published": False}
 
@@ -3971,7 +3971,7 @@ async def jarvis_worker_status():
         "queue_storage": "supabase" if USE_SUPABASE_MEMORY else "unavailable",
         "github_configured": bool(GITHUB_TOKEN),
         "github_repository": GITHUB_REPOSITORY,
-        "github_delivery_mode": "draft_pull_request_only"
+        "github_delivery_mode": "ci_gated_auto_merge"
     }
 
 
@@ -3982,7 +3982,7 @@ async def github_integration_status():
         "repository": GITHUB_REPOSITORY,
         "base_branch": GITHUB_BASE_BRANCH,
         "allowed_artifacts": sorted(GITHUB_ALLOWED_ARTIFACTS),
-        "mode": "draft_pull_request_only",
+        "mode": "ci_gated_auto_merge",
         "direct_push_to_main": False,
         "note": "En GITHUB_TOKEN med Contents och Pull requests skrivbehörighet krävs."
     }
