@@ -519,13 +519,14 @@ def find_existing_github_pull_request(branch):
         if head.get("ref") != branch:
             continue
         return {
-            "status": "pull_request_created",
+            "status": "merged" if pull.get("merged_at") else "pull_request_created",
             "repository": GITHUB_REPOSITORY,
             "branch": branch,
             "pull_request_number": pull.get("number"),
             "pull_request_url": pull.get("html_url"),
             "pull_request_state": pull.get("state"),
             "merged": bool(pull.get("merged_at")),
+            "merge_sha": pull.get("merge_commit_sha"),
             "existing": True,
             "repository_changes": True,
             "published": False,
@@ -641,7 +642,7 @@ def create_game_portal_pull_request(task, outcome, job_id):
                 "title": ("JARVIS: " + str(artifact.get("summary") or "uppdatera spelportalen"))[:240],
                 "head": branch,
                 "base": GITHUB_BASE_BRANCH,
-                "draft": True,
+                "draft": False,
                 "body": (
                     "Automatiskt skapat av JARVIS på en separat arbetsgren.\n\n"
                     f"Uppdrag: {task[:1500]}\n\n"
@@ -819,7 +820,9 @@ def create_multi_file_project_pull_request(task, outcome, job_id):
         existing_delivery = find_existing_github_pull_request(branch_name)
         if existing_delivery:
             existing_delivery["project_path"] = root
-            return existing_delivery
+            if existing_delivery.get("merged"):
+                return existing_delivery
+            return wait_for_github_checks_and_merge(existing_delivery)
         base = github_api_request("GET", "/repos/" + encoded_repo + "/git/ref/heads/" + urllib.parse.quote(GITHUB_BASE_BRANCH, safe=""))
         github_api_request("POST", "/repos/" + encoded_repo + "/git/refs", {"ref": "refs/heads/" + branch_name, "sha": base["object"]["sha"]})
         commit_sha = None
@@ -843,15 +846,72 @@ def create_multi_file_project_pull_request(task, outcome, job_id):
                      str(validation["bytes"]) + " byte). GitHub Actions måste fortfarande godkänna syntax och webbläsartest. "
                      "Ingen merge eller publicering har skett."}
         )
-        return {"status": "pull_request_created", "repository": repo, "project_path": root,
+        delivery = wait_for_github_checks_and_merge(pr)
+        return {"status": delivery["status"], "repository": repo, "project_path": root,
                 "files": [root + "/" + x["name"] for x in artifacts], "branch": branch_name,
                 "commit_sha": commit_sha, "pull_request_number": pr.get("number"),
                 "pull_request_url": pr.get("html_url"), "validation": validation,
                 "repository_changes": True, "published": False,
-                "verification": "Komplett projekt förkontrollerat före GitHub-skrivning; CI och webbläsartest inväntas."}
+                "verification": delivery.get("verification") or "PR kontrollerad och tidigare mergad."}
     except Exception as error:
         return {"status": "blocked", "reason": str(error)[:1000],
                 "repository_changes": False, "published": False}
+
+def wait_for_github_checks_and_merge(pull_request, timeout_seconds=1200):
+    """Merge a JARVIS PR only after every production acceptance check passes."""
+    number = int(pull_request.get("number") or pull_request.get("pull_request_number") or 0)
+    if not number:
+        raise RuntimeError("GitHub PR saknar nummer; automatisk leverans stoppades.")
+    encoded_repo = urllib.parse.quote(GITHUB_REPOSITORY, safe="/")
+    pr = github_api_request("GET", f"/repos/{encoded_repo}/pulls/{number}")
+    if pr.get("merged_at"):
+        return {"status": "merged", "pull_request_number": number, "pull_request_url": pr.get("html_url"), "merge_sha": pr.get("merge_commit_sha"), "checks": "already_merged"}
+    if pr.get("draft"):
+        github_api_request("PATCH", f"/repos/{encoded_repo}/pulls/{number}", {"draft": False})
+        pr = github_api_request("GET", f"/repos/{encoded_repo}/pulls/{number}")
+    head = pr.get("head") or {}
+    head_sha = str(head.get("sha") or "")
+    head_repo = (head.get("repo") or {}).get("full_name")
+    if not head_sha or head_repo != GITHUB_REPOSITORY or (head.get("ref") or "").split("/", 1)[0] != "jarvis":
+        raise RuntimeError("PR-grenen är inte en verifierad JARVIS-gren i samma repository.")
+    required = {"syntax", "compile", "Browser QA (desktop + mobile)", "Validate source and generated projects"}
+    deadline = time.monotonic() + max(60, int(timeout_seconds))
+    last_state = {}
+    while time.monotonic() < deadline:
+        payload = github_api_request("GET", f"/repos/{encoded_repo}/commits/{urllib.parse.quote(head_sha, safe='')}/check-runs?per_page=100")
+        runs = [item for item in (payload.get("check_runs") or []) if ((item.get("app") or {}).get("slug") == "github-actions")]
+        latest = {}
+        for item in runs:
+            name = str(item.get("name") or "")
+            previous = latest.get(name)
+            if previous is None or str(item.get("started_at") or "") > str(previous.get("started_at") or ""):
+                latest[name] = item
+        missing = sorted(required - set(latest))
+        failed = {name: latest[name].get("conclusion") for name in required.intersection(latest)
+                  if latest[name].get("status") == "completed" and latest[name].get("conclusion") != "success"}
+        optional_failed = {name: item.get("conclusion") for name, item in latest.items()
+                           if name == "job-dedup-tests" and item.get("status") == "completed" and item.get("conclusion") != "success"}
+        last_state = {"missing": missing, "pending": sorted(name for name in required.intersection(latest) if latest[name].get("status") != "completed"),
+                      "failed": failed, "optional_failed": optional_failed}
+        if failed or optional_failed:
+            raise RuntimeError("GitHub CI underkände PR: " + json.dumps(last_state, ensure_ascii=False)[:1200])
+        if not missing and not last_state["pending"]:
+            break
+        time.sleep(15)
+    else:
+        raise RuntimeError("Tidsgräns: obligatoriska GitHub-kontroller blev inte gröna. " + json.dumps(last_state, ensure_ascii=False)[:900])
+    current = github_api_request("GET", f"/repos/{encoded_repo}/pulls/{number}")
+    current_head = str(((current.get("head") or {}).get("sha")) or "")
+    if current_head != head_sha or current.get("draft") or current.get("merged_at"):
+        if current.get("merged_at"):
+            return {"status": "merged", "pull_request_number": number, "pull_request_url": current.get("html_url"), "merge_sha": current.get("merge_commit_sha"), "checks": last_state}
+        raise RuntimeError("PR ändrades under granskningen; merge avbröts av säkerhetsskäl.")
+    merged = github_api_request("PUT", f"/repos/{encoded_repo}/pulls/{number}/merge", {"sha": head_sha, "merge_method": "squash"})
+    if merged.get("merged") is not True:
+        raise RuntimeError("GitHub bekräftade inte att PR:en mergades.")
+    return {"status": "merged", "pull_request_number": number, "pull_request_url": current.get("html_url"), "merge_sha": merged.get("sha"),
+            "checks": last_state, "verification": "Alla fyra obligatoriska GitHub-kontroller godkända; PR mergad med låst head-SHA."}
+
 
 def create_system_engineer_pull_request(task, outcome, job_id):
     """Turn SYSTEM_ENGINEER's reviewed implementation proposal into a guarded draft PR."""
@@ -873,7 +933,9 @@ def create_system_engineer_pull_request(task, outcome, job_id):
     branch_name = "jarvis/system-" + re.sub(r"[^a-f0-9]", "", str(job_id).lower())[:12]
     existing = find_existing_github_pull_request(branch_name)
     if existing:
-        return existing
+        if existing.get("merged"):
+            return existing
+        return wait_for_github_checks_and_merge(existing)
 
     base = github_api_request(
         "GET",
@@ -1015,8 +1077,9 @@ def create_system_engineer_pull_request(task, outcome, job_id):
             )
         }
     )
+    delivery = wait_for_github_checks_and_merge(pr)
     return {
-        "status": "pull_request_created",
+        "status": delivery["status"],
         "repository": repo,
         "files": ["main.py"],
         "branch": branch_name,
@@ -1026,7 +1089,7 @@ def create_system_engineer_pull_request(task, outcome, job_id):
         "validation": {"patches": len(applied), "independent_static_review": "passed"},
         "repository_changes": True,
         "published": False,
-        "verification": "Exakta källkodspatchar applicerade på separat gren och godkända i oberoende statisk granskning; GitHub CI återstår."
+        "verification": delivery.get("verification") or "PR kontrollerad och tidigare mergad."
     }
 
 
@@ -1214,21 +1277,21 @@ async def jarvis_job_worker_loop():
                             + str(delivery.get("reason") or "GitHub-anslutningen är inte klar.")
                         )
                 quality_gate = str(outcome.get("quality_gate") or "").strip().casefold()
-                quality_blocked = quality_gate in ("needs_changes", "failed", "blocked", "rejected")
+                quality_blocked = quality_gate in ("needs_changes", "failed", "blocked", "rejected", "unavailable")
                 delivery_status = (outcome.get("github_delivery") or {}).get("status")
                 delivery_required = bool(
                     set(outcome.get("targets") or []).intersection(
                         {"SYSTEM_ENGINEER", "GAME_DEVELOPER", "WEBMASTER"}
                     )
                 )
-                delivery_blocked = delivery_required and delivery_status != "pull_request_created"
+                delivery_blocked = delivery_required and delivery_status != "merged"
                 completed = (
                     outcome.get("status") in ("delegated", "needs_discussion")
                     and not quality_blocked
                     and not delivery_blocked
                 )
-                if delivery_status == "pull_request_created":
-                    result_phase = "Kodändring sparad på separat GitHub-gren – utkast-PR skapad; CI och granskning återstår"
+                if delivery_status == "merged":
+                    result_phase = "Kodändringen är mergad efter godkänd oberoende granskning och gröna GitHub-kontroller; Render-driftsättning återstår att verifiera"
                 elif delivery_status == "blocked":
                     result_phase = "AI-rådet är klart, men GitHub-ändringen är blockerad – se resultatet"
                 else:
