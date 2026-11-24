@@ -26,7 +26,7 @@ from job_dedup import normalize_job_task, job_task_fingerprint, is_duplicate_job
 from jarvis_worker_persistence import (
     persisted_job_matches, final_qa_readback_matches, build_worker_retry_update
 )
-from system_engineer_delivery import apply_exact_text_patches, build_source_excerpt, select_independent_review_provider
+from system_engineer_delivery import apply_exact_text_patches, build_source_excerpt, select_independent_review_provider, is_verified_noop_review
 from video_engine import router as video_router
 from runway_engine import router as runway_router
 from kling_engine import router as kling_router
@@ -1032,6 +1032,46 @@ def create_system_engineer_pull_request(task, outcome, job_id):
         )
         try:
             patch_spec = extract_json(generated.get("reply") or "")
+            if isinstance(patch_spec, dict) and patch_spec.get("changes") == []:
+                noop_review_prompt = (
+                    "Bedöm oberoende om användarens uppdrag redan är uppfyllt av den befintliga koden på den angivna bas-committen. "
+                    "Godkänn endast en verklig no-op: den befintliga implementationen uppfyller redan uppdraget och ingen kodändring behövs. "
+                    "Om uppdraget kräver runtime- eller driftsbevis som saknas, om en ändring behövs eller om underlaget är otillräckligt ska du underkänna. "
+                    "Förväxla aldrig att en säker patch inte kan skapas med att ingen patch behövs. "
+                    "Returnera ENDAST JSON: {\\"passed\\":true,\\"no_change_needed\\":true,\\"blockers\\":[],\\"reason\\":\\"...\\"}. "
+                    "Vid blockerare ska passed=false, no_change_needed=false och blockers beskriva hindret.\\n\\n"
+                    + "UPPDRAG:\\n" + str(task)[:5000]
+                    + "\\n\\nSYSTEM_ENGINEER-BEDÖMNING:\\n" + str(patch_spec.get("summary") or "")[:2500]
+                    + "\\n\\nVERIFIERAD BAS-COMMIT:\\n" + base_sha
+                    + "\\n\\nKÄLLKODSUTDRAG:\\n" + source_excerpt
+                )
+                noop_review = generate_independent_review(
+                    noop_review_prompt,
+                    "Du är en oberoende senior granskare. Godkänn inte en no-op utan tydligt stöd i källkoden.",
+                    generated.get("engine"),
+                    max_tokens=1800,
+                    json_mode=True
+                )
+                noop_data = extract_json(noop_review.get("reply") or "")
+                if not is_verified_noop_review(noop_data):
+                    blockers = noop_data.get("blockers", []) if isinstance(noop_data, dict) else []
+                    raise RuntimeError(
+                        "SYSTEM_ENGINEER returnerade ingen kodpatch och oberoende granskning kunde inte bekräfta en säker no-op: "
+                        + json.dumps(blockers or noop_data, ensure_ascii=False)[:700]
+                    )
+                return {
+                    "status": "verified_noop",
+                    "repository": repo,
+                    "files": [],
+                    "branch": None,
+                    "commit_sha": base_sha,
+                    "pull_request_number": None,
+                    "pull_request_url": None,
+                    "validation": {"patches": 0, "independent_static_review": "passed", "no_op": True},
+                    "repository_changes": False,
+                    "published": False,
+                    "verification": "Oberoende granskning bekräftade att befintlig kod redan uppfyller uppdraget; ingen PR eller kodändring behövdes."
+                }
             updated_source, applied = apply_exact_text_patches(source, patch_spec.get("changes"))
             if not applied or updated_source == source:
                 raise RuntimeError("SYSTEM_ENGINEER skapade ingen verifierbar kodändring i main.py.")
@@ -1320,6 +1360,14 @@ async def jarvis_job_worker_loop():
                             + "och skapat en utkast-PR. CI och granskning återstår före eventuell publicering. "
                             + "PR-länk: " + str(delivery.get("pull_request_url") or "länken kunde inte hämtas.")
                         )
+                    elif delivery.get("status") == "verified_noop":
+                        outcome["delivery_level"] = "verified_noop"
+                        outcome["repository_changes"] = False
+                        outcome["published"] = False
+                        outcome["reply"] = (
+                            str(outcome.get("reply") or "")
+                            + "\\n\\nSYSTEM_ENGINEER och en oberoende granskare bekräftade att befintlig kod redan uppfyller uppdraget. Ingen PR eller driftsättning behövdes."
+                        )
                     elif delivery.get("status") == "blocked":
                         outcome["delivery_level"] = "proposal_only_github_blocked"
                         outcome["repository_changes"] = False
@@ -1337,7 +1385,7 @@ async def jarvis_job_worker_loop():
                         {"SYSTEM_ENGINEER", "GAME_DEVELOPER", "WEBMASTER"}
                     )
                 )
-                delivery_blocked = delivery_required and delivery_status != "merged"
+                delivery_blocked = delivery_required and delivery_status not in ("merged", "verified_noop")
                 completed = (
                     outcome.get("status") in ("delegated", "needs_discussion")
                     and not quality_blocked
@@ -1345,6 +1393,8 @@ async def jarvis_job_worker_loop():
                 )
                 if delivery_status == "merged":
                     result_phase = "Kodändringen är mergad efter godkänd oberoende granskning och gröna GitHub-kontroller; Render-driftsättning återstår att verifiera"
+                elif delivery_status == "verified_noop":
+                    result_phase = "Oberoende granskning bekräftade att ingen kodändring behövdes; ingen PR eller driftsättning utfördes"
                 elif delivery_status == "blocked":
                     result_phase = "AI-rådet är klart, men GitHub-ändringen är blockerad – se resultatet"
                 else:
