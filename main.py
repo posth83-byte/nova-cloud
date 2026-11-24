@@ -1366,7 +1366,7 @@ async def jarvis_job_worker_loop():
                         outcome["published"] = False
                         outcome["reply"] = (
                             str(outcome.get("reply") or "")
-                            + "\\n\\nSYSTEM_ENGINEER och en oberoende granskare bekräftade att befintlig kod redan uppfyller uppdraget. Ingen PR eller driftsättning behövdes."
+                            + "\n\nSYSTEM_ENGINEER och en oberoende granskare bekräftade att befintlig kod redan uppfyller uppdraget. Ingen PR eller driftsättning behövdes."
                         )
                     elif delivery.get("status") == "blocked":
                         outcome["delivery_level"] = "proposal_only_github_blocked"
