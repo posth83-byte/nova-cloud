@@ -1,6 +1,7 @@
 import unittest
 
 from system_engineer_delivery import apply_exact_text_patches, build_source_excerpt
+from main import select_independent_review_provider
 
 
 class SystemEngineerDeliveryTests(unittest.TestCase):
@@ -41,6 +42,15 @@ class SystemEngineerDeliveryTests(unittest.TestCase):
                 "alpha = 1",
                 [{"path": "main.py", "old_text": "alpha = 1", "new_text": "x" * 10001}],
             )
+
+    def test_review_uses_other_provider_than_patch_generator(self):
+        self.assertEqual(select_independent_review_provider("Gemini", True, True), "OpenRouter")
+        self.assertEqual(select_independent_review_provider("OpenRouter", True, True), "Gemini")
+
+    def test_review_fails_closed_without_independent_provider(self):
+        self.assertIsNone(select_independent_review_provider("Gemini", True, False))
+        self.assertIsNone(select_independent_review_provider("OpenRouter", False, True))
+        self.assertIsNone(select_independent_review_provider("unknown", True, True))
 
     def test_source_excerpt_keeps_relevant_worker_context(self):
         source = (
