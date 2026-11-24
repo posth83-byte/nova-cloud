@@ -23,6 +23,7 @@ from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 from job_dedup import normalize_job_task, job_task_fingerprint, is_duplicate_job_task
+from system_engineer_delivery import apply_exact_text_patches, build_source_excerpt, select_independent_review_provider
 from video_engine import router as video_router
 from runway_engine import router as runway_router
 from kling_engine import router as kling_router
@@ -852,6 +853,183 @@ def create_multi_file_project_pull_request(task, outcome, job_id):
         return {"status": "blocked", "reason": str(error)[:1000],
                 "repository_changes": False, "published": False}
 
+def create_system_engineer_pull_request(task, outcome, job_id):
+    """Turn SYSTEM_ENGINEER's reviewed implementation proposal into a guarded draft PR."""
+    if not GITHUB_TOKEN:
+        return {"status": "blocked", "reason": "GITHUB_TOKEN saknas i Render.", "repository_changes": False, "published": False}
+
+    repo = GITHUB_REPOSITORY
+    if not re.fullmatch(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", repo):
+        return {"status": "blocked", "reason": "Ogiltigt GitHub-repository.", "repository_changes": False, "published": False}
+
+    engineer = next(
+        (item for item in outcome.get("results", []) if item.get("target") == "SYSTEM_ENGINEER"),
+        None
+    )
+    if not engineer or not str(engineer.get("reply") or "").strip():
+        raise RuntimeError("SYSTEM_ENGINEER levererade inget konkret implementeringsunderlag.")
+
+    encoded_repo = urllib.parse.quote(repo, safe="/")
+    branch_name = "jarvis/system-" + re.sub(r"[^a-f0-9]", "", str(job_id).lower())[:12]
+    existing = find_existing_github_pull_request(branch_name)
+    if existing:
+        return existing
+
+    base = github_api_request(
+        "GET",
+        "/repos/" + encoded_repo + "/git/ref/heads/" + urllib.parse.quote(GITHUB_BASE_BRANCH, safe="")
+    )
+    base_sha = str((base.get("object") or {}).get("sha") or "")
+    if not base_sha:
+        raise RuntimeError("GitHub returnerade ingen bas-commit för SYSTEM_ENGINEER.")
+
+    source_item = github_api_request(
+        "GET",
+        "/repos/" + encoded_repo + "/contents/main.py?ref=" + urllib.parse.quote(base_sha, safe="")
+    )
+    source_blob_sha = str(source_item.get("sha") or "")
+    encoded_source = str(source_item.get("content") or "").replace("\n", "")
+    if not source_blob_sha or not encoded_source:
+        raise RuntimeError("SYSTEM_ENGINEER kunde inte läsa main.py från den låsta bas-committen.")
+    source = base64.b64decode(encoded_source).decode("utf-8")
+    source_excerpt = build_source_excerpt(source)
+
+    patch_prompt = (
+        "Du är SYSTEM_ENGINEER:s implementeringsmotor i JARVIS. Gör en liten, säker och konkret kodändring "
+        "i den befintliga backendfilen main.py utifrån uppdraget och SYSTEM_ENGINEER:s analys. "
+        "Du får endast ändra main.py. Bevara befintliga funktioner och API-kontrakt. "
+        "Använd exakta, sammanhängande old_text-utdrag som förekommer exakt en gång i källkoden. "
+        "Skriv hela ersättningen i new_text. Ändra inte hemligheter, tokens, behörigheter eller godkännandegrindar. "
+        "Ta inte bort användarens beslutanderätt. Om uppdraget inte kan lösas säkert med en avgränsad ändring, "
+        "returnera changes som tom lista och förklara varför. Returnera ENDAST JSON: "
+        "{\"summary\":\"kort ändringsbeskrivning\",\"changes\":[{\"path\":\"main.py\",\"old_text\":\"exakt befintlig kod\",\"new_text\":\"komplett ersättningskod\"}]}. "
+        "Max 4 ändringar. Hitta inte på att tester har körts.\n\n"
+        + "UPPDRAG:\n" + str(task)[:7000]
+        + "\n\nSYSTEM_ENGINEER-ANALYS:\n" + str(engineer.get("reply") or "")[:12000]
+        + "\n\nVERIFIERADE KÄLLKODSUTDRAG FRÅN BAS-COMMIT " + base_sha + ":\n"
+        + source_excerpt
+    )
+    review_feedback = ""
+    qa_data = None
+    generated = None
+    patch_spec = None
+    updated_source = source
+    applied = []
+
+    # One automatic repair attempt: independent QA findings are fed back to the
+    # implementation model, then the revised patch is reviewed again.
+    for repair_attempt in range(2):
+        current_patch_prompt = patch_prompt
+        if review_feedback:
+            current_patch_prompt += (
+                "\n\nOBLIGATORISK RÄTTNING EFTER OBEROENDE GRANSKNING:\n"
+                + review_feedback
+                + "\nRätta samtliga blockerare utan att vidga ändringens omfattning. "
+                + "Om en säker rättning inte går, returnera tom changes-lista."
+            )
+
+        generated = generate_reply(
+            current_patch_prompt,
+            "Du är en senior Python/FastAPI-utvecklare. Följ patchformatet exakt.",
+            max_tokens=7000,
+            json_mode=True
+        )
+        patch_spec = extract_json(generated.get("reply") or "")
+        updated_source, applied = apply_exact_text_patches(source, patch_spec.get("changes"))
+        if not applied or updated_source == source:
+            raise RuntimeError("SYSTEM_ENGINEER skapade ingen verifierbar kodändring i main.py.")
+
+        diff_text = "\n\n".join(
+            "FIL: main.py\nFÖRE:\n" + item["old_text"][:5000] + "\nEFTER:\n" + item["new_text"][:7000]
+            for item in applied
+        )
+        qa_prompt = (
+            "Granska den faktiska kodpatchen oberoende mot uppdraget. Bedöm korrekthet, säkerhet, "
+            "bakåtkompatibilitet, felhantering och om ändringen är rimligt avgränsad. "
+            "Du har inte kört koden. Godkänn inte en patch som tar bort säkerhetsgrindar, exponerar hemligheter, "
+            "gör osäkra externa åtgärder eller saknar tydlig koppling till uppdraget. "
+            "Returnera ENDAST JSON: {\"passed\":true,\"blockers\":[],\"risks\":[],\"test_suggestions\":[]} .\n\n"
+            + "UPPDRAG:\n" + str(task)[:5000]
+            + "\n\nSYSTEM_ENGINEER-ANALYS:\n" + str(engineer.get("reply") or "")[:5000]
+            + "\n\nKODPATCH:\n" + diff_text
+        )
+        qa = generate_independent_review(
+            qa_prompt,
+            "Du är en oberoende senior kodgranskare. Du får inte anta att utvecklarens analys är korrekt. "
+            "Kontrollera patchen mot uppdraget och leta aktivt efter fel, säkerhetsproblem och saknade krav. "
+            "Påstå aldrig att du har kört tester.",
+            generated.get("engine"),
+            max_tokens=2200,
+            json_mode=True
+        )
+        qa_data = extract_json(qa.get("reply") or "")
+        if isinstance(qa_data, dict) and qa_data.get("passed") is True:
+            break
+
+        blockers = qa_data.get("blockers") if isinstance(qa_data, dict) else None
+        review_feedback = json.dumps({
+            "blockers": blockers or ["Granskaren kunde inte godkänna patchen."],
+            "risks": qa_data.get("risks", []) if isinstance(qa_data, dict) else [],
+            "test_suggestions": qa_data.get("test_suggestions", []) if isinstance(qa_data, dict) else []
+        }, ensure_ascii=False)
+        if repair_attempt == 1:
+            raise RuntimeError(
+                "SYSTEM_ENGINEER-patchen stoppades efter en automatisk rättningsrunda: "
+                + review_feedback[:900]
+            )
+
+    if not isinstance(qa_data, dict) or qa_data.get("passed") is not True:
+        raise RuntimeError("SYSTEM_ENGINEER-patchen saknar godkänd oberoende granskning.")
+
+    github_api_request(
+        "POST",
+        "/repos/" + encoded_repo + "/git/refs",
+        {"ref": "refs/heads/" + branch_name, "sha": base_sha}
+    )
+    commit = github_api_request(
+        "PUT",
+        "/repos/" + encoded_repo + "/contents/main.py",
+        {
+            "message": "JARVIS SYSTEM_ENGINEER: implementera granskad systemförbättring",
+            "content": base64.b64encode(updated_source.encode("utf-8")).decode("ascii"),
+            "sha": source_blob_sha,
+            "branch": branch_name
+        }
+    )
+    commit_sha = str((commit.get("commit") or {}).get("sha") or "")
+    slug = re.sub(r"[^a-z0-9]+", "-", str(task[:55]).casefold()).strip("-")[:36] or "system-improvement"
+    pr = github_api_request(
+        "POST",
+        "/repos/" + encoded_repo + "/pulls",
+        {
+            "title": ("JARVIS SYSTEM_ENGINEER: " + slug)[:240],
+            "head": branch_name,
+            "base": GITHUB_BASE_BRANCH,
+            "draft": True,
+            "body": (
+                "SYSTEM_ENGINEER har skapat en avgränsad backendändring på separat gren.\n\n"
+                "Uppdrag:\n" + str(task)[:1500] + "\n\n"
+                "Ändringssammanfattning:\n" + str(patch_spec.get("summary") or "Backendförbättring i main.py")[:1200] + "\n\n"
+                "Oberoende statisk kodgranskning: GODKÄND.\n"
+                "GitHub Actions ska fortfarande köra syntax- och testkontroller. Ingen merge eller publicering har skett."
+            )
+        }
+    )
+    return {
+        "status": "pull_request_created",
+        "repository": repo,
+        "files": ["main.py"],
+        "branch": branch_name,
+        "commit_sha": commit_sha,
+        "pull_request_number": pr.get("number"),
+        "pull_request_url": pr.get("html_url"),
+        "validation": {"patches": len(applied), "independent_static_review": "passed"},
+        "repository_changes": True,
+        "published": False,
+        "verification": "Exakta källkodspatchar applicerade på separat gren och godkända i oberoende statisk granskning; GitHub CI återstår."
+    }
+
+
 def send_jarvis_job_notification(job_id, subscription, outcome):
     """Send one standards-based Web Push notification when a queued task completes."""
     if not isinstance(subscription, dict) or not subscription.get("endpoint"):
@@ -994,16 +1172,23 @@ async def jarvis_job_worker_loop():
                 outcome = await jarvis_delegate(
                     JarvisDelegateRequest(task=task, history=history)
                 )
-                if outcome.get("status") == "delegated" and (
-                    "GAME_DEVELOPER" in (outcome.get("targets") or [])
-                    or "WEBMASTER" in (outcome.get("targets") or [])
+                targets = outcome.get("targets") or []
+                if outcome.get("status") == "delegated" and any(
+                    target in targets for target in ("SYSTEM_ENGINEER", "GAME_DEVELOPER", "WEBMASTER")
                 ):
-                    delivery = None
-                    if "GAME_DEVELOPER" in (outcome.get("targets") or []):
+                    if "SYSTEM_ENGINEER" in targets:
+                        delivery = await asyncio.to_thread(
+                            create_system_engineer_pull_request, task, outcome, job_id
+                        )
+                    elif "GAME_DEVELOPER" in targets:
                         delivery = await asyncio.to_thread(
                             create_game_portal_pull_request, task, outcome, job_id
                         )
-                    if not delivery or delivery.get("status") == "skipped":
+                        if not delivery or delivery.get("status") == "skipped":
+                            delivery = await asyncio.to_thread(
+                                create_multi_file_project_pull_request, task, outcome, job_id
+                            )
+                    else:
                         delivery = await asyncio.to_thread(
                             create_multi_file_project_pull_request, task, outcome, job_id
                         )
@@ -1015,8 +1200,8 @@ async def jarvis_job_worker_loop():
                         outcome["published"] = False
                         outcome["reply"] = (
                             str(outcome.get("reply") or "")
-                            + "\n\nJARVIS har sparat en ändring av arcade.html på en separat GitHub-gren "
-                            + "och skapat en utkast-PR. CI och granskning återstår innan publicering. "
+                            + "\n\nJARVIS har sparat kodändringar på en separat GitHub-gren "
+                            + "och skapat en utkast-PR. CI och granskning återstår före eventuell publicering. "
                             + "PR-länk: " + str(delivery.get("pull_request_url") or "länken kunde inte hämtas.")
                         )
                     elif delivery.get("status") == "blocked":
@@ -1030,11 +1215,18 @@ async def jarvis_job_worker_loop():
                         )
                 quality_gate = str(outcome.get("quality_gate") or "").strip().casefold()
                 quality_blocked = quality_gate in ("needs_changes", "failed", "blocked", "rejected")
+                delivery_status = (outcome.get("github_delivery") or {}).get("status")
+                delivery_required = bool(
+                    set(outcome.get("targets") or []).intersection(
+                        {"SYSTEM_ENGINEER", "GAME_DEVELOPER", "WEBMASTER"}
+                    )
+                )
+                delivery_blocked = delivery_required and delivery_status != "pull_request_created"
                 completed = (
                     outcome.get("status") in ("delegated", "needs_discussion")
                     and not quality_blocked
+                    and not delivery_blocked
                 )
-                delivery_status = (outcome.get("github_delivery") or {}).get("status")
                 if delivery_status == "pull_request_created":
                     result_phase = "Kodändring sparad på separat GitHub-gren – utkast-PR skapad; CI och granskning återstår"
                 elif delivery_status == "blocked":
@@ -2234,7 +2426,8 @@ def ask_openrouter(
     system_prompt,
     max_tokens=2048,
     json_mode=False,
-    image_data=""
+    image_data="",
+    model=None
 ):
 
     url = "https://openrouter.ai/api/v1/chat/completions"
@@ -2247,7 +2440,7 @@ def ask_openrouter(
         ]
 
     payload = {
-        "model": OPENROUTER_MODEL,
+        "model": model or OPENROUTER_MODEL,
         "messages": [
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_content}
@@ -2412,6 +2605,25 @@ def generate_reply(
             f"Gemini: {gemini_error}. "
             "OpenRouter är inte konfigurerat."
         )
+    )
+
+
+def generate_independent_review(message, system_prompt, generation_engine, max_tokens=2200, json_mode=True):
+    """Run review through a provider different from the one that generated the patch."""
+    provider = select_independent_review_provider(
+        generation_engine,
+        bool(GEMINI_API_KEY),
+        bool(OPENROUTER_API_KEY)
+    )
+    if provider == "OpenRouter":
+        answer = ask_openrouter(message, system_prompt, max_tokens, json_mode)
+        return {"reply": answer, "engine": "OpenRouter (independent review)"}
+    if provider == "Gemini":
+        answer = ask_gemini(message, system_prompt, max_tokens, json_mode)
+        return {"reply": answer, "engine": "Gemini (independent review)"}
+    raise RuntimeError(
+        "Oberoende kodgranskning kan inte köras: en separat AI-leverantör saknas. "
+        "Patchen stoppas i stället för att granskas av samma motor."
     )
 
 
@@ -3547,9 +3759,10 @@ async def jarvis_intelligence():
             "ai_curated_memory": memory.get("status") == "online",
             "automatic_specialist_selection": True,
             "multi_agent_collaboration": True,
-            "peer_review": True,
-            "final_quality_gate": True,
-            "independent_qa_specialist": True,
+            "peer_review": bool(GEMINI_API_KEY and OPENROUTER_API_KEY),
+            "final_quality_gate": bool(GEMINI_API_KEY and OPENROUTER_API_KEY),
+            "independent_qa_specialist": bool(GEMINI_API_KEY and OPENROUTER_API_KEY),
+            "independent_review_provider_count": int(bool(GEMINI_API_KEY)) + int(bool(OPENROUTER_API_KEY)),
             "project_result_memory": memory.get("status") == "online",
             "live_team_status": bool(jarvis_worker_task and not jarvis_worker_task.done()),
             "persistent_project_registry": USE_SUPABASE_MEMORY and memory.get("status") == "online",
@@ -4340,9 +4553,24 @@ Delegering ger inte tillstånd att köpa, publicera, betala eller utföra extern
                     + next((item["reply"][:6000] for item in results if item["target"] == target), "")
                     + "\n\nÖVRIGA SPECIALISTERS FÖRSLAG:\n" + peer_material
                 )
-                review = await asyncio.to_thread(
-                    generate_reply, review_prompt, prompts[target], max_tokens=5000
+                initial_analysis = next(
+                    (item for item in results if item["target"] == target), {}
                 )
+                try:
+                    review = await asyncio.to_thread(
+                        generate_independent_review,
+                        review_prompt,
+                        prompts[target],
+                        initial_analysis.get("engine"),
+                        max_tokens=5000,
+                        json_mode=False
+                    )
+                except Exception as review_error:
+                    review = {
+                        "reply": "Oberoende kollegial granskning kunde inte köras: "
+                                 + str(review_error)[:500],
+                        "engine": "unavailable"
+                    }
                 council_reviews.append({
                     "target": target, "reply": review["reply"], "engine": review["engine"]
                 })
@@ -4430,8 +4658,12 @@ Visa aldrig råkod, kodblock eller interna granskningsanteckningar.
         final_reply = summary["reply"]
         try:
             quality = await asyncio.to_thread(
-                generate_reply, quality_input, quality_prompt,
-                max_tokens=3500, json_mode=True
+                generate_independent_review,
+                quality_input,
+                quality_prompt,
+                summary.get("engine"),
+                max_tokens=3500,
+                json_mode=True
             )
             quality_data = extract_json(quality["reply"])
             # En enda självrättningsrunda: återöppna endast leveranser där QA hittat en konkret brist.

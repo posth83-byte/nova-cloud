@@ -360,7 +360,24 @@ try {
         if (route === "/") {
           // Navigate through the real home-screen control instead of force-opening the studio.
           await page.locator(".jarvis-nova-link").click();
-          await page.waitForFunction(() => !document.querySelector("#novaView")?.classList.contains("hidden"), null, { timeout: 5000 });
+          const novaOpened = await page.waitForFunction(() => !document.querySelector("#novaView")?.classList.contains("hidden"), null, { timeout: 5000 }).then(() => true).catch(() => false);
+          if (!novaOpened) {
+            const navigationDebug = await page.evaluate(() => {
+              const button = document.querySelector(".jarvis-nova-link");
+              const rect = button?.getBoundingClientRect();
+              const hit = rect ? document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2) : null;
+              const view = document.querySelector("#novaView");
+              return {
+                viewport: { width: innerWidth, height: innerHeight },
+                novaClass: view?.className,
+                novaDisplay: view ? getComputedStyle(view).display : null,
+                homeClass: document.querySelector("#homeView")?.className,
+                enterRoomType: typeof window.enterRoom,
+                button: button ? { rect: { x: rect.x, y: rect.y, width: rect.width, height: rect.height }, display: getComputedStyle(button).display, pointerEvents: getComputedStyle(button).pointerEvents, onclick: button.getAttribute("onclick"), hitTag: hit?.tagName, hitClass: hit?.className } : null
+              };
+            });
+            localFailures.push("NOVA navigation failed after button click: " + JSON.stringify(navigationDebug));
+          }
           if (await page.locator("#videoTeamCreator").count() !== 1) localFailures.push("Video creator panel is missing.");
           if (await page.locator("#videoFindIdeas").count() !== 1) localFailures.push("Trend discovery button is missing.");
           if (await page.locator("#videoCreateOriginal").count() !== 1) localFailures.push("Original video button is missing.");
