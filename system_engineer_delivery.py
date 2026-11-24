@@ -122,16 +122,34 @@ def is_runtime_evidence_verified(
 
 
 
-def build_evidence_reconciliation(task: str, qa_evidence: dict, specialist_results=None) -> dict:
-    """Reconcile machine-captured QA facts before an AI reviewer can approve a delivery."""
+def task_requires_live_runtime_evidence(task: str) -> bool:
+    """Detect explicit live/runtime verification intent, including Swedish drift terminology."""
     task_text = str(task or "").casefold()
-    runtime_required = (
+    return bool(
         "/api/status" in task_text
-        and any(term in task_text for term in ("driftsatt", "live", "runtime", "returnerar", "http"))
+        and any(term in task_text for term in (
+            "drift", "live", "runtime", "http", "endpoint", "verifier",
+            "kontroll", "check", "health", "test"
+        ))
     )
+
+
+def build_evidence_reconciliation(task: str, qa_evidence: dict, specialist_results=None) -> dict:
+    """Reconcile every explicitly requested endpoint against source and two runtime captures."""
+    task_text = str(task or "").casefold()
+    runtime_required = task_requires_live_runtime_evidence(task_text)
+    known_endpoints = (
+        "/api/status",
+        "/api/jarvis/intelligence",
+        "/api/worker/status",
+        "/api/memory/status",
+        "/api/team/status",
+    )
+    requested_endpoints = [path for path in known_endpoints if path in task_text]
     evidence = qa_evidence if isinstance(qa_evidence, dict) else {}
     source_commit = str(evidence.get("source_commit_sha") or "")
     source_files = evidence.get("source_files_fetched")
+    source_routes = evidence.get("runtime_routes_in_qa_source")
     source_verified = bool(
         evidence.get("source_snapshot_status") == "fetched"
         and len(source_commit) >= 12
@@ -139,38 +157,71 @@ def build_evidence_reconciliation(task: str, qa_evidence: dict, specialist_resul
         and "main.py" in source_files
         and evidence.get("status_route_in_qa_source") is True
     )
+    if source_verified:
+        for path in requested_endpoints:
+            if path != "/api/status" and (
+                not isinstance(source_routes, list) or path not in source_routes
+            ):
+                source_verified = False
+                break
+
     captures = []
     for key in ("runtime_status_endpoint", "post_qa_status_endpoint"):
         capture = evidence.get(key)
-        if isinstance(capture, dict) and capture:
-            captures.append({"stage": key, "verified": is_runtime_evidence_verified(
+        captures.append({
+            "stage": key,
+            "verified": is_runtime_evidence_verified(
                 capture, source_commit, source_verified, required=True
-            ), "http_status": capture.get("http_status"),
-                "deployment_commit": str(capture.get("deployment_commit") or ""),
-                "status": str(capture.get("status") or "")})
+            ),
+            "http_status": capture.get("http_status") if isinstance(capture, dict) else None,
+            "deployment_commit": str(capture.get("deployment_commit") or "") if isinstance(capture, dict) else "",
+            "status": str(capture.get("status") or "") if isinstance(capture, dict) else "",
+        })
+
+    endpoint_checks = []
+    for stage_key in ("runtime_endpoints", "post_qa_runtime_endpoints"):
+        stage = evidence.get(stage_key)
+        for path in requested_endpoints:
+            if path == "/api/status":
+                continue
+            capture = stage.get(path) if isinstance(stage, dict) else None
+            valid = bool(
+                isinstance(capture, dict)
+                and capture.get("status") == "verified"
+                and str(capture.get("http_status") or "") == "200"
+            )
+            endpoint_checks.append({
+                "stage": stage_key,
+                "endpoint": path,
+                "verified": valid,
+                "http_status": capture.get("http_status") if isinstance(capture, dict) else None,
+                "status": str(capture.get("status") or "") if isinstance(capture, dict) else "missing",
+            })
+
     if not runtime_required:
         runtime_verified = None
         status = "not_required"
     else:
         runtime_verified = bool(
             source_verified
-            and captures
             and all(item["verified"] for item in captures)
+            and all(item["verified"] for item in endpoint_checks)
         )
         status = "verified" if runtime_verified else "blocked"
     return {
         "runtime_required": runtime_required,
         "runtime_status": status,
         "runtime_verified": runtime_verified,
+        "requested_endpoints": requested_endpoints,
         "source_snapshot_verified": source_verified,
         "source_commit_sha": source_commit or None,
         "runtime_captures": captures,
+        "endpoint_captures": endpoint_checks,
         "specialist_reports_are_not_runtime_evidence": True,
         "interpretation": (
-            "Specialisterna saknar direkt nätverksverktyg i sina textanalyser. "
-            "Deras beskrivning av egen verktygsåtkomst motsäger inte ett separat "
-            "maskininsamlat QA-resultat. Endast QA-underlagets verifierade HTTP- och "
-            "källkodsbevis avgör runtime-status."
+            "Endast maskininsamlad HTTP- och källkodsevidens räknas. Varje uttryckligen "
+            "begärd endpoint måste vara verifierad i både första och andra runtime-avläsningen. "
+            "Specialisternas egna verktygsbegränsningar ersätter inte eller motsäger dessa bevis."
         )
     }
 
