@@ -36,6 +36,7 @@ jobs:
       - name: Check live JARVIS services
         env:
           BASE_URL: https://nova-cloud-c4t9.onrender.com
+          EXPECTED_COMMIT: ${{ github.sha }}
         run: |
           python - <<'PY'
           import json
@@ -86,17 +87,23 @@ jobs:
               raise RuntimeError(f"{path} failed after retries: {last_error}")
 
           results = {path: get_json(path) for path in paths}
-          # Wait for the new CI-gated delivery mode to become visible on Render.
-          # A healthy response from the previous deployment is not sufficient.
-          for attempt in range(30):
-              github_status = get_json("/api/github/status")
-              if github_status.get("mode") == "ci_gated_auto_merge":
-                  results["/api/github/status"] = github_status
+          # Require the exact commit from this push, not merely a healthy old instance.
+          expected_commit = os.environ["EXPECTED_COMMIT"]
+          for attempt in range(36):
+              deployed_health = get_json("/health")
+              if deployed_health.get("deployment_commit") == expected_commit:
+                  results["/health"] = deployed_health
                   break
-              if attempt < 29:
+              if attempt < 35:
                   time.sleep(5)
           else:
-              raise SystemExit("Render is healthy but the CI-gated delivery version is not live yet.")
+              raise SystemExit(
+                  "Render has not deployed the expected commit "
+                  f"{expected_commit}; currently serving "
+                  f"{deployed_health.get('deployment_commit')!r}."
+              )
+          github_status = get_json("/api/github/status")
+          results["/api/github/status"] = github_status
           dashboard_html = get_text("/")
           health = results["/health"]
           api = results["/api/status"]
@@ -110,6 +117,7 @@ jobs:
               "dashboard_http_ok": "<title>JARVIS" in dashboard_html,
               "dashboard_mobile_viewport": 'name="viewport"' in dashboard_html,
               "deployed_version_reported": bool(health.get("version")),
+              "deployment_commit_matches": health.get("deployment_commit") == os.environ["EXPECTED_COMMIT"],
               "service_online": health.get("status") == "online",
               "api_online": api.get("status") == "online",
               "qa_specialist_registered": "QA_ENGINEER" in intelligence.get("specialists", []),
