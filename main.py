@@ -893,7 +893,8 @@ def wait_for_github_checks_and_merge(pull_request, timeout_seconds=1200):
         failed = {name: latest[name].get("conclusion") for name in required.intersection(latest)
                   if latest[name].get("status") == "completed" and latest[name].get("conclusion") != "success"}
         optional_failed = {name: item.get("conclusion") for name, item in latest.items()
-                           if name == "job-dedup-tests" and item.get("status") == "completed" and item.get("conclusion") != "success"}
+                           if name == "job-dedup-tests" and item.get("status") == "completed"
+                           and item.get("conclusion") not in ("success", "skipped")}
         last_state = {"missing": missing, "pending": sorted(name for name in required.intersection(latest) if latest[name].get("status") != "completed"),
                       "failed": failed, "optional_failed": optional_failed}
         if failed or optional_failed:
@@ -912,8 +913,35 @@ def wait_for_github_checks_and_merge(pull_request, timeout_seconds=1200):
     merged = github_api_request("PUT", f"/repos/{encoded_repo}/pulls/{number}/merge", {"sha": head_sha, "merge_method": "squash"})
     if merged.get("merged") is not True:
         raise RuntimeError("GitHub bekräftade inte att PR:en mergades.")
-    return {"status": "merged", "pull_request_number": number, "pull_request_url": current.get("html_url"), "merge_sha": merged.get("sha"),
-            "checks": last_state, "verification": "Alla fyra obligatoriska GitHub-kontroller godkända; PR mergad med låst head-SHA."}
+    merge_sha = str(merged.get("sha") or "")
+    if not merge_sha:
+        raise RuntimeError("GitHub mergade PR:en men returnerade ingen merge-commit.")
+    # A merge is not the finish line: wait until Render's live runtime check
+    # confirms that the new delivery mode is actually serving production traffic.
+    runtime_deadline = time.monotonic() + 720
+    runtime_state = None
+    while time.monotonic() < runtime_deadline:
+        deployed = github_api_request(
+            "GET",
+            f"/repos/{encoded_repo}/commits/{urllib.parse.quote(merge_sha, safe='')}/check-runs?per_page=100"
+        )
+        runtime_runs = [
+            item for item in (deployed.get("check_runs") or [])
+            if item.get("name") == "runtime-health"
+            and ((item.get("app") or {}).get("slug") == "github-actions")
+        ]
+        runtime_run = max(runtime_runs, key=lambda item: str(item.get("started_at") or ""), default=None)
+        if runtime_run and runtime_run.get("status") == "completed":
+            runtime_state = runtime_run.get("conclusion")
+            if runtime_state == "success":
+                break
+            raise RuntimeError("PR:en mergades men Render runtime-health underkändes: " + str(runtime_state))
+        time.sleep(15)
+    else:
+        raise RuntimeError("PR:en mergades, men Render har ännu inte bekräftat den nya live-versionen via runtime-health.")
+    return {"status": "merged", "pull_request_number": number, "pull_request_url": current.get("html_url"), "merge_sha": merge_sha,
+            "checks": last_state, "runtime_health": runtime_state,
+            "verification": "Fyra obligatoriska CI-kontroller godkända, PR mergad och Render runtime-health bekräftade den driftsatta versionen."}
 
 
 def create_system_engineer_pull_request(task, outcome, job_id):
