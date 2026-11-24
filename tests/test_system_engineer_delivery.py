@@ -34,6 +34,24 @@ class SystemEngineerDeliveryTests(unittest.TestCase):
                 [{"path": "requirements.txt", "old_text": "alpha = 1", "new_text": "alpha = 2"}],
             )
 
+    def test_normalizes_supported_patch_list_aliases(self):
+        from system_engineer_delivery import normalize_patch_spec
+        patch = {"summary": "fix", "patches": [
+            {"path": "main.py", "old_text": "a = 1", "new_text": "a = 2"}
+        ]}
+        normalized = normalize_patch_spec(patch)
+        self.assertEqual(normalized["changes"], patch["patches"])
+
+    def test_normalizes_root_patch_list(self):
+        from system_engineer_delivery import normalize_patch_spec
+        changes = [{"path": "main.py", "old_text": "a = 1", "new_text": "a = 2"}]
+        self.assertEqual(normalize_patch_spec(changes)["changes"], changes)
+
+    def test_rejects_missing_patch_list_without_alias(self):
+        from system_engineer_delivery import normalize_patch_spec
+        with self.assertRaisesRegex(ValueError, "saknar en giltig changes-lista"):
+            normalize_patch_spec({"summary": "no patch provided"})
+
     def test_rejects_empty_or_oversized_patch_lists(self):
         with self.assertRaises(ValueError):
             apply_exact_text_patches("alpha = 1", [])

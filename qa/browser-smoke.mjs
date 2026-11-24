@@ -505,7 +505,7 @@ try {
         if (errors.length) failures.push(route + " [" + viewport.name + "]: " + errors.join(" | "));
         results.push({ route, viewport: viewport.name, status: errors.length ? "FAIL" : "PASS" });
       } catch (error) {
-        failures.push(route + " [" + viewport.name + "]: " + error.message);
+        failures.push(route + " [" + viewport.name + "]: " + (error.stack || error.message));
         results.push({ route, viewport: viewport.name, status: "FAIL" });
       } finally {
         await page.close();
