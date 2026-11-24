@@ -1,7 +1,7 @@
 import unittest
 
 from system_engineer_delivery import apply_exact_text_patches, build_source_excerpt
-from main import select_independent_review_provider
+from system_engineer_delivery import select_independent_review_provider
 
 
 class SystemEngineerDeliveryTests(unittest.TestCase):
