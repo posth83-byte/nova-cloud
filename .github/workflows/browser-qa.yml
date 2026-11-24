@@ -45,7 +45,7 @@ jobs:
       - name: Run JARVIS browser smoke tests
         run: node qa/browser-smoke.mjs
       - name: Run live shared-list E2E for dedicated QA branch
-        if: github.event_name == 'pull_request' && github.head_ref == 'qa/live-shopping-list-e2e-20261124'
+        if: github.event_name == 'workflow_dispatch' || (github.event_name == 'pull_request' && github.head_ref == 'qa/live-shopping-list-e2e-20261124')
         env:
           SHOPPING_LIST_BASE_URL: https://var-inkopslista.onrender.com
           SHOPPING_LIST_API_URL: https://nova-cloud-c4t9.onrender.com
