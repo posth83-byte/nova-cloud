@@ -149,35 +149,37 @@ function render(){
 function guessCategory(name){const s=String(name||"").toLocaleLowerCase("sv-SE");if(/mjölk|havredryck|sojadryck|mandeldryck|ost|smör|margarin|yoghurt|kvarg|grädde|crème fraiche|creme fraiche|ägg|fil|keso/.test(s))return"Mejeri";if(/äpple|päron|banan|apelsin|citron|lime|tomat|gurka|paprika|morot|potatis|sallad|lök|avokado|frukt|grönsak|broccoli|blomkål|druv|bär/.test(s))return"Frukt & grönt";if(/kött|kyckling|fisk|lax|räk|skaldjur|korv|färs|bacon|skinka|fläsk|nötfärs/.test(s))return"Kött & fisk";if(/bröd|pasta|ris|mjöl|kaffe|te|socker|konserv|sås|krydda|olja|vinäger|havregryn|flingor|knäckebröd|bulgur|couscous/.test(s))return"Skafferi";if(/glass|fryst|frys|ispinne/.test(s))return"Frys";if(/disk|tvätt|toalett|hushållspapper|bakplåtspapper|såpa|rengör|städ|soppåse|tvål|schampo|tandkräm/.test(s))return"Hushåll";return"Övrigt"}
 $("addForm").onsubmit=async e=>{
  e.preventDefault();
- const name=$("itemInput").value.trim();if(!name)return;
- rememberSuggestion(name);
+ const names=[...new Set($("itemInput").value.split(/[,\n;]+/).map(x=>x.trim()).filter(Boolean))];
+ if(!names.length)return;
  const priceRaw=$("itemPrice").value.trim();
+ if(names.length>1&&priceRaw!==""){toast("Lägg till pris separat när du lägger in flera varor.");return}
  const price=priceRaw===""?null:Number(priceRaw.replace(",","."));
  if(price!==null&&(!Number.isFinite(price)||price<0||price>999999)){toast("Ange ett giltigt pris.");return}
- const item={id:"pending-"+crypto.randomUUID(),name,category:guessCategory(name),qty:"",price,done:false,is_favorite:false};
- items.unshift(item);
+ const pending=names.map(name=>({id:"pending-"+crypto.randomUUID(),name,category:guessCategory(name),qty:"",price,done:false,is_favorite:false}));
+ names.forEach(rememberSuggestion);
+ items.unshift(...pending);
  localStorage.setItem("shoppingItems",JSON.stringify(items));render();
  $("itemInput").value="";$("itemPrice").value="";$("itemInput").focus();
  const submitButton=$("addForm").querySelector('button[type="submit"]');
- submitButton.textContent="Tillagd ✓";
- setTimeout(()=>{submitButton.textContent="＋ Lägg till";},650);
- if(!listToken){
-  toast("Varan tillagd");return;
- }
+ submitButton.textContent=pending.length+" tillagda ✓";
+ setTimeout(()=>{submitButton.textContent="＋ Lägg till";},900);
+ if(!listToken){toast(pending.length===1?"Varan tillagd":pending.length+" varor tillagda");return}
  pendingMutations++;
  try{
-  const response=await api("/api/shopping-list/items","POST",{name,category:item.category,qty:"",price,source_endpoint:await currentPushEndpoint()});
-  if(!response||!response.item||!response.item.id)throw new Error("Servern bekräftade inte att varan sparades.");
-  const index=items.findIndex(x=>x.id===item.id);
-  if(index>=0)items[index]=response.item;
+  const endpoint=await currentPushEndpoint();
+  const results=await Promise.allSettled(pending.map(async item=>{
+   const response=await api("/api/shopping-list/items","POST",{name:item.name,category:item.category,qty:"",price:item.price,source_endpoint:endpoint});
+   if(!response||!response.item||!response.item.id)throw new Error("Servern bekräftade inte "+item.name+".");
+   const index=items.findIndex(x=>x.id===item.id);
+   if(index>=0)items[index]=response.item;
+   return item.name;
+  }));
+  const failed=[];
+  results.forEach((result,index)=>{if(result.status==="rejected"){failed.push(pending[index]);items=items.filter(x=>x.id!==pending[index].id)}});
   localStorage.setItem("shoppingItems",JSON.stringify(items));render();
-  setSyncStatus("Delad lista · synkas automatiskt");
-
- }catch(error){
-  items=items.filter(x=>x.id!==item.id);
-  localStorage.setItem("shoppingItems",JSON.stringify(items));render();
-  toast("Varan kunde inte sparas: "+error.message);
-  setSyncStatus("Kunde inte spara · försök igen");
+  const succeeded=pending.length-failed.length;
+  if(failed.length){toast((succeeded?succeeded+" tillagda · ":"")+failed.length+" kunde inte sparas");setSyncStatus("Några varor kunde inte sparas · försök igen")}
+  else{toast(succeeded===1?"Varan tillagd":succeeded+" varor tillagda");setSyncStatus("Delad lista · synkas automatiskt")}
  }finally{
   pendingMutations=Math.max(0,pendingMutations-1);
  }
