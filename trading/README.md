@@ -31,7 +31,7 @@ AI is advisory. Deterministic code has final authority and can reject any propos
 
 ## Implemented paper-trading layer
 - `paper_engine.py` is an offline, deterministic, long-only spot paper broker.
-- It supports one open position, allowlisted symbols, stop-based sizing, a 1% maximum risk budget per trade and a 2% daily drawdown entry stop.
+- It supports one open position, allowlisted symbols, stop-based sizing, automatic stop-loss monitoring, a 1% maximum risk budget per trade and a 2% daily drawdown entry stop.
 - Entry/exit fees and configurable slippage are included in simulated fills and realized P&L.
 - Paper state is persisted atomically to a local JSON file; a restart reloads the same portfolio.
 - Realized profit remains in the cash balance and can be reinvested; external funding is tracked separately.
