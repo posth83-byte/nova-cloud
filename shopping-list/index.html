@@ -92,9 +92,27 @@ function guessCategory(name){let s=name.toLowerCase();if(/mjölk|ost|smör|yoghu
 $("addForm").onsubmit=async e=>{
  e.preventDefault();let name=$("itemInput").value.trim();if(!name)return;
  const item={name,category:guessCategory(name),qty:""};
- if(listToken)await mutateShared("/api/shopping-list/items","POST",{...item,source_endpoint:await currentPushEndpoint()});
- else{items.unshift({id:crypto.randomUUID(),...item,done:false});saveLocal()}
- $("itemInput").value="";$("itemInput").focus();
+ if(listToken){
+  try{
+   const response=await api("/api/shopping-list/items","POST",{...item,source_endpoint:await currentPushEndpoint()});
+   if(!response||!response.item||!response.item.id)throw new Error("Servern bekräftade inte att varan sparades.");
+   items.unshift(response.item);
+   localStorage.setItem("shoppingItems",JSON.stringify(items));
+   render();
+   $("itemInput").value="";
+   $("itemInput").focus();
+   setSyncStatus("Delad lista · synkas automatiskt");
+  }catch(error){
+   toast("Varan kunde inte sparas: "+error.message);
+   setSyncStatus("Kunde inte spara · försök igen");
+   $("itemInput").focus();
+  }
+ }else{
+  items.unshift({id:crypto.randomUUID(),...item,done:false});
+  saveLocal();
+  $("itemInput").value="";
+  $("itemInput").focus();
+ }
 };
 $("clear").onclick=async()=>{
  if(listToken)await mutateShared("/api/shopping-list/clear-completed","POST",{});
