@@ -52,6 +52,24 @@ class PaperBrokerTests(unittest.TestCase):
         self.assertGreater(self.broker.state["cash"], 500.0)
         self.assertEqual(self.broker.state["external_funding"], 500.0)
 
+    def test_stop_monitor_closes_position_automatically(self):
+        self.broker.buy("BTC/EUR", 100.0, 95.0)
+        fills = self.broker.check_stops({"BTC/EUR": 94.0})
+        self.assertEqual(len(fills), 1)
+        self.assertEqual(fills[0]["reason"], "stop_loss")
+        self.assertEqual(self.broker.state["positions"], {})
+
+    def test_daily_drawdown_blocks_new_entry(self):
+        self.broker.buy("BTC/EUR", 100.0, 95.0)
+        self.broker.sell("BTC/EUR", 50.0, reason="test_drawdown")
+        with self.assertRaises(TradeRejected):
+            self.broker.buy("ETH/EUR", 50.0, 47.0)
+
+    def test_minimum_notional_is_not_bypassed(self):
+        strict = PaperBroker(self.path.parent / "strict.json", 500.0, minimum_notional=1000.0)
+        with self.assertRaises(TradeRejected):
+            strict.buy("BTC/EUR", 100.0, 95.0)
+
     def test_live_state_is_refused(self):
         state = json.loads(self.path.read_text())
         state["mode"] = "live"
