@@ -20,7 +20,7 @@ from urllib.parse import quote
 
 from fastapi import FastAPI, HTTPException, Header, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, HTMLResponse
+from fastapi.responses import FileResponse, HTMLResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 from job_dedup import normalize_job_task, job_task_fingerprint, is_duplicate_job_task
@@ -3965,20 +3965,40 @@ async def read_shopping_list(authorization: str = Header(default="")):
         list_row = await asyncio.to_thread(resolve_shopping_list_token, authorization)
         background_path = str(list_row.get("background_path") or "")
         background_url = (
-            SUPABASE_URL + "/storage/v1/object/public/shopping-list-backgrounds/"
-            + urllib.parse.quote(background_path, safe="/")
-            if background_path else ""
+            background_path if background_path else ""
         )
         return {
             "list_id": list_row["id"],
             "updated_at": list_row.get("updated_at"),
-            "background_url": background_url,
+            "background_path": background_path,
             "items": await asyncio.to_thread(get_shopping_list_items, list_row["id"])
         }
     except HTTPException:
         raise
     except Exception as error:
         raise HTTPException(status_code=502, detail=f"Kunde inte läsa inköpslistan: {str(error)[:400]}")
+
+
+@app.get("/api/shopping-list/background")
+async def read_shopping_list_background(authorization: str = Header(default="")):
+    """Stream the shared background only to members with the list token."""
+    list_row = await asyncio.to_thread(resolve_shopping_list_token, authorization)
+    object_path = str(list_row.get("background_path") or "")
+    if not object_path:
+        raise HTTPException(status_code=404, detail="Ingen bakgrundsbild är vald.")
+    object_url = SUPABASE_URL + "/storage/v1/object/shopping-list-backgrounds/" + urllib.parse.quote(object_path, safe="/")
+    request = urllib.request.Request(object_url, headers={
+        "apikey": SUPABASE_SECRET_KEY,
+        "Authorization": "Bearer " + SUPABASE_SECRET_KEY
+    }, method="GET")
+    try:
+        def download_background():
+            with urllib.request.urlopen(request, timeout=30) as response:
+                return response.read(), response.headers.get("Content-Type", "image/jpeg")
+        image_bytes, mime_type = await asyncio.to_thread(download_background)
+        return Response(content=image_bytes, media_type=mime_type, headers={"Cache-Control": "private, max-age=300"})
+    except Exception as error:
+        raise HTTPException(status_code=502, detail="Bakgrundsbilden kunde inte hämtas: " + str(error)[:200])
 
 
 @app.post("/api/shopping-list/background")
@@ -4006,7 +4026,7 @@ async def update_shopping_list_background(payload: dict, authorization: str = He
                 await asyncio.to_thread(lambda: urllib.request.urlopen(delete_request, timeout=25).read())
             except Exception:
                 pass
-        return {"ok": True, "background_url": ""}
+        return {"ok": True, "background_path": ""}
 
     data_url = str(payload.get("data_url") or "")
     allowed = {
@@ -4057,7 +4077,7 @@ async def update_shopping_list_background(payload: dict, authorization: str = He
             pass
 
     public_url = SUPABASE_URL + "/storage/v1/object/public/shopping-list-backgrounds/" + urllib.parse.quote(object_path, safe="/")
-    return {"ok": True, "background_url": public_url}
+    return {"ok": True, "background_path": object_path}
 
 
 @app.post("/api/shopping-list/push/subscribe")
