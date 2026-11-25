@@ -3922,7 +3922,10 @@ async def create_shopping_list(request: ShoppingListCreateRequest):
                 "name": name,
                 "category": item.category if item.category in SHOPPING_LIST_CATEGORIES else "Övrigt",
                 "qty": item.qty.strip(),
-                "done": bool(item.done)
+                "done": bool(item.done),
+                "price": item.price,
+                "image_data": item.image_data,
+                "is_favorite": bool(item.is_favorite)
             })
         if seed_items:
             await asyncio.to_thread(
