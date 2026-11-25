@@ -90,7 +90,20 @@ def scan() -> dict:
             timeframe_ms = int(exchange.parse_timeframe(TIMEFRAME) * 1000)
             now_ms = exchange.milliseconds()
             closed_candles = [candle for candle in candles if int(candle[0]) + timeframe_ms <= now_ms]
-            results.append(analyse_candles(symbol, closed_candles))
+            analysis = analyse_candles(symbol, closed_candles)
+            try:
+                ticker = exchange.fetch_ticker(symbol)
+                mark = ticker.get("last")
+                if mark is not None and float(mark) > 0:
+                    analysis["mark_price_eur"] = round(float(mark), 2)
+                    analysis["mark_price_source"] = "live_ticker"
+                else:
+                    analysis["mark_price_eur"] = analysis["last_price_eur"]
+                    analysis["mark_price_source"] = "last_closed_candle_fallback"
+            except Exception:
+                analysis["mark_price_eur"] = analysis["last_price_eur"]
+                analysis["mark_price_source"] = "last_closed_candle_fallback"
+            results.append(analysis)
         except Exception as exc:  # Public-data failures must not stop the other pair.
             errors.append({"symbol": symbol, "error": str(exc)[:240]})
     return {
