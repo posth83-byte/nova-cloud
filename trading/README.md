@@ -35,8 +35,16 @@ AI is advisory. Deterministic code has final authority and can reject any propos
 - Entry/exit fees and configurable slippage are included in simulated fills and realized P&L.
 - Paper state is persisted atomically to a local JSON file; a restart reloads the same portfolio.
 - Realized profit remains in the cash balance and can be reinvested; external funding is tracked separately.
-- The module has no exchange client, no API credentials and no live-order path.
-- `paper_config.json` contains conservative defaults. Set `starting_cash` in the quote currency only after applying a current SEK/EUR conversion; do not assume 500 SEK equals 500 EUR.
+- The broker has no exchange client, no API credentials and no live-order path.
+- `paper_strategy.py` adds a transparent EMA-trend/RSI/volume baseline with automatic stop-loss and trend exits; it is for paper evaluation only, not a proven profitable strategy.
+- `paper_runner.py` runs one complete cycle using public Kraken market data. Schedule repeated cycles only in a controlled paper environment.
+- `paper_config.json` contains conservative defaults. Pass `--starting-cash` in the quote currency only after applying a current SEK/EUR conversion; do not assume 500 SEK equals 500 EUR.
+
+Example one-cycle run (example EUR balance only):
+
+```bash
+python trading/paper_runner.py --starting-cash 470 --state-path trading/paper-state.json
+```
 
 Run tests from the repository root:
 
