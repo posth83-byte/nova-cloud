@@ -37,6 +37,18 @@ class PaperStrategyTests(unittest.TestCase):
         self.assertEqual(actions, [])
         self.assertEqual(self.broker.state["positions"], {})
 
+    def test_same_closed_candle_is_processed_only_once(self):
+        neutral = {
+            "symbol": "BTC/EUR", "last_price_eur": 100.0,
+            "trend": "neutral", "rsi14": 45.0, "volume_ratio": 1.0,
+            "last_candle_timestamp": 1000,
+        }
+        self.assertEqual(run_cycle(self.broker, [neutral]), [])
+        changed_same_candle = dict(neutral, trend="bullish", rsi14=60.0, volume_ratio=1.5)
+        self.assertEqual(run_cycle(self.broker, [changed_same_candle]), [])
+        next_candle = dict(changed_same_candle, last_candle_timestamp=2000)
+        self.assertEqual(run_cycle(self.broker, [next_candle])[0]["side"], "buy")
+
     def test_bearish_trend_exits_existing_position(self):
         self.broker.buy("BTC/EUR", 100.0, 98.0)
         actions = run_cycle(self.broker, [{
