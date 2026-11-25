@@ -25,6 +25,7 @@ def run_cycle(broker: PaperBroker, market_results: list[dict[str, Any]]) -> list
     new_results = []
     processed = broker.state.setdefault("processed_candles", {})
     by_symbol = {item["symbol"]: item for item in market_results if item.get("symbol")}
+    fresh_by_symbol = {item["symbol"]: item for item in new_results if item.get("symbol")}
     for item in market_results:
         symbol = item.get("symbol")
         candle_ts = item.get("last_candle_timestamp")
@@ -45,7 +46,7 @@ def run_cycle(broker: PaperBroker, market_results: list[dict[str, Any]]) -> list
 
     # Exit an existing position when the trend breaks or momentum becomes extreme.
     for symbol in list(broker.state["positions"]):
-        item = by_symbol.get(symbol)
+        item = fresh_by_symbol.get(symbol)
         if not item or symbol not in prices:
             continue
         rsi = item.get("rsi14")
@@ -55,7 +56,7 @@ def run_cycle(broker: PaperBroker, market_results: list[dict[str, Any]]) -> list
     # One position maximum. Rank is deterministic: first allowlisted qualifying pair.
     if not broker.state["positions"]:
         for symbol in broker.allowed_symbols:
-            item = by_symbol.get(symbol)
+            item = fresh_by_symbol.get(symbol)
             if not item or symbol not in prices:
                 continue
             rsi = item.get("rsi14")
