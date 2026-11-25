@@ -80,6 +80,8 @@ try {
         if (route === "/shopping-list/") {
           // Functional checks for the shopping list's core interactions on desktop and mobile.
           await page.locator("#itemInput").fill("QA-Äpplen");
+          await page.locator("#extrasToggle").click();
+          await page.locator("#extrasPanel").waitFor({ state: "visible", timeout: 3000 });
           await page.locator("#itemPrice").fill("12.5");
           const tinyPng = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/pXcAAAAASUVORK5CYII=", "base64");
           await page.locator("#itemPhoto").setInputFiles({ name: "qa.png", mimeType: "image/png", buffer: tinyPng });
