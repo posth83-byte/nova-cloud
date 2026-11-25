@@ -200,6 +200,17 @@ class PaperBroker:
         self._save()
         return fill
 
+    def check_stops(self, prices: dict[str, float]) -> list[dict[str, Any]]:
+        """Close any paper position whose supplied market mark has hit its stop."""
+        closed = []
+        for symbol, position in list(self.state["positions"].items()):
+            if symbol not in prices:
+                continue
+            mark = _number(prices[symbol], "stop-monitor price")
+            if mark <= float(position["stop_price"]):
+                closed.append(self.sell(symbol, mark, reason="stop_loss"))
+        return closed
+
     def sell(self, symbol: str, market_price: float, reason: str = "strategy_exit") -> dict[str, Any]:
         if symbol not in self.state["positions"]:
             raise TradeRejected(f"No open position for {symbol}")
