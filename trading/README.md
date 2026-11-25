@@ -37,14 +37,26 @@ AI is advisory. Deterministic code has final authority and can reject any propos
 - Realized profit remains in the cash balance and can be reinvested; external funding is tracked separately.
 - The broker has no exchange client, no API credentials and no live-order path.
 - `paper_strategy.py` adds a transparent EMA-trend/RSI/volume baseline with automatic stop-loss and trend exits; it is for paper evaluation only, not a proven profitable strategy.
-- `paper_runner.py` runs one complete cycle using public Kraken market data. Schedule repeated cycles only in a controlled paper environment.
+- `paper_runner.py` runs one complete cycle using public Kraken market data.
+- `paper_daemon.py` continuously polls public data, processes each completed hourly candle only once, and persists the portfolio. It is paper-only and stops on Ctrl+C.
+- `backtest.py` evaluates historical candles with fees/slippage, closed-candle signals and next-candle-open entries to reduce look-ahead bias.
+- `download_history.py` downloads public Kraken candles without credentials for offline backtesting.
 - `paper_config.json` contains conservative defaults. Pass `--starting-cash` in the quote currency only after applying a current SEK/EUR conversion; do not assume 500 SEK equals 500 EUR.
 
-Example one-cycle run (example EUR balance only):
+Example: download 30 days of hourly BTC/EUR candles and backtest with an example EUR balance:
 
 ```bash
-python trading/paper_runner.py --starting-cash 470 --state-path trading/paper-state.json
+python trading/download_history.py --symbol BTC/EUR --timeframe 1h --days 30 --output trading/history.json
+python trading/backtest.py --input trading/history.json --starting-cash 470 --output trading/backtest-result.json
 ```
+
+Example continuous paper watcher (example EUR balance only):
+
+```bash
+python trading/paper_daemon.py --starting-cash 470 --state-path trading/paper-state.json
+```
+
+The daemon is not deployed or running in the background yet. The example balance is not a conversion of the user's 500 SEK budget.
 
 Run tests from the repository root:
 
