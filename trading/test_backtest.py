@@ -24,6 +24,11 @@ class BacktestTests(unittest.TestCase):
         self.assertTrue(result["fees_and_slippage_included"])
         self.assertIn("net_return_pct", result)
         self.assertIn("max_drawdown_pct", result)
+        self.assertIn("expectancy_per_trade", result)
+        self.assertIn("profit_factor", result)
+        self.assertIn("buy_and_hold_return_pct", result)
+        self.assertIn("strategy_vs_buy_and_hold_pct_points", result)
+        self.assertTrue(result["benchmark_costs_included"])
         self.assertEqual(result["mode"], "historical_backtest")
 
     def test_next_candle_entry_avoids_same_candle_lookahead(self):
