@@ -467,7 +467,34 @@ if(listToken){
   ensurePushSubscription().catch(error=>toast("Notiser kunde inte återanslutas: "+error.message));
  }
 }else{
- setSyncStatus("Bara på den här telefonen · tryck ↗ för att dela");
+ const standalone=window.navigator.standalone===true||window.matchMedia("(display-mode: standalone)").matches;
+ if(standalone){
+  setSyncStatus("Anslut till er gemensamma lista");
+  const pasted=prompt("Klistra in sambons delningslänk här en gång, så sparas den i hemskärmsappen:");
+  if(pasted){
+   let token="";
+   try{
+    const parsed=new URL(pasted.trim());
+    token=new URLSearchParams(parsed.hash.replace(/^#/,"")).get("list")||parsed.searchParams.get("list")||"";
+   }catch{
+    token=pasted.trim();
+   }
+   if(token){
+    listToken=token;
+    localStorage.setItem("shoppingListToken",listToken);
+    setSyncStatus("Ansluter till den delade listan…");
+    loadSharedSuggestions();
+    refreshSharedList(false).catch(error=>toast("Kunde inte öppna listan: "+error.message));
+   }else{
+    setSyncStatus("Ingen delningskod hittades – öppna appen igen för att försöka på nytt");
+    toast("Jag hittade ingen delningskod i länken.");
+   }
+  }else{
+   setSyncStatus("Ingen lista ansluten – öppna appen igen för att ansluta");
+  }
+ }else{
+  setSyncStatus("Bara på den här telefonen · tryck ↗ för att dela");
+ }
 }
 setInterval(async()=>{if(listToken&&!pollBusy){pollBusy=true;try{await refreshSharedList(true)}catch{}finally{pollBusy=false}}},3000);
 document.addEventListener("visibilitychange",()=>{if(!document.hidden&&listToken)refreshSharedList(true).catch(()=>{})});
