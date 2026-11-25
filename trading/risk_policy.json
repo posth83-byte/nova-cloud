@@ -1,0 +1,17 @@
+{
+  "mode": "paper",
+  "starting_balance_sek": 500,
+  "markets": ["BTC/EUR", "ETH/EUR"],
+  "market_type": "spot",
+  "max_open_positions": 1,
+  "max_risk_per_trade_pct": 1.0,
+  "max_daily_drawdown_pct": 2.0,
+  "leverage": 1,
+  "allow_margin": false,
+  "allow_futures": false,
+  "allow_shorting": false,
+  "allow_withdrawals": false,
+  "require_stop_rule_before_entry": true,
+  "block_if_fee_and_spread_exceed_expected_edge": true,
+  "live_orders_enabled": false
+}
