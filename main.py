@@ -235,7 +235,7 @@ def supabase_jobs_request(method, path, payload=None, query="", prefer=""):
 
 def supabase_shopping_request(method, table, payload=None, query="", prefer=""):
     """Private shopping-list API; all access is mediated by server-side bearer tokens."""
-    allowed_tables = {"shopping_lists", "shopping_list_items", "shopping_list_push_subscriptions"}
+    allowed_tables = {"shopping_lists", "shopping_list_items", "shopping_list_push_subscriptions", "shopping_list_history"}
     if table not in allowed_tables:
         raise ValueError("Okänd inköpslistetabell.")
     if not USE_SUPABASE_MEMORY:
@@ -291,7 +291,7 @@ def get_shopping_list_items(list_id):
         "GET", "shopping_list_items", None,
         urllib.parse.urlencode({
             "list_id": "eq." + str(list_id),
-            "select": "id,name,category,qty,done,created_at,updated_at",
+            "select": "id,name,category,qty,done,price,image_data,is_favorite,created_at,updated_at",
             "order": "created_at.desc",
             "limit": "500"
         })
@@ -2350,6 +2350,9 @@ class ShoppingListSeedItem(BaseModel):
     category: str = Field(default="Övrigt", max_length=40)
     qty: str = Field(default="", max_length=40)
     done: bool = False
+    price: float | None = Field(default=None, ge=0, le=999999)
+    image_data: str = Field(default="", max_length=120000)
+    is_favorite: bool = False
 
 
 class ShoppingListCreateRequest(BaseModel):
@@ -2360,6 +2363,8 @@ class ShoppingListItemCreateRequest(BaseModel):
     name: str = Field(min_length=1, max_length=120)
     category: str = Field(default="Övrigt", max_length=40)
     qty: str = Field(default="", max_length=40)
+    price: float | None = Field(default=None, ge=0, le=999999)
+    image_data: str = Field(default="", max_length=120000)
     source_endpoint: str = Field(default="", max_length=2048)
 
 
@@ -2376,6 +2381,9 @@ class ShoppingListItemUpdateRequest(BaseModel):
     category: str | None = Field(default=None, max_length=40)
     qty: str | None = Field(default=None, max_length=40)
     done: bool | None = None
+    price: float | None = Field(default=None, ge=0, le=999999)
+    image_data: str | None = Field(default=None, max_length=120000)
+    is_favorite: bool | None = None
 
 
 
@@ -4019,7 +4027,10 @@ async def add_shopping_list_item(
                 "name": name,
                 "category": request.category if request.category in SHOPPING_LIST_CATEGORIES else "Övrigt",
                 "qty": request.qty.strip(),
-                "done": False
+                "done": False,
+                "price": request.price,
+                "image_data": request.image_data,
+                "is_favorite": False
             }, "", "return=representation"
         )
         created_item = rows[0] if isinstance(rows, list) and rows else None
@@ -4055,6 +4066,9 @@ async def update_shopping_list_item(
             changes["category"] = "Övrigt"
     if "qty" in changes and changes["qty"] is not None:
         changes["qty"] = changes["qty"].strip()
+    if "image_data" in changes and changes["image_data"] is not None:
+        if changes["image_data"] and not changes["image_data"].startswith("data:image/"):
+            raise HTTPException(status_code=422, detail="Produktbilden har ett ogiltigt format.")
     try:
         list_row = await asyncio.to_thread(resolve_shopping_list_token, authorization)
         rows, _ = await asyncio.to_thread(
@@ -4093,10 +4107,52 @@ async def delete_shopping_list_item(item_id: str, authorization: str = Header(de
         raise HTTPException(status_code=502, detail=f"Kunde inte ta bort varan: {str(error)[:400]}")
 
 
+@app.get("/api/shopping-list/history")
+async def read_shopping_list_history(authorization: str = Header(default="")):
+    try:
+        list_row = await asyncio.to_thread(resolve_shopping_list_token, authorization)
+        rows, _ = await asyncio.to_thread(
+            supabase_shopping_request, "GET", "shopping_list_history", None,
+            urllib.parse.urlencode({
+                "list_id": "eq." + str(list_row["id"]),
+                "select": "id,name,category,qty,price,image_data,purchased_at",
+                "order": "purchased_at.desc",
+                "limit": "100"
+            })
+        )
+        return {"items": rows if isinstance(rows, list) else []}
+    except HTTPException:
+        raise
+    except Exception as error:
+        raise HTTPException(status_code=502, detail=f"Kunde inte läsa inköpshistoriken: {str(error)[:400]}")
+
+
 @app.post("/api/shopping-list/clear-completed")
 async def clear_completed_shopping_list_items(authorization: str = Header(default="")):
     try:
         list_row = await asyncio.to_thread(resolve_shopping_list_token, authorization)
+        completed, _ = await asyncio.to_thread(
+            supabase_shopping_request, "GET", "shopping_list_items", None,
+            urllib.parse.urlencode({
+                "list_id": "eq." + str(list_row["id"]),
+                "done": "eq.true",
+                "select": "id,name,category,qty,price,image_data"
+            })
+        )
+        if completed:
+            history_rows = [{
+                "list_id": list_row["id"],
+                "original_item_id": item.get("id"),
+                "name": item.get("name", ""),
+                "category": item.get("category", "Övrigt"),
+                "qty": item.get("qty", ""),
+                "price": item.get("price"),
+                "image_data": item.get("image_data", "")
+            } for item in completed]
+            await asyncio.to_thread(
+                supabase_shopping_request, "POST", "shopping_list_history",
+                history_rows, "", "return=minimal"
+            )
         rows, _ = await asyncio.to_thread(
             supabase_shopping_request, "DELETE", "shopping_list_items", None,
             urllib.parse.urlencode({
