@@ -1,0 +1,14 @@
+{
+  "mode": "paper",
+  "quote_currency": "EUR",
+  "allowed_symbols": ["BTC/EUR", "ETH/EUR"],
+  "max_open_positions": 1,
+  "max_risk_per_trade_pct": 1.0,
+  "max_daily_drawdown_pct": 2.0,
+  "fee_rate": 0.0026,
+  "slippage_rate": 0.0005,
+  "minimum_notional": 0.0,
+  "live_orders_enabled": false,
+  "automatic_profit_reinvestment": true,
+  "note": "starting_cash is supplied when creating a paper wallet. Convert the 500 SEK test budget to EUR using a current FX rate before initializing the EUR wallet."
+}
