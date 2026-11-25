@@ -51,6 +51,14 @@ python trading/download_history.py --symbol BTC/EUR --timeframe 1h --days 30 --o
 python trading/backtest.py --input trading/history.json --starting-cash 470 --output trading/backtest-result.json
 ```
 
+For consecutive out-of-sample windows (at least three folds; each fold is flattened at its boundary):
+
+```bash
+python trading/backtest.py --input trading/history.json --starting-cash 470 --walk-forward --test-window 168 --output trading/walk-forward-result.json
+```
+
+The walk-forward report compounds the paper balance across non-overlapping test windows and compares it with a fee/slippage-adjusted buy-and-hold benchmark. It uses prior candles only as indicator warmup; it does not train or optimize the strategy. Inspect fold-by-fold consistency, not just the aggregate return.
+
 Example continuous paper watcher (example EUR balance only):
 
 ```bash
