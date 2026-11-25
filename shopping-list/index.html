@@ -83,7 +83,7 @@ async function refreshSharedList(silent=false,suppressNotifications=false){
   // Notifications arrive through Web Push, including when this page is closed.
   items=nextItems;
   lastUpdated=data.updated_at||null;
-  applySharedBackground(data.background_url||"");
+  loadSharedBackground(data.background_path||"").catch(()=>{});
   localStorage.setItem("shoppingItems",JSON.stringify(items));
   setSyncStatus("Delad lista · synkas automatiskt");
   render();
@@ -296,6 +296,7 @@ if(window.matchMedia){
   $("backgroundOpacity").value=String(opacity);
   localStorage.setItem("shoppingBackgroundOpacity",String(opacity));
  }
+ let currentBackgroundPath="",backgroundObjectUrl="";
  function applySharedBackground(url){
   if(url){
    document.body.classList.add("has-custom-bg");
@@ -304,6 +305,27 @@ if(window.matchMedia){
    document.body.classList.remove("has-custom-bg");
    document.body.style.removeProperty("--shopping-bg-image");
   }
+ }
+ async function loadSharedBackground(path){
+  const next=String(path||"");
+  if(next===currentBackgroundPath)return;
+  if(!next){
+   currentBackgroundPath="";
+   if(backgroundObjectUrl)URL.revokeObjectURL(backgroundObjectUrl);
+   backgroundObjectUrl="";
+   applySharedBackground("");
+   return;
+  }
+  if(!listToken)return;
+  const response=await fetch(API_BASE+"/api/shopping-list/background",{headers:{Authorization:"Bearer "+listToken},cache:"no-store"});
+  if(!response.ok)throw new Error("Bakgrundsbilden kunde inte hämtas.");
+  const blob=await response.blob();
+  const nextUrl=URL.createObjectURL(blob);
+  const previous=backgroundObjectUrl;
+  backgroundObjectUrl=nextUrl;
+  currentBackgroundPath=next;
+  applySharedBackground(nextUrl);
+  if(previous)URL.revokeObjectURL(previous);
  }
  applyBackgroundOpacity(localStorage.getItem("shoppingBackgroundOpacity")||22);
  $("backgroundOpacity").oninput=()=>applyBackgroundOpacity($("backgroundOpacity").value);
@@ -341,7 +363,7 @@ if(window.matchMedia){
    toast("Förbereder bakgrundsbild…");
    const dataUrl=await compressBackgroundImage(file);
    const result=await api("/api/shopping-list/background","POST",{data_url:dataUrl});
-   applySharedBackground(result.background_url||"");
+   await loadSharedBackground(result.background_path||"");
    toast("Gemensam bakgrund sparad!");
   }catch(error){toast("Kunde inte spara bilden: "+error.message)}
   finally{$("backgroundFile").value=""}
@@ -350,7 +372,7 @@ if(window.matchMedia){
   if(!listToken){toast("Dela listan först.");return}
   try{
    await api("/api/shopping-list/background","POST",{remove:true});
-   applySharedBackground("");
+   await loadSharedBackground("");
    toast("Bakgrunden återställd för båda.");
   }catch(error){toast("Kunde inte återställa: "+error.message)}
  };
