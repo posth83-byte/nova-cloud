@@ -114,10 +114,10 @@ try {
             await page.locator("#favoritesBtn").click();
             if (await page.locator(".item[data-item-id]").filter({ hasText: "QA-Apples" }).count() !== 1) localFailures.push("Favorites filter did not show the favorited item.");
             await page.locator("#favoritesBtn").click();
+            await page.locator("#menuToggle").click();
             await page.locator("#darkBtn").click();
             if (!(await page.locator("body").evaluate(el => el.classList.contains("dark")))) localFailures.push("Dark mode did not activate.");
             await page.locator("#darkBtn").click();
-            await page.locator("#menuToggle").click();
             await page.locator("#templatesBtn").click();
             if (!(await page.locator("#modal").evaluate(el => el.classList.contains("open")))) localFailures.push("Shopping list templates modal did not open.");
             await page.locator("#modalClose").click();
