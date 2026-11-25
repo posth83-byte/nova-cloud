@@ -111,10 +111,10 @@ try {
             await page.locator("#toast button").getByText("Ångra").click();
             if (await qaRow.evaluate(el => el.classList.contains("done"))) localFailures.push("Undo did not restore the unchecked shopping item.");
             await qaRow.locator("[data-fav]").click();
+            await page.locator("#menuToggle").click();
             await page.locator("#favoritesBtn").click();
             if (await page.locator(".item[data-item-id]").filter({ hasText: "QA-Apples" }).count() !== 1) localFailures.push("Favorites filter did not show the favorited item.");
             await page.locator("#favoritesBtn").click();
-            await page.locator("#menuToggle").click();
             await page.locator("#darkBtn").click();
             if (!(await page.locator("body").evaluate(el => el.classList.contains("dark")))) localFailures.push("Dark mode did not activate.");
             await page.locator("#darkBtn").click();
