@@ -337,9 +337,21 @@ def main() -> int:
     parser.add_argument("--input", required=True, help="JSON file containing a list of OHLCV rows")
     parser.add_argument("--starting-cash", required=True, type=float, help="Starting balance in EUR")
     parser.add_argument("--output", default="trading/backtest-result.json")
+    parser.add_argument(
+        "--walk-forward", action="store_true",
+        help="Run consecutive out-of-sample folds instead of one full-period backtest",
+    )
+    parser.add_argument(
+        "--test-window", type=int, default=168,
+        help="Number of hourly candles per out-of-sample fold (default: 168)",
+    )
     args = parser.parse_args()
     candles = json.loads(Path(args.input).read_text(encoding="utf-8"))
-    result = run_backtest(candles, args.starting_cash)
+    result = (
+        run_walk_forward(candles, args.starting_cash, test_window=args.test_window)
+        if args.walk_forward
+        else run_backtest(candles, args.starting_cash)
+    )
     Path(args.output).write_text(json.dumps(result, indent=2), encoding="utf-8")
     print(json.dumps({k: v for k, v in result.items() if k not in ("fills", "equity_curve")}, indent=2))
     return 0
