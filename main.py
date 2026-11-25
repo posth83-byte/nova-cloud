@@ -2365,6 +2365,7 @@ class ShoppingListItemCreateRequest(BaseModel):
     qty: str = Field(default="", max_length=40)
     price: float | None = Field(default=None, ge=0, le=999999)
     image_data: str = Field(default="", max_length=120000)
+    is_favorite: bool = False
     source_endpoint: str = Field(default="", max_length=2048)
 
 
@@ -4033,7 +4034,7 @@ async def add_shopping_list_item(
                 "done": False,
                 "price": request.price,
                 "image_data": request.image_data,
-                "is_favorite": False
+                "is_favorite": bool(request.is_favorite)
             }, "", "return=representation"
         )
         created_item = rows[0] if isinstance(rows, list) and rows else None
