@@ -77,6 +77,37 @@ try {
         const dimensions = await page.evaluate(() => ({ viewport: document.documentElement.clientWidth, document: document.documentElement.scrollWidth }));
         if (dimensions.document > dimensions.viewport + 2) localFailures.push("Horizontal overflow: " + dimensions.document + "px > " + dimensions.viewport + "px.");
 
+        if (route === "/shopping-list/") {
+          // Functional checks for the shopping list's core interactions on desktop and mobile.
+          await page.locator("#itemInput").fill("QA-Äpplen");
+          await page.locator("#itemPrice").fill("12.5");
+          const tinyPng = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/pXcAAAAASUVORK5CYII=", "base64");
+          await page.locator("#itemPhoto").setInputFiles({ name: "qa.png", mimeType: "image/png", buffer: tinyPng });
+          await page.locator('#addForm button[type="submit"]').click();
+          await page.locator(".item[data-item-id]").filter({ hasText: "QA-Äpplen" }).waitFor({ state: "visible", timeout: 5000 });
+          const qaRow = page.locator(".item[data-item-id]").filter({ hasText: "QA-Äpplen" });
+          if (!(await qaRow.locator(".price").innerText()).includes("12,50")) localFailures.push("Shopping list did not display the entered price.");
+          if (await qaRow.locator("img.thumb").count() !== 1) localFailures.push("Shopping list did not display the selected product photo.");
+          await qaRow.click();
+          if (!(await qaRow.evaluate(el => el.classList.contains("done")))) localFailures.push("Tapping the shopping item did not mark it complete.");
+          await page.locator("#toast button").getByText("Ångra").click();
+          if (await page.locator(".item[data-item-id]").filter({ hasText: "QA-Äpplen" }).evaluate(el => el.classList.contains("done"))) localFailures.push("Undo did not restore the unchecked shopping item.");
+          await page.locator(".item[data-item-id]").filter({ hasText: "QA-Äpplen" }).locator("[data-fav]").click();
+          await page.locator("#favoritesBtn").click();
+          if (await page.locator(".item[data-item-id]").filter({ hasText: "QA-Äpplen" }).count() !== 1) localFailures.push("Favorites filter did not show the favorited item.");
+          await page.locator("#favoritesBtn").click();
+          await page.locator("#darkBtn").click();
+          if (!(await page.locator("body").evaluate(el => el.classList.contains("dark")))) localFailures.push("Dark mode did not activate.");
+          await page.locator("#darkBtn").click();
+          await page.locator("#menuToggle").click();
+          await page.locator("#templatesBtn").click();
+          if (!(await page.locator("#modal").evaluate(el => el.classList.contains("open")))) localFailures.push("Shopping list templates modal did not open.");
+          await page.locator("#modalClose").click();
+          await page.locator(".item[data-item-id]").filter({ hasText: "QA-Äpplen" }).locator("[data-del]").click();
+          await page.locator("#toast button").getByText("Ångra").click();
+          if (await page.locator(".item[data-item-id]").filter({ hasText: "QA-Äpplen" }).count() !== 1) localFailures.push("Undo did not restore a deleted shopping item.");
+        }
+
         if (projectEntrypoints.includes(route)) {
           const html = fs.readFileSync(path.join(root, route.replace(/^\//, "")), "utf8");
           const scripts = [...html.matchAll(/<script\b[^>]*src=["']([^"']+)["'][^>]*>/gi)].map(match => match[1]);
