@@ -35,7 +35,7 @@ let items=JSON.parse(localStorage.getItem("shoppingItems")||"[]"),filter="Allt",
 let listToken=localStorage.getItem("shoppingListToken")||"",lastUpdated=null,pollBusy=false,pendingMutations=0;
 const $=id=>document.getElementById(id);
 const incoming=new URLSearchParams(location.hash.slice(1)).get("list");
-if(incoming){listToken=incoming;localStorage.setItem("shoppingListToken",listToken);history.replaceState(null,"",location.pathname+location.search)}
+if(incoming){listToken=incoming;localStorage.setItem("shoppingListToken",listToken)}
 function setSyncStatus(message){$("syncStatus").textContent=message}
 function esc(s){return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
 async function api(path,method="GET",body){
