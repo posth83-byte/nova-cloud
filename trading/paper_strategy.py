@@ -24,20 +24,20 @@ def run_cycle(broker: PaperBroker, market_results: list[dict[str, Any]]) -> list
 
     new_results = []
     processed = broker.state.setdefault("processed_candles", {})
+    by_symbol = {item["symbol"]: item for item in market_results if item.get("symbol")}
     for item in market_results:
         symbol = item.get("symbol")
         candle_ts = item.get("last_candle_timestamp")
-        if not symbol or candle_ts is None or int(candle_ts) > int(processed.get(symbol, -1)):
-            if symbol:
-                new_results.append(item)
-    if not new_results:
-        return []
-    by_symbol = {item["symbol"]: item for item in new_results if item.get("symbol")}
+        if symbol and candle_ts is not None and int(candle_ts) > int(processed.get(symbol, -1)):
+            new_results.append(item)
     prices = {
         symbol: float(item["last_price_eur"])
         for symbol, item in by_symbol.items()
         if item.get("last_price_eur") is not None
     }
+    if not new_results:
+        # Even without a new closed candle, refresh stop monitoring with available marks.
+        return broker.check_stops(prices)
     actions: list[dict[str, Any]] = []
 
     # Stops are evaluated before any other decision.
