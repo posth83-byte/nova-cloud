@@ -4076,7 +4076,6 @@ async def update_shopping_list_background(payload: dict, authorization: str = He
         except Exception:
             pass
 
-    public_url = SUPABASE_URL + "/storage/v1/object/public/shopping-list-backgrounds/" + urllib.parse.quote(object_path, safe="/")
     return {"ok": True, "background_path": object_path}
 
 
