@@ -41,6 +41,7 @@ AI is advisory. Deterministic code has final authority and can reject any propos
 - `paper_daemon.py` continuously polls public data, processes each completed hourly candle only once, and persists the portfolio. It is paper-only and stops on Ctrl+C.
 - `backtest.py` evaluates historical candles with fees/slippage, closed-candle signals and next-candle-open entries to reduce look-ahead bias.
 - `download_history.py` downloads public Kraken candles without credentials for offline backtesting.
+- `dashboard.html` is a read-only portfolio/backtest panel served by the NOVA Cloud app at `/trading`. It imports exported JSON files locally in the browser; it cannot place orders or access exchange credentials.
 - `paper_config.json` contains conservative defaults. Pass `--starting-cash` in the quote currency only after applying a current SEK/EUR conversion; do not assume 500 SEK equals 500 EUR.
 
 Example: download 30 days of hourly BTC/EUR candles and backtest with an example EUR balance:
@@ -57,6 +58,8 @@ python trading/paper_daemon.py --starting-cash 470 --state-path trading/paper-st
 ```
 
 The daemon is not deployed or running in the background yet. The example balance is not a conversion of the user's 500 SEK budget.
+
+Open the dashboard after the app branch is deployed at `/trading`. Import the JSON portfolio state or a daemon snapshot, plus a backtest result. Files stay in the browser and are not uploaded.
 
 Run tests from the repository root:
 
