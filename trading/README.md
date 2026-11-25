@@ -1,48 +1,58 @@
 # JARVIS Trading
 
-An isolated, paper-first crypto trading project. No live orders are enabled in this phase.
+Automated crypto spot-trading project with a multi-specialist AI research team and deterministic risk/execution controls.
 
-## Mission
-Build a modular crypto research and trading system with a multi-specialist review process:
-- Market Scanner: collect spot market data and detect unusual movement/volume.
-- Technical Analyst: calculate indicators and produce explainable signals.
-- Opportunity Hunter: rank candidate setups; never place orders.
-- Risk Manager: enforce hard limits independently of AI.
-- Strategy Developer: run reproducible backtests and compare strategies.
-- Final Review: approve/reject paper-trade intents and record the reason.
+## Objective
+The user may fund a separate account with up to 500 SEK. Once the user explicitly enables live mode after all validation gates pass, the bot is intended to buy and sell spot crypto automatically. The objective is positive net returns after fees and slippage; profit is never guaranteed. Report losses and drawdowns honestly.
 
-## First release scope
-1. Read-only market data for spot markets.
-2. Paper wallet starting at 500 SEK equivalent (quote currency conversion must be explicit).
-3. BTC/EUR and ETH/EUR only, subject to exchange availability and minimum-order checks.
-4. No margin, leverage, futures, shorting, borrowing, withdrawals, or transfer permissions.
-5. Every signal and simulated trade is persisted with timestamps, fees, spread assumptions, and rationale.
-6. Dashboard/API must clearly show PAPER mode. Live trading is not implemented or enabled.
+## Team and architecture
+- Market Scanner: public spot market data and movement/volume detection.
+- Technical Analyst: explainable indicators and signals.
+- Opportunity Hunter: ranks setups but cannot bypass risk controls.
+- Strategy Developer: reproducible backtests and strategy comparisons.
+- Risk Manager: deterministic limits and position sizing.
+- Final Review: records approve/reject decisions.
+- Execution Engine: validates balances, precision, minimums, fees, spread, data freshness and duplicate orders before submitting spot orders.
+- Portfolio Monitor: reconciles balances, orders, fills, exits and P&L.
 
-## Risk policy (initial test defaults)
-- Paper mode is mandatory.
-- Maximum one open position at a time.
-- Maximum planned loss per trade: 1% of paper equity.
-- Daily stop: 2% drawdown from start-of-day equity; stop creating new positions after breach.
-- Every position must have a defined exit/stop rule before entry.
-- No averaging down or martingale.
-- No trade if estimated fees + spread make the expected edge uneconomic.
-- AI output is advisory; deterministic code enforces all limits.
+AI is advisory. Deterministic code has final authority and can reject any proposal.
 
-These are simulation guardrails, not a promise of safety or profitability. They must be evaluated against realistic fees, slippage, minimum order sizes, and historical/live-forward data.
+## Initial scope
+- Kraken spot market data first; verify provider authorization/availability in Sweden/EEA before funding.
+- BTC/EUR and ETH/EUR only initially, subject to current availability and minimum order size.
+- Capital ceiling 500 SEK; no automatic top-ups or transfers.
+- Spot only: no margin, leverage, futures, shorting, borrowing, staking or withdrawals.
+- Full automatic buy/sell is the intended live mode after separate user activation.
+- Live execution remains DISABLED during development. No exchange credentials are present.
+- Report realized/unrealized P&L net of fees, spread and estimated slippage.
 
-## Validation gates before any real-money discussion
-- Unit tests for risk limits, sizing, fees, duplicate orders, stale data, and kill switch.
-- Backtests with fees and out-of-sample periods.
-- Forward paper trading on live market data for at least 8 weeks.
-- Review drawdown, expectancy, win/loss distribution, turnover, and divergence between backtest and forward results.
-- Explicit user approval required for any future live-trading implementation.
-- Any eventual exchange key must be restricted to read/trade only, with withdrawals disabled, stored as a secret, never committed.
+## Initial simulation risk policy
+- One open position at a time.
+- Maximum planned loss per trade: 1% of current equity.
+- Daily stop: 2% drawdown from start-of-day equity; block new entries after breach.
+- Every entry needs a defined exit/stop rule.
+- No averaging down, martingale, leverage or shorts.
+- Skip trades if fees + spread + slippage make expected edge uneconomic.
+- Check exchange minimum, precision, quote balance and fees before each order.
+- Never increase size just to meet an exchange minimum.
+- Kill switch blocks new orders; cancellation/closing behavior must be separately tested.
+- User can revoke trading permission at any time.
 
-## Deployment note
-Do not deploy the trading worker to a sleeping/free web service and assume continuous execution. Choose a suitable always-on worker only after costs and operational constraints are understood. Local Docker execution is acceptable for initial development.
+At 500 SEK, 1% risk is only 5 SEK. Minimum orders and round-trip fees may make many strategies impractical. Skip uneconomic trades rather than forcing activity.
+
+## Live activation gates
+- Explicit user approval for the chosen exchange and live automated trading.
+- Verify provider authorization/availability for Sweden/EEA.
+- API key limited to read and spot trading; withdrawals, transfers, margin and futures disabled.
+- Keys stored only as encrypted deployment secrets; never committed or printed.
+- Tests for risk limits, sizing, fees, minimum order, precision, partial fills, duplicate orders, stale data, retries, reconciliation and kill switch.
+- Backtests include fees/slippage and out-of-sample periods.
+- At least 8 weeks forward paper trading on live market data with reviewed net metrics.
+- A tiny live pilot requires separate approval and strict capital cap.
+
+## Deployment
+Do not assume a sleeping/free web service can run an always-on worker. Use local Docker for development, then select an always-on worker after costs and reliability are understood.
 
 ## References
-- Freqtrade dry-run and configuration: https://www.freqtrade.io/en/stable/configuration/
-- Freqtrade strategy testing: https://www.freqtrade.io/en/latest/strategy-101/
-- Freqtrade backtesting: https://www.freqtrade.io/en/stable/backtesting/
+- Freqtrade: https://www.freqtrade.io/en/stable/configuration/
+- Kraken order minimums: https://support.kraken.com/articles/360042589912-order-minimums-deposit-and-withdrawal-minimums-etc-
