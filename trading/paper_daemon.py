@@ -48,9 +48,9 @@ def main() -> int:
             market = scan()
             actions = run_cycle(broker, market["results"])
             marks = {
-                item["symbol"]: item["last_price_eur"]
+                item["symbol"]: item.get("mark_price_eur") or item["last_price_eur"]
                 for item in market["results"]
-                if item.get("last_price_eur") is not None
+                if item.get("mark_price_eur") is not None or item.get("last_price_eur") is not None
             }
             record = {
                 "observed_at": datetime.now(timezone.utc).isoformat(),
