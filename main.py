@@ -277,7 +277,7 @@ def resolve_shopping_list_token(authorization):
         "GET", "shopping_lists", None,
         urllib.parse.urlencode({
             "token_hash": "eq." + token_hash,
-            "select": "id,updated_at",
+            "select": "id,updated_at,background_path",
             "limit": "1"
         })
     )
@@ -3963,15 +3963,101 @@ async def read_shopping_list(authorization: str = Header(default="")):
         raise HTTPException(status_code=503, detail="Delad lagring är inte tillgänglig just nu.")
     try:
         list_row = await asyncio.to_thread(resolve_shopping_list_token, authorization)
+        background_path = str(list_row.get("background_path") or "")
+        background_url = (
+            SUPABASE_URL + "/storage/v1/object/public/shopping-list-backgrounds/"
+            + urllib.parse.quote(background_path, safe="/")
+            if background_path else ""
+        )
         return {
             "list_id": list_row["id"],
             "updated_at": list_row.get("updated_at"),
+            "background_url": background_url,
             "items": await asyncio.to_thread(get_shopping_list_items, list_row["id"])
         }
     except HTTPException:
         raise
     except Exception as error:
         raise HTTPException(status_code=502, detail=f"Kunde inte läsa inköpslistan: {str(error)[:400]}")
+
+
+@app.post("/api/shopping-list/background")
+async def update_shopping_list_background(payload: dict, authorization: str = Header(default="")):
+    """Upload or remove the shared list background through the trusted server."""
+    if not USE_SUPABASE_MEMORY:
+        raise HTTPException(status_code=503, detail="Delad lagring är inte tillgänglig.")
+    list_row = await asyncio.to_thread(resolve_shopping_list_token, authorization)
+    list_id = str(list_row["id"])
+    old_path = str(list_row.get("background_path") or "")
+
+    if payload.get("remove") is True:
+        await asyncio.to_thread(
+            supabase_shopping_request, "PATCH", "shopping_lists",
+            {"background_path": None},
+            urllib.parse.urlencode({"id": "eq." + list_id}), "return=minimal"
+        )
+        if old_path:
+            try:
+                delete_url = SUPABASE_URL + "/storage/v1/object/shopping-list-backgrounds/" + urllib.parse.quote(old_path, safe="/")
+                delete_request = urllib.request.Request(delete_url, headers={
+                    "apikey": SUPABASE_SECRET_KEY,
+                    "Authorization": "Bearer " + SUPABASE_SECRET_KEY
+                }, method="DELETE")
+                await asyncio.to_thread(lambda: urllib.request.urlopen(delete_request, timeout=25).read())
+            except Exception:
+                pass
+        return {"ok": True, "background_url": ""}
+
+    data_url = str(payload.get("data_url") or "")
+    allowed = {
+        "image/jpeg": ("jpg", lambda b: b.startswith(b"\xff\xd8\xff")),
+        "image/png": ("png", lambda b: b.startswith(b"\x89PNG\r\n\x1a\n")),
+        "image/webp": ("webp", lambda b: len(b) > 12 and b[:4] == b"RIFF" and b[8:12] == b"WEBP")
+    }
+    matched = next((mime for mime in allowed if data_url.startswith("data:" + mime + ";base64,")), None)
+    if not matched:
+        raise HTTPException(status_code=400, detail="Välj en JPG-, PNG- eller WebP-bild.")
+    try:
+        image_bytes = base64.b64decode(data_url.split(",", 1)[1], validate=True)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Bilden kunde inte läsas.")
+    if not image_bytes or len(image_bytes) > 5 * 1024 * 1024:
+        raise HTTPException(status_code=413, detail="Bilden måste vara mindre än 5 MB.")
+    extension, signature_check = allowed[matched]
+    if not signature_check(image_bytes):
+        raise HTTPException(status_code=400, detail="Bildfilen verkar vara skadad eller ha fel format.")
+
+    object_path = list_id + "/" + uuid.uuid4().hex + "." + extension
+    upload_url = SUPABASE_URL + "/storage/v1/object/shopping-list-backgrounds/" + urllib.parse.quote(object_path, safe="/")
+    upload_request = urllib.request.Request(upload_url, data=image_bytes, headers={
+        "apikey": SUPABASE_SECRET_KEY,
+        "Authorization": "Bearer " + SUPABASE_SECRET_KEY,
+        "Content-Type": matched,
+        "x-upsert": "true"
+    }, method="POST")
+    try:
+        await asyncio.to_thread(lambda: urllib.request.urlopen(upload_request, timeout=45).read())
+        await asyncio.to_thread(
+            supabase_shopping_request, "PATCH", "shopping_lists",
+            {"background_path": object_path},
+            urllib.parse.urlencode({"id": "eq." + list_id}), "return=minimal"
+        )
+    except Exception as error:
+        raise HTTPException(status_code=502, detail="Bakgrundsbilden kunde inte sparas: " + str(error)[:250])
+
+    if old_path:
+        try:
+            delete_url = SUPABASE_URL + "/storage/v1/object/shopping-list-backgrounds/" + urllib.parse.quote(old_path, safe="/")
+            delete_request = urllib.request.Request(delete_url, headers={
+                "apikey": SUPABASE_SECRET_KEY,
+                "Authorization": "Bearer " + SUPABASE_SECRET_KEY
+            }, method="DELETE")
+            await asyncio.to_thread(lambda: urllib.request.urlopen(delete_request, timeout=25).read())
+        except Exception:
+            pass
+
+    public_url = SUPABASE_URL + "/storage/v1/object/public/shopping-list-backgrounds/" + urllib.parse.quote(object_path, safe="/")
+    return {"ok": True, "background_url": public_url}
 
 
 @app.post("/api/shopping-list/push/subscribe")
