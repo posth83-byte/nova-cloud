@@ -29,6 +29,22 @@ AI is advisory. Deterministic code has final authority and can reject any propos
 - Live execution remains DISABLED during development. No exchange credentials are present.
 - Report realized/unrealized P&L net of fees, spread and estimated slippage, and distinguish deposited capital from profit.
 
+## Implemented paper-trading layer
+- `paper_engine.py` is an offline, deterministic, long-only spot paper broker.
+- It supports one open position, allowlisted symbols, stop-based sizing, a 1% maximum risk budget per trade and a 2% daily drawdown entry stop.
+- Entry/exit fees and configurable slippage are included in simulated fills and realized P&L.
+- Paper state is persisted atomically to a local JSON file; a restart reloads the same portfolio.
+- Realized profit remains in the cash balance and can be reinvested; external funding is tracked separately.
+- The module has no exchange client, no API credentials and no live-order path.
+- `paper_config.json` contains conservative defaults. Set `starting_cash` in the quote currency only after applying a current SEK/EUR conversion; do not assume 500 SEK equals 500 EUR.
+
+Run tests from the repository root:
+
+```bash
+python -m pip install -r trading/requirements.txt
+python -m unittest discover -s trading -p "test_*.py" -v
+```
+
 ## Initial simulation risk policy
 - One open position at a time.
 - Maximum planned loss per trade: 1% of current equity.
