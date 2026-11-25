@@ -31,7 +31,7 @@ header{padding:14px 4px 20px;display:flex;align-items:center;justify-content:spa
 <script>
 const API_BASE="https://nova-cloud-c4t9.onrender.com";
 const categories=["Allt","Frukt & grönt","Mejeri","Kött & fisk","Skafferi","Frys","Hushåll","Övrigt"];
-let items=JSON.parse(localStorage.getItem("shoppingItems")||"[]"),filter="Allt",showFavorites=false,lastUndo=null;
+let items=JSON.parse(localStorage.getItem("shoppingItems")||"[]"),filter="Allt",showFavorites=false,showRemainingOnly=false,lastUndo=null;
 let listToken=localStorage.getItem("shoppingListToken")||"",lastUpdated=null,pollBusy=false,pendingMutations=0;
 const $=id=>document.getElementById(id);
 const incoming=new URLSearchParams(location.hash.slice(1)).get("list");
@@ -109,9 +109,10 @@ async function mutateShared(path,method,body,rollback){
 }
 function render(){
  renderSuggestions();
- $("filters").innerHTML=categories.map(c=>'<button class="chip '+(filter===c?"active":"")+'" data-filter="'+esc(c)+'">'+esc(c)+'</button>').join("");
- $("filters").querySelectorAll("button").forEach(b=>b.onclick=()=>{filter=b.dataset.filter;render()});
- const shown=items.filter(x=>(filter==="Allt"||x.category===filter)&&(!showFavorites||x.is_favorite)),unchecked=items.filter(x=>!x.done).length,done=items.length-unchecked;
+ $("filters").innerHTML='<button class="chip '+(showRemainingOnly?"active":"")+'" id="remainingFilter">Kvar att handla</button>'+categories.map(c=>'<button class="chip '+(filter===c?"active":"")+'" data-filter="'+esc(c)+'">'+esc(c)+'</button>').join("");
+ $("remainingFilter").onclick=()=>{showRemainingOnly=!showRemainingOnly;render()};
+ $("filters").querySelectorAll("[data-filter]").forEach(b=>b.onclick=()=>{filter=b.dataset.filter;render()});
+ const shown=items.filter(x=>(filter==="Allt"||x.category===filter)&&(!showFavorites||x.is_favorite)&&(!showRemainingOnly||!x.done)),unchecked=items.filter(x=>!x.done).length,done=items.length-unchecked;
  $("count").textContent=items.length+" varor";$("remaining").textContent=unchecked+" kvar";
  $("progressText").textContent=items.length?done+" av "+items.length+" avklarade":"Lägg till det ni behöver";
  $("progressBar").style.width=(items.length?done/items.length*100:0)+"%";
