@@ -68,6 +68,7 @@ def analyse_candles(symbol: str, candles: list[list[float]]) -> dict:
     return {
         "symbol": symbol,
         "timeframe": TIMEFRAME,
+        "last_candle_timestamp": int(candles[-1][0]),
         "last_price_eur": round(last_price, 2),
         "ema20": round(ema20, 2) if ema20 is not None else None,
         "ema50": round(ema50, 2) if ema50 is not None else None,
@@ -86,7 +87,10 @@ def scan() -> dict:
     for symbol in SYMBOLS:
         try:
             candles = exchange.fetch_ohlcv(symbol, timeframe=TIMEFRAME, limit=CANDLE_LIMIT)
-            results.append(analyse_candles(symbol, candles))
+            timeframe_ms = int(exchange.parse_timeframe(TIMEFRAME) * 1000)
+            now_ms = exchange.milliseconds()
+            closed_candles = [candle for candle in candles if int(candle[0]) + timeframe_ms <= now_ms]
+            results.append(analyse_candles(symbol, closed_candles))
         except Exception as exc:  # Public-data failures must not stop the other pair.
             errors.append({"symbol": symbol, "error": str(exc)[:240]})
     return {
