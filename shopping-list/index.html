@@ -292,7 +292,58 @@ $("favoritesBtn").onclick=()=>{showFavorites=!showFavorites;$("favoritesBtn").te
 function openModal(content){$("modalContent").innerHTML=content;$("modal").classList.add("open")}
 $("modalClose").onclick=()=>$("modal").classList.remove("open");
 $("modal").onclick=e=>{if(e.target===$("modal"))$("modal").classList.remove("open")};
-$("templatesBtn").onclick=()=>{const templates=[{name:"Veckohandling",items:["Mjölk","Ägg","Bröd","Smör","Bananer","Pasta"]},{name:"Frukost",items:["Mjölk","Yoghurt","Ägg","Bröd","Ost"]},{name:"Storhandling",items:["Mjölk","Ägg","Bröd","Smör","Potatis","Pasta","Ris","Kyckling","Toalettpapper","Diskmedel"]}];const saved=JSON.parse(localStorage.getItem("shoppingTemplates")||"[]");const all=[...templates,...saved];openModal("<h2>Färdiga inköpslistor</h2>"+all.map((t,i)=>'<p><button class="chip" data-template="'+i+'">'+esc(t.name)+" · "+t.items.length+" varor</button></p>").join("")+'<p><button class="chip" id="saveTemplate">Spara nuvarande lista som egen mall</button></p>');$("modalContent").querySelectorAll("[data-template]").forEach(b=>b.onclick=async()=>{const t=all[Number(b.dataset.template)];for(const entry of t.items){const item=typeof entry==="string"?{name:entry,category:guessCategory(entry),qty:"",price:null}:{...entry,price:null};if(listToken){const r=await api("/api/shopping-list/items","POST",{...item,source_endpoint:await currentPushEndpoint()});if(r.item)items.unshift(r.item)}else items.unshift({id:crypto.randomUUID(),...item,done:false})}localStorage.setItem("shoppingItems",JSON.stringify(items));render();$("modal").classList.remove("open");toast(t.name+" tillagd")});$("saveTemplate").onclick=()=>{const name=prompt("Namn på mallen?");if(!name)return;const saved=JSON.parse(localStorage.getItem("shoppingTemplates")||"[]");saved.push({name,items:items.filter(x=>!x.done).map(x=>({name:x.name,category:x.category,qty:x.qty||""}))});localStorage.setItem("shoppingTemplates",JSON.stringify(saved));toast("Mallen sparad på den här telefonen")}};
+$("templatesBtn").onclick=()=>{
+ const templates=[{name:"Veckohandling",items:["Mjölk","Ägg","Bröd","Smör","Bananer","Pasta"]},{name:"Frukost",items:["Mjölk","Yoghurt","Ägg","Bröd","Ost"]},{name:"Storhandling",items:["Mjölk","Ägg","Bröd","Smör","Potatis","Pasta","Ris","Kyckling","Toalettpapper","Diskmedel"]}];
+ const saved=JSON.parse(localStorage.getItem("shoppingTemplates")||"[]");
+ const all=[...templates,...saved];
+ openModal("<h2>Färdiga inköpslistor</h2>"+all.map((t,i)=>'<p><button class="chip" data-template="'+i+'">'+esc(t.name)+" · "+t.items.length+" varor</button></p>").join("")+'<p><button class="chip" id="saveTemplate">Spara nuvarande lista som egen mall</button></p>');
+ $("modalContent").querySelectorAll("[data-template]").forEach(b=>b.onclick=async()=>{
+  const t=all[Number(b.dataset.template)];
+  const entries=t.items.map(entry=>typeof entry==="string"?{name:entry,category:guessCategory(entry),qty:"",price:null}:{...entry,category:entry.category||guessCategory(entry.name),qty:entry.qty||"",price:null});
+  const pending=entries.map(entry=>({id:"pending-"+crypto.randomUUID(),...entry,done:false}));
+  items.unshift(...pending);
+  localStorage.setItem("shoppingItems",JSON.stringify(items));
+  render();
+  $("modal").classList.remove("open");
+  if(!listToken){toast(t.name+" tillagd");return}
+  pendingMutations++;
+  try{
+   const endpoint=await currentPushEndpoint();
+   const results=await Promise.allSettled(pending.map(async(item,index)=>{
+    const response=await api("/api/shopping-list/items","POST",{name:item.name,category:item.category,qty:item.qty,price:item.price,source_endpoint:endpoint});
+    return {index,item:response.item};
+   }));
+   const failed=[];
+   results.forEach((result,index)=>{
+    if(result.status==="fulfilled"&&result.value.item){
+     const position=items.findIndex(x=>x.id===pending[index].id);
+     if(position>=0)items[position]=result.value.item;
+    }else{
+     failed.push(pending[index]);
+     items=items.filter(x=>x.id!==pending[index].id);
+    }
+   });
+   localStorage.setItem("shoppingItems",JSON.stringify(items));
+   render();
+   const succeeded=pending.length-failed.length;
+   toast(failed.length?succeeded+" tillagda · "+failed.length+" kunde inte sparas":t.name+" tillagd");
+   if(failed.length)setSyncStatus("Några varor kunde inte sparas · försök igen");
+  }catch(error){
+   items=items.filter(x=>!pending.some(p=>p.id===x.id));
+   localStorage.setItem("shoppingItems",JSON.stringify(items));
+   render();
+   toast("Mallen kunde inte sparas: "+error.message);
+  }finally{pendingMutations=Math.max(0,pendingMutations-1)}
+ });
+ $("saveTemplate").onclick=()=>{
+  const name=prompt("Namn på mallen?");
+  if(!name)return;
+  const saved=JSON.parse(localStorage.getItem("shoppingTemplates")||"[]");
+  saved.push({name,items:items.filter(x=>!x.done).map(x=>({name:x.name,category:x.category,qty:x.qty||""}))});
+  localStorage.setItem("shoppingTemplates",JSON.stringify(saved));
+  toast("Mallen sparad på den här telefonen")
+ };
+};
 $("historyBtn").onclick=async()=>{if(!listToken){toast("Dela listan först för att använda gemensam historik.");return}try{const data=await api("/api/shopping-list/history");const rows=data.items||[];openModal("<h2>Inköpshistorik</h2>"+(rows.length?rows.map(x=>'<div class="history-row"><div><strong>'+esc(x.name)+'</strong><small>'+esc(x.category)+(x.price!==null&&x.price!==undefined?" · "+Number(x.price).toFixed(2)+" kr":"")+'</small></div></div>').join(""):'<p>Inga tidigare inköp ännu. Bocka av varor och välj Rensa avklarade.</p>'))}catch(e){toast("Historiken kunde inte hämtas: "+e.message)}};
 render();
 if(!navigator.standalone&&!window.matchMedia("(display-mode: standalone)").matches&&/iPhone|iPad/.test(navigator.userAgent))$("install").style.display="block";
