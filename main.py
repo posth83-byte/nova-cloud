@@ -3979,6 +3979,51 @@ async def read_shopping_list(authorization: str = Header(default="")):
         raise HTTPException(status_code=502, detail=f"Kunde inte läsa inköpslistan: {str(error)[:400]}")
 
 
+@app.post("/api/shopping-list/background/import")
+async def import_shopping_list_background(payload: dict, authorization: str = Header(default="")):
+    """Copy only the background from another list; never copy or alter its items."""
+    if not USE_SUPABASE_MEMORY:
+        raise HTTPException(status_code=503, detail="Delad lagring är inte tillgänglig.")
+    target_row = await asyncio.to_thread(resolve_shopping_list_token, authorization)
+    source_token = str(payload.get("source_token") or "").strip()
+    source_row = await asyncio.to_thread(resolve_shopping_list_token, "Bearer " + source_token)
+    source_path = str(source_row.get("background_path") or "")
+    if not source_path:
+        raise HTTPException(status_code=404, detail="Den andra listan har ingen sparad bakgrundsbild.")
+    source_url = SUPABASE_URL + "/storage/v1/object/shopping-list-backgrounds/" + urllib.parse.quote(source_path, safe="/")
+    source_request = urllib.request.Request(source_url, headers={
+        "apikey": SUPABASE_SECRET_KEY,
+        "Authorization": "Bearer " + SUPABASE_SECRET_KEY
+    }, method="GET")
+    try:
+        def download_source():
+            with urllib.request.urlopen(source_request, timeout=30) as response:
+                return response.read(), response.headers.get("Content-Type", "image/jpeg")
+        image_bytes, mime_type = await asyncio.to_thread(download_source)
+        extensions = {"image/jpeg": "jpg", "image/png": "png", "image/webp": "webp"}
+        extension = extensions.get(mime_type.split(";", 1)[0].lower(), "jpg")
+        target_id = str(target_row["id"])
+        new_path = target_id + "/" + uuid.uuid4().hex + "." + extension
+        upload_url = SUPABASE_URL + "/storage/v1/object/shopping-list-backgrounds/" + urllib.parse.quote(new_path, safe="/")
+        upload_request = urllib.request.Request(upload_url, data=image_bytes, headers={
+            "apikey": SUPABASE_SECRET_KEY,
+            "Authorization": "Bearer " + SUPABASE_SECRET_KEY,
+            "Content-Type": mime_type,
+            "x-upsert": "true"
+        }, method="POST")
+        await asyncio.to_thread(lambda: urllib.request.urlopen(upload_request, timeout=45).read())
+        await asyncio.to_thread(
+            supabase_shopping_request, "PATCH", "shopping_lists",
+            {"background_path": new_path},
+            urllib.parse.urlencode({"id": "eq." + target_id}), "return=minimal"
+        )
+        return {"ok": True, "background_path": new_path}
+    except HTTPException:
+        raise
+    except Exception as error:
+        raise HTTPException(status_code=502, detail="Bakgrundsbilden kunde inte kopieras: " + str(error)[:250])
+
+
 @app.get("/api/shopping-list/background")
 async def read_shopping_list_background(authorization: str = Header(default="")):
     """Stream the shared background only to members with the list token."""
