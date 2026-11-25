@@ -267,17 +267,13 @@ def run_walk_forward(
             daily_drawdown_pct=daily_drawdown_pct,
             stop_distance_pct=stop_distance_pct,
         )
-        benchmark = run_backtest(
-            segment,
-            benchmark_cash,
-            fee_rate=fee_rate,
-            slippage_rate=slippage_rate,
-            risk_pct=0.01,
-            daily_drawdown_pct=daily_drawdown_pct,
-            stop_distance_pct=stop_distance_pct,
-        )
         cash = float(result["ending_cash"])
-        benchmark_cash = float(benchmark["buy_and_hold_ending_cash"])
+        benchmark_entry = float(segment[warmup_candles][1]) * (1.0 + slippage_rate)
+        benchmark_exit = float(segment[-1][4]) * (1.0 - slippage_rate)
+        benchmark_quantity = benchmark_cash / (benchmark_entry * (1.0 + fee_rate))
+        benchmark_cash = (
+            benchmark_quantity * benchmark_exit * (1.0 - fee_rate)
+        )
         fold_sells = [
             fill for fill in result["fills"]
             if fill.get("side") == "sell" and fill.get("net_pnl") is not None
