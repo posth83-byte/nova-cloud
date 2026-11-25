@@ -218,6 +218,124 @@ def run_backtest(
     }
 
 
+
+def run_walk_forward(
+    candles: list[list[float]],
+    starting_cash: float,
+    test_window: int = 168,
+    warmup_candles: int = 50,
+    fee_rate: float = 0.0026,
+    slippage_rate: float = 0.0005,
+    risk_pct: float = 1.0,
+    daily_drawdown_pct: float = 2.0,
+    stop_distance_pct: float = 2.0,
+) -> dict[str, Any]:
+    """Evaluate the fixed strategy on consecutive, non-overlapping OOS windows.
+
+    Each fold receives only its preceding warmup candles for indicators. Trading
+    starts at the first candle after that warmup, and the portfolio is flattened
+    at each fold boundary. This is an out-of-sample stability check, not model
+    training or a guarantee of future performance.
+    """
+    if warmup_candles < 50:
+        raise ValueError("warmup_candles must be at least 50")
+    if test_window < 10:
+        raise ValueError("test_window must be at least 10 candles")
+    if len(candles) < warmup_candles + (3 * test_window):
+        raise ValueError("At least three complete out-of-sample windows are required")
+    if starting_cash <= 0:
+        raise ValueError("starting_cash must be positive")
+
+    cash = float(starting_cash)
+    benchmark_cash = float(starting_cash)
+    folds: list[dict[str, Any]] = []
+    all_trade_pnls: list[float] = []
+    start = warmup_candles
+
+    while start < len(candles):
+        end = min(start + test_window, len(candles))
+        oos_count = end - start
+        if oos_count < 10:
+            break
+        segment = candles[start - warmup_candles:end]
+        result = run_backtest(
+            segment,
+            cash,
+            fee_rate=fee_rate,
+            slippage_rate=slippage_rate,
+            risk_pct=risk_pct,
+            daily_drawdown_pct=daily_drawdown_pct,
+            stop_distance_pct=stop_distance_pct,
+        )
+        benchmark = run_backtest(
+            segment,
+            benchmark_cash,
+            fee_rate=fee_rate,
+            slippage_rate=slippage_rate,
+            risk_pct=0.01,
+            daily_drawdown_pct=daily_drawdown_pct,
+            stop_distance_pct=stop_distance_pct,
+        )
+        cash = float(result["ending_cash"])
+        benchmark_cash = float(benchmark["buy_and_hold_ending_cash"])
+        fold_sells = [
+            fill for fill in result["fills"]
+            if fill.get("side") == "sell" and fill.get("net_pnl") is not None
+        ]
+        all_trade_pnls.extend(float(fill["net_pnl"]) for fill in fold_sells)
+        folds.append({
+            "fold": len(folds) + 1,
+            "oos_start_timestamp": int(candles[start][0]),
+            "oos_end_timestamp": int(candles[end - 1][0]),
+            "oos_candles": oos_count,
+            "starting_cash": result["starting_cash"],
+            "ending_cash": result["ending_cash"],
+            "net_return_pct": result["net_return_pct"],
+            "closed_trades": result["closed_trades"],
+            "win_rate_pct": result["win_rate_pct"],
+            "max_drawdown_pct": result["max_drawdown_pct"],
+            "buy_and_hold_return_pct": result["buy_and_hold_return_pct"],
+            "fills": result["fills"],
+        })
+        start = end
+
+    if len(folds) < 3:
+        raise ValueError("At least three out-of-sample folds must complete")
+
+    wins = [pnl for pnl in all_trade_pnls if pnl > 0]
+    losses = [pnl for pnl in all_trade_pnls if pnl < 0]
+    gross_profit = sum(wins)
+    gross_loss = abs(sum(losses))
+    net_profit = cash - starting_cash
+    benchmark_profit = benchmark_cash - starting_cash
+    return {
+        "mode": "walk_forward_out_of_sample",
+        "strategy": "ema_trend_rsi_volume_v1",
+        "starting_cash": round(starting_cash, 8),
+        "ending_cash": round(cash, 8),
+        "net_profit": round(net_profit, 8),
+        "net_return_pct": round(net_profit / starting_cash * 100.0, 4),
+        "buy_and_hold_ending_cash": round(benchmark_cash, 8),
+        "buy_and_hold_net_profit": round(benchmark_profit, 8),
+        "buy_and_hold_return_pct": round(benchmark_profit / starting_cash * 100.0, 4),
+        "strategy_vs_buy_and_hold_pct_points": round(
+            (net_profit - benchmark_profit) / starting_cash * 100.0, 4
+        ),
+        "fold_count": len(folds),
+        "closed_trades": len(all_trade_pnls),
+        "winning_trades": len(wins),
+        "win_rate_pct": round(len(wins) / len(all_trade_pnls) * 100.0, 2) if all_trade_pnls else 0.0,
+        "expectancy_per_trade": round(sum(all_trade_pnls) / len(all_trade_pnls), 8) if all_trade_pnls else None,
+        "profit_factor": round(gross_profit / gross_loss, 4) if gross_loss > 0 else (None if gross_profit == 0 else "infinite"),
+        "worst_fold_drawdown_pct": round(max(fold["max_drawdown_pct"] for fold in folds), 4),
+        "fees_and_slippage_included": True,
+        "non_overlapping_oos_windows": True,
+        "warmup_candles_per_fold": warmup_candles,
+        "folds": folds,
+        "warning": "Out-of-sample historical simulation only; not a forecast or profit guarantee.",
+    }
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Backtest JARVIS strategy on OHLCV JSON")
     parser.add_argument("--input", required=True, help="JSON file containing a list of OHLCV rows")
