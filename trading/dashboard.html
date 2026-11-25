@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#090d18">
+<title>JARVIS Trading · Kontrollpanel</title>
+<style>
+:root{color-scheme:dark;--bg:#090d18;--panel:#111a2b;--panel2:#0d1524;--line:#25344b;--muted:#91a2ba;--text:#edf4ff;--cyan:#68d8f4;--green:#55d6a2;--red:#ff7d85;--amber:#f4c16d}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at 50% -20%,#19304c 0,transparent 55%),var(--bg);color:var(--text);font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+main{max-width:1120px;margin:auto;padding:24px 16px 56px}.top{display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:22px}
+.brand{display:flex;align-items:center;gap:12px}.orb{width:44px;height:44px;border-radius:50%;background:radial-gradient(circle,#fff 0,#78dfff 8%,#1585b8 30%,#10233f 65%,transparent 70%);box-shadow:0 0 24px #35b9f577}.eyebrow{font-size:11px;letter-spacing:.18em;color:var(--cyan);font-weight:700}.title{font-size:24px;font-weight:750;letter-spacing:.01em}.sub{color:var(--muted);font-size:13px}
+.pill{border:1px solid var(--line);border-radius:999px;padding:7px 12px;color:var(--amber);font-size:12px;background:#171d29}
+.notice{border:1px solid #6a5330;background:#241d12;color:#f4d49b;border-radius:14px;padding:13px 15px;margin-bottom:18px;font-size:13px}
+.grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:14px 0}
+.card{background:linear-gradient(145deg,#142035,#0d1524);border:1px solid var(--line);border-radius:16px;padding:16px;min-width:0;box-shadow:0 12px 30px #0002}
+.metric-label{color:var(--muted);font-size:12px}.metric{font-size:25px;font-weight:750;margin-top:5px;overflow-wrap:anywhere}.metric small{font-size:13px;color:var(--muted);font-weight:500}
+.section-title{font-size:15px;font-weight:700;margin:0 0 12px}.two{display:grid;grid-template-columns:1.35fr 1fr;gap:12px;margin-top:12px}
+.chart-wrap{height:240px;position:relative}canvas{width:100%;height:100%;display:block}
+.empty{display:grid;place-items:center;min-height:180px;color:var(--muted);text-align:center;padding:18px;border:1px dashed #33445d;border-radius:12px}
+.actions{display:flex;gap:10px;flex-wrap:wrap;margin:14px 0}.file{position:relative;display:inline-flex;align-items:center;gap:8px;border:1px solid #38506e;background:#17283d;color:var(--text);padding:10px 13px;border-radius:10px;font-weight:650;font-size:13px;cursor:pointer}.file input{position:absolute;inset:0;opacity:0;width:100%;cursor:pointer}
+.meta{display:flex;gap:8px;flex-wrap:wrap;color:var(--muted);font-size:12px;margin-top:10px}.tag{border:1px solid var(--line);padding:4px 8px;border-radius:999px}
+table{width:100%;border-collapse:collapse;font-size:13px}th,td{text-align:left;padding:10px 8px;border-bottom:1px solid #24334a;white-space:nowrap}th{color:var(--muted);font-weight:600}td:last-child,th:last-child{text-align:right}.table-scroll{overflow:auto}
+.positive{color:var(--green)}.negative{color:var(--red)}.muted{color:var(--muted)}.foot{color:var(--muted);font-size:12px;margin-top:18px}
+@media(max-width:760px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}.two{grid-template-columns:1fr}.title{font-size:21px}.metric{font-size:22px}.chart-wrap{height:210px}}
+</style>
+</head>
+<body>
+<main>
+<header class="top">
+ <div class="brand"><div class="orb" aria-hidden="true"></div><div><div class="eyebrow">JARVIS · MARKNADSÖVERVAKNING</div><div class="title">Trading Control</div><div class="sub">Portfölj · risk · historisk utvärdering</div></div></div>
+ <div class="pill">PAPER MODE · LIVEORDRAR AV</div>
+</header>
+<div class="notice"><strong>Endast visning.</strong> Den här panelen läser JSON-filer som du själv importerar. Den startar inte boten, hämtar inte privata kontodata och kan inte lägga köp- eller säljorder. Pappersmotorn är inte automatiskt igång på Render.</div>
+<section class="card">
+ <h2 class="section-title">Importera rapporter</h2>
+ <div class="actions">
+  <label class="file">＋ Pappersportfölj (.json)<input id="paperFile" type="file" accept=".json,application/json"></label>
+  <label class="file">＋ Backtestresultat (.json)<input id="backtestFile" type="file" accept=".json,application/json"></label>
+ </div>
+ <div class="sub">Välj <code>paper-state.json</code> och/eller <code>backtest-result.json</code> från en papperskörning. Filerna behandlas lokalt i webbläsaren.</div>
+ <div class="meta"><span class="tag" id="paperStatus">Portfölj: inte importerad</span><span class="tag" id="backtestStatus">Backtest: inte importerad</span></div>
+</section>
+<section class="grid" aria-label="Nyckeltal">
+ <article class="card"><div class="metric-label">Portföljvärde</div><div class="metric" id="equity">—</div><div class="sub" id="cash">Importera portföljdata</div></article>
+ <article class="card"><div class="metric-label">Realiserat resultat</div><div class="metric" id="realized">—</div><div class="sub" id="fees">Avgifter: —</div></article>
+ <article class="card"><div class="metric-label">Backtest netto</div><div class="metric" id="return">—</div><div class="sub" id="backtestProfit">Ingen rapport importerad</div></article>
+ <article class="card"><div class="metric-label">Största nedgång</div><div class="metric" id="drawdown">—</div><div class="sub" id="trades">Avslutade affärer: —</div></article>
+</section>
+<section class="two">
+ <article class="card"><h2 class="section-title">Kapitalutveckling · backtest</h2><div class="chart-wrap" id="chartWrap"><div class="empty">Importera en backtest-rapport för att visa kapitalutvecklingen.</div><canvas id="equityChart" hidden></canvas></div></article>
+ <article class="card"><h2 class="section-title">Öppen pappersposition</h2><div id="positionView" class="empty">Ingen portföljdata importerad.</div></article>
+</section>
+<section class="card" style="margin-top:12px"><h2 class="section-title">Senaste affärer</h2><div class="table-scroll"><table><thead><tr><th>Tidpunkt</th><th>Marknad</th><th>Sida</th><th>Pris</th><th>Resultat</th></tr></thead><tbody id="fills"><tr><td colspan="5" class="muted">Importera portfölj eller backtest.</td></tr></tbody></table></div></section>
+<p class="foot">JARVIS Trading · Utvecklingsgren · Ingen liveanslutning. Historiska resultat är inte en prognos eller garanti för framtida avkastning.</p>
+</main>
+<script>
+(()=> {
+ const $=id=>document.getElementById(id);
+ let paper=null,backtest=null;
+ const money=(v,c="EUR")=>Number.isFinite(Number(v))?new Intl.NumberFormat("sv-SE",{style:"currency",currency:c,maximumFractionDigits:2}).format(Number(v)):"—";
+ const pct=v=>Number.isFinite(Number(v))?Number(v).toLocaleString("sv-SE",{maximumFractionDigits:2})+" %":"—";
+ const safe=(v)=>String(v??"").replace(/[&<>"']/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]));
+ async function read(file){if(!file)return null;const raw=await file.text();const data=JSON.parse(raw);if(!data||typeof data!=="object"||Array.isArray(data))throw new Error("JSON-filen har fel format.");return data;}
+ $("paperFile").addEventListener("change",async e=>{try{paper=await read(e.target.files[0]);render();$("paperStatus").textContent="Portfölj: importerad";}catch(err){alert("Kunde inte läsa portföljfilen: "+err.message);}});
+ $("backtestFile").addEventListener("change",async e=>{try{backtest=await read(e.target.files[0]);render();$("backtestStatus").textContent="Backtest: importerad";}catch(err){alert("Kunde inte läsa backtestfilen: "+err.message);}});
+ function render(){
+  const currency=paper?.quote_currency||"EUR";
+  const positions=paper?.positions||paper?.open_positions||{};
+  const fills=paper?.fills||[];
+  const equity=paper?.equity;
+  $("equity").textContent=equity==null?"—":money(equity,currency);
+  $("cash").textContent=paper?("Kontanter: "+money(paper.cash,currency)+" · Externt insatt: "+money(paper.external_funding,currency)):"Importera portföljdata";
+  $("realized").textContent=paper?money(paper.realized_pnl??paper.realized_pnl,currency):"—";
+  $("fees").textContent=paper?"Avgifter totalt: "+money(paper.fees_paid,currency):"Avgifter: —";
+  $("return").textContent=backtest?pct(backtest.net_return_pct):"—";
+  $("backtestProfit").textContent=backtest?"Netto: "+money(backtest.net_profit,currency)+" · Slutvärde: "+money(backtest.ending_cash,currency):"Ingen rapport importerad";
+  $("drawdown").textContent=backtest?pct(backtest.max_drawdown_pct):"—";
+  $("trades").textContent=backtest?"Avslutade affärer: "+(backtest.closed_trades??"—")+" · Vinstandel: "+pct(backtest.win_rate_pct):"Avslutade affärer: —";
+  const list=Object.values(positions);
+  $("positionView").className=list.length?"":"empty";
+  $("positionView").innerHTML=list.length?list.map(p=>'<div style="width:100%;text-align:left"><div class="eyebrow">'+safe(p.symbol||"Position")+'</div><div class="metric">'+safe(p.quantity)+'</div><div class="sub">Inköpspris: '+money(p.entry_price,currency)+'</div><div class="sub">Stop-loss: '+money(p.stop_price,currency)+'</div></div>').join(""):"Ingen öppen position i importerad portfölj.";
+  draw(backtest?.equity_curve||[]);
+  const rows=fills.slice(-12).reverse();
+  $("fills").innerHTML=rows.length?rows.map(f=>{const pnl=f.net_pnl??f.realized_pnl;const pnlText=pnl==null?"—":money(pnl,currency);const cls=Number(pnl)>0?"positive":Number(pnl)<0?"negative":"";return '<tr><td>'+safe(f.timestamp?new Date(f.timestamp).toLocaleString("sv-SE"):f.closed_at||f.opened_at||"—")+'</td><td>'+safe(f.symbol||"—")+'</td><td>'+safe(f.side||"—")+'</td><td>'+money(f.price??f.entry_price,currency)+'</td><td class="'+cls+'">'+pnlText+'</td></tr>';}).join(""):'<tr><td colspan="5" class="muted">Inga affärer i importerade filer.</td></tr>';
+ }
+ function draw(points){
+  const canvas=$("equityChart"),wrap=$("chartWrap");
+  if(!Array.isArray(points)||points.length<2){canvas.hidden=true;wrap.querySelector(".empty")?.remove();const empty=document.createElement("div");empty.className="empty";empty.textContent="Backtestfilen saknar tillräcklig equity_curve-data.";wrap.appendChild(empty);return;}
+  wrap.querySelector(".empty")?.remove();canvas.hidden=false;
+  const rect=wrap.getBoundingClientRect(),dpr=Math.max(1,window.devicePixelRatio||1),w=Math.max(280,rect.width),h=Math.max(180,rect.height);
+  canvas.width=w*dpr;canvas.height=h*dpr;const ctx=canvas.getContext("2d");ctx.scale(dpr,dpr);
+  const vals=points.map(p=>Number(p.equity)).filter(Number.isFinite);if(vals.length<2)return;
+  const min=Math.min(...vals),max=Math.max(...vals),range=max-min||1,pad=18;
+  ctx.strokeStyle="#263b55";ctx.lineWidth=1;for(let i=0;i<4;i++){const y=pad+(h-pad*2)*i/3;ctx.beginPath();ctx.moveTo(pad,y);ctx.lineTo(w-pad,y);ctx.stroke();}
+  ctx.strokeStyle="#68d8f4";ctx.lineWidth=2.5;ctx.beginPath();
+  vals.forEach((v,i)=>{const x=pad+(w-pad*2)*i/(vals.length-1),y=h-pad-(v-min)/range*(h-pad*2);if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);});ctx.stroke();
+  ctx.fillStyle="#91a2ba";ctx.font="11px sans-serif";ctx.fillText(money(min),pad,h-3);ctx.fillText(money(max),pad,13);
+ }
+ window.addEventListener("resize",()=>{if(backtest)draw(backtest.equity_curve||[])});
+})();
+</script>
+</body></html>
