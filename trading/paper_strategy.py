@@ -22,7 +22,17 @@ def run_cycle(broker: PaperBroker, market_results: list[dict[str, Any]]) -> list
     if broker.state.get("mode") != "paper":
         raise ValueError("This strategy is restricted to paper mode")
 
-    by_symbol = {item["symbol"]: item for item in market_results if item.get("symbol")}
+    new_results = []
+    processed = broker.state.setdefault("processed_candles", {})
+    for item in market_results:
+        symbol = item.get("symbol")
+        candle_ts = item.get("last_candle_timestamp")
+        if not symbol or candle_ts is None or int(candle_ts) > int(processed.get(symbol, -1)):
+            if symbol:
+                new_results.append(item)
+    if not new_results:
+        return []
+    by_symbol = {item["symbol"]: item for item in new_results if item.get("symbol")}
     prices = {
         symbol: float(item["last_price_eur"])
         for symbol, item in by_symbol.items()
@@ -63,4 +73,8 @@ def run_cycle(broker: PaperBroker, market_results: list[dict[str, Any]]) -> list
                 actions.append({"strategy": STRATEGY_NAME, **fill})
                 break
 
+    for symbol, item in by_symbol.items():
+        if item.get("last_candle_timestamp") is not None:
+            processed[symbol] = int(item["last_candle_timestamp"])
+    broker._save()
     return actions
