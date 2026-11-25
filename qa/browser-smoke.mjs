@@ -101,10 +101,16 @@ try {
             const pngPhoto = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAIAAAD8GO2jAAAALUlEQVR4nGMM2FLBQEvARFPTRy0YtWDUglELRi0YtWDUglELRi0YtWDUAioCAI2dAbyQjs/TAAAAAElFTkSuQmCC", "base64");
             await page.locator("#itemPhoto").setInputFiles({ name: "qa.png", mimeType: "image/png", buffer: pngPhoto });
             await page.locator('#addForm button[type="submit"]').click();
-            await page.waitForTimeout(300);
             const photoRow = page.locator(".item[data-item-id]").filter({ hasText: "QA-Photo" });
+            await photoRow.waitFor({ state: "visible", timeout: 5000 }).catch(() => {});
             if (await photoRow.count() !== 1) localFailures.push("Shopping list photo upload failed: " + await page.locator("#toast").innerText());
-            else if (await photoRow.locator("img.thumb").count() !== 1) localFailures.push("Shopping list did not display the uploaded product photo.");
+            else {
+              if (await photoRow.locator("img.thumb").count() !== 1) localFailures.push("Shopping list did not display the uploaded product photo.");
+              else {
+                const imageLoaded = await photoRow.locator("img.thumb").evaluate(img => img.decode().then(() => img.naturalWidth > 0).catch(() => false));
+                if (!imageLoaded) localFailures.push("Uploaded product photo did not decode in the browser.");
+              }
+            }
 
             await qaRow.click();
             if (!(await qaRow.evaluate(el => el.classList.contains("done")))) localFailures.push("Tapping the shopping item did not mark it complete.");
