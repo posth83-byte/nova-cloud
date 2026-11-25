@@ -20,8 +20,8 @@ header{padding:14px 4px 20px;display:flex;align-items:center;justify-content:spa
 <div class="install" id="install"><strong>📲 Lägg till på hemskärmen</strong><br>På iPhone: tryck på Dela i Safari och välj ”Lägg till på hemskärmen”.</div>
 <section class="summary"><div class="summary-top"><h2>Att handla</h2><strong id="count">0 varor</strong></div><p id="progressText">Lägg till det ni behöver</p><div class="progress"><div id="progressBar"></div></div></section>
 <form class="add" id="addForm"><input id="itemInput" placeholder="Vad behöver vi köpa?" autocomplete="off" required><button type="submit">＋ Lägg till</button></form>
-<button class="details-toggle" id="extrasToggle" type="button">＋ Bild eller pris</button>
-<div class="details-panel" id="extrasPanel"><input id="itemPrice" type="number" min="0" step="0.01" inputmode="decimal" placeholder="Pris (kr)"><input id="itemPhoto" type="file" accept="image/*" aria-label="Välj produktbild"><span class="meta">Bilden delas med listan.</span></div>
+<button class="details-toggle" id="extrasToggle" type="button">＋ Lägg till pris</button>
+<div class="details-panel" id="extrasPanel"><input id="itemPrice" type="number" min="0" step="0.01" inputmode="decimal" placeholder="Pris (kr)"></div>
 <button class="menu-toggle" id="menuToggle" type="button" style="margin:0 0 10px">☰ Fler funktioner</button>
 <div class="menu-panel" id="menuPanel"><button id="templatesBtn" type="button">Färdiga listor</button><button id="historyBtn" type="button">Historik</button><button id="favoritesBtn" type="button">★ Favoriter</button><button id="darkBtn" type="button">Mörkt läge</button></div>
 <nav class="filters" id="filters"></nav><section class="list" id="list"></section>
@@ -116,47 +116,58 @@ function render(){
  });
 }
 function guessCategory(name){let s=name.toLowerCase();if(/mjölk|ost|smör|yoghurt|grädde|ägg|fil/.test(s))return"Mejeri";if(/äpple|banan|tomat|gurka|potatis|sallad|lök|frukt|grön/.test(s))return"Frukt & grönt";if(/kött|kyckling|fisk|korv|färs|bacon/.test(s))return"Kött & fisk";if(/bröd|pasta|ris|mjöl|kaffe|te|socker|konserv|sås/.test(s))return"Skafferi";if(/glass|fryst|frys/.test(s))return"Frys";if(/disk|tvätt|toalett|papper|såpa|rengör/.test(s))return"Hushåll";return"Övrigt"}
+let addingItem=false;
+async function findProductImage(name){
+ try{
+  const response=await fetch(API_BASE+"/api/shopping-list/product-image?name="+encodeURIComponent(name),{cache:"no-store"});
+  if(!response.ok)return "";
+  const data=await response.json();
+  return typeof data.image_url==="string"?data.image_url:"";
+ }catch{return ""}
+}
+async function attachAutomaticProductImage(item){
+ const imageUrl=await findProductImage(item.name);
+ if(!imageUrl)return;
+ item.image_data=imageUrl;
+ localStorage.setItem("shoppingItems",JSON.stringify(items));render();
+ if(listToken){
+  try{await api("/api/shopping-list/items/"+encodeURIComponent(item.id),"PATCH",{image_data:imageUrl});}
+  catch(error){item.image_data="";localStorage.setItem("shoppingItems",JSON.stringify(items));render();}
+ }
+}
 $("addForm").onsubmit=async e=>{
  e.preventDefault();
+ if(addingItem)return;
+ const name=$("itemInput").value.trim();if(!name)return;
+ const priceRaw=$("itemPrice").value.trim();
+ const price=priceRaw===""?null:Number(priceRaw.replace(",","."));
+ if(price!==null&&(!Number.isFinite(price)||price<0||price>999999)){toast("Ange ett giltigt pris.");return}
+ addingItem=true;
+ const item={id:"pending-"+crypto.randomUUID(),name,category:guessCategory(name),qty:"",price,image_data:"",done:false,is_favorite:false};
+ items.unshift(item);
+ localStorage.setItem("shoppingItems",JSON.stringify(items));render();
+ $("itemInput").value="";$("itemPrice").value="";$("itemInput").focus();
  const submitButton=$("addForm").querySelector('button[type="submit"]');
- if(submitButton.disabled)return;
- const originalLabel=submitButton.textContent;
- submitButton.disabled=true;
- submitButton.textContent="Lägger till…";
- try{
-  let name=$("itemInput").value.trim();if(!name)return;
-  const priceRaw=$("itemPrice").value.trim();const photo=$("itemPhoto").files[0];let imageData="";
-  if(photo){
-   submitButton.textContent="Läser bild…";
-   try{imageData=await compressPhoto(photo)}catch(error){toast("Bilden kunde inte läsas.");return}
-  }
-  const item={name,category:guessCategory(name),qty:"",price:priceRaw===""?null:Number(priceRaw),image_data:imageData};
-  if(listToken){
-   try{
-    submitButton.textContent="Sparar…";
-    const response=await api("/api/shopping-list/items","POST",{...item,source_endpoint:await currentPushEndpoint()});
-    if(!response||!response.item||!response.item.id)throw new Error("Servern bekräftade inte att varan sparades.");
-    items.unshift(response.item);
-    localStorage.setItem("shoppingItems",JSON.stringify(items));
-    render();
-    $("itemInput").value="";$("itemPrice").value="";$("itemPhoto").value="";
-    $("itemInput").focus();
-    setSyncStatus("Delad lista · synkas automatiskt");
-   }catch(error){
-    toast("Varan kunde inte sparas: "+error.message);
-    setSyncStatus("Kunde inte spara · försök igen");
-    $("itemInput").focus();
-   }
-  }else{
-   items.unshift({id:crypto.randomUUID(),...item,done:false});
-   saveLocal();
-   $("itemInput").value="";$("itemPrice").value="";$("itemPhoto").value="";
-   $("itemInput").focus();
-  }
- }finally{
-  submitButton.disabled=false;
-  submitButton.textContent=originalLabel;
+ submitButton.textContent="Tillagd ✓";
+ setTimeout(()=>{submitButton.textContent="＋ Lägg till";},650);
+ if(!listToken){
+  addingItem=false;attachAutomaticProductImage(item);toast("Varan tillagd");return;
  }
+ const temporaryId=item.id;
+ try{
+  const response=await api("/api/shopping-list/items","POST",{name,category:item.category,qty:"",price,image_data:""});
+  if(!response||!response.item||!response.item.id)throw new Error("Servern bekräftade inte att varan sparades.");
+  const index=items.findIndex(x=>x.id===temporaryId);
+  if(index>=0)items[index]=response.item;
+  localStorage.setItem("shoppingItems",JSON.stringify(items));render();
+  setSyncStatus("Delad lista · synkas automatiskt");
+  attachAutomaticProductImage(response.item);
+ }catch(error){
+  items=items.filter(x=>x.id!==temporaryId);
+  localStorage.setItem("shoppingItems",JSON.stringify(items));render();
+  toast("Varan kunde inte sparas: "+error.message);
+  setSyncStatus("Kunde inte spara · försök igen");
+ }finally{addingItem=false}
 };
 $("clear").onclick=()=>{
  const previous=items;
