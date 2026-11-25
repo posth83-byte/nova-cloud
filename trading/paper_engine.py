@@ -69,6 +69,7 @@ class PaperBroker:
                 raise ValueError("Refusing to load a non-paper state")
             if self.state.get("quote_currency") != self.quote_currency:
                 raise ValueError("State quote currency does not match configuration")
+            self.state.setdefault("processed_candles", {})
         else:
             cash = _number(starting_cash, "starting_cash")
             now = datetime.now(timezone.utc).date().isoformat()
@@ -80,6 +81,7 @@ class PaperBroker:
                 "external_funding": cash,
                 "positions": {},
                 "fills": [],
+                "processed_candles": {},
                 "realized_pnl": 0.0,
                 "fees_paid": 0.0,
                 "day": now,
