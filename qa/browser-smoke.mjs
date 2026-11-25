@@ -79,42 +79,52 @@ try {
 
         if (route === "/shopping-list/") {
           // Functional checks for the shopping list's core interactions on desktop and mobile.
-          await page.locator("#itemInput").fill("QA-Äpplen");
-          await page.locator("#extrasToggle").click();
-          await page.locator("#extrasPanel").waitFor({ state: "visible", timeout: 3000 });
-          await page.locator("#itemPrice").fill("12.5");
-          await page.locator('#addForm button[type="submit"]').click();
-          await page.locator(".item[data-item-id]").filter({ hasText: "QA-Äpplen" }).waitFor({ state: "visible", timeout: 5000 });
-          const qaRow = page.locator(".item[data-item-id]").filter({ hasText: "QA-Äpplen" });
-          if (!(await qaRow.locator(".price").innerText()).includes("12,50")) localFailures.push("Shopping list did not display the entered price.");
-
-          // Test photo compression/upload as a separate item so a photo error is diagnosable.
-          await page.locator("#itemInput").fill("QA-Bild");
-          const svgPhoto = Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32"><rect width="32" height="32" fill="#4f8"/></svg>');
-          await page.locator("#itemPhoto").setInputFiles({ name: "qa.svg", mimeType: "image/svg+xml", buffer: svgPhoto });
+          const qaRow = page.locator(".item[data-item-id]").filter({ hasText: "QA-Apples" });
+          await page.locator("#itemInput").fill("QA-Apples");
           await page.locator('#addForm button[type="submit"]').click();
           await page.waitForTimeout(300);
-          const photoRow = page.locator(".item[data-item-id]").filter({ hasText: "QA-Bild" });
-          if (await photoRow.count() !== 1) localFailures.push("Shopping list photo upload failed: " + await page.locator("#toast").innerText());
-          else if (await photoRow.locator("img.thumb").count() !== 1) localFailures.push("Shopping list did not display the uploaded product photo.");
-          await qaRow.click();
-          if (!(await qaRow.evaluate(el => el.classList.contains("done")))) localFailures.push("Tapping the shopping item did not mark it complete.");
-          await page.locator("#toast button").getByText("Ångra").click();
-          if (await page.locator(".item[data-item-id]").filter({ hasText: "QA-Äpplen" }).evaluate(el => el.classList.contains("done"))) localFailures.push("Undo did not restore the unchecked shopping item.");
-          await page.locator(".item[data-item-id]").filter({ hasText: "QA-Äpplen" }).locator("[data-fav]").click();
-          await page.locator("#favoritesBtn").click();
-          if (await page.locator(".item[data-item-id]").filter({ hasText: "QA-Äpplen" }).count() !== 1) localFailures.push("Favorites filter did not show the favorited item.");
-          await page.locator("#favoritesBtn").click();
-          await page.locator("#darkBtn").click();
-          if (!(await page.locator("body").evaluate(el => el.classList.contains("dark")))) localFailures.push("Dark mode did not activate.");
-          await page.locator("#darkBtn").click();
-          await page.locator("#menuToggle").click();
-          await page.locator("#templatesBtn").click();
-          if (!(await page.locator("#modal").evaluate(el => el.classList.contains("open")))) localFailures.push("Shopping list templates modal did not open.");
-          await page.locator("#modalClose").click();
-          await page.locator(".item[data-item-id]").filter({ hasText: "QA-Äpplen" }).locator("[data-del]").click();
-          await page.locator("#toast button").getByText("Ångra").click();
-          if (await page.locator(".item[data-item-id]").filter({ hasText: "QA-Äpplen" }).count() !== 1) localFailures.push("Undo did not restore a deleted shopping item.");
+          if (await qaRow.count() !== 1) {
+            localFailures.push("Shopping list add failed: " + await page.locator("#toast").innerText() + " | " + pageErrors.join("; "));
+          } else {
+            await page.locator("#extrasToggle").click();
+            await page.locator("#extrasPanel").waitFor({ state: "visible", timeout: 3000 });
+            await page.locator("#itemPrice").fill("12.5");
+            await page.locator("#itemInput").fill("QA-Price");
+            await page.locator('#addForm button[type="submit"]').click();
+            await page.waitForTimeout(300);
+            const priceRow = page.locator(".item[data-item-id]").filter({ hasText: "QA-Price" });
+            if (await priceRow.count() !== 1) localFailures.push("Price item add failed: " + await page.locator("#toast").innerText());
+            else if (!(await priceRow.locator(".price").innerText()).includes("12,50")) localFailures.push("Shopping list did not display the entered price.");
+
+            // Test photo compression/upload as a separate item so a photo error is diagnosable.
+            await page.locator("#itemInput").fill("QA-Photo");
+            const svgPhoto = Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32"><rect width="32" height="32" fill="#4f8"/></svg>');
+            await page.locator("#itemPhoto").setInputFiles({ name: "qa.svg", mimeType: "image/svg+xml", buffer: svgPhoto });
+            await page.locator('#addForm button[type="submit"]').click();
+            await page.waitForTimeout(300);
+            const photoRow = page.locator(".item[data-item-id]").filter({ hasText: "QA-Photo" });
+            if (await photoRow.count() !== 1) localFailures.push("Shopping list photo upload failed: " + await page.locator("#toast").innerText());
+            else if (await photoRow.locator("img.thumb").count() !== 1) localFailures.push("Shopping list did not display the uploaded product photo.");
+
+            await qaRow.click();
+            if (!(await qaRow.evaluate(el => el.classList.contains("done")))) localFailures.push("Tapping the shopping item did not mark it complete.");
+            await page.locator("#toast button").getByText("Ångra").click();
+            if (await qaRow.evaluate(el => el.classList.contains("done"))) localFailures.push("Undo did not restore the unchecked shopping item.");
+            await qaRow.locator("[data-fav]").click();
+            await page.locator("#favoritesBtn").click();
+            if (await page.locator(".item[data-item-id]").filter({ hasText: "QA-Apples" }).count() !== 1) localFailures.push("Favorites filter did not show the favorited item.");
+            await page.locator("#favoritesBtn").click();
+            await page.locator("#darkBtn").click();
+            if (!(await page.locator("body").evaluate(el => el.classList.contains("dark")))) localFailures.push("Dark mode did not activate.");
+            await page.locator("#darkBtn").click();
+            await page.locator("#menuToggle").click();
+            await page.locator("#templatesBtn").click();
+            if (!(await page.locator("#modal").evaluate(el => el.classList.contains("open")))) localFailures.push("Shopping list templates modal did not open.");
+            await page.locator("#modalClose").click();
+            await qaRow.locator("[data-del]").click();
+            await page.locator("#toast button").getByText("Ångra").click();
+            if (await qaRow.count() !== 1) localFailures.push("Undo did not restore a deleted shopping item.");
+          }
         }
 
         if (projectEntrypoints.includes(route)) {
