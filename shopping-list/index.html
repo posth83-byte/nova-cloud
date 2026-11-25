@@ -27,7 +27,7 @@ header{padding:14px 4px 20px;display:flex;align-items:center;justify-content:spa
 const API_BASE="https://nova-cloud-c4t9.onrender.com";
 const categories=["Allt","Frukt & grönt","Mejeri","Kött & fisk","Skafferi","Frys","Hushåll","Övrigt"];
 let items=JSON.parse(localStorage.getItem("shoppingItems")||"[]"),filter="Allt";
-let listToken=localStorage.getItem("shoppingListToken")||"",lastUpdated=null,pollBusy=false;
+let listToken=localStorage.getItem("shoppingListToken")||"",lastUpdated=null,pollBusy=false,pendingMutations=0;
 const $=id=>document.getElementById(id);
 const incoming=new URLSearchParams(location.hash.slice(1)).get("list");
 if(incoming){listToken=incoming;localStorage.setItem("shoppingListToken",listToken);history.replaceState(null,"",location.pathname+location.search)}
@@ -43,7 +43,7 @@ async function api(path,method="GET",body){
 }
 function saveLocal(){localStorage.setItem("shoppingItems",JSON.stringify(items));render()}
 async function refreshSharedList(silent=false,suppressNotifications=false){
- if(!listToken)return;
+ if(!listToken||pendingMutations>0)return;
  try{
   const data=await api("/api/shopping-list");
   const nextItems=Array.isArray(data.items)?data.items:[];
@@ -59,9 +59,20 @@ async function refreshSharedList(silent=false,suppressNotifications=false){
   throw error;
  }
 }
-async function mutateShared(path,method,body){
- try{await api(path,method,body);await refreshSharedList(true,true)}
- catch(error){toast("Ändringen sparades inte: "+error.message);setSyncStatus("Anslutningen saknas – försöker igen")}
+async function mutateShared(path,method,body,rollback){
+ pendingMutations++;
+ try{
+  await api(path,method,body);
+  setSyncStatus("Delad lista · synkas automatiskt");
+ }catch(error){
+  if(rollback)rollback();
+  localStorage.setItem("shoppingItems",JSON.stringify(items));
+  render();
+  toast("Ändringen sparades inte: "+error.message);
+  setSyncStatus("Anslutningen saknas – försöker igen");
+ }finally{
+  pendingMutations=Math.max(0,pendingMutations-1);
+ }
 }
 function render(){
  $("filters").innerHTML=categories.map(c=>'<button class="chip '+(filter===c?"active":"")+'" data-filter="'+esc(c)+'">'+esc(c)+'</button>').join("");
@@ -74,8 +85,12 @@ function render(){
  $("list").querySelectorAll(".item[data-item-id]").forEach(row=>{
   const toggle=async()=>{
    const x=items.find(x=>String(x.id)===row.dataset.itemId);if(!x)return;
-   if(listToken)await mutateShared("/api/shopping-list/items/"+encodeURIComponent(x.id),"PATCH",{done:!x.done});
-   else{x.done=!x.done;saveLocal()}
+   const previous=x.done;
+   x.done=!x.done;
+   localStorage.setItem("shoppingItems",JSON.stringify(items));
+   render();
+   if(listToken)mutateShared("/api/shopping-list/items/"+encodeURIComponent(x.id),"PATCH",{done:x.done},()=>{x.done=previous});
+   else saveLocal()
   };
   row.onclick=e=>{if(e.target.closest("[data-del]"))return;toggle()};
   row.onkeydown=e=>{if((e.key==="Enter"||e.key===" ")&&e.target===row){e.preventDefault();toggle()}};
@@ -83,8 +98,13 @@ function render(){
  });
  $("list").querySelectorAll("[data-del]").forEach(b=>b.onclick=async e=>{
   e.stopPropagation();
-  if(listToken)await mutateShared("/api/shopping-list/items/"+encodeURIComponent(b.dataset.del),"DELETE");
-  else{items=items.filter(x=>String(x.id)!==b.dataset.del);saveLocal()}
+  const index=items.findIndex(x=>String(x.id)===b.dataset.del);
+  if(index<0)return;
+  const removed=items.splice(index,1)[0];
+  localStorage.setItem("shoppingItems",JSON.stringify(items));
+  render();
+  if(listToken)mutateShared("/api/shopping-list/items/"+encodeURIComponent(b.dataset.del),"DELETE",undefined,()=>items.splice(Math.min(index,items.length),0,removed));
+  else saveLocal()
  });
 }
 function guessCategory(name){let s=name.toLowerCase();if(/mjölk|ost|smör|yoghurt|grädde|ägg|fil/.test(s))return"Mejeri";if(/äpple|banan|tomat|gurka|potatis|sallad|lök|frukt|grön/.test(s))return"Frukt & grönt";if(/kött|kyckling|fisk|korv|färs|bacon/.test(s))return"Kött & fisk";if(/bröd|pasta|ris|mjöl|kaffe|te|socker|konserv|sås/.test(s))return"Skafferi";if(/glass|fryst|frys/.test(s))return"Frys";if(/disk|tvätt|toalett|papper|såpa|rengör/.test(s))return"Hushåll";return"Övrigt"}
@@ -113,9 +133,13 @@ $("addForm").onsubmit=async e=>{
   $("itemInput").focus();
  }
 };
-$("clear").onclick=async()=>{
- if(listToken)await mutateShared("/api/shopping-list/clear-completed","POST",{});
- else{items=items.filter(x=>!x.done);saveLocal()}
+$("clear").onclick=()=>{
+ const previous=items;
+ items=items.filter(x=>!x.done);
+ localStorage.setItem("shoppingItems",JSON.stringify(items));
+ render();
+ if(listToken)mutateShared("/api/shopping-list/clear-completed","POST",{},()=>{items=previous});
+ else saveLocal();
 };
 async function shareList(){
  try{
