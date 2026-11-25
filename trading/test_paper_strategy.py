@@ -82,6 +82,24 @@ class PaperStrategyTests(unittest.TestCase):
         self.assertEqual(actions[0]["reason"], "stop_loss")
         self.assertEqual(self.broker.state["positions"], {})
 
+    def test_live_mark_price_triggers_stop_before_hourly_close(self):
+        self.broker.buy("BTC/EUR", 100.0, 98.0)
+        self.broker.state["processed_candles"]["BTC/EUR"] = 1000
+        self.broker._save()
+        market = {
+            "symbol": "BTC/EUR",
+            "last_price_eur": 101.0,
+            "mark_price_eur": 97.0,
+            "trend": "neutral",
+            "rsi14": 45.0,
+            "volume_ratio": 1.0,
+            "last_candle_timestamp": 1000,
+        }
+        actions = run_cycle(self.broker, [market])
+        self.assertEqual(len(actions), 1)
+        self.assertEqual(actions[0]["reason"], "stop_loss")
+        self.assertEqual(self.broker.state["positions"], {})
+
     def test_bearish_trend_exits_existing_position(self):
         self.broker.buy("BTC/EUR", 100.0, 98.0)
         actions = run_cycle(self.broker, [{
