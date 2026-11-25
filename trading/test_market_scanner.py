@@ -20,6 +20,14 @@ class IndicatorTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             analyse_candles("BTC/EUR", [])
 
+    def test_analyser_exposes_closed_candle_timestamp(self):
+        candles = []
+        for i in range(60):
+            price = 100 + i
+            candles.append([i * 3_600_000, price, price + 1, price - 1, price, 10])
+        result = analyse_candles("BTC/EUR", candles)
+        self.assertEqual(result["last_candle_timestamp"], candles[-1][0])
+
     def test_analyser_never_emits_trade_order(self):
         candles = []
         for i in range(60):
