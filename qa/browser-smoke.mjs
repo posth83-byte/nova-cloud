@@ -83,13 +83,20 @@ try {
           await page.locator("#extrasToggle").click();
           await page.locator("#extrasPanel").waitFor({ state: "visible", timeout: 3000 });
           await page.locator("#itemPrice").fill("12.5");
-          const tinyPng = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/pXcAAAAASUVORK5CYII=", "base64");
-          await page.locator("#itemPhoto").setInputFiles({ name: "qa.png", mimeType: "image/png", buffer: tinyPng });
           await page.locator('#addForm button[type="submit"]').click();
           await page.locator(".item[data-item-id]").filter({ hasText: "QA-Äpplen" }).waitFor({ state: "visible", timeout: 5000 });
           const qaRow = page.locator(".item[data-item-id]").filter({ hasText: "QA-Äpplen" });
           if (!(await qaRow.locator(".price").innerText()).includes("12,50")) localFailures.push("Shopping list did not display the entered price.");
-          if (await qaRow.locator("img.thumb").count() !== 1) localFailures.push("Shopping list did not display the selected product photo.");
+
+          // Test photo compression/upload as a separate item so a photo error is diagnosable.
+          await page.locator("#itemInput").fill("QA-Bild");
+          const svgPhoto = Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32"><rect width="32" height="32" fill="#4f8"/></svg>');
+          await page.locator("#itemPhoto").setInputFiles({ name: "qa.svg", mimeType: "image/svg+xml", buffer: svgPhoto });
+          await page.locator('#addForm button[type="submit"]').click();
+          await page.waitForTimeout(300);
+          const photoRow = page.locator(".item[data-item-id]").filter({ hasText: "QA-Bild" });
+          if (await photoRow.count() !== 1) localFailures.push("Shopping list photo upload failed: " + await page.locator("#toast").innerText());
+          else if (await photoRow.locator("img.thumb").count() !== 1) localFailures.push("Shopping list did not display the uploaded product photo.");
           await qaRow.click();
           if (!(await qaRow.evaluate(el => el.classList.contains("done")))) localFailures.push("Tapping the shopping item did not mark it complete.");
           await page.locator("#toast button").getByText("Ångra").click();
