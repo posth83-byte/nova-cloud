@@ -6,13 +6,13 @@
 <link rel="manifest" href="./manifest.webmanifest"><link rel="apple-touch-icon" href="./icon.svg">
 <title>Vår inköpslista</title>
 <style>
-:root{--bg:#f5f7f2;--card:#fff;--ink:#1e2822;--muted:#77827a;--green:#3f8057;--green2:#e7f3e9;--line:#e8ece7;--shadow:0 8px 28px #263c2410}
+:root{--bg:#f5f7f2;--card:#fff;--ink:#1e2822;--muted:#77827a;--green:#3f8057;--green2:#e7f3e9;--line:#e8ece7;--shadow:0 8px 28px #263c2410}body.dark{--bg:#151a17;--card:#202823;--ink:#edf3ee;--muted:#a1ada4;--green:#76b889;--green2:#293e30;--line:#354139;--shadow:0 8px 28px #0005}body.dark .share,body.dark .notify,body.dark .chip,body.dark .empty,body.dark .add{background:var(--card);color:var(--ink)}body.dark .item{background:var(--card)}body.dark .check{background:#202823;border-color:#59665d}body.dark .item.done .check{background:var(--green);border-color:var(--green)}body.dark .summary{background:#315e40}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:16px system-ui,-apple-system,sans-serif;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}button,input,select{font:inherit}main{max-width:620px;margin:auto;padding:20px 16px 40px}
 header{padding:14px 4px 20px;display:flex;align-items:center;justify-content:space-between}.brand{display:flex;gap:12px;align-items:center}.logo{width:48px;height:48px;border-radius:16px;background:var(--green2);display:grid;place-items:center;font-size:25px}.brand h1{font-size:22px;margin:0}.brand p{margin:2px 0 0;color:var(--muted);font-size:13px}.header-actions{display:flex;gap:8px;align-items:center}.share,.notify{border:0;background:#fff;padding:12px;border-radius:14px;box-shadow:var(--shadow);font-size:19px}.notify{font-size:16px;color:var(--green)}.notify[aria-pressed="true"]{background:var(--green2)}
 .summary{background:var(--green);color:white;border-radius:22px;padding:20px;margin-bottom:16px;box-shadow:var(--shadow)}.summary-top{display:flex;justify-content:space-between;align-items:center}.summary h2{font-size:18px;margin:0}.summary p{margin:8px 0 0;color:#e5f4e8;font-size:14px}.progress{height:7px;background:#ffffff40;border-radius:20px;margin-top:16px;overflow:hidden}.progress>div{height:100%;background:#fff;border-radius:20px;width:0;transition:width .2s}
 .add{display:flex;gap:8px;background:var(--card);padding:10px;border-radius:18px;box-shadow:var(--shadow);margin-bottom:14px}.add input{min-width:0;flex:1;border:0;outline:0;padding:10px 8px;background:transparent}.add button{border:0;border-radius:13px;background:var(--green);color:#fff;font-weight:700;padding:0 18px}
 .filters{display:flex;gap:8px;overflow:auto;padding:2px 0 14px}.chip{white-space:nowrap;border:1px solid var(--line);background:#fff;color:var(--muted);padding:9px 13px;border-radius:99px;font-size:13px}.chip.active{background:var(--green2);color:var(--green);border-color:#cde4d1;font-weight:700}
-.list{display:block;gap:0}.item{display:flex;align-items:center;gap:6px;background:#fff;border:0;border-bottom:1px solid var(--line);padding:0 6px;margin:0;border-radius:0;box-shadow:none;min-height:0;cursor:pointer;-webkit-tap-highlight-color:transparent}.item:first-child{border-top:1px solid var(--line)}.item:last-child{border-radius:0}.check{width:20px;height:20px;border:2px solid #c9d2ca;border-radius:6px;background:#fff;flex-shrink:0;display:grid;place-items:center;color:#fff;padding:0}.item.done .check{background:var(--green);border-color:var(--green)}.item.done .name{text-decoration:line-through;color:#9ba49d}.item-main{flex:1;min-width:0;line-height:1.15}.name{font-weight:600;overflow-wrap:anywhere;line-height:1.15}.meta{font-size:11px;color:var(--muted);margin-top:0;line-height:1.1}.qty{color:var(--green);font-weight:700;font-size:13px}.del{border:0;background:transparent;color:#a0aaa2;padding:0 4px;font-size:16px;line-height:1;min-width:24px;min-height:24px}
+.list{display:block;gap:0}.item{display:flex;align-items:center;gap:7px;background:var(--card);border:0;border-bottom:1px solid var(--line);padding:5px 6px;margin:0;border-radius:0;box-shadow:none;min-height:52px;cursor:pointer;-webkit-tap-highlight-color:transparent}.thumb{width:38px;height:38px;flex-shrink:0;border-radius:9px;object-fit:cover;background:var(--green2);display:grid;place-items:center;font-size:20px}.item-main{flex:1;min-width:0;line-height:1.15}.item-extra{display:flex;align-items:center;gap:7px}.price{font-size:11px;color:var(--muted);font-weight:600}.favorite{border:0;background:transparent;color:#c4a64a;padding:4px;font-size:17px;min-width:25px;min-height:25px}.favorite:not(.on){color:#b8c0b9}.details-toggle,.menu-toggle{border:0;background:var(--card);color:var(--green);border-radius:12px;padding:9px 12px;font-weight:650;box-shadow:var(--shadow)}.details-panel{display:none;background:var(--card);border:1px solid var(--line);padding:10px;border-radius:14px;margin:-5px 0 12px;gap:8px}.details-panel.open{display:flex;align-items:center;flex-wrap:wrap}.details-panel input{min-width:0;border:1px solid var(--line);border-radius:9px;padding:8px;background:var(--bg);color:var(--ink);max-width:140px}.menu-panel{display:none;background:var(--card);border:1px solid var(--line);padding:8px;border-radius:14px;margin:-10px 0 14px;box-shadow:var(--shadow)}.menu-panel.open{display:flex;gap:7px;flex-wrap:wrap}.menu-panel button{border:0;background:var(--green2);color:var(--ink);padding:9px 11px;border-radius:10px;font-size:13px}.modal{display:none;position:fixed;inset:0;background:#0008;z-index:10;padding:18px;align-items:center;justify-content:center}.modal.open{display:flex}.modal-card{background:var(--card);color:var(--ink);border-radius:18px;padding:18px;width:min(100%,480px);max-height:80vh;overflow:auto}.modal-card h2{margin:0 0 12px}.modal-close{float:right;border:0;background:var(--green2);color:var(--ink);border-radius:9px;padding:7px 10px}.history-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--line)}.history-row img{width:34px;height:34px;object-fit:cover;border-radius:8px}.history-row small{display:block;color:var(--muted)}.item:first-child{border-top:1px solid var(--line)}.item:last-child{border-radius:0}.check{width:20px;height:20px;border:2px solid #c9d2ca;border-radius:6px;background:#fff;flex-shrink:0;display:grid;place-items:center;color:#fff;padding:0}.item.done .check{background:var(--green);border-color:var(--green)}.item.done .name{text-decoration:line-through;color:#9ba49d}.item-main{flex:1;min-width:0;line-height:1.15}.name{font-weight:600;overflow-wrap:anywhere;line-height:1.15}.meta{font-size:11px;color:var(--muted);margin-top:0;line-height:1.1}.qty{color:var(--green);font-weight:700;font-size:13px}.del{border:0;background:transparent;color:#a0aaa2;padding:0 4px;font-size:16px;line-height:1;min-width:24px;min-height:24px}
 .empty{text-align:center;color:var(--muted);padding:36px 20px;background:#fff;border-radius:18px}.empty div{font-size:35px;margin-bottom:8px}.footer{display:flex;justify-content:space-between;align-items:center;padding:18px 4px;color:var(--muted);font-size:13px}.footer button{border:0;background:transparent;color:var(--green);font-weight:700;padding:8px}.install{display:none;background:#fff;border:1px solid var(--line);padding:14px;border-radius:16px;margin-bottom:14px;font-size:13px;color:var(--muted)}.install strong{color:var(--ink)}.toast{position:fixed;bottom:calc(22px + env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);background:#24332a;color:white;padding:12px 18px;border-radius:99px;box-shadow:var(--shadow);opacity:0;pointer-events:none;transition:.2s}.toast.show{opacity:1}
 @media(min-width:600px){main{padding-top:30px}.summary{padding:24px}}
 </style></head><body><main>
@@ -20,13 +20,17 @@ header{padding:14px 4px 20px;display:flex;align-items:center;justify-content:spa
 <div class="install" id="install"><strong>📲 Lägg till på hemskärmen</strong><br>På iPhone: tryck på Dela i Safari och välj ”Lägg till på hemskärmen”.</div>
 <section class="summary"><div class="summary-top"><h2>Att handla</h2><strong id="count">0 varor</strong></div><p id="progressText">Lägg till det ni behöver</p><div class="progress"><div id="progressBar"></div></div></section>
 <form class="add" id="addForm"><input id="itemInput" placeholder="Vad behöver vi köpa?" autocomplete="off" required><button type="submit">＋ Lägg till</button></form>
+<button class="details-toggle" id="extrasToggle" type="button">＋ Bild eller pris</button>
+<div class="details-panel" id="extrasPanel"><input id="itemPrice" type="number" min="0" step="0.01" inputmode="decimal" placeholder="Pris (kr)"><input id="itemPhoto" type="file" accept="image/*" aria-label="Välj produktbild"><span class="meta">Bilden delas med listan.</span></div>
+<button class="menu-toggle" id="menuToggle" type="button" style="margin:0 0 10px">☰ Fler funktioner</button>
+<div class="menu-panel" id="menuPanel"><button id="templatesBtn" type="button">Färdiga listor</button><button id="historyBtn" type="button">Historik</button><button id="favoritesBtn" type="button">★ Favoriter</button><button id="darkBtn" type="button">Mörkt läge</button></div>
 <nav class="filters" id="filters"></nav><section class="list" id="list"></section>
 <div class="footer"><span id="remaining">0 kvar</span><button id="clear">Rensa avklarade</button></div>
-</main><div class="toast" id="toast"></div>
+</main><div class="toast" id="toast"></div><div class="modal" id="modal"><div class="modal-card"><button class="modal-close" id="modalClose">Stäng</button><div id="modalContent"></div></div></div>
 <script>
 const API_BASE="https://nova-cloud-c4t9.onrender.com";
 const categories=["Allt","Frukt & grönt","Mejeri","Kött & fisk","Skafferi","Frys","Hushåll","Övrigt"];
-let items=JSON.parse(localStorage.getItem("shoppingItems")||"[]"),filter="Allt";
+let items=JSON.parse(localStorage.getItem("shoppingItems")||"[]"),filter="Allt",showFavorites=false,lastUndo=null;
 let listToken=localStorage.getItem("shoppingListToken")||"",lastUpdated=null,pollBusy=false,pendingMutations=0;
 const $=id=>document.getElementById(id);
 const incoming=new URLSearchParams(location.hash.slice(1)).get("list");
@@ -77,11 +81,11 @@ async function mutateShared(path,method,body,rollback){
 function render(){
  $("filters").innerHTML=categories.map(c=>'<button class="chip '+(filter===c?"active":"")+'" data-filter="'+esc(c)+'">'+esc(c)+'</button>').join("");
  $("filters").querySelectorAll("button").forEach(b=>b.onclick=()=>{filter=b.dataset.filter;render()});
- const shown=items.filter(x=>filter==="Allt"||x.category===filter),unchecked=items.filter(x=>!x.done).length,done=items.length-unchecked;
+ const shown=items.filter(x=>(filter==="Allt"||x.category===filter)&&(!showFavorites||x.is_favorite)),unchecked=items.filter(x=>!x.done).length,done=items.length-unchecked;
  $("count").textContent=items.length+" varor";$("remaining").textContent=unchecked+" kvar";
  $("progressText").textContent=items.length?done+" av "+items.length+" avklarade":"Lägg till det ni behöver";
  $("progressBar").style.width=(items.length?done/items.length*100:0)+"%";
- $("list").innerHTML=shown.length?shown.map(x=>'<article class="item '+(x.done?"done":"")+'" data-item-id="'+esc(x.id)+'"><button class="check" data-check="'+esc(x.id)+'" aria-label="'+(x.done?"Markera som ej klar":"Markera som klar")+'">'+(x.done?"✓":"")+'</button><div class="item-main"><div class="name">'+esc(x.name)+'</div><div class="meta">'+esc(x.category)+(x.qty?" · "+esc(x.qty):"")+'</div></div><button class="del" data-del="'+esc(x.id)+'" aria-label="Ta bort">×</button></article>').join(""):'<div class="empty"><div>🧺</div>Listan är tom. Lägg till något ni behöver!</div>';
+ $("list").innerHTML=shown.length?shown.map(x=>'<article class="item '+(x.done?"done":"")+'" data-item-id="'+esc(x.id)+'"><button class="check" data-check="'+esc(x.id)+'" aria-label="'+(x.done?"Markera som ej klar":"Markera som klar")+'">'+(x.done?"✓":"")+'</button>'+(x.image_data?'<img class="thumb" src="'+esc(x.image_data)+'" alt="">':'<div class="thumb">🛍️</div>')+'<div class="item-main"><div class="name">'+esc(x.name)+'</div><div class="meta">'+esc(x.category)+(x.qty?" · "+esc(x.qty):"")+'</div>'+(x.price!==null&&x.price!==undefined&&x.price!==""?'<div class="price">'+Number(x.price).toLocaleString("sv-SE",{minimumFractionDigits:2,maximumFractionDigits:2})+' kr</div>':'')+'</div><button class="favorite '+(x.is_favorite?"on":"")+'" data-fav="'+esc(x.id)+'" aria-label="Favorit">'+(x.is_favorite?"★":"☆")+'</button><button class="del" data-del="'+esc(x.id)+'" aria-label="Ta bort">×</button></article>').join(""):'<div class="empty"><div>🧺</div>Listan är tom. Lägg till något ni behöver!</div>';
  $("list").querySelectorAll(".item[data-item-id]").forEach(row=>{
   const toggle=async()=>{
    const x=items.find(x=>String(x.id)===row.dataset.itemId);if(!x)return;
@@ -96,6 +100,7 @@ function render(){
   row.onkeydown=e=>{if((e.key==="Enter"||e.key===" ")&&e.target===row){e.preventDefault();toggle()}};
   row.tabIndex=0;row.setAttribute("role","button");row.setAttribute("aria-label","Tryck för att bocka av "+row.querySelector(".name").textContent);
  });
+ $("list").querySelectorAll("[data-fav]").forEach(b=>b.onclick=e=>{e.stopPropagation();const x=items.find(x=>String(x.id)===b.dataset.fav);if(!x)return;const old=!!x.is_favorite;x.is_favorite=!old;localStorage.setItem("shoppingItems",JSON.stringify(items));render();if(listToken)mutateShared("/api/shopping-list/items/"+encodeURIComponent(x.id),"PATCH",{is_favorite:x.is_favorite},()=>{x.is_favorite=old});});
  $("list").querySelectorAll("[data-del]").forEach(b=>b.onclick=async e=>{
   e.stopPropagation();
   const index=items.findIndex(x=>String(x.id)===b.dataset.del);
@@ -103,6 +108,7 @@ function render(){
   const removed=items.splice(index,1)[0];
   localStorage.setItem("shoppingItems",JSON.stringify(items));
   render();
+  setUndo("Varan togs bort",async()=>{if(listToken){const response=await api("/api/shopping-list/items","POST",{name:removed.name,category:removed.category,qty:removed.qty||"",price:removed.price??null,image_data:removed.image_data||""});if(response.item)items.unshift(response.item)}else items.splice(Math.min(index,items.length),0,removed);localStorage.setItem("shoppingItems",JSON.stringify(items));render()});
   if(listToken)mutateShared("/api/shopping-list/items/"+encodeURIComponent(b.dataset.del),"DELETE",undefined,()=>items.splice(Math.min(index,items.length),0,removed));
   else saveLocal()
  });
@@ -110,7 +116,8 @@ function render(){
 function guessCategory(name){let s=name.toLowerCase();if(/mjölk|ost|smör|yoghurt|grädde|ägg|fil/.test(s))return"Mejeri";if(/äpple|banan|tomat|gurka|potatis|sallad|lök|frukt|grön/.test(s))return"Frukt & grönt";if(/kött|kyckling|fisk|korv|färs|bacon/.test(s))return"Kött & fisk";if(/bröd|pasta|ris|mjöl|kaffe|te|socker|konserv|sås/.test(s))return"Skafferi";if(/glass|fryst|frys/.test(s))return"Frys";if(/disk|tvätt|toalett|papper|såpa|rengör/.test(s))return"Hushåll";return"Övrigt"}
 $("addForm").onsubmit=async e=>{
  e.preventDefault();let name=$("itemInput").value.trim();if(!name)return;
- const item={name,category:guessCategory(name),qty:""};
+ const priceRaw=$("itemPrice").value.trim();const photo=$("itemPhoto").files[0];let imageData="";if(photo){try{imageData=await compressPhoto(photo)}catch(error){toast("Bilden kunde inte läsas.");return}}
+ const item={name,category:guessCategory(name),qty:"",price:priceRaw===""?null:Number(priceRaw),image_data:imageData};
  if(listToken){
   try{
    const response=await api("/api/shopping-list/items","POST",{...item,source_endpoint:await currentPushEndpoint()});
@@ -118,7 +125,7 @@ $("addForm").onsubmit=async e=>{
    items.unshift(response.item);
    localStorage.setItem("shoppingItems",JSON.stringify(items));
    render();
-   $("itemInput").value="";
+   $("itemInput").value="";$("itemPrice").value="";$("itemPhoto").value="";
    $("itemInput").focus();
    setSyncStatus("Delad lista · synkas automatiskt");
   }catch(error){
@@ -129,7 +136,7 @@ $("addForm").onsubmit=async e=>{
  }else{
   items.unshift({id:crypto.randomUUID(),...item,done:false});
   saveLocal();
-  $("itemInput").value="";
+  $("itemInput").value="";$("itemPrice").value="";$("itemPhoto").value="";
   $("itemInput").focus();
  }
 };
@@ -211,6 +218,18 @@ $("notify").onclick=enableNotifications;
 if(localStorage.getItem("shoppingNotificationsEnabled")==="yes"&&"Notification" in window&&Notification.permission==="granted")$("notify").setAttribute("aria-pressed","true");
 
 function toast(s){$("toast").textContent=s;$("toast").classList.add("show");setTimeout(()=>$("toast").classList.remove("show"),2200)}
+function setUndo(label,action){lastUndo=action;$("toast").innerHTML="";const text=document.createElement("span");text.textContent=label+" · ";const btn=document.createElement("button");btn.textContent="Ångra";btn.style.cssText="border:0;background:transparent;color:#bde8c8;font-weight:800";btn.onclick=async()=>{try{await lastUndo();toast("Ändringen återställd")}catch(e){toast("Kunde inte ångra: "+e.message)}lastUndo=null};$("toast").append(text,btn);$("toast").classList.add("show");setTimeout(()=>$("toast").classList.remove("show"),5000)}
+async function compressPhoto(file){if(!file.type.startsWith("image/"))throw new Error("Ogiltig bild");const bitmap=await createImageBitmap(file);const scale=Math.min(1,480/Math.max(bitmap.width,bitmap.height));const canvas=document.createElement("canvas");canvas.width=Math.max(1,Math.round(bitmap.width*scale));canvas.height=Math.max(1,Math.round(bitmap.height*scale));canvas.getContext("2d").drawImage(bitmap,0,0,canvas.width,canvas.height);bitmap.close();return await new Promise((resolve,reject)=>canvas.toBlob(blob=>{if(!blob)return reject(new Error("Komprimering misslyckades"));const reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.onerror=reject;reader.readAsDataURL(blob)},"image/jpeg",0.62))}
+$("extrasToggle").onclick=()=>$("extrasPanel").classList.toggle("open");
+$("menuToggle").onclick=()=>$("menuPanel").classList.toggle("open");
+$("darkBtn").onclick=()=>{document.body.classList.toggle("dark");localStorage.setItem("shoppingDarkMode",document.body.classList.contains("dark")?"yes":"no")};
+if(localStorage.getItem("shoppingDarkMode")==="yes")document.body.classList.add("dark");
+$("favoritesBtn").onclick=()=>{showFavorites=!showFavorites;$("favoritesBtn").textContent=showFavorites?"Visa alla varor":"★ Favoriter";render()};
+function openModal(content){$("modalContent").innerHTML=content;$("modal").classList.add("open")}
+$("modalClose").onclick=()=>$("modal").classList.remove("open");
+$("modal").onclick=e=>{if(e.target===$("modal"))$("modal").classList.remove("open")};
+$("templatesBtn").onclick=()=>{const templates=[{name:"Veckohandling",items:["Mjölk","Ägg","Bröd","Smör","Bananer","Pasta"]},{name:"Frukost",items:["Mjölk","Yoghurt","Ägg","Bröd","Ost"]},{name:"Storhandling",items:["Mjölk","Ägg","Bröd","Smör","Potatis","Pasta","Ris","Kyckling","Toalettpapper","Diskmedel"]}];openModal("<h2>Färdiga inköpslistor</h2>"+templates.map((t,i)=>'<p><button class="chip" data-template="'+i+'">'+esc(t.name)+" · "+t.items.length+" varor</button></p>").join("")+'<p><button class="chip" id="saveTemplate">Spara nuvarande lista som egen mall</button></p>');$("modalContent").querySelectorAll("[data-template]").forEach(b=>b.onclick=async()=>{const t=templates[Number(b.dataset.template)];for(const name of t.items){const item={name,category:guessCategory(name),qty:"",price:null,image_data:""};if(listToken){const r=await api("/api/shopping-list/items","POST",item);if(r.item)items.unshift(r.item)}else items.unshift({id:crypto.randomUUID(),...item,done:false})}localStorage.setItem("shoppingItems",JSON.stringify(items));render();$("modal").classList.remove("open");toast(t.name+" tillagd")});$("saveTemplate").onclick=()=>{const saved=JSON.parse(localStorage.getItem("shoppingTemplates")||"[]");saved.push({name:prompt("Namn på mallen?")||"Min mall",items:items.filter(x=>!x.done).map(x=>({name:x.name,category:x.category,qty:x.qty||""}))});localStorage.setItem("shoppingTemplates",JSON.stringify(saved));toast("Mallen sparad på den här telefonen")}};
+$("historyBtn").onclick=async()=>{if(!listToken){toast("Dela listan först för att använda gemensam historik.");return}try{const data=await api("/api/shopping-list/history");const rows=data.items||[];openModal("<h2>Inköpshistorik</h2>"+(rows.length?rows.map(x=>'<div class="history-row">'+(x.image_data?'<img src="'+esc(x.image_data)+'" alt="">':'<span>🛍️</span>')+'<div><strong>'+esc(x.name)+'</strong><small>'+esc(x.category)+(x.price!==null&&x.price!==undefined?" · "+Number(x.price).toFixed(2)+" kr":"")+'</small></div></div>').join(""):'<p>Inga tidigare inköp ännu. Bocka av varor och välj Rensa avklarade.</p>'))}catch(e){toast("Historiken kunde inte hämtas: "+e.message)}};
 render();
 if(!navigator.standalone&&!window.matchMedia("(display-mode: standalone)").matches&&/iPhone|iPad/.test(navigator.userAgent))$("install").style.display="block";
 if("serviceWorker" in navigator)navigator.serviceWorker.register("./sw.js").catch(()=>{});
