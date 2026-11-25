@@ -296,7 +296,7 @@ if(window.matchMedia){
   $("backgroundOpacity").value=String(opacity);
   localStorage.setItem("shoppingBackgroundOpacity",String(opacity));
  }
- let currentBackgroundPath="",backgroundObjectUrl="";
+ let currentBackgroundPath="",backgroundObjectUrl="",backgroundLoadingPath="";
  function applySharedBackground(url){
   if(url){
    document.body.classList.add("has-custom-bg");
@@ -308,8 +308,9 @@ if(window.matchMedia){
  }
  async function loadSharedBackground(path){
   const next=String(path||"");
-  if(next===currentBackgroundPath)return;
+  if(next===currentBackgroundPath||next===backgroundLoadingPath)return;
   if(!next){
+   backgroundLoadingPath="";
    currentBackgroundPath="";
    if(backgroundObjectUrl)URL.revokeObjectURL(backgroundObjectUrl);
    backgroundObjectUrl="";
@@ -317,15 +318,20 @@ if(window.matchMedia){
    return;
   }
   if(!listToken)return;
-  const response=await fetch(API_BASE+"/api/shopping-list/background",{headers:{Authorization:"Bearer "+listToken},cache:"no-store"});
-  if(!response.ok)throw new Error("Bakgrundsbilden kunde inte hämtas.");
-  const blob=await response.blob();
-  const nextUrl=URL.createObjectURL(blob);
-  const previous=backgroundObjectUrl;
-  backgroundObjectUrl=nextUrl;
-  currentBackgroundPath=next;
-  applySharedBackground(nextUrl);
-  if(previous)URL.revokeObjectURL(previous);
+  backgroundLoadingPath=next;
+  try{
+   const response=await fetch(API_BASE+"/api/shopping-list/background",{headers:{Authorization:"Bearer "+listToken},cache:"no-store"});
+   if(!response.ok)throw new Error("Bakgrundsbilden kunde inte hämtas.");
+   const blob=await response.blob();
+   if(backgroundLoadingPath!==next)return;
+   const nextUrl=URL.createObjectURL(blob);
+   const previous=backgroundObjectUrl;
+   backgroundObjectUrl=nextUrl;
+   currentBackgroundPath=next;
+   backgroundLoadingPath="";
+   applySharedBackground(nextUrl);
+   if(previous)URL.revokeObjectURL(previous);
+  }catch(error){if(backgroundLoadingPath===next)backgroundLoadingPath="";throw error;}
  }
  applyBackgroundOpacity(localStorage.getItem("shoppingBackgroundOpacity")||22);
  $("backgroundOpacity").oninput=()=>applyBackgroundOpacity($("backgroundOpacity").value);
