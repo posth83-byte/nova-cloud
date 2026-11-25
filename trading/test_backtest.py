@@ -1,6 +1,6 @@
 import unittest
 
-from backtest import run_backtest
+from backtest import run_backtest, run_walk_forward
 
 
 def make_candles(count=180):
@@ -41,6 +41,24 @@ class BacktestTests(unittest.TestCase):
     def test_risk_policy_rejects_excessive_risk(self):
         with self.assertRaises(ValueError):
             run_backtest(make_candles(), 500, risk_pct=2.0)
+
+
+    def test_walk_forward_uses_multiple_non_overlapping_oos_folds(self):
+        candles = make_candles(450)
+        result = run_walk_forward(candles, 500, test_window=100)
+        self.assertEqual(result["mode"], "walk_forward_out_of_sample")
+        self.assertGreaterEqual(result["fold_count"], 3)
+        self.assertTrue(result["non_overlapping_oos_windows"])
+        self.assertTrue(result["fees_and_slippage_included"])
+        self.assertIn("buy_and_hold_return_pct", result)
+        self.assertIn("profit_factor", result)
+        folds = result["folds"]
+        for previous, current in zip(folds, folds[1:]):
+            self.assertGreater(current["oos_start_timestamp"], previous["oos_end_timestamp"])
+
+    def test_walk_forward_rejects_too_little_history(self):
+        with self.assertRaises(ValueError):
+            run_walk_forward(make_candles(180), 500, test_window=100)
 
 
 if __name__ == "__main__":
