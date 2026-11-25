@@ -61,14 +61,14 @@ table{width:100%;border-collapse:collapse;font-size:13px}th,td{text-align:left;p
  const money=(v,c="EUR")=>Number.isFinite(Number(v))?new Intl.NumberFormat("sv-SE",{style:"currency",currency:c,maximumFractionDigits:2}).format(Number(v)):"—";
  const pct=v=>Number.isFinite(Number(v))?Number(v).toLocaleString("sv-SE",{maximumFractionDigits:2})+" %":"—";
  const safe=(v)=>String(v??"").replace(/[&<>"']/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]));
- async function read(file){if(!file)return null;const raw=await file.text();const data=JSON.parse(raw);if(!data||typeof data!=="object"||Array.isArray(data))throw new Error("JSON-filen har fel format.");return data;}
+ async function read(file){if(!file)return null;const raw=await file.text();const parsed=JSON.parse(raw);if(!parsed||typeof parsed!=="object"||Array.isArray(parsed))throw new Error("JSON-filen har fel format.");return parsed.portfolio||parsed;}
  $("paperFile").addEventListener("change",async e=>{try{paper=await read(e.target.files[0]);render();$("paperStatus").textContent="Portfölj: importerad";}catch(err){alert("Kunde inte läsa portföljfilen: "+err.message);}});
  $("backtestFile").addEventListener("change",async e=>{try{backtest=await read(e.target.files[0]);render();$("backtestStatus").textContent="Backtest: importerad";}catch(err){alert("Kunde inte läsa backtestfilen: "+err.message);}});
  function render(){
   const currency=paper?.quote_currency||"EUR";
   const positions=paper?.positions||paper?.open_positions||{};
   const fills=paper?.fills||[];
-  const equity=paper?.equity;
+  const equity=paper?.equity??(Object.keys(positions).length===0?paper?.cash:null);
   $("equity").textContent=equity==null?"—":money(equity,currency);
   $("cash").textContent=paper?("Kontanter: "+money(paper.cash,currency)+" · Externt insatt: "+money(paper.external_funding,currency)):"Importera portföljdata";
   $("realized").textContent=paper?money(paper.realized_pnl??paper.realized_pnl,currency):"—";
