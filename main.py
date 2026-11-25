@@ -4013,6 +4013,58 @@ async def unsubscribe_shopping_list_push(
         raise HTTPException(status_code=502, detail=f"Kunde inte ta bort notisinställningen: {str(error)[:300]}")
 
 
+def fetch_openfoodfacts_product_image(name):
+    query = urllib.parse.urlencode({
+        "search_terms": name,
+        "search_simple": "1",
+        "action": "process",
+        "json": "1",
+        "page_size": "8",
+        "fields": "product_name,image_front_small_url,image_front_url,image_url"
+    })
+    url = "https://world.openfoodfacts.org/cgi/search.pl?" + query
+    request = urllib.request.Request(
+        url,
+        headers={"User-Agent": "NOVA-Cloud/3.5 (shopping-list product image lookup)"}
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=4) as response:
+            payload = json.loads(response.read().decode("utf-8"))
+        products = payload.get("products", []) if isinstance(payload, dict) else []
+        wanted = {word for word in re.findall(r"[a-zåäö0-9]+", name.lower()) if len(word) > 2}
+        best_url = ""
+        best_score = 0
+        for product in products[:8]:
+            if not isinstance(product, dict):
+                continue
+            image_url = (
+                product.get("image_front_small_url")
+                or product.get("image_front_url")
+                or product.get("image_url")
+                or ""
+            )
+            if not image_url.startswith("https://images.openfoodfacts.org/"):
+                continue
+            product_name = str(product.get("product_name") or "").lower()
+            words = {word for word in re.findall(r"[a-zåäö0-9]+", product_name) if len(word) > 2}
+            score = len(wanted & words) / max(1, len(wanted))
+            if score > best_score:
+                best_score = score
+                best_url = image_url
+        return best_url if best_score >= 0.25 else ""
+    except Exception:
+        return ""
+
+
+@app.get("/api/shopping-list/product-image")
+async def get_shopping_list_product_image(name: str = ""):
+    clean_name = str(name or "").strip()[:120]
+    if len(clean_name) < 2:
+        return {"image_url": ""}
+    image_url = await asyncio.to_thread(fetch_openfoodfacts_product_image, clean_name)
+    return {"image_url": image_url}
+
+
 @app.post("/api/shopping-list/items")
 async def add_shopping_list_item(
     request: ShoppingListItemCreateRequest,
@@ -4071,8 +4123,11 @@ async def update_shopping_list_item(
     if "qty" in changes and changes["qty"] is not None:
         changes["qty"] = changes["qty"].strip()
     if "image_data" in changes and changes["image_data"] is not None:
-        if changes["image_data"] and not changes["image_data"].startswith("data:image/"):
-            raise HTTPException(status_code=422, detail="Produktbilden har ett ogiltigt format.")
+        image_value = changes["image_data"]
+        if image_value and not image_value.startswith("data:image/"):
+            parsed_image_url = urllib.parse.urlparse(image_value)
+            if parsed_image_url.scheme != "https" or parsed_image_url.hostname != "images.openfoodfacts.org":
+                raise HTTPException(status_code=422, detail="Produktbilden har ett ogiltigt format.")
     try:
         list_row = await asyncio.to_thread(resolve_shopping_list_token, authorization)
         rows, _ = await asyncio.to_thread(
