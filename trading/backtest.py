@@ -174,8 +174,23 @@ def run_backtest(
         position = None
 
     sells = [fill for fill in fills if fill["side"] == "sell"]
-    wins = [fill for fill in sells if fill.get("net_pnl", 0) > 0]
+    trade_pnls = [float(fill.get("net_pnl", 0.0)) for fill in sells]
+    wins = [pnl for pnl in trade_pnls if pnl > 0]
+    losses = [pnl for pnl in trade_pnls if pnl < 0]
+    gross_profit = sum(wins)
+    gross_loss = abs(sum(losses))
     net_profit = cash - starting_cash
+
+    # Fee- and slippage-adjusted buy-and-hold benchmark over the same test window.
+    benchmark_entry = float(candles[50][1]) * (1.0 + slippage_rate)
+    benchmark_exit = float(candles[-1][4]) * (1.0 - slippage_rate)
+    benchmark_quantity = starting_cash / (benchmark_entry * (1.0 + fee_rate))
+    benchmark_ending = (
+        benchmark_quantity * benchmark_exit * (1.0 - fee_rate)
+    )
+    benchmark_profit = benchmark_ending - starting_cash
+    benchmark_return = benchmark_profit / starting_cash * 100.0
+
     return {
         "mode": "historical_backtest",
         "starting_cash": round(starting_cash, 8),
@@ -185,8 +200,17 @@ def run_backtest(
         "closed_trades": len(sells),
         "winning_trades": len(wins),
         "win_rate_pct": round(len(wins) / len(sells) * 100, 2) if sells else 0.0,
+        "expectancy_per_trade": round(sum(trade_pnls) / len(trade_pnls), 8) if trade_pnls else None,
+        "profit_factor": round(gross_profit / gross_loss, 4) if gross_loss > 0 else (None if gross_profit == 0 else "infinite"),
+        "gross_profit": round(gross_profit, 8),
+        "gross_loss": round(gross_loss, 8),
+        "buy_and_hold_ending_cash": round(benchmark_ending, 8),
+        "buy_and_hold_net_profit": round(benchmark_profit, 8),
+        "buy_and_hold_return_pct": round(benchmark_return, 4),
+        "strategy_vs_buy_and_hold_pct_points": round(net_profit / starting_cash * 100.0 - benchmark_return, 4),
         "max_drawdown_pct": round(max_drawdown_pct, 4),
         "fees_and_slippage_included": True,
+        "benchmark_costs_included": True,
         "lookahead_protection": "closed-candle signal; next-candle-open entry",
         "fills": fills,
         "equity_curve": equity_curve,
