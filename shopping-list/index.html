@@ -24,7 +24,7 @@ header{padding:14px 4px 20px;display:flex;align-items:center;justify-content:spa
 <button class="details-toggle" id="extrasToggle" type="button">＋ Lägg till pris</button>
 <div class="details-panel" id="extrasPanel"><input id="itemPrice" type="number" min="0" step="0.01" inputmode="decimal" placeholder="Pris (kr)"></div>
 <button class="menu-toggle" id="menuToggle" type="button" style="margin:0 0 10px">☰ Fler funktioner</button>
-<div class="menu-panel" id="menuPanel"><button id="templatesBtn" type="button">Färdiga listor</button><button id="historyBtn" type="button">Historik</button><button id="favoritesBtn" type="button">★ Favoriter</button><label class="theme-control" for="themeSelect">Tema<select id="themeSelect"><option value="system">Följ mobilen</option><option value="light">Ljust</option><option value="dark">Mörkt</option></select></label><div class="background-control"><strong>Egen bakgrund</strong><input id="backgroundFile" type="file" accept="image/jpeg,image/png,image/webp" hidden><button id="chooseBackground" type="button">Välj bild</button><button id="importBackground" type="button">Hämta min bakgrund</button><button id="removeBackground" type="button">Återställ</button><label for="backgroundOpacity">Diskrethet <input id="backgroundOpacity" type="range" min="8" max="45" value="22"></label></div></div>
+<div class="menu-panel" id="menuPanel"><button id="connectListBtn" type="button">Anslut till delad lista</button><button id="templatesBtn" type="button">Färdiga listor</button><button id="historyBtn" type="button">Historik</button><button id="favoritesBtn" type="button">★ Favoriter</button><label class="theme-control" for="themeSelect">Tema<select id="themeSelect"><option value="system">Följ mobilen</option><option value="light">Ljust</option><option value="dark">Mörkt</option></select></label><div class="background-control"><strong>Egen bakgrund</strong><input id="backgroundFile" type="file" accept="image/jpeg,image/png,image/webp" hidden><button id="chooseBackground" type="button">Välj bild</button><button id="importBackground" type="button">Hämta min bakgrund</button><button id="removeBackground" type="button">Återställ</button><label for="backgroundOpacity">Diskrethet <input id="backgroundOpacity" type="range" min="8" max="45" value="22"></label></div></div>
 <nav class="filters" id="filters"></nav><section class="list" id="list"></section>
 <div class="footer"><span id="remaining">0 kvar</span><button id="clear">Rensa avklarade</button></div>
 </main><div class="toast" id="toast"></div><div class="modal" id="modal"><div class="modal-card"><button class="modal-close" id="modalClose">Stäng</button><div id="modalContent"></div></div></div>
@@ -37,13 +37,54 @@ const $=id=>document.getElementById(id);
 const incoming=new URLSearchParams(location.hash.slice(1)).get("list");
 if(incoming){listToken=incoming;localStorage.setItem("shoppingListToken",listToken)}
 function setSyncStatus(message){$("syncStatus").textContent=message}
+function extractListToken(value){
+ const pasted=String(value||"").trim();
+ if(!pasted)return "";
+ try{
+  const parsed=new URL(pasted);
+  return new URLSearchParams(parsed.hash.replace(/^#/,"")).get("list")||parsed.searchParams.get("list")||"";
+ }catch{
+  const match=pasted.match(/(?:#|[?&])list=([^&]+)/);
+  if(match){try{return decodeURIComponent(match[1])}catch{return match[1]}}
+  return pasted;
+ }
+}
+async function connectSharedList(){
+ const pasted=prompt("Klistra in delningslänken från den andra telefonen. Listan kopplas till den här appen:");
+ if(!pasted)return;
+ const candidate=extractListToken(pasted);
+ if(candidate.length<40||candidate.length>200){toast("Jag hittade ingen giltig delningskod i länken.");return}
+ try{
+  setSyncStatus("Kontrollerar delningslänken…");
+  const response=await fetch(API_BASE+"/api/shopping-list",{headers:{Authorization:"Bearer "+candidate},cache:"no-store"});
+  if(!response.ok){let message="Delningslänken kunde inte godkännas.";try{const data=await response.json();message=data.detail||message}catch{}throw new Error(message)}
+  const data=await response.json();
+  if(!Array.isArray(data.items))throw new Error("Servern returnerade ingen inköpslista.");
+  if(!listToken)localStorage.setItem("shoppingItemsBeforeSharedConnect",localStorage.getItem("shoppingItems")||"[]");
+  listToken=candidate;
+  localStorage.setItem("shoppingListToken",listToken);
+  items=data.items;
+  lastUpdated=data.updated_at||null;
+  localStorage.setItem("shoppingItems",JSON.stringify(items));
+  history.replaceState(null,"",location.pathname+location.search);
+  render();
+  loadSharedBackground(data.background_path||"").catch(()=>{});
+  loadSharedSuggestions();
+  setSyncStatus("Delad lista · synkas automatiskt");
+  toast("Telefonen är nu ansluten till den gemensamma listan!");
+ }catch(error){
+  setSyncStatus(listToken?"Återansluter till den delade listan…":"Ingen lista ansluten");
+  toast("Kunde inte ansluta: "+error.message);
+ }
+}
+$("connectListBtn").onclick=connectSharedList;
 function esc(s){return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
 async function api(path,method="GET",body){
  const headers={};
  if(listToken)headers.Authorization="Bearer "+listToken;
  if(body!==undefined)headers["Content-Type"]="application/json";
  const response=await fetch(API_BASE+path,{method,headers,body:body===undefined?undefined:JSON.stringify(body),cache:"no-store"});
- if(!response.ok){let message="Serverfel ("+response.status+")";try{const data=await response.json();message=data.detail||message}catch{}throw new Error(message)}
+ if(!response.ok){let message="Serverfel ("+response.status+")";try{const data=await response.json();message=data.detail||message}catch{}const error=new Error(message);error.status=response.status;throw error}
  return response.status===204?null:response.json();
 }
 function saveLocal(){localStorage.setItem("shoppingItems",JSON.stringify(items));render()}
@@ -462,7 +503,7 @@ if("serviceWorker" in navigator)navigator.serviceWorker.register("./sw.js").catc
 if(listToken){
  loadSharedSuggestions();
  setSyncStatus("Ansluter till den delade listan…");
- refreshSharedList(false).catch(()=>{});
+ refreshSharedList(false).catch(error=>{if(error.status===401||error.status===403){setSyncStatus("Delningslänken behöver kopplas igen");toast("Den här telefonen behöver anslutas till listan igen.");connectSharedList();}});
  if(localStorage.getItem("shoppingNotificationsEnabled")==="yes"&&"Notification" in window&&Notification.permission==="granted"){
   ensurePushSubscription().catch(error=>toast("Notiser kunde inte återanslutas: "+error.message));
  }
@@ -470,28 +511,7 @@ if(listToken){
  const standalone=window.navigator.standalone===true||window.matchMedia("(display-mode: standalone)").matches;
  if(standalone){
   setSyncStatus("Anslut till er gemensamma lista");
-  const pasted=prompt("Klistra in sambons delningslänk här en gång, så sparas den i hemskärmsappen:");
-  if(pasted){
-   let token="";
-   try{
-    const parsed=new URL(pasted.trim());
-    token=new URLSearchParams(parsed.hash.replace(/^#/,"")).get("list")||parsed.searchParams.get("list")||"";
-   }catch{
-    token=pasted.trim();
-   }
-   if(token){
-    listToken=token;
-    localStorage.setItem("shoppingListToken",listToken);
-    setSyncStatus("Ansluter till den delade listan…");
-    loadSharedSuggestions();
-    refreshSharedList(false).catch(error=>toast("Kunde inte öppna listan: "+error.message));
-   }else{
-    setSyncStatus("Ingen delningskod hittades – öppna appen igen för att försöka på nytt");
-    toast("Jag hittade ingen delningskod i länken.");
-   }
-  }else{
-   setSyncStatus("Ingen lista ansluten – öppna appen igen för att ansluta");
-  }
+  connectSharedList();
  }else{
   setSyncStatus("Bara på den här telefonen · tryck ↗ för att dela");
  }
