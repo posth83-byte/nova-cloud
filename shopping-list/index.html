@@ -110,7 +110,7 @@ function render(){
   const removed=items.splice(index,1)[0];
   localStorage.setItem("shoppingItems",JSON.stringify(items));
   render();
-  setUndo("Varan togs bort",async()=>{if(listToken){const response=await api("/api/shopping-list/items","POST",{name:removed.name,category:removed.category,qty:removed.qty||"",price:removed.price??null,image_data:removed.image_data||""});if(response.item)items.unshift(response.item)}else items.splice(Math.min(index,items.length),0,removed);localStorage.setItem("shoppingItems",JSON.stringify(items));render()});
+  setUndo("Varan togs bort",async()=>{if(listToken){const response=await api("/api/shopping-list/items","POST",{name:removed.name,category:removed.category,qty:removed.qty||"",price:removed.price??null,image_data:removed.image_data||"",is_favorite:!!removed.is_favorite});if(response.item)items.unshift(response.item)}else items.splice(Math.min(index,items.length),0,removed);localStorage.setItem("shoppingItems",JSON.stringify(items));render()});
   if(listToken)mutateShared("/api/shopping-list/items/"+encodeURIComponent(b.dataset.del),"DELETE",undefined,()=>items.splice(Math.min(index,items.length),0,removed));
   else saveLocal()
  });
