@@ -32,9 +32,9 @@ def run_cycle(broker: PaperBroker, market_results: list[dict[str, Any]]) -> list
             new_results.append(item)
     fresh_by_symbol = {item["symbol"]: item for item in new_results if item.get("symbol")}
     prices = {
-        symbol: float(item["last_price_eur"])
+        symbol: float(item.get("mark_price_eur") or item["last_price_eur"])
         for symbol, item in by_symbol.items()
-        if item.get("last_price_eur") is not None
+        if item.get("mark_price_eur") is not None or item.get("last_price_eur") is not None
     }
     if not new_results:
         # Even without a new closed candle, refresh stop monitoring with available marks.
