@@ -25,12 +25,12 @@ def run_cycle(broker: PaperBroker, market_results: list[dict[str, Any]]) -> list
     new_results = []
     processed = broker.state.setdefault("processed_candles", {})
     by_symbol = {item["symbol"]: item for item in market_results if item.get("symbol")}
-    fresh_by_symbol = {item["symbol"]: item for item in new_results if item.get("symbol")}
     for item in market_results:
         symbol = item.get("symbol")
         candle_ts = item.get("last_candle_timestamp")
         if symbol and candle_ts is not None and int(candle_ts) > int(processed.get(symbol, -1)):
             new_results.append(item)
+    fresh_by_symbol = {item["symbol"]: item for item in new_results if item.get("symbol")}
     prices = {
         symbol: float(item["last_price_eur"])
         for symbol, item in by_symbol.items()
