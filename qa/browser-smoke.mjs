@@ -98,8 +98,8 @@ try {
 
             // Test photo compression/upload as a separate item so a photo error is diagnosable.
             await page.locator("#itemInput").fill("QA-Photo");
-            const svgPhoto = Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32"><rect width="32" height="32" fill="#4f8"/></svg>');
-            await page.locator("#itemPhoto").setInputFiles({ name: "qa.svg", mimeType: "image/svg+xml", buffer: svgPhoto });
+            const pngPhoto = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAIAAAD8GO2jAAAALUlEQVR4nGMM2FLBQEvARFPTRy0YtWDUglELRi0YtWDUglELRi0YtWDUAioCAI2dAbyQjs/TAAAAAElFTkSuQmCC", "base64");
+            await page.locator("#itemPhoto").setInputFiles({ name: "qa.png", mimeType: "image/png", buffer: pngPhoto });
             await page.locator('#addForm button[type="submit"]').click();
             await page.waitForTimeout(300);
             const photoRow = page.locator(".item[data-item-id]").filter({ hasText: "QA-Photo" });
