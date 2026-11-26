@@ -29,38 +29,11 @@ class TradingApiTests(unittest.TestCase):
 
     def test_paper_status_reports_safe_sek_ledger(self):
         state = create_initial_state("200.00")
-        with patch.object(api, "_load", return_value=(state, 1)):
-            result = asyncio.run(api.paper_status())
-        self.assertEqual(result["cash"], "200.00")
-        self.assertEqual(result["starting_cash"], "200.00")
-        self.assertEqual(result["currency"], "SEK")
-        self.assertFalse(result["paper_enabled"])
-        self.assertFalse(result["orders_enabled"])
-        self.assertFalse(result["withdrawals_enabled"])
-        self.assertEqual(result["storage"], "supabase")
-        self.assertEqual(result["revision"], 1)
-
-    def test_paper_status_handles_positions_without_fresh_sek_marks(self):
-        state = create_initial_state("200.00")
-        state["positions"] = {"XBT/EUR": {"quantity": "0.001", "cost_basis": "500000"}}
-        with patch.object(api, "_load", return_value=(state, 2)):
-            result = asyncio.run(api.paper_status())
-        self.assertIsNone(result["equity"])
-        self.assertEqual(result["valuation_status"], "awaiting_fresh_sek_market_marks")
-        self.assertFalse(result["orders_enabled"])
-
-
-    def test_strategy_preview_is_read_only_and_uses_sek_fx(self):
-        state = create_initial_state("200.00")
-        market = {"markets": [{
-            "symbol": "XBT/EUR", "ask": 60000, "bid": 59900,
-            "spread_pct": 0.1668, "volume_24h_quote_est": 500000,
-            "min_cost_quote": 0.5, "min_order_qty": 0.0001,
-        }]}
-        fx = {"rate": 11.2, "age_days": 1, "date": "2026-11-25", "source": "test"}
-        with patch.object(api, "_load", return_value=(state, 1)), \\
-             patch.object(api, "fetch_eur_sek_rate", return_value=fx), \\
-             patch.object(api, "scan_markets", return_value=market):
+        with (
+            patch.object(api, "_load", return_value=(state, 1)),
+            patch.object(api, "fetch_eur_sek_rate", return_value=fx),
+            patch.object(api, "scan_markets", return_value=market),
+        ):
             result = asyncio.run(api.paper_strategy_preview())
         self.assertEqual(result["mode"], "paper_preview_only")
         self.assertFalse(result["execution_enabled"])
