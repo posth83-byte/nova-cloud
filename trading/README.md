@@ -44,7 +44,7 @@ AI is advisory. Deterministic code has final authority and can reject any propos
 - `dashboard.html` is a read-only portfolio/backtest panel served by the NOVA Cloud app at `/trading`. It imports exported JSON files locally in the browser; it cannot place orders or access exchange credentials.
 - `paper_config.json` contains conservative defaults. The current 200 SEK paper allocation is modelled as 17.81 EUR using an indicative reference rate; this is not a read of the Kraken balance.
 
-Example: download 30 days of hourly BTC/EUR candles and backtest with an example EUR balance:
+Example: download 30 days of hourly BTC/EUR candles and backtest with the current 200 SEK paper reference balance (minimum order 5 EUR):
 
 ```bash
 python trading/download_history.py --symbol BTC/EUR --timeframe 1h --days 30 --output trading/history.json
@@ -54,7 +54,7 @@ python trading/backtest.py --input trading/history.json --starting-cash 17.81 --
 For consecutive out-of-sample windows (at least three folds; each fold is flattened at its boundary):
 
 ```bash
-python trading/backtest.py --input trading/history.json --starting-cash 470 --walk-forward --test-window 168 --output trading/walk-forward-result.json
+python trading/backtest.py --input trading/history.json --starting-cash 17.81 --walk-forward --test-window 168 --output trading/walk-forward-result.json
 ```
 
 The walk-forward report compounds the paper balance across non-overlapping test windows and compares it with a fee/slippage-adjusted buy-and-hold benchmark. It uses prior candles only as indicator warmup; it does not train or optimize the strategy. Inspect fold-by-fold consistency, not just the aggregate return.
