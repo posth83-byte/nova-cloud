@@ -1323,7 +1323,7 @@ ox-spelutvecklare. Från spelidé och värld till Luau-kod, system, testning och
 <div class="trade-access" id="tradeAccessPanel"><label for="tradeDashboardKey">LÅS UPP PRIVAT KRAKEN-ÖVERSIKT</label><input id="tradeDashboardKey" type="password" autocomplete="off" placeholder="Klistra in dashboardens läsnyckel"><button type="button" onclick="unlockTradeDashboard()">ANSLUT TILL KRAKEN-KONTOT</button><small>Hämta värdet för <b>TRADE_DASHBOARD_TOKEN</b> i Render → nova-cloud → Environment. Det är en separat skrivskyddad nyckel, inte din Kraken-nyckel eller Trade AI:s kontrollnyckel.</small><div class="trade-muted" id="tradeAccessMessage" role="status"></div></div>
 <div class="trade-dashboard" id="tradeDashboardContent" hidden>
 <div class="trade-dashboard-head"><span id="tradeUpdatedAt">Väntar på kontodata…</span><span class="trade-status" id="tradeWorkerStatus">● KONTROLLERAR TEAMET</span><button class="trade-lock" type="button" onclick="lockTradeDashboard()">LÅS</button></div>
-<div class="trade-metrics"><div class="trade-metric primary"><small>HELA KRAKEN-KONTOT</small><strong id="tradeTotalValue">—</strong><em id="tradeTotalValueEur"></em></div><div class="trade-metric"><small>TILLGÄNGLIGT FÖR TRADE AI</small><strong id="tradeAvailable">—</strong><em id="tradeAvailableEur"></em></div><div class="trade-metric"><small>INVESTERAT</small><strong id="tradeInvested">—</strong><em id="tradePositionCount"></em></div><div class="trade-metric"><small>DAGENS RESULTAT</small><strong id="tradeDailyPnl">—</strong><em id="tradeRealizedPnl"></em></div></div>
+<div class="trade-metrics"><div class="trade-metric primary"><small>HELA KRAKEN-KONTOT</small><strong id="tradeTotalValue">—</strong><em id="tradeTotalValueEur"></em></div><div class="trade-metric"><small>TILLGÄNGLIGT FÖR TRADE AI</small><strong id="tradeAvailable">—</strong><em id="tradeAvailableEur"></em></div><div class="trade-metric"><small>INVESTERAT</small><strong id="tradeInvested">—</strong><em id="tradePositionCount"></em></div><div class="trade-metric"><small>TOTALT RESULTAT</small><strong id="tradeDailyPnl">—</strong><em id="tradeRealizedPnl"></em></div></div>
 <div class="trade-grid"><section class="trade-panel"><h3>AKTIVA INNEHAV</h3><div id="tradePositions"></div><h3>ORDER & AFFÄRER</h3><div id="tradeHistory"></div></section><section class="trade-panel"><h3>KRAKEN / SALDO PER TILLGÅNG</h3><div id="tradeAssets"></div><div id="tradeValuationWarning"></div><h3>MÖJLIGHETSRADAR</h3><div id="tradeRadar"></div><h3>SYSTEM & RISKKONTROLL</h3><div id="tradeSystemInfo"></div></section></div></div></section>
 <div class="system-footer">JARVIS × NOVA × WEBMASTER<br>PRIVATE ARTIFICIAL INTELLIGENCE NETWORK<br>ALL SYSTEMS CONNECTED THROUGH NOVA CLOUD</div>
 </main>
@@ -3008,10 +3008,11 @@ function renderTradeDashboard(data){
  $("tradeAvailableEur").textContent=tradeNumber(account.available_eur,4)+" EUR disponibelt för köp";
  const invested=positions.reduce((sum,p)=>sum+(Number(p.market_value_sek)||0),0);
  $("tradeInvested").textContent=tradeSek(invested);$("tradePositionCount").textContent=positions.length+" bekräftade innehav";
- const tradeEquity=(Number(account.available_eur_sek)||0)+invested,dayStart=Number(team.day_start_equity_sek);
- const daily=Number.isFinite(dayStart)&&dayStart>0&&positions.every(p=>p.market_value_sek!==null)?tradeEquity-dayStart:null;
- $("tradeDailyPnl").textContent=daily===null?"—":(daily>=0?"+":"")+tradeSek(daily);
- $("tradeDailyPnl").style.color=daily===null?"":daily>=0?"#85e6ba":"#ff9b9b";
+ const unrealizedComplete=positions.every(p=>p.unrealized_pnl_sek!==null);
+ const unrealized=unrealizedComplete?positions.reduce((sum,p)=>sum+(Number(p.unrealized_pnl_sek)||0),0):null;
+ const totalPnl=unrealized===null?null:(Number(team.realized_pnl_sek)||0)+unrealized;
+ $("tradeDailyPnl").textContent=totalPnl===null?"—":(totalPnl>=0?"+":"")+tradeSek(totalPnl);
+ $("tradeDailyPnl").style.color=totalPnl===null?"":totalPnl>=0?"#85e6ba":"#ff9b9b";
  $("tradeRealizedPnl").textContent="Realiserat: "+tradeSek(team.realized_pnl_sek);
  $("tradeUpdatedAt").textContent="Senast uppdaterad: "+tradeTime(data.updated_at)+" · Uppdateras automatiskt varje minut";
  $("tradeWorkerStatus").textContent=team.emergency_stop?"● NÖDSTOPP":team.live_enabled?"● LIVE-BEVAKNING AKTIV":"● HANDEL EJ AKTIVERAD";
