@@ -155,6 +155,7 @@ class LiveWorkerTests(unittest.TestCase):
             patch.object(live_worker, "_cross_signal", return_value=(True, False)),
             patch.object(live_worker, "_select_watchlist", return_value=({"LINK/EUR"}, 0)),
             patch.object(live_worker, "list_unapplied_order_intents", return_value=[]),
+            patch.object(live_worker, "validate_limit_order", return_value={"validated": True}) as validate,
             patch.object(live_worker, "execute_journaled_limit_order", side_effect=lambda **kwargs: (
                 self.assertEqual(
                     state["worker"]["processed_candles"]["LINK/EUR"],
@@ -171,6 +172,7 @@ class LiveWorkerTests(unittest.TestCase):
         self.assertTrue(result["ok"])
         self.assertEqual(result["status"], "running")
         execute.assert_called_once()
+        validate.assert_called_once()
         kwargs = execute.call_args.kwargs
         self.assertEqual(kwargs["pair"], "LINKEUR")
         self.assertEqual(kwargs["side"], "buy")
