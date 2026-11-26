@@ -353,6 +353,11 @@ def main() -> int:
     parser.add_argument("--starting-cash", required=True, type=float, help="Starting balance in EUR")
     parser.add_argument("--output", default="trading/backtest-result.json")
     parser.add_argument("--minimum-notional", type=float, default=5.0, help="Minimum order notional in EUR (default: 5)")
+    parser.add_argument("--fee-rate", type=float, default=0.008, help="Fee per side (default: Kraken Pro Tier 1 taker 0.80%)")
+    parser.add_argument("--slippage-rate", type=float, default=0.0005, help="Slippage per side (default: 0.05%)")
+    parser.add_argument("--risk-pct", type=float, default=1.0, help="Maximum equity risk per trade (default: 1%)")
+    parser.add_argument("--daily-drawdown-pct", type=float, default=2.0, help="Daily drawdown entry stop (default: 2%)")
+    parser.add_argument("--stop-distance-pct", type=float, default=2.0, help="Stop distance (default: 2%)")
     parser.add_argument(
         "--walk-forward", action="store_true",
         help="Run consecutive out-of-sample folds instead of one full-period backtest",
@@ -364,9 +369,19 @@ def main() -> int:
     args = parser.parse_args()
     candles = json.loads(Path(args.input).read_text(encoding="utf-8"))
     result = (
-        run_walk_forward(candles, args.starting_cash, test_window=args.test_window, minimum_notional=args.minimum_notional)
+        run_walk_forward(
+            candles, args.starting_cash, test_window=args.test_window,
+            fee_rate=args.fee_rate, slippage_rate=args.slippage_rate,
+            risk_pct=args.risk_pct, daily_drawdown_pct=args.daily_drawdown_pct,
+            stop_distance_pct=args.stop_distance_pct, minimum_notional=args.minimum_notional,
+        )
         if args.walk_forward
-        else run_backtest(candles, args.starting_cash, minimum_notional=args.minimum_notional)
+        else run_backtest(
+            candles, args.starting_cash, fee_rate=args.fee_rate,
+            slippage_rate=args.slippage_rate, risk_pct=args.risk_pct,
+            daily_drawdown_pct=args.daily_drawdown_pct,
+            stop_distance_pct=args.stop_distance_pct, minimum_notional=args.minimum_notional,
+        )
     )
     Path(args.output).write_text(json.dumps(result, indent=2), encoding="utf-8")
     print(json.dumps({k: v for k, v in result.items() if k not in ("fills", "equity_curve")}, indent=2))
