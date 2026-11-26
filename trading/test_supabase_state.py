@@ -44,6 +44,15 @@ class SupabaseStateStoreTests(unittest.TestCase):
         self.assertIn("resolution=merge-duplicates", request.get_header("Prefer"))
         self.assertEqual(json.loads(request.data)["id"], "primary")
 
+    def test_legacy_service_role_jwt_is_sent_as_bearer(self):
+        token = "eyJhbGciOiJIUzI1NiJ9.test.signature"
+        with patch("urllib.request.urlopen", return_value=FakeResponse([{"revision": 1}])) as mocked:
+            store = SupabaseStateStore("https://example.supabase.co", token)
+            store.save({"mode": "paper", "cash": 17.81})
+        request = mocked.call_args.args[0]
+        self.assertEqual(request.get_header("Apikey"), token)
+        self.assertEqual(request.get_header("Authorization"), "Bearer " + token)
+
     def test_non_paper_state_is_rejected(self):
         store = SupabaseStateStore("https://example.supabase.co", "server-secret")
         with self.assertRaises(ValueError):
