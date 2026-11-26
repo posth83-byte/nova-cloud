@@ -29,9 +29,9 @@ jobs:
           python-version: "3.11"
       - name: Install public market-data dependency
         run: python -m pip install -r trading/requirements.txt
-      - name: Download 180 days of Kraken BTC/EUR and ETH/EUR candles
+      - name: Download latest 30 days of Kraken BTC/EUR and ETH/EUR hourly candles
         run: |
-          python trading/download_history.py --symbol BTC/EUR --timeframe 1h --days 180 --output /tmp/btc-eur.json
+          python trading/download_history.py --symbol BTC/EUR --timeframe 1h --days 30 --output /tmp/btc-eur.json
           python trading/download_history.py --symbol ETH/EUR --timeframe 1h --days 180 --output /tmp/eth-eur.json
       - name: Compare 2.0% and 1.8% stops with actual minimum order and taker costs
         run: |
