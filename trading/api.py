@@ -18,6 +18,11 @@ from trading.backtest import run_sma_backtest
 from trading.strategy import StrategyDataError, build_strategy_preview, fetch_eur_sek_rate
 from trading.worker import run_paper_tick
 from trading.opportunity_radar import rank_opportunities
+from trading.live_store import (
+    LiveStoreError,
+    load_or_create_live_state,
+    save_live_state,
+)
 from trading.kraken_private import (
     KrakenPrivateAPIError,
     credentials_configured,
@@ -311,17 +316,76 @@ async def paper_backtest(
 
 @router.get("/live/status")
 async def live_status():
-    """Expose readiness metadata only; never expose keys or enable live orders."""
+    """Show isolated live ledger and readiness without exposing private data."""
+    try:
+        state, revision = load_or_create_live_state()
+    except LiveStoreError as exc:
+        raise HTTPException(status_code=503, detail="Livejournalen är inte tillgänglig.") from exc
     return {
-        "mode": "live_disabled",
+        "mode": "live_spot_disabled",
         "exchange": "Kraken Spot",
         "credentials_configured": credentials_configured(),
         "private_api_preflight_available": credentials_configured(),
+        "live_enabled": bool(state.get("enabled")),
+        "emergency_stop": bool(state.get("emergency_stop")),
+        "stop_reason": state.get("stop_reason"),
+        "cash_sek": state.get("cash_sek"),
+        "positions": state.get("positions", {}),
+        "realized_pnl_sek": state.get("realized_pnl_sek"),
+        "revision": revision,
+        "risk": state.get("risk", {}),
+        "worker": state.get("worker", {}),
         "orders_enabled": False,
         "withdrawals_enabled": False,
         "max_authorized_budget_sek": 200.00,
-        "live_order_engine": "not_implemented",
-        "next_step": "Run authenticated read-only Kraken account and permission preflight.",
+        "live_order_engine": "journaled_spot_execution_foundation",
+        "next_step": "Complete autonomous live worker and end-to-end fill accounting before activation.",
+    }
+
+
+@router.post("/live/pause")
+async def live_pause(
+    x_trade_control_token: str | None = Header(default=None),
+):
+    """Disable future live worker ticks; does not cancel exchange orders."""
+    _control_guard(x_trade_control_token)
+    try:
+        state, revision = load_or_create_live_state()
+        state["enabled"] = False
+        worker = dict(state.get("worker") or {})
+        worker["status"] = "paused"
+        state["worker"] = worker
+        next_revision = save_live_state(state, revision)
+    except LiveStoreError as exc:
+        raise HTTPException(status_code=503, detail="Livejournalen kunde inte pausas säkert.") from exc
+    return {
+        "ok": True, "live_enabled": False, "revision": next_revision,
+        "open_exchange_orders_cancelled": False, "withdrawals_enabled": False,
+    }
+
+
+@router.post("/live/emergency-stop")
+async def live_emergency_stop(
+    reason: str = "Manuellt live-nödstopp",
+    x_trade_control_token: str | None = Header(default=None),
+):
+    """Persist a durable stop that prevents future live worker ticks."""
+    _control_guard(x_trade_control_token)
+    try:
+        state, revision = load_or_create_live_state()
+        state["enabled"] = False
+        state["emergency_stop"] = True
+        state["stop_reason"] = str(reason or "Manuellt live-nödstopp")[:240]
+        worker = dict(state.get("worker") or {})
+        worker.update({"status": "emergency_stopped", "last_error": state["stop_reason"]})
+        state["worker"] = worker
+        next_revision = save_live_state(state, revision)
+    except LiveStoreError as exc:
+        raise HTTPException(status_code=503, detail="Livejournalens nödstopp kunde inte sparas.") from exc
+    return {
+        "ok": True, "live_enabled": False, "emergency_stop": True,
+        "revision": next_revision, "open_exchange_orders_cancelled": False,
+        "withdrawals_enabled": False,
     }
 
 
