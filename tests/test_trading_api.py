@@ -40,6 +40,20 @@ class TradingApiTests(unittest.TestCase):
         self.assertEqual(result["storage"], "supabase")
         self.assertEqual(result["revision"], 1)
 
+    def test_paper_status_values_positions_from_recent_worker_marks(self):
+        from datetime import datetime, timezone
+        state = create_initial_state("200.00")
+        state["positions"] = {"XBT/EUR": {"quantity": "0.001", "cost_basis": "50000"}}
+        state["cash"] = "150.00"
+        state["worker"] = {
+            "last_marked_at": datetime.now(timezone.utc).isoformat(),
+            "last_marks_sek": {"XBT/EUR": 60000.0},
+        }
+        with patch.object(api, "_load", return_value=(state, 3)):
+            result = asyncio.run(api.paper_status())
+        self.assertEqual(result["equity"], "210.00")
+        self.assertEqual(result["valuation_status"], "complete")
+
     def test_paper_status_handles_positions_without_fresh_sek_marks(self):
         state = create_initial_state("200.00")
         state["positions"] = {"XBT/EUR": {"quantity": "0.001", "cost_basis": "500000"}}
@@ -92,6 +106,69 @@ class TradingApiTests(unittest.TestCase):
         self.assertFalse(result["withdrawals_enabled"])
         self.assertEqual(result["market"], "XBT/EUR")
         self.assertEqual(result["results"]["closed_trades"], 0)
+
+    def test_paper_worker_tick_requires_control_token_and_runs_simulation(self):
+        with (
+            patch.dict("os.environ", {"TRADE_CONTROL_TOKEN": "worker-secret"}),
+            patch.object(api, "run_paper_tick", return_value={"ok": True, "orders_enabled": False}) as run,
+        ):
+            result = asyncio.run(api.paper_worker_tick(x_trade_control_token="worker-secret"))
+        self.assertTrue(result["ok"])
+        run.assert_called_once_with()
+
+    def test_paper_worker_tick_accepts_verified_github_oidc(self):
+        with (
+            patch.object(api, "_github_actions_guard") as guard,
+            patch.object(api, "run_paper_tick", return_value={"ok": True}) as run,
+        ):
+            result = asyncio.run(api.paper_worker_tick(
+                x_trade_control_token=None, authorization="Bearer short-lived-oidc"
+            ))
+        self.assertTrue(result["ok"])
+        guard.assert_called_once_with("Bearer short-lived-oidc")
+        run.assert_called_once_with()
+
+    def test_paper_start_requires_manual_github_dispatch_when_using_oidc(self):
+        state = create_initial_state("200.00")
+        with (
+            patch.object(api, "_github_actions_guard") as guard,
+            patch.object(api, "_load", return_value=(state, 2)),
+            patch.object(api, "_save", return_value=3),
+        ):
+            result = asyncio.run(api.paper_start(
+                x_trade_control_token=None, authorization="Bearer short-lived-oidc"
+            ))
+        self.assertTrue(result["paper_enabled"])
+        guard.assert_called_once_with("Bearer short-lived-oidc", manual_start=True)
+
+    def test_paper_pause_accepts_verified_github_dispatch(self):
+        state = create_initial_state("200.00")
+        state["paper_enabled"] = True
+        with (
+            patch.object(api, "_github_actions_guard") as guard,
+            patch.object(api, "_load", return_value=(state, 3)),
+            patch.object(api, "_save", return_value=4),
+        ):
+            result = asyncio.run(api.paper_pause(
+                x_trade_control_token=None, authorization="Bearer short-lived-oidc"
+            ))
+        self.assertFalse(result["paper_enabled"])
+        guard.assert_called_once_with("Bearer short-lived-oidc", manual_start=True)
+
+    def test_emergency_stop_accepts_verified_github_dispatch(self):
+        state = create_initial_state("200.00")
+        state["paper_enabled"] = True
+        with (
+            patch.object(api, "_github_actions_guard") as guard,
+            patch.object(api, "_load", return_value=(state, 3)),
+            patch.object(api, "_save", return_value=4),
+        ):
+            result = asyncio.run(api.paper_emergency_stop(
+                reason="manual test", x_trade_control_token=None,
+                authorization="Bearer short-lived-oidc"
+            ))
+        self.assertTrue(result["emergency_stop"])
+        guard.assert_called_once_with("Bearer short-lived-oidc", manual_start=True)
 
     def test_control_guard_fails_closed_when_token_missing(self):
         with patch.dict("os.environ", {}, clear=True):

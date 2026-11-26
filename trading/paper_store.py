@@ -58,19 +58,43 @@ def load_state() -> tuple[dict[str, Any] | None, int]:
 
 
 def save_state(state: dict[str, Any], revision: int) -> int:
+    """Persist only if the stored revision still matches the caller's snapshot."""
     next_revision = revision + 1
-    _request(
-        "POST",
-        payload={"id": "primary", "state": state, "revision": next_revision},
-        prefer="resolution=merge-duplicates,return=minimal",
-    )
+    if revision <= 0:
+        rows = _request(
+            "POST",
+            payload={"id": "primary", "state": state, "revision": next_revision},
+            prefer="return=representation",
+        )
+    else:
+        query = urllib.parse.urlencode({
+            "id": "eq.primary",
+            "revision": "eq." + str(revision),
+            "select": "revision",
+        })
+        rows = _request(
+            "PATCH",
+            query,
+            payload={"state": state, "revision": next_revision},
+            prefer="return=representation",
+        )
+    if not isinstance(rows, list) or not rows:
+        raise PaperStoreError(
+            "Trade AI-journalen ändrades samtidigt; körningen avbröts för att skydda senaste saldo och riskstatus."
+        )
     return next_revision
-
 
 def load_or_create(initializer) -> tuple[dict[str, Any], int]:
     state, revision = load_state()
     if state is not None:
         return state, revision
     state = initializer("200.00")
-    revision = save_state(state, 0)
-    return state, revision
+    try:
+        revision = save_state(state, 0)
+        return state, revision
+    except PaperStoreError:
+        # Another process may have initialized the primary row concurrently.
+        existing, current_revision = load_state()
+        if existing is not None:
+            return existing, current_revision
+        raise

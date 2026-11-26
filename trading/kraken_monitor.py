@@ -67,6 +67,7 @@ def build_market_rows(asset_pairs: dict[str, Any], tickers: dict[str, Any], quot
         change_pct = ((last / opening) - 1.0) * 100.0
         rows.append({
             "symbol": wsname,
+            "api_pair": altname,
             "base": base,
             "quote": pair_quote,
             "last": round(last, 8),
@@ -85,7 +86,12 @@ def build_market_rows(asset_pairs: dict[str, Any], tickers: dict[str, Any], quot
     return sorted(rows, key=lambda row: row["volume_24h_quote_est"], reverse=True)
 
 
-def scan_markets(quote: str = "EUR", limit: int = 25) -> dict[str, Any]:
+def scan_markets(
+    quote: str = "EUR",
+    limit: int = 25,
+    *,
+    include_symbols: list[str] | None = None,
+) -> dict[str, Any]:
     quote = quote.upper()
     if quote not in {"EUR", "USD"}:
         raise ValueError("quote must be EUR or USD")
@@ -94,31 +100,55 @@ def scan_markets(quote: str = "EUR", limit: int = 25) -> dict[str, Any]:
     pairs = _public_get("AssetPairs")
     tickers = _public_get("Ticker")
     rows = build_market_rows(pairs, tickers, quote=quote)
+    selected = list(rows[:limit])
+    selected_symbols = {str(row.get("symbol", "")).upper() for row in selected}
+    for requested_symbol in (include_symbols or [])[:20]:
+        wanted = str(requested_symbol or "").strip().upper()
+        if wanted and wanted not in selected_symbols:
+            match = next((row for row in rows if str(row.get("symbol", "")).upper() == wanted), None)
+            if match is not None:
+                selected.append(match)
+                selected_symbols.add(wanted)
     return {
         "provider": "Kraken public API",
         "quote": quote,
         "markets_found": len(rows),
-        "markets": rows[:limit],
+        "markets": selected,
         "mode": "read_only",
         "orders_enabled": False,
         "note": "Ranked by estimated 24h quote turnover; ranking is not a buy/sell signal.",
     }
 
 
-def fetch_ohlc_candles(symbol: str, interval: int = 60) -> dict[str, Any]:
+def fetch_ohlc_candles(
+    symbol: str,
+    interval: int = 60,
+    *,
+    api_pair: str | None = None,
+    min_order_qty: float | None = None,
+    min_cost_eur: float | None = None,
+) -> dict[str, Any]:
     """Fetch closed public Kraken OHLC candles for one listed EUR market."""
     symbol = str(symbol or "").strip().upper()
     if interval != 60:
         raise ValueError("Endast 60-minutersljusstakar stöds i första versionen.")
-    pairs = _public_get("AssetPairs")
-    metadata = next(
-        (row for row in pairs.values()
-         if isinstance(row, dict) and str(row.get("wsname", "")).upper() == symbol),
-        None,
-    )
-    if not metadata:
-        raise ValueError("Marknaden finns inte i Krakens EUR-lista.")
-    altname = str(metadata.get("altname") or "")
+    metadata = None
+    if api_pair:
+        altname = str(api_pair).strip()
+        metadata = {
+            "ordermin": min_order_qty if min_order_qty is not None else 0,
+            "costmin": min_cost_eur if min_cost_eur is not None else 0,
+        }
+    else:
+        pairs = _public_get("AssetPairs")
+        metadata = next(
+            (row for row in pairs.values()
+             if isinstance(row, dict) and str(row.get("wsname", "")).upper() == symbol),
+            None,
+        )
+        if not metadata:
+            raise ValueError("Marknaden finns inte i Krakens EUR-lista.")
+        altname = str(metadata.get("altname") or "")
     if not altname:
         raise KrakenPublicAPIError("Kraken saknar marknadsidentifierare för paret.")
     query = urllib.parse.urlencode({"pair": altname, "interval": interval})

@@ -1,6 +1,7 @@
 """Safe Kraken market-data and paper-only trading endpoints."""
 import hmac
 import os
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Header, HTTPException, Query
 
@@ -15,6 +16,7 @@ from trading.paper_engine import (
 from trading.paper_store import PaperStoreError, load_or_create, save_state
 from trading.backtest import run_sma_backtest
 from trading.strategy import StrategyDataError, build_strategy_preview, fetch_eur_sek_rate
+from trading.worker import run_paper_tick
 
 router = APIRouter(prefix="/api/trading", tags=["trading"])
 
@@ -26,6 +28,55 @@ def _control_guard(token: str | None):
     supplied = (token or "").strip()
     if not supplied or not hmac.compare_digest(supplied, expected):
         raise HTTPException(status_code=401, detail="Ogiltig Trade AI-kontrollnyckel.")
+
+
+def _github_actions_guard(authorization: str | None, *, manual_start: bool = False):
+    """Verify a short-lived GitHub Actions OIDC token; no shared scheduler secret."""
+    supplied = (authorization or "").strip()
+    if not supplied.lower().startswith("bearer "):
+        raise HTTPException(status_code=401, detail="Schemaläggarens identitet saknas.")
+    token = supplied[7:].strip()
+    if not token:
+        raise HTTPException(status_code=401, detail="Schemaläggarens identitet saknas.")
+    try:
+        import jwt
+        client = jwt.PyJWKClient(
+            "https://token.actions.githubusercontent.com/.well-known/jwks",
+            cache_jwk_set=True,
+            lifespan=300,
+        )
+        signing_key = client.get_signing_key_from_jwt(token)
+        claims = jwt.decode(
+            token,
+            signing_key.key,
+            algorithms=["RS256"],
+            audience="nova-cloud-trade-worker",
+            issuer="https://token.actions.githubusercontent.com",
+            options={"require": ["exp", "iat", "iss", "aud", "repository", "ref", "event_name", "workflow_ref"]},
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=401, detail="Schemaläggarens identitet kunde inte verifieras.") from exc
+
+    expected_workflow = (
+        "posth83-byte/nova-cloud/.github/workflows/trade-paper-scheduler.yml@refs/heads/main"
+    )
+    if (
+        claims.get("repository") != "posth83-byte/nova-cloud"
+        or str(claims.get("repository_id")) != "1442711208"
+        or claims.get("ref") != "refs/heads/main"
+        or claims.get("workflow_ref") != expected_workflow
+    ):
+        raise HTTPException(status_code=403, detail="Den här GitHub-workflowen är inte godkänd.")
+    allowed_events = {"workflow_dispatch"} if manual_start else {"schedule", "workflow_dispatch"}
+    if claims.get("event_name") not in allowed_events:
+        raise HTTPException(status_code=403, detail="Den här schemaläggningshändelsen är inte tillåten.")
+
+
+def _manual_control_guard(token: str | None, authorization: str | None):
+    if token:
+        _control_guard(token)
+    else:
+        _github_actions_guard(authorization, manual_start=True)
 
 
 def _load():
@@ -52,7 +103,7 @@ async def trading_status():
         "orders_enabled": False,
         "withdrawals_enabled": False,
         "api_credentials_required": False,
-        "next_step": "Paper ledger is persisted; strategy and market-to-SEK validation remain before autonomous simulation.",
+        "next_step": "Scheduled paper-only SMA worker is available after manual activation; live orders remain disabled.",
     }
 
 
@@ -72,8 +123,18 @@ async def trading_markets(
 @router.get("/paper")
 async def paper_status():
     state, revision = _load()
+    worker = state.get("worker", {})
+    marks = {}
+    marked_at = worker.get("last_marked_at")
+    if marked_at:
+        try:
+            mark_time = datetime.fromisoformat(str(marked_at).replace("Z", "+00:00"))
+            if (datetime.now(timezone.utc) - mark_time).total_seconds() <= 1800:
+                marks = worker.get("last_marks_sek", {})
+        except (TypeError, ValueError):
+            marks = {}
     try:
-        snapshot = portfolio_snapshot(state)
+        snapshot = portfolio_snapshot(state, marks)
         snapshot["valuation_status"] = "complete"
     except PaperTradingError:
         snapshot = {
@@ -94,13 +155,17 @@ async def paper_status():
         "history": state.get("trades", [])[-25:],
         "risk": state.get("risk", {}),
         "stop_reason": state.get("stop_reason"),
+        "worker": worker,
     })
     return snapshot
 
 
 @router.post("/paper/start")
-async def paper_start(x_trade_control_token: str | None = Header(default=None)):
-    _control_guard(x_trade_control_token)
+async def paper_start(
+    x_trade_control_token: str | None = Header(default=None),
+    authorization: str | None = Header(default=None),
+):
+    _manual_control_guard(x_trade_control_token, authorization)
     state, revision = _load()
     try:
         updated = set_paper_enabled(state, True)
@@ -111,8 +176,11 @@ async def paper_start(x_trade_control_token: str | None = Header(default=None)):
 
 
 @router.post("/paper/pause")
-async def paper_pause(x_trade_control_token: str | None = Header(default=None)):
-    _control_guard(x_trade_control_token)
+async def paper_pause(
+    x_trade_control_token: str | None = Header(default=None),
+    authorization: str | None = Header(default=None),
+):
+    _manual_control_guard(x_trade_control_token, authorization)
     state, revision = _load()
     updated = set_paper_enabled(state, False)
     next_revision = _save(updated, revision)
@@ -123,12 +191,32 @@ async def paper_pause(x_trade_control_token: str | None = Header(default=None)):
 async def paper_emergency_stop(
     reason: str = "Manuellt nödstopp",
     x_trade_control_token: str | None = Header(default=None),
+    authorization: str | None = Header(default=None),
 ):
-    _control_guard(x_trade_control_token)
+    _manual_control_guard(x_trade_control_token, authorization)
     state, revision = _load()
     updated = activate_emergency_stop(state, reason)
     next_revision = _save(updated, revision)
     return {"ok": True, "paper_enabled": False, "emergency_stop": True, "revision": next_revision, "orders_enabled": False}
+
+
+@router.post("/paper/worker-tick")
+async def paper_worker_tick(
+    x_trade_control_token: str | None = Header(default=None),
+    authorization: str | None = Header(default=None),
+):
+    """Authenticated scheduler hook; only advances the simulation-only ledger."""
+    if x_trade_control_token:
+        _control_guard(x_trade_control_token)
+    else:
+        _github_actions_guard(authorization)
+    try:
+        return run_paper_tick()
+    except PaperStoreError as exc:
+        raise HTTPException(status_code=503, detail="Trade AI kunde inte läsa eller spara pappersjournalen.") from exc
+    except Exception as exc:
+        # Keep internal details out of the public response and never log secrets.
+        raise HTTPException(status_code=503, detail="Trade AI:s schemalagda körning misslyckades säkert.") from exc
 
 
 @router.get("/paper/strategy-preview")
