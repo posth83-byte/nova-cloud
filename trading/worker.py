@@ -195,13 +195,15 @@ def run_paper_tick() -> dict[str, Any]:
 
         worker_state.update({
             "status": "running",
+            "last_marked_at": now.isoformat(),
+            "last_marks_sek": marks,
             "last_error": None,
             "last_success_at": now.isoformat(),
             "last_fx": fx,
             "last_markets_found": len(markets),
             "last_markets_eligible": len(candidates),
             "last_candles_evaluated": evaluated,
-            "processed_candles": processed,
+            "processed_candles": dict(list(processed.items())[-100:]),
             "last_actions": actions[-MAX_WATCHLIST:],
         })
         state["worker"] = worker_state
