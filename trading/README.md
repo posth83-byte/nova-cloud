@@ -62,7 +62,7 @@ The walk-forward report compounds the paper balance across non-overlapping test 
 Example continuous paper watcher (current 200 SEK paper reference balance):
 
 ```bash
-python trading/paper_daemon.py --starting-cash 470 --state-path trading/paper-state.json
+python trading/paper_daemon.py --starting-cash 17.81 --state-path trading/paper-state.json
 ```
 
 The scheduled GitHub Actions workflow runs one paper-only cycle every 15 minutes after merge to the default branch and after the two Supabase Actions secrets are configured. Until then, it safely skips. The 17.81 EUR paper reference is approximate and is not the live Kraken account balance.
