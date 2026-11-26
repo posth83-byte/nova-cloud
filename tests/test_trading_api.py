@@ -254,3 +254,44 @@ class TradingApiTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+    def test_live_status_never_enables_orders(self):
+        with patch.object(api, "credentials_configured", return_value=True):
+            result = asyncio.run(api.live_status())
+        self.assertTrue(result["credentials_configured"])
+        self.assertEqual(result["live_order_engine"], "not_implemented")
+        self.assertFalse(result["orders_enabled"])
+        self.assertFalse(result["withdrawals_enabled"])
+        self.assertEqual(result["max_authorized_budget_sek"], 200.0)
+
+    def test_live_preflight_requires_control_token(self):
+        with (
+            patch.dict("os.environ", {"TRADE_CONTROL_TOKEN": "expected-secret"}),
+            self.assertRaises(HTTPException) as exc,
+        ):
+            asyncio.run(api.live_preflight(x_trade_control_token="wrong"))
+        self.assertEqual(exc.exception.status_code, 401)
+
+    def test_live_preflight_is_read_only_and_returns_no_order_capability(self):
+        result_data = {
+            "connected": True,
+            "eur_balance": "10.0",
+            "eur_balance_sek_estimate": "112.00",
+            "open_orders_count": 0,
+            "open_orders_clear": True,
+            "orders_enabled": False,
+            "withdrawals_enabled": False,
+        }
+        fx = {"rate": 11.2, "date": "2026-11-26", "source": "test", "age_days": 0}
+        with (
+            patch.dict("os.environ", {"TRADE_CONTROL_TOKEN": "expected-secret"}),
+            patch.object(api, "fetch_eur_sek_rate", return_value=fx),
+            patch.object(api, "run_read_only_preflight", return_value=result_data) as preflight,
+        ):
+            result = asyncio.run(api.live_preflight(x_trade_control_token="expected-secret"))
+        preflight.assert_called_once()
+        self.assertTrue(result["connected"])
+        self.assertFalse(result["orders_enabled"])
+        self.assertFalse(result["withdrawals_enabled"])
+        self.assertEqual(result["fx_reference"]["date"], "2026-11-26")
