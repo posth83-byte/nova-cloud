@@ -32,8 +32,9 @@ class BacktestTests(unittest.TestCase):
         self.assertEqual(result["mode"], "historical_backtest")
 
     def test_minimum_order_notional_is_reported_and_enforced(self):
-        result = run_backtest(make_candles(), 500, minimum_notional=1000000.0)
-        self.assertEqual(result["minimum_notional"], 1000000.0)
+        result = run_backtest(make_candles(), 500, minimum_notional=0.45, minimum_order_size=1000.0)
+        self.assertEqual(result["minimum_notional"], 0.45)
+        self.assertEqual(result["minimum_order_size"], 1000.0)
         self.assertFalse(any(fill["side"] == "buy" for fill in result["fills"]))
 
     def test_next_candle_entry_avoids_same_candle_lookahead(self):
