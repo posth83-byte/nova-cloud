@@ -18,6 +18,7 @@ from trading.kraken_private import (
     KrakenPrivateAPIError,
     get_account_balances,
     run_read_only_preflight,
+    validate_limit_order,
 )
 from trading.live_engine import (
     LiveExecutionError,
@@ -401,6 +402,11 @@ def run_live_tick() -> dict[str, Any]:
             worker["watchlist_cursor"] = next_cursor
             state["worker"] = worker
             revision = save_live_state(state, revision)
+            validation = validate_limit_order(
+                pair=pair, side=side, volume=qty, price=limit_price
+            )
+            if not validation.get("validated"):
+                raise LiveWorkerError("Kraken godkände inte ordervalideringen.")
             result = execute_journaled_limit_order(
                 pair=pair, side=side, volume=qty, price=limit_price,
                 pair_symbol=symbol, base_asset=base_asset,
