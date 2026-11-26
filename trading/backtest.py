@@ -358,7 +358,7 @@ def main() -> int:
     parser.add_argument("--starting-cash", required=True, type=float, help="Starting balance in EUR")
     parser.add_argument("--output", default="trading/backtest-result.json")
     parser.add_argument("--minimum-notional", type=float, default=0.45, help="Minimum quote-cost in EUR (default: 0.45)")
-    parser.add_argument("--minimum-order-size", type=float, default=0.0, help="Minimum base-asset volume for this pair")
+    parser.add_argument("--minimum-order-size", type=float, required=True, help="Required pair-specific minimum base-asset volume")
     parser.add_argument("--fee-rate", type=float, default=0.008, help="Fee per side (default: Kraken Pro Tier 1 taker 0.80%)")
     parser.add_argument("--slippage-rate", type=float, default=0.0005, help="Slippage per side (default: 0.05%)")
     parser.add_argument("--risk-pct", type=float, default=1.0, help="Maximum equity risk per trade (default: 1%)")
