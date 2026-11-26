@@ -98,6 +98,29 @@ class LiveWorkerTests(unittest.TestCase):
                 live_worker._recover_unapplied(self.state, 1, Decimal("11"))
         reconcile.assert_called_once()
 
+    def test_active_lease_prevents_second_worker_from_running(self):
+        from datetime import datetime, timedelta, timezone
+        now = datetime.now(timezone.utc)
+        self.state["worker"] = {
+            "lease_id": "already-running",
+            "lease_until": (now + timedelta(minutes=2)).isoformat(),
+        }
+        with patch.object(live_worker, "save_live_state") as save:
+            state, revision, lease_id = live_worker._acquire_lease(self.state, 4, now)
+        self.assertIsNone(lease_id)
+        self.assertEqual(revision, 4)
+        save.assert_not_called()
+
+    def test_lease_acquisition_uses_revision_guarded_save(self):
+        from datetime import datetime, timezone
+        now = datetime.now(timezone.utc)
+        with patch.object(live_worker, "save_live_state", return_value=8) as save:
+            state, revision, lease_id = live_worker._acquire_lease(self.state, 7, now)
+        self.assertTrue(lease_id)
+        self.assertEqual(revision, 8)
+        self.assertEqual(state["worker"]["lease_id"], lease_id)
+        save.assert_called_once()
+
     def test_disabled_live_state_does_not_contact_kraken(self):
         state = dict(self.state)
         state["enabled"] = False
