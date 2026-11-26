@@ -105,6 +105,7 @@ def run_paper_tick() -> dict[str, Any]:
             state["worker"] = {
                 **worker_state, "status": "emergency_stopped",
                 "last_error": stop_reason, "last_tick_at": now.isoformat(),
+                "last_marked_at": now.isoformat(), "last_marks_sek": marks,
             }
             next_revision = save_state(state, revision)
             return {
@@ -220,9 +221,16 @@ def run_paper_tick() -> dict[str, Any]:
             "withdrawals_enabled": False,
         }
     except (StrategyDataError, KrakenPublicAPIError, PaperTradingError, ValueError, KeyError, TypeError) as exc:
+        error_text = str(exc)[:300]
+        if isinstance(exc, PaperTradingError) and (
+            "Dagens förlustgräns" in error_text or "Maximal portföljnedgång" in error_text
+        ):
+            state = activate_emergency_stop(state, error_text)
+            worker_state["status"] = "emergency_stopped"
+        else:
+            worker_state["status"] = "waiting_for_valid_market_data"
         worker_state.update({
-            "status": "waiting_for_valid_market_data",
-            "last_error": str(exc)[:300],
+            "last_error": error_text,
             "last_success_at": worker_state.get("last_success_at"),
         })
         state["worker"] = worker_state
