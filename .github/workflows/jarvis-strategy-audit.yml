@@ -1,0 +1,102 @@
+name: JARVIS strategy audit
+
+on:
+  push:
+    branches:
+      - feature/jarvis-trading-paper-first
+    paths:
+      - "trading/**"
+      - ".github/workflows/jarvis-strategy-audit.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: jarvis-strategy-audit
+  cancel-in-progress: false
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install public market-data dependency
+        run: python -m pip install -r trading/requirements.txt
+      - name: Read current Kraken pair minimums
+        id: market-limits
+        run: |
+          python - <<'PY' >> "$GITHUB_OUTPUT"
+          import ccxt
+          exchange = ccxt.kraken({"enableRateLimit": True})
+          markets = exchange.load_markets()
+          for symbol, key in (("BTC/EUR", "btc"), ("ETH/EUR", "eth")):
+              market = markets[symbol]
+              fallback_amount = {"BTC/EUR": 0.00006, "ETH/EUR": 0.002}[symbol]
+              amount_min = market.get("limits", {}).get("amount", {}).get("min") or fallback_amount
+              cost_min = market.get("limits", {}).get("cost", {}).get("min") or 0.45
+              print(f"{key}_min_size={amount_min}")
+              print(f"{key}_min_cost={cost_min}")
+          PY
+      - name: Download 30 days of hourly and 120 days of 4-hour Kraken candles
+        run: |
+          python trading/download_history.py --symbol BTC/EUR --timeframe 1h --days 30 --output /tmp/btc-1h.json
+          python trading/download_history.py --symbol ETH/EUR --timeframe 1h --days 30 --output /tmp/eth-1h.json
+          python trading/download_history.py --symbol BTC/EUR --timeframe 4h --days 120 --output /tmp/btc-4h.json
+          python trading/download_history.py --symbol ETH/EUR --timeframe 4h --days 120 --output /tmp/eth-4h.json
+      - name: Compare 2.0% and 1.8% stops with pair-specific minimum volumes and taker costs
+        run: |
+          for symbol in btc eth; do
+            if [ "$symbol" = "btc" ]; then min_size="${{ steps.market-limits.outputs.btc_min_size }}"; min_cost="${{ steps.market-limits.outputs.btc_min_cost }}"; else min_size="${{ steps.market-limits.outputs.eth_min_size }}"; min_cost="${{ steps.market-limits.outputs.eth_min_cost }}"; fi
+            for timeframe in 1h 4h; do
+              input="/tmp/${symbol}-${timeframe}.json"
+              if [ "$timeframe" = "1h" ]; then window=168; else window=42; fi
+              for stop in 2.0 1.8; do
+                output="/tmp/${symbol}-${timeframe}-stop-${stop}.json"
+                python trading/backtest.py \
+                  --input "$input" \
+                  --starting-cash 17.81 \
+                  --walk-forward \
+                  --test-window "$window" \
+                  --fee-rate 0.008 \
+                  --slippage-rate 0.0005 \
+                  --risk-pct 1.0 \
+                  --daily-drawdown-pct 2.0 \
+                  --stop-distance-pct "$stop" \
+                  --minimum-notional "$min_cost" \
+                  --minimum-order-size "$min_size" \
+                  --output "$output"
+              done
+            done
+          done
+      - name: Print compact comparison
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          for symbol in ("btc", "eth"):
+              for timeframe in ("1h", "4h"):
+                  for stop in ("2.0", "1.8"):
+                      path = Path(f"/tmp/{symbol}-{timeframe}-stop-{stop}.json")
+                      data = json.loads(path.read_text())
+                      print(json.dumps({
+                          "symbol": symbol.upper() + "/EUR",
+                          "timeframe": timeframe,
+                          "stop_distance_pct": stop,
+                          "starting_cash_eur": data["starting_cash"],
+                          "ending_cash_eur": data["ending_cash"],
+                          "net_return_pct": data["net_return_pct"],
+                          "closed_trades": data["closed_trades"],
+                          "minimum_notional_skips": data["minimum_notional_skips"],
+                          "max_drawdown_pct": data["worst_fold_drawdown_pct"],
+                          "buy_and_hold_return_pct": data["buy_and_hold_return_pct"],
+                          "strategy_vs_buy_and_hold_pct_points": data["strategy_vs_buy_and_hold_pct_points"],
+                          "fold_count": data["fold_count"],
+                      }, ensure_ascii=False))
+          PY

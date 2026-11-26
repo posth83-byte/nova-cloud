@@ -100,6 +100,16 @@ BASE_DIR = Path(__file__).resolve().parent
 INDEX_FILE = BASE_DIR / "index.html"
 ARCADE_FILE = BASE_DIR / "arcade.html"
 PROJECTS_DIR = BASE_DIR / "projects"
+TRADING_DASHBOARD_FILE = BASE_DIR / "trading" / "dashboard.html"
+
+
+@app.get("/trading", response_class=HTMLResponse)
+def trading_dashboard():
+    """Serve the read-only trading dashboard without exposing trading data files."""
+    if not TRADING_DASHBOARD_FILE.is_file():
+        raise HTTPException(status_code=404, detail="Tradingpanelen är inte tillgänglig.")
+    return FileResponse(str(TRADING_DASHBOARD_FILE), media_type="text/html")
+
 
 # Serve committed multi-file web projects (HTML/CSS/JS) as real static pages.
 # This is required for project previews to load linked stylesheets and scripts.
