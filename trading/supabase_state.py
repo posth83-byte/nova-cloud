@@ -21,8 +21,10 @@ class SupabaseStateStore:
         self.secret_key = secret_key.strip()
         self.timeout = timeout
         self.revision = 0
-        if not self.url or not self.secret_key:
-            raise ValueError("SUPABASE_URL and SUPABASE_SECRET_KEY are required")
+        if not self.url.startswith("https://"):
+            raise ValueError("SUPABASE_URL must use HTTPS")
+        if not self.secret_key:
+            raise ValueError("SUPABASE_SECRET_KEY is required")
 
     @classmethod
     def from_env(cls) -> "SupabaseStateStore":
@@ -34,8 +36,10 @@ class SupabaseStateStore:
         query = urllib.parse.urlencode({"id": "eq.primary", "select": "state,revision"})
         url = f"{self.url}/rest/v1/{self.TABLE}?{query}"
         headers = {
+            # Supabase secret keys (sb_secret_...) are opaque API keys, not JWTs.
+            # Sending one as Authorization: Bearer would make PostgREST reject it.
+            # The apikey header alone works for both new secret keys and legacy service_role JWT keys.
             "apikey": self.secret_key,
-            "Authorization": "Bearer " + self.secret_key,
             "Accept": "application/json",
         }
         data = None
