@@ -52,9 +52,11 @@ class PaperBroker:
         self.fee_rate = float(fee_rate)
         self.slippage_rate = float(slippage_rate)
         self.minimum_notional = float(minimum_notional)
+        default_minimums = {"BTC/EUR": 0.00006, "ETH/EUR": 0.002}
+        configured_minimums = default_minimums if minimum_order_sizes is None else minimum_order_sizes
         self.minimum_order_sizes = {
             str(symbol): _number(size, f"minimum_order_sizes[{symbol}]")
-            for symbol, size in (minimum_order_sizes or {}).items()
+            for symbol, size in configured_minimums.items()
         }
         if not 0 <= self.fee_rate < 0.1:
             raise ValueError("fee_rate must be between 0 and 10%")
