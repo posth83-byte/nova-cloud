@@ -4,7 +4,7 @@ import os
 
 from fastapi import APIRouter, Header, HTTPException, Query
 
-from trading.kraken_monitor import KrakenPublicAPIError, scan_markets
+from trading.kraken_monitor import KrakenPublicAPIError, fetch_ohlc_candles, scan_markets
 from trading.paper_engine import (
     PaperTradingError,
     activate_emergency_stop,
@@ -13,6 +13,7 @@ from trading.paper_engine import (
     set_paper_enabled,
 )
 from trading.paper_store import PaperStoreError, load_or_create, save_state
+from trading.backtest import run_sma_backtest
 from trading.strategy import StrategyDataError, build_strategy_preview, fetch_eur_sek_rate
 
 router = APIRouter(prefix="/api/trading", tags=["trading"])
@@ -146,3 +147,42 @@ async def paper_strategy_preview():
         raise HTTPException(status_code=502, detail=str(exc)) from exc
     except (TypeError, ValueError) as exc:
         raise HTTPException(status_code=503, detail="Trade AI kunde inte beräkna en säker förhandsanalys.") from exc
+
+
+
+@router.get("/paper/backtest")
+async def paper_backtest(
+    pair: str = Query(default="XBT/EUR", pattern="^[A-Z0-9]+/EUR$"),
+):
+    """Run a fixed SMA strategy on closed historical Kraken candles; simulation only."""
+    try:
+        state, _revision = _load()
+        history = fetch_ohlc_candles(pair, interval=60)
+        markets = scan_markets(quote="EUR", limit=50).get("markets", [])
+        current_market = next(
+            (row for row in markets if row.get("symbol", "").upper() == pair.upper()),
+            None,
+        )
+        if current_market is None:
+            raise HTTPException(status_code=422, detail="Marknaden saknar verifierad aktuell spreaddata.")
+        fx = fetch_eur_sek_rate()
+        result = run_sma_backtest(
+            history["candles"],
+            fx_sek_per_eur=float(fx["rate"]),
+            starting_cash_sek=float(state.get("starting_cash") or "200.00"),
+            min_order_qty=float(history["min_order_qty"]),
+            min_cost_eur=float(history["min_cost_eur"]),
+            spread_pct=float(current_market["spread_pct"]),
+        )
+        result["market"] = pair
+        result["candle_interval_minutes"] = 60
+        result["fx_reference"] = fx
+        result["orders_enabled"] = False
+        result["withdrawals_enabled"] = False
+        return result
+    except (StrategyDataError, KrakenPublicAPIError) as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except (TypeError, KeyError) as exc:
+        raise HTTPException(status_code=503, detail="Trade AI kunde inte beräkna ett säkert historiskt test.") from exc
