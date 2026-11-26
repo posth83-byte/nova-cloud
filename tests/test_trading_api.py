@@ -68,6 +68,31 @@ class TradingApiTests(unittest.TestCase):
         self.assertEqual(result["max_trade_budget_sek"], 20.0)
         self.assertEqual(result["candidate_count"], 1)
 
+    def test_historical_backtest_endpoint_is_read_only(self):
+        state = create_initial_state("200.00")
+        history = {
+            "candles": [
+                {"timestamp": 1_700_000_000 + i * 3600, "close": 100 + i * 0.1}
+                for i in range(120)
+            ],
+            "min_order_qty": 1000,
+            "min_cost_eur": 0.5,
+        }
+        market = {"markets": [{"symbol": "XBT/EUR", "spread_pct": 0.2}]}
+        fx = {"rate": 11.2, "date": "2026-11-25", "source": "test"}
+        with (
+            patch.object(api, "_load", return_value=(state, 1)),
+            patch.object(api, "fetch_ohlc_candles", return_value=history),
+            patch.object(api, "scan_markets", return_value=market),
+            patch.object(api, "fetch_eur_sek_rate", return_value=fx),
+        ):
+            result = asyncio.run(api.paper_backtest(pair="XBT/EUR"))
+        self.assertEqual(result["mode"], "historical_backtest_only")
+        self.assertFalse(result["orders_enabled"])
+        self.assertFalse(result["withdrawals_enabled"])
+        self.assertEqual(result["market"], "XBT/EUR")
+        self.assertEqual(result["results"]["closed_trades"], 0)
+
     def test_control_guard_fails_closed_when_token_missing(self):
         with patch.dict("os.environ", {}, clear=True):
             with self.assertRaises(HTTPException) as exc:
