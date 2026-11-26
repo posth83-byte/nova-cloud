@@ -7,11 +7,14 @@
   "max_external_funding_sek": 200,
   "allow_account_equity_to_grow_from_profit": true,
   "auto_reinvest_realized_profits": true,
-  "markets": ["BTC/EUR", "ETH/EUR"],
+  "markets": [
+    "BTC/EUR",
+    "ETH/EUR"
+  ],
   "market_type": "spot",
   "max_open_positions": 1,
-  "max_risk_per_trade_pct": 1.0,
-  "max_daily_drawdown_pct": 2.0,
+  "max_risk_per_trade_pct": 1,
+  "max_daily_drawdown_pct": 2,
   "leverage": 1,
   "allow_margin": false,
   "allow_futures": false,
@@ -25,5 +28,8 @@
   "require_minimum_order_and_precision_check": true,
   "require_balance_reconciliation": true,
   "kill_switch_blocks_new_orders": true,
-  "performance_reporting": "net_of_fees_spread_and_slippage_with_deposits_separated_from_profit"
+  "performance_reporting": "net_of_fees_spread_and_slippage_with_deposits_separated_from_profit",
+  "fee_model": "Kraken Pro Tier 1 taker reference",
+  "taker_fee_rate_reference": 0.008,
+  "maker_fee_rate_reference": 0.004
 }
