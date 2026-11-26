@@ -10,7 +10,7 @@ class TradeStrategyPreviewTests(unittest.TestCase):
         markets = [{
             "symbol": "XBT/EUR", "ask": 60000, "bid": 59900,
             "spread_pct": 0.1668, "volume_24h_quote_est": 500000,
-            "min_cost_quote": 5, "min_order_qty": 0.0001,
+            "min_cost_quote": 0.5, "min_order_qty": 0.0001,
         }]
         result = build_strategy_preview(markets, self.fx)
         self.assertEqual(result["mode"], "paper_preview_only")
