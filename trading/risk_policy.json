@@ -4,12 +4,11 @@
   "live_orders_enabled": false,
   "live_enable_requires_explicit_user_approval": true,
   "starting_balance_sek": 200,
-  "max_external_funding_sek": 500,
+  "max_external_funding_sek": 200,
   "allow_account_equity_to_grow_from_profit": true,
   "auto_reinvest_realized_profits": true,
   "markets": [
-    "BTC/EUR",
-    "ETH/EUR"
+    "DYNAMIC_ACTIVE_KRAKEN_EUR_SPOT"
   ],
   "market_type": "spot",
   "max_open_positions": 1,
@@ -36,5 +35,24 @@
     "BTC/EUR": 0.00006,
     "ETH/EUR": 0.002
   },
-  "minimum_quote_cost_eur": 0.45
+  "minimum_quote_cost_eur": 0.45,
+  "market_universe": "Active Kraken EUR-quoted spot pairs after liquidity and spread filters; stablecoin bases excluded",
+  "max_analysis_markets": 30,
+  "minimum_quote_volume_eur": 100000,
+  "maximum_spread_pct": 0.6,
+  "excluded_base_assets": [
+    "EUR",
+    "USD",
+    "USDT",
+    "USDC",
+    "DAI",
+    "EURC",
+    "TUSD",
+    "PYUSD",
+    "USDE",
+    "FDUSD",
+    "UST",
+    "USTC",
+    "USDD"
+  ]
 }
