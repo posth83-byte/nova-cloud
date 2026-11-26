@@ -86,7 +86,7 @@ def save_live_state(state: dict[str, Any], revision: int) -> int:
 
 
 def create_initial_live_state() -> dict[str, Any]:
-    """A separate real-money ledger, disabled by default and capped at 200 SEK."""
+    """A separate real-money ledger, disabled by default; budget follows Kraken EUR cash."""
     return {
         "schema_version": 1,
         "mode": "live_spot",
@@ -104,7 +104,6 @@ def create_initial_live_state() -> dict[str, Any]:
         "day_start_equity_sek": "200.00",
         "worker": {"status": "disabled", "last_error": None},
         "risk": {
-            "max_budget_sek": "200.00",
             "daily_loss_limit_pct": "0.02",
             "max_drawdown_pct": "0.10",
             "max_open_positions": 3,
