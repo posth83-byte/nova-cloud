@@ -17,6 +17,7 @@ from trading.worker import _cross_signal, _select_watchlist, MAX_WATCHLIST
 from trading.kraken_private import (
     KrakenPrivateAPIError,
     get_account_balances,
+    get_open_orders,
     run_read_only_preflight,
     validate_limit_order,
 )
@@ -402,6 +403,10 @@ def run_live_tick() -> dict[str, Any]:
             worker["watchlist_cursor"] = next_cursor
             state["worker"] = worker
             revision = save_live_state(state, revision)
+            if get_open_orders():
+                raise LiveWorkerError(
+                    "En öppen Kraken-order upptäcktes precis före orderläggning. Livehandeln stoppas."
+                )
             validation = validate_limit_order(
                 pair=pair, side=side, volume=qty, price=limit_price
             )
