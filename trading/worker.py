@@ -60,12 +60,9 @@ def _select_watchlist(
         return {str(symbol).upper() for symbol in positions}, 0
 
     start = int(cursor) % len(symbols)
-    batch_size = min(MAX_WATCHLIST, len(symbols))
-    selected = {
-        symbols[(start + offset) % len(symbols)]
-        for offset in range(batch_size)
-    }
-    next_cursor = (start + batch_size) % len(symbols)
+    end = min(start + MAX_WATCHLIST, len(symbols))
+    selected = set(symbols[start:end])
+    next_cursor = 0 if end >= len(symbols) else end
     selected.update(str(symbol).upper() for symbol in positions)
     return selected, next_cursor
 
