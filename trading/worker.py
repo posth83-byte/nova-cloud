@@ -9,7 +9,7 @@ from datetime import datetime, timezone
 from decimal import Decimal
 from typing import Any
 
-from trading.kraken_monitor import fetch_ohlc_candles, scan_markets
+from trading.kraken_monitor import KrakenPublicAPIError, fetch_ohlc_candles, scan_markets
 from trading.paper_engine import (
     PaperTradingError,
     activate_emergency_stop,
@@ -212,7 +212,7 @@ def run_paper_tick() -> dict[str, Any]:
             "revision": next_revision, "orders_enabled": False,
             "withdrawals_enabled": False,
         }
-    except (StrategyDataError, PaperTradingError, ValueError, KeyError, TypeError) as exc:
+    except (StrategyDataError, KrakenPublicAPIError, PaperTradingError, ValueError, KeyError, TypeError) as exc:
         worker_state.update({
             "status": "waiting_for_valid_market_data",
             "last_error": str(exc)[:300],
