@@ -149,5 +149,51 @@ class KrakenPrivateTests(unittest.TestCase):
                 volume=Decimal("0"), price=Decimal("60000"),
             )
 
+
+    def test_live_submit_requires_explicit_server_gate(self):
+        with (
+            patch.dict(os.environ, {"TRADE_LIVE_ENABLED": "false"}),
+            patch.object(private, "_private_post") as post,
+            self.assertRaises(private.KrakenPrivateAPIError),
+        ):
+            private.submit_limit_order(
+                pair="LINKEUR", side="buy", volume=Decimal("1"),
+                price=Decimal("8.4"), client_order_id="a" * 32,
+            )
+        post.assert_not_called()
+
+    def test_live_submit_sends_spot_limit_ioc_without_leverage(self):
+        with (
+            patch.dict(os.environ, {"TRADE_LIVE_ENABLED": "true"}),
+            patch.object(private, "_private_post", return_value={"txid": ["ORDER-1"]}) as post,
+        ):
+            result = private.submit_limit_order(
+                pair="LINKEUR", side="buy", volume=Decimal("1.2"),
+                price=Decimal("8.4"), client_order_id="a" * 32,
+            )
+        params = post.call_args.args[1]
+        self.assertEqual(post.call_args.args[0], "AddOrder")
+        self.assertEqual(params["ordertype"], "limit")
+        self.assertEqual(params["timeinforce"], "IOC")
+        self.assertEqual(params["oflags"], "fciq")
+        self.assertEqual(params["validate"] if "validate" in params else None, None)
+        self.assertNotIn("leverage", params)
+        self.assertEqual(result["txid"], "ORDER-1")
+        self.assertEqual(result["mode"], "live_spot")
+
+    def test_order_lookup_checks_open_then_closed_by_client_id(self):
+        responses = [
+            {"open": {}},
+            {"closed": {"ORDER-2": {
+                "status": "closed", "vol_exec": "1.2", "cost": "10.08", "fee": "0.04",
+            }}},
+        ]
+        with patch.object(private, "_private_post", side_effect=responses) as post:
+            order = private.lookup_order_by_client_id("b" * 32)
+        self.assertEqual([call.args[0] for call in post.call_args_list], ["OpenOrders", "ClosedOrders"])
+        self.assertEqual(order["txid"], "ORDER-2")
+        self.assertEqual(order["order_collection"], "closed")
+        self.assertEqual(order["vol_exec"], "1.2")
+
 if __name__ == "__main__":
     unittest.main()
