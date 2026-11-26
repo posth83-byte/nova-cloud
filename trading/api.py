@@ -376,7 +376,7 @@ async def live_status():
         "worker": state.get("worker", {}),
         "orders_enabled": False,
         "withdrawals_enabled": False,
-        "max_authorized_budget_sek": 200.00,
+        "budget_policy": "all_available_kraken_eur_balance",
         "live_order_engine": "guarded_autonomous_spot_worker",
         "next_step": "Use the manual Trade AI workflow with arm_live=true to activate after account preflight.",
     }
