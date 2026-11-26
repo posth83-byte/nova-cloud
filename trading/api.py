@@ -404,11 +404,15 @@ async def live_dashboard(
         eur_balance = Decimal(str(account["eur_balance"]))
         available_eur_sek = (eur_balance * rate).quantize(Decimal("0.01"))
         markets = scan_markets(quote="EUR", limit=50).get("markets", [])
-        radar = rank_opportunities(
-            markets,
-            equity_sek=float(available_eur_sek),
-            eur_sek=float(rate),
-            limit=8,
+        radar = (
+            rank_opportunities(
+                markets,
+                equity_sek=float(available_eur_sek),
+                eur_sek=float(rate),
+                limit=8,
+            )
+            if available_eur_sek > 0
+            else {"candidates": []}
         )
         intents = list_recent_order_intents(30)
         safe_intents = []
