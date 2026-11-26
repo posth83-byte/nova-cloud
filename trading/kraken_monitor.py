@@ -177,3 +177,134 @@ def fetch_ohlc_candles(
         "min_order_qty": float(metadata.get("ordermin") or 0),
         "min_cost_eur": float(metadata.get("costmin") or 0),
     }
+
+
+
+def value_account_balances(balances: dict[str, Any], eur_sek: float) -> dict[str, Any]:
+    """Value Kraken account balances in EUR using live public spot tickers.
+
+    Assets without a direct or USD-quoted EUR-convertible market remain
+    explicitly unpriced; they are never silently counted as zero.
+    """
+    if not isinstance(balances, dict) or not isinstance(eur_sek, (int, float)) or eur_sek <= 0:
+        raise ValueError("Invalid account valuation inputs.")
+    pairs = _public_get("AssetPairs")
+    tickers = _public_get("Ticker")
+    market_rows: list[tuple[str, str, float]] = []
+    usd_to_eur = None
+
+    for pair_key, metadata in pairs.items():
+        if not isinstance(metadata, dict) or metadata.get("status", "online") != "online":
+            continue
+        wsname = str(metadata.get("wsname") or "")
+        if "/" not in wsname:
+            continue
+        base, quote = wsname.split("/", 1)
+        altname = str(metadata.get("altname") or pair_key)
+        ticker = tickers.get(altname) or tickers.get(pair_key)
+        if not isinstance(ticker, dict):
+            continue
+        try:
+            last = float(ticker["c"][0])
+        except (KeyError, IndexError, TypeError, ValueError):
+            continue
+        if not last or last <= 0:
+            continue
+        if base.upper() == "USD" and quote.upper() == "EUR":
+            usd_to_eur = last
+        elif base.upper() == "EUR" and quote.upper() == "USD":
+            usd_to_eur = 1.0 / last
+
+        base_asset = str(metadata.get("base") or "").upper()
+        if quote.upper() == "EUR":
+            market_rows.append((base_asset, wsname, last))
+        elif quote.upper() == "USD":
+            # Applied after the USD/EUR cross has been discovered below.
+            market_rows.append((base_asset, wsname, -last))
+
+    price_by_asset: dict[str, tuple[str, float]] = {}
+    for asset_code, symbol, quote_price in market_rows:
+        if quote_price > 0:
+            price_by_asset[asset_code] = (symbol, quote_price)
+        elif quote_price < 0 and usd_to_eur:
+            price_by_asset[asset_code] = (symbol, abs(quote_price) * usd_to_eur)
+
+    valued_assets = []
+    unpriced_assets = []
+    total_eur = 0.0
+    for asset_code, raw_balance in balances.items():
+        try:
+            amount = float(raw_balance)
+        except (TypeError, ValueError):
+            continue
+        if amount <= 0:
+            continue
+        code = str(asset_code).upper()
+        if code in {"ZEUR", "EUR"}:
+            symbol, price_eur = "EUR", 1.0
+        else:
+            market = price_by_asset.get(code)
+            if market is None:
+                unpriced_assets.append({"asset": code, "balance": amount})
+                continue
+            symbol, price_eur = market
+        value_eur = amount * price_eur
+        total_eur += value_eur
+        valued_assets.append({
+            "asset": code,
+            "symbol": symbol,
+            "balance": amount,
+            "price_eur": round(price_eur, 10),
+            "value_eur": round(value_eur, 8),
+            "value_sek": round(value_eur * float(eur_sek), 2),
+            "valuation_status": "priced",
+        })
+
+    valued_assets.sort(key=lambda row: row["value_sek"], reverse=True)
+    return {
+        "assets": valued_assets,
+        "unpriced_assets": unpriced_assets,
+        "total_eur": round(total_eur, 8),
+        "total_sek": round(total_eur * float(eur_sek), 2),
+        "valuation_complete": not unpriced_assets,
+        "fx_eur_sek": float(eur_sek),
+    }
+
+
+def fetch_chart_candles(symbol: str, interval: int, limit: int) -> dict[str, Any]:
+    """Fetch closed public Kraken candles for dashboard charts."""
+    symbol = str(symbol or "").strip().upper()
+    if interval not in {5, 60}:
+        raise ValueError("Unsupported chart interval.")
+    if not 1 <= limit <= 168:
+        raise ValueError("Invalid chart candle limit.")
+    pairs = _public_get("AssetPairs")
+    metadata = next(
+        (row for row in pairs.values()
+         if isinstance(row, dict) and str(row.get("wsname", "")).upper() == symbol),
+        None,
+    )
+    if not metadata:
+        raise ValueError("Marknaden finns inte i Krakens EUR-lista.")
+    altname = str(metadata.get("altname") or "")
+    query = urllib.parse.urlencode({"pair": altname, "interval": interval})
+    payload = _public_get("OHLC?" + query)
+    raw_rows = next((value for key, value in payload.items() if key != "last"), None)
+    if not isinstance(raw_rows, list):
+        raise KrakenPublicAPIError("Kraken returnerade inga OHLC-ljusstakar.")
+    candles = []
+    for row in raw_rows[:-1]:
+        try:
+            timestamp = int(row[0])
+            close = float(row[4])
+        except (IndexError, TypeError, ValueError, OverflowError):
+            continue
+        if timestamp > 0 and close > 0:
+            candles.append({"timestamp": timestamp, "close": close})
+    return {
+        "symbol": symbol,
+        "interval_minutes": interval,
+        "candles": candles[-limit:],
+        "mode": "read_only",
+        "orders_enabled": False,
+    }
