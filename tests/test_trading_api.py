@@ -141,6 +141,35 @@ class TradingApiTests(unittest.TestCase):
         self.assertTrue(result["paper_enabled"])
         guard.assert_called_once_with("Bearer short-lived-oidc", manual_start=True)
 
+    def test_paper_pause_accepts_verified_github_dispatch(self):
+        state = create_initial_state("200.00")
+        state["paper_enabled"] = True
+        with (
+            patch.object(api, "_github_actions_guard") as guard,
+            patch.object(api, "_load", return_value=(state, 3)),
+            patch.object(api, "_save", return_value=4),
+        ):
+            result = asyncio.run(api.paper_pause(
+                x_trade_control_token=None, authorization="Bearer short-lived-oidc"
+            ))
+        self.assertFalse(result["paper_enabled"])
+        guard.assert_called_once_with("Bearer short-lived-oidc", manual_start=True)
+
+    def test_emergency_stop_accepts_verified_github_dispatch(self):
+        state = create_initial_state("200.00")
+        state["paper_enabled"] = True
+        with (
+            patch.object(api, "_github_actions_guard") as guard,
+            patch.object(api, "_load", return_value=(state, 3)),
+            patch.object(api, "_save", return_value=4),
+        ):
+            result = asyncio.run(api.paper_emergency_stop(
+                reason="manual test", x_trade_control_token=None,
+                authorization="Bearer short-lived-oidc"
+            ))
+        self.assertTrue(result["emergency_stop"])
+        guard.assert_called_once_with("Bearer short-lived-oidc", manual_start=True)
+
     def test_control_guard_fails_closed_when_token_missing(self):
         with patch.dict("os.environ", {}, clear=True):
             with self.assertRaises(HTTPException) as exc:
