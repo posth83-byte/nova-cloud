@@ -70,7 +70,22 @@ async def trading_markets(
 @router.get("/paper")
 async def paper_status():
     state, revision = _load()
-    snapshot = portfolio_snapshot(state)
+    try:
+        snapshot = portfolio_snapshot(state)
+        snapshot["valuation_status"] = "complete"
+    except PaperTradingError:
+        snapshot = {
+            "mode": "paper_only", "currency": "SEK",
+            "paper_enabled": bool(state.get("paper_enabled")),
+            "emergency_stop": bool(state.get("emergency_stop")),
+            "cash": state.get("cash"), "equity": None,
+            "starting_cash": state.get("starting_cash"),
+            "total_pnl": None, "realized_pnl": state.get("realized_pnl"),
+            "positions": state.get("positions", {}),
+            "trade_count": len(state.get("trades", [])),
+            "orders_enabled": False, "withdrawals_enabled": False,
+            "valuation_status": "awaiting_fresh_sek_market_marks",
+        }
     snapshot.update({
         "revision": revision,
         "storage": "supabase",
