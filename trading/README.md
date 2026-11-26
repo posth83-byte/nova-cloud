@@ -40,7 +40,7 @@ AI is advisory. Deterministic code has final authority and can reject any propos
 - `paper_runner.py` runs one complete cycle using public Kraken market data.
 - `paper_daemon.py` continuously polls public data, processes each completed hourly candle only once, and persists the portfolio. It is paper-only and stops on Ctrl+C.
 - `backtest.py` evaluates historical candles with fees/slippage, closed-candle signals and next-candle-open entries to reduce look-ahead bias.
-- `download_history.py` downloads public Kraken candles without credentials for offline backtesting.
+- `download_history.py` downloads public Kraken candles without credentials for offline backtesting. Kraken's REST OHLC endpoint returns at most 720 candles per pair/timeframe (about 30 days at 1h); longer research needs the downloadable OHLCVT archive.
 - `dashboard.html` is a read-only portfolio/backtest panel served by the NOVA Cloud app at `/trading`. It imports exported JSON files locally in the browser; it cannot place orders or access exchange credentials.
 - `paper_config.json` contains conservative defaults. The current 200 SEK paper allocation is modelled as 17.81 EUR using an indicative reference rate; this is not a read of the Kraken balance.
 
