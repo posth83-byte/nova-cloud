@@ -431,7 +431,7 @@ async def live_start(
         ) from exc
     return {
         "ok": True, "live_enabled": True, "mode": "live_spot",
-        "max_budget_sek": 200.00, "open_orders_clear": True,
+        "budget_policy": "all_available_kraken_eur_balance", "open_orders_clear": True,
         "withdrawals_enabled": False, "revision": next_revision,
     }
 
@@ -537,10 +537,9 @@ async def live_validate_order(
         }
         # The 200 SEK ceiling includes estimated fee and slippage reserves.
         total_cost_factor = Decimal("1.004") * Decimal("1.0015")
-        budget_eur = min(
-            Decimal("200.00") / rate,
-            Decimal(str(account["eur_balance"])),
-        ) / total_cost_factor
+        # Validation sizing follows all currently available EUR on Kraken;
+        # no fixed 200 SEK ceiling remains.
+        budget_eur = Decimal(str(account["eur_balance"])) / total_cost_factor
         for candidate in radar.get("candidates", []):
             row = market_by_symbol.get(str(candidate.get("symbol", "")).upper())
             if not row:
@@ -568,7 +567,7 @@ async def live_validate_order(
             )
             validation.update({
                 "candidate": candidate,
-                "budget_cap_sek": "200.00",
+                "budget_policy": "all_available_kraken_eur_balance",
                 "estimated_notional_eur": str(notional.quantize(Decimal("0.01"))),
                 "estimated_notional_sek": str(
                     (notional * rate).quantize(Decimal("0.01"))
