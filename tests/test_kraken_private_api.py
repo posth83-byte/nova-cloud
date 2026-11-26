@@ -114,5 +114,40 @@ class KrakenPrivateTests(unittest.TestCase):
         self.assertFalse(result["open_orders_clear"])
 
 
+
+    def test_limit_order_validation_sets_validate_true_and_never_enables_orders(self):
+        captured = {}
+
+        def fake_post(endpoint, params=None):
+            captured["endpoint"] = endpoint
+            captured["params"] = params
+            return {"descr": {"order": "buy 0.001 XBT/EUR @ limit"}}
+
+        with patch.object(private, "_private_post", side_effect=fake_post):
+            result = private.validate_limit_order(
+                pair="XBTEUR", side="buy",
+                volume=Decimal("0.001"), price=Decimal("60000"),
+            )
+        self.assertEqual(captured["endpoint"], "AddOrder")
+        self.assertEqual(captured["params"]["validate"], "true")
+        self.assertEqual(captured["params"]["ordertype"], "limit")
+        self.assertEqual(captured["params"]["timeinforce"], "IOC")
+        self.assertNotIn("leverage", captured["params"])
+        self.assertTrue(result["validated"])
+        self.assertFalse(result["orders_enabled"])
+        self.assertFalse(result["withdrawals_enabled"])
+
+    def test_limit_order_validation_rejects_margin_like_pair_and_invalid_values(self):
+        with self.assertRaises(private.KrakenPrivateAPIError):
+            private.validate_limit_order(
+                pair="XBT/EUR", side="buy",
+                volume=Decimal("0.001"), price=Decimal("60000"),
+            )
+        with self.assertRaises(private.KrakenPrivateAPIError):
+            private.validate_limit_order(
+                pair="XBTEUR", side="buy",
+                volume=Decimal("0"), price=Decimal("60000"),
+            )
+
 if __name__ == "__main__":
     unittest.main()

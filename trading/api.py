@@ -22,8 +22,9 @@ from trading.kraken_private import (
     KrakenPrivateAPIError,
     credentials_configured,
     run_read_only_preflight,
+    validate_limit_order,
 )
-from decimal import Decimal
+from decimal import Decimal, ROUND_DOWN
 
 router = APIRouter(prefix="/api/trading", tags=["trading"])
 
@@ -343,3 +344,91 @@ async def live_preflight(
         return result
     except (StrategyDataError, KrakenPrivateAPIError) as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+
+@router.post("/live/validate-order")
+async def live_validate_order(
+    x_trade_control_token: str | None = Header(default=None),
+):
+    """Validate one bounded EUR spot limit order at Kraken; never submit it."""
+    _control_guard(x_trade_control_token)
+    try:
+        fx = fetch_eur_sek_rate()
+        rate = Decimal(str(fx["rate"]))
+        account = run_read_only_preflight(rate)
+        if not account.get("open_orders_clear"):
+            raise HTTPException(
+                status_code=409,
+                detail="Det finns redan öppna Kraken-order. De måste granskas innan ordervalidering.",
+            )
+        markets = scan_markets(quote="EUR", limit=50).get("markets", [])
+        radar = rank_opportunities(
+            markets,
+            equity_sek=200.0,
+            eur_sek=float(rate),
+            limit=10,
+        )
+        market_by_symbol = {
+            str(row.get("symbol", "")).upper(): row for row in markets
+        }
+        # The 200 SEK ceiling includes estimated fee and slippage reserves.
+        total_cost_factor = Decimal("1.004") * Decimal("1.0015")
+        budget_eur = min(
+            Decimal("200.00") / rate,
+            Decimal(str(account["eur_balance"])),
+        ) / total_cost_factor
+        for candidate in radar.get("candidates", []):
+            row = market_by_symbol.get(str(candidate.get("symbol", "")).upper())
+            if not row:
+                continue
+            try:
+                pair = str(row["api_pair"]).strip().upper()
+                ask = Decimal(str(row["ask"]))
+                price_decimals = max(0, min(10, int(row.get("price_decimals", 8))))
+                lot_decimals = max(0, min(10, int(row.get("lot_decimals", 8))))
+                price_quantum = Decimal("1").scaleb(-price_decimals)
+                volume_quantum = Decimal("1").scaleb(-lot_decimals)
+                price = ask.quantize(price_quantum, rounding=ROUND_DOWN)
+                volume = (budget_eur / price).quantize(
+                    volume_quantum, rounding=ROUND_DOWN
+                )
+                min_qty = Decimal(str(row.get("min_order_qty") or 0))
+                min_cost = Decimal(str(row.get("min_cost_quote") or 0))
+            except (KeyError, TypeError, ValueError, ArithmeticError):
+                continue
+            notional = volume * price
+            if price <= 0 or volume < min_qty or notional < min_cost or notional <= 0:
+                continue
+            validation = validate_limit_order(
+                pair=pair, side="buy", volume=volume, price=price
+            )
+            validation.update({
+                "candidate": candidate,
+                "budget_cap_sek": "200.00",
+                "estimated_notional_eur": str(notional.quantize(Decimal("0.01"))),
+                "estimated_notional_sek": str(
+                    (notional * rate).quantize(Decimal("0.01"))
+                ),
+                "fee_and_slippage_reserve": "0.5506%",
+                "fx_reference": {
+                    "rate": str(rate),
+                    "date": fx.get("date"),
+                    "source": fx.get("source"),
+                },
+                "orders_enabled": False,
+                "withdrawals_enabled": False,
+            })
+            return validation
+        raise HTTPException(
+            status_code=409,
+            detail="Ingen bevakad EUR-marknad klarar Krakens minsta orderkrav inom 200 kr.",
+        )
+    except HTTPException:
+        raise
+    except (StrategyDataError, KrakenPublicAPIError, KrakenPrivateAPIError) as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    except (TypeError, ValueError, KeyError) as exc:
+        raise HTTPException(
+            status_code=503,
+            detail="Trade AI kunde inte beräkna en order som håller sig inom riskgränsen.",
+        ) from exc

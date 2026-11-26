@@ -2,6 +2,7 @@
 import asyncio
 import importlib.util
 import unittest
+from decimal import Decimal
 from unittest.mock import patch
 
 if importlib.util.find_spec("fastapi") is None:
@@ -293,6 +294,52 @@ class TradingApiTests(unittest.TestCase):
         self.assertFalse(result["withdrawals_enabled"])
         self.assertEqual(result["fx_reference"]["date"], "2026-11-26")
 
+
+
+    def test_live_validate_order_uses_200_sek_cap_and_never_submits(self):
+        fx = {"rate": 11.2, "date": "2026-11-26", "source": "test", "age_days": 0}
+        account = {"eur_balance": "19.0", "open_orders_clear": True}
+        markets = {"markets": [{
+            "symbol": "XBT/EUR", "api_pair": "XBTEUR", "ask": 60000.0,
+            "bid": 59940.0, "spread_pct": 0.1, "volume_24h_quote_est": 500000.0,
+            "change_24h_pct": 4.2, "high_24h": 62000.0, "low_24h": 58000.0,
+            "last": 60000.0, "min_order_qty": 0.0001, "min_cost_quote": 0.5,
+            "price_decimals": 1, "lot_decimals": 8,
+        }]}
+        radar = {"candidates": [{"symbol": "XBT/EUR", "score": 82.0, "buy_signal": False}]}
+        validated = {"validated": True, "orders_enabled": False, "withdrawals_enabled": False}
+        with (
+            patch.object(api, "_control_guard"),
+            patch.object(api, "fetch_eur_sek_rate", return_value=fx),
+            patch.object(api, "run_read_only_preflight", return_value=account),
+            patch.object(api, "scan_markets", return_value=markets),
+            patch.object(api, "rank_opportunities", return_value=radar),
+            patch.object(api, "validate_limit_order", return_value=validated) as validate,
+        ):
+            result = asyncio.run(api.live_validate_order(x_trade_control_token="expected-secret"))
+        validate.assert_called_once()
+        kwargs = validate.call_args.kwargs
+        self.assertEqual(kwargs["pair"], "XBTEUR")
+        self.assertEqual(kwargs["side"], "buy")
+        self.assertLessEqual(
+            Decimal(kwargs["volume"]) * Decimal(kwargs["price"]) * Decimal("1.005506") * Decimal("11.2"),
+            Decimal("200.01"),
+        )
+        self.assertTrue(result["validated"])
+        self.assertFalse(result["orders_enabled"])
+        self.assertFalse(result["withdrawals_enabled"])
+
+    def test_live_validate_order_refuses_existing_open_orders(self):
+        with (
+            patch.object(api, "_control_guard"),
+            patch.object(api, "fetch_eur_sek_rate", return_value={"rate": 11.2}),
+            patch.object(api, "run_read_only_preflight", return_value={
+                "eur_balance": "19.0", "open_orders_clear": False,
+            }),
+            self.assertRaises(HTTPException) as exc,
+        ):
+            asyncio.run(api.live_validate_order(x_trade_control_token="expected-secret"))
+        self.assertEqual(exc.exception.status_code, 409)
 
 if __name__ == "__main__":
     unittest.main()

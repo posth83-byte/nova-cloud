@@ -16,6 +16,7 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
+import uuid
 from decimal import Decimal, InvalidOperation
 from typing import Any
 
@@ -176,4 +177,47 @@ def run_read_only_preflight(eur_sek: Decimal) -> dict[str, Any]:
         "orders_enabled": False,
         "withdrawals_enabled": False,
         "mode": "private_read_only_preflight",
+    }
+
+
+def validate_limit_order(
+    *,
+    pair: str,
+    side: str,
+    volume: Decimal,
+    price: Decimal,
+) -> dict[str, Any]:
+    """Ask Kraken to validate a spot limit order without submitting it."""
+    pair = str(pair or "").strip().upper()
+    side = str(side or "").strip().lower()
+    if not pair or not pair.isalnum() or len(pair) > 24:
+        raise KrakenPrivateAPIError("Ogiltigt Kraken-marknadspar.")
+    if side not in {"buy", "sell"}:
+        raise KrakenPrivateAPIError("Ogiltig orderriktning.")
+    if not volume.is_finite() or not price.is_finite() or volume <= 0 or price <= 0:
+        raise KrakenPrivateAPIError("Ordervolym och limitpris måste vara positiva.")
+    client_order_id = uuid.uuid4().hex
+    result = _private_post("AddOrder", {
+        "ordertype": "limit",
+        "type": side,
+        "volume": format(volume, "f"),
+        "pair": pair,
+        "price": format(price, "f"),
+        "timeinforce": "IOC",
+        "cl_ord_id": client_order_id,
+        "validate": "true",
+    })
+    description = result.get("descr") or {}
+    return {
+        "validated": True,
+        "mode": "exchange_validation_only",
+        "order_type": "limit",
+        "side": side,
+        "pair": pair,
+        "volume": format(volume, "f"),
+        "price": format(price, "f"),
+        "description": str(description.get("order") or "")[:240],
+        "client_order_id": client_order_id,
+        "orders_enabled": False,
+        "withdrawals_enabled": False,
     }
