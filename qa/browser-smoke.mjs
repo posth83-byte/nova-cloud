@@ -96,21 +96,10 @@ try {
             if (await priceRow.count() !== 1) localFailures.push("Price item add failed: " + await page.locator("#toast").innerText());
             else if (!(await priceRow.locator(".price").innerText()).includes("12,50")) localFailures.push("Shopping list did not display the entered price.");
 
-            // Test photo compression/upload as a separate item so a photo error is diagnosable.
-            await page.locator("#itemInput").fill("QA-Photo");
-            const pngPhoto = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAIAAAD8GO2jAAAALUlEQVR4nGMM2FLBQEvARFPTRy0YtWDUglELRi0YtWDUglELRi0YtWDUAioCAI2dAbyQjs/TAAAAAElFTkSuQmCC", "base64");
-            await page.locator("#itemPhoto").setInputFiles({ name: "qa.png", mimeType: "image/png", buffer: pngPhoto });
-            await page.locator('#addForm button[type="submit"]').click();
-            const photoRow = page.locator(".item[data-item-id]").filter({ hasText: "QA-Photo" });
-            await photoRow.waitFor({ state: "visible", timeout: 5000 }).catch(() => {});
-            if (await photoRow.count() !== 1) localFailures.push("Shopping list photo upload failed: " + await page.locator("#toast").innerText());
-            else {
-              if (await photoRow.locator("img.thumb").count() !== 1) localFailures.push("Shopping list did not display the uploaded product photo.");
-              else {
-                const imageLoaded = await photoRow.locator("img.thumb").evaluate(img => img.decode().then(() => img.naturalWidth > 0).catch(() => false));
-                if (!imageLoaded) localFailures.push("Uploaded product photo did not decode in the browser.");
-              }
-            }
+            // The current shopping-list UI uses a shared background image picker,
+            // not per-item photo uploads. Verify the supported control instead.
+            if (!(await page.locator("#backgroundFile").count())) localFailures.push("Shopping list background image picker is missing.");
+            if (!(await page.locator("#chooseBackground").count())) localFailures.push("Shopping list background image button is missing.");
 
             await qaRow.click();
             if (!(await qaRow.evaluate(el => el.classList.contains("done")))) localFailures.push("Tapping the shopping item did not mark it complete.");
@@ -121,9 +110,9 @@ try {
             await page.locator("#favoritesBtn").click();
             if (await page.locator(".item[data-item-id]").filter({ hasText: "QA-Apples" }).count() !== 1) localFailures.push("Favorites filter did not show the favorited item.");
             await page.locator("#favoritesBtn").click();
-            await page.locator("#darkBtn").click();
+            await page.locator("#themeSelect").selectOption("dark");
             if (!(await page.locator("body").evaluate(el => el.classList.contains("dark")))) localFailures.push("Dark mode did not activate.");
-            await page.locator("#darkBtn").click();
+            await page.locator("#themeSelect").selectOption("light");
             await page.locator("#templatesBtn").click();
             if (!(await page.locator("#modal").evaluate(el => el.classList.contains("open")))) localFailures.push("Shopping list templates modal did not open.");
             await page.locator("#modalClose").click();
@@ -473,13 +462,25 @@ try {
           await page.locator("#videoTypeSelect").selectOption("humor");
           if (await page.locator("#videoDurationWrap").evaluate(el => getComputedStyle(el).display) !== "none") localFailures.push("Factual duration selector remained visible for humor.");
 
+          let videoIdeasRequestSeen = false;
+          page.on("request", request => {
+            if (request.url().includes("/api/video/team/ideas")) videoIdeasRequestSeen = true;
+          });
           await page.route("**/api/video/team/ideas", route => route.fulfill({
             status: 200, contentType: "application/json",
             body: JSON.stringify({ status: "ok", ideas: [{ title: "Testtrend Sverige", traffic: "20K+", source: "Google Trends Sverige", source_url: "https://trends.google.com/", angle: "Gör en egen version." }], note: "Testdata." })
           }));
+          await page.locator("#videoFindIdeas").scrollIntoViewIfNeeded();
           await page.locator("#videoFindIdeas").click({ force: true });
-          await page.waitForFunction(() => document.querySelector("#videoIdeasList")?.innerText.includes("Testtrend Sverige"), null, { timeout: 5000 });
-          if (!(await page.locator("#videoIdeasList").innerText()).includes("SKAPA EGEN VIDEO")) localFailures.push("Trend result does not offer an original-video action.");
+          const trendRendered = await page.waitForFunction(() => document.querySelector("#videoIdeasList")?.innerText.includes("Testtrend Sverige"), null, { timeout: 5000 }).then(() => true).catch(() => false);
+          if (!trendRendered) {
+            localFailures.push("Trend discovery did not render. requestSeen=" + videoIdeasRequestSeen +
+              "; button=" + JSON.stringify(await page.locator("#videoFindIdeas").evaluate(el => ({ disabled: el.disabled, text: el.textContent }))) +
+              "; status=" + JSON.stringify(await page.locator("#videoCreatorStatus").innerText().catch(() => "")) +
+              "; result=" + JSON.stringify(await page.locator("#videoIdeasList").innerText().catch(() => "")));
+          } else if (!(await page.locator("#videoIdeasList").innerText()).includes("SKAPA EGEN VIDEO")) {
+            localFailures.push("Trend result does not offer an original-video action.");
+          }
 
           let createCount = 0;
           await page.route("**/api/video/team/create", async route => {
