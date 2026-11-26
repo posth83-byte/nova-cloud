@@ -18,6 +18,12 @@ from trading.backtest import run_sma_backtest
 from trading.strategy import StrategyDataError, build_strategy_preview, fetch_eur_sek_rate
 from trading.worker import run_paper_tick
 from trading.opportunity_radar import rank_opportunities
+from trading.kraken_private import (
+    KrakenPrivateAPIError,
+    credentials_configured,
+    run_read_only_preflight,
+)
+from decimal import Decimal
 
 router = APIRouter(prefix="/api/trading", tags=["trading"])
 
@@ -300,3 +306,40 @@ async def paper_backtest(
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     except (TypeError, KeyError) as exc:
         raise HTTPException(status_code=503, detail="Trade AI kunde inte beräkna ett säkert historiskt test.") from exc
+
+
+@router.get("/live/status")
+async def live_status():
+    """Expose readiness metadata only; never expose keys or enable live orders."""
+    return {
+        "mode": "live_disabled",
+        "exchange": "Kraken Spot",
+        "credentials_configured": credentials_configured(),
+        "private_api_preflight_available": credentials_configured(),
+        "orders_enabled": False,
+        "withdrawals_enabled": False,
+        "max_authorized_budget_sek": 200.00,
+        "live_order_engine": "not_implemented",
+        "next_step": "Run authenticated read-only Kraken account and permission preflight.",
+    }
+
+
+@router.post("/live/preflight")
+async def live_preflight(
+    x_trade_control_token: str | None = Header(default=None),
+):
+    """Check Kraken credentials, permissions, EUR balance and open orders only."""
+    _control_guard(x_trade_control_token)
+    try:
+        fx = fetch_eur_sek_rate()
+        result = run_read_only_preflight(Decimal(str(fx["rate"])))
+        result["fx_reference"] = {
+            "date": fx.get("date"),
+            "source": fx.get("source"),
+            "age_days": fx.get("age_days"),
+        }
+        result["orders_enabled"] = False
+        result["withdrawals_enabled"] = False
+        return result
+    except (StrategyDataError, KrakenPrivateAPIError) as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
