@@ -1,7 +1,7 @@
 import unittest
 from unittest.mock import patch
 
-from trading.kraken_monitor import build_market_rows, value_account_balances
+from trading.kraken_monitor import build_market_rows, value_account_balances, scan_markets
 
 
 class KrakenMarketMonitorTests(unittest.TestCase):
@@ -30,6 +30,15 @@ class KrakenMarketMonitorTests(unittest.TestCase):
         self.assertEqual(rows[0]["base_asset"], "XXBT")
         self.assertEqual(rows[0]["quote_asset"], "ZEUR")
 
+
+    def test_market_scan_accepts_wider_universe_and_rejects_above_limit(self):
+        rows = [{"symbol": f"COIN{i}/EUR"} for i in range(60)]
+        with patch("trading.kraken_monitor._public_get", side_effect=[{}, {}]), \
+             patch("trading.kraken_monitor.build_market_rows", return_value=rows):
+            result = scan_markets(quote="EUR", limit=100)
+        self.assertEqual(len(result["markets"]), 60)
+        with self.assertRaisesRegex(ValueError, "1 and 100"):
+            scan_markets(quote="EUR", limit=101)
 
     def test_values_all_priced_balances_and_marks_unknown_assets(self):
         pairs = {
