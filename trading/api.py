@@ -29,6 +29,48 @@ def _control_guard(token: str | None):
         raise HTTPException(status_code=401, detail="Ogiltig Trade AI-kontrollnyckel.")
 
 
+def _github_actions_guard(authorization: str | None, *, manual_start: bool = False):
+    """Verify a short-lived GitHub Actions OIDC token; no shared scheduler secret."""
+    supplied = (authorization or "").strip()
+    if not supplied.lower().startswith("bearer "):
+        raise HTTPException(status_code=401, detail="Schemaläggarens identitet saknas.")
+    token = supplied[7:].strip()
+    if not token:
+        raise HTTPException(status_code=401, detail="Schemaläggarens identitet saknas.")
+    try:
+        import jwt
+        client = jwt.PyJWKClient(
+            "https://token.actions.githubusercontent.com/.well-known/jwks",
+            cache_jwk_set=True,
+            lifespan=300,
+        )
+        signing_key = client.get_signing_key_from_jwt(token)
+        claims = jwt.decode(
+            token,
+            signing_key.key,
+            algorithms=["RS256"],
+            audience="nova-cloud-trade-worker",
+            issuer="https://token.actions.githubusercontent.com",
+            options={"require": ["exp", "iat", "iss", "aud", "repository", "ref", "event_name", "workflow_ref"]},
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=401, detail="Schemaläggarens identitet kunde inte verifieras.") from exc
+
+    expected_workflow = (
+        "posth83-byte/nova-cloud/.github/workflows/trade-paper-scheduler.yml@refs/heads/main"
+    )
+    if (
+        claims.get("repository") != "posth83-byte/nova-cloud"
+        or str(claims.get("repository_id")) != "1442711208"
+        or claims.get("ref") != "refs/heads/main"
+        or claims.get("workflow_ref") != expected_workflow
+    ):
+        raise HTTPException(status_code=403, detail="Den här GitHub-workflowen är inte godkänd.")
+    allowed_events = {"workflow_dispatch"} if manual_start else {"schedule", "workflow_dispatch"}
+    if claims.get("event_name") not in allowed_events:
+        raise HTTPException(status_code=403, detail="Den här schemaläggningshändelsen är inte tillåten.")
+
+
 def _load():
     try:
         return load_or_create(create_initial_state)
@@ -101,8 +143,14 @@ async def paper_status():
 
 
 @router.post("/paper/start")
-async def paper_start(x_trade_control_token: str | None = Header(default=None)):
-    _control_guard(x_trade_control_token)
+async def paper_start(
+    x_trade_control_token: str | None = Header(default=None),
+    authorization: str | None = Header(default=None),
+):
+    if x_trade_control_token:
+        _control_guard(x_trade_control_token)
+    else:
+        _github_actions_guard(authorization, manual_start=True)
     state, revision = _load()
     try:
         updated = set_paper_enabled(state, True)
@@ -134,9 +182,15 @@ async def paper_emergency_stop(
 
 
 @router.post("/paper/worker-tick")
-async def paper_worker_tick(x_trade_control_token: str | None = Header(default=None)):
+async def paper_worker_tick(
+    x_trade_control_token: str | None = Header(default=None),
+    authorization: str | None = Header(default=None),
+):
     """Authenticated scheduler hook; only advances the simulation-only ledger."""
-    _control_guard(x_trade_control_token)
+    if x_trade_control_token:
+        _control_guard(x_trade_control_token)
+    else:
+        _github_actions_guard(authorization)
     try:
         return run_paper_tick()
     except PaperStoreError as exc:
