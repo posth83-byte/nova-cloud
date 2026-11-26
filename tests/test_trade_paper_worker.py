@@ -30,6 +30,43 @@ class PaperWorkerTests(unittest.TestCase):
         }
         self.fx = {"rate": 10.0, "date": "2026-11-26", "age_days": 0}
 
+    def test_cross_signal_recovers_cross_between_rotating_scans(self):
+        candles = [
+            {"timestamp": 1_800_000_000 + i * 3600, "close": 10.0}
+            for i in range(36)
+        ]
+        candles.extend([
+            {"timestamp": 1_800_000_000 + 36 * 3600, "close": 20.0},
+            {"timestamp": 1_800_000_000 + 37 * 3600, "close": 20.0},
+            {"timestamp": 1_800_000_000 + 38 * 3600, "close": 20.0},
+        ])
+
+        # The crossover happened on candle 36, not on the newest candle.
+        signal = worker._cross_signal(
+            candles, after_timestamp=1_800_000_000 + 35 * 3600
+        )
+        self.assertEqual(signal, (True, False))
+
+        # Once candle 36 has already been processed, it must not fire again.
+        already_processed = worker._cross_signal(
+            candles, after_timestamp=1_800_000_000 + 36 * 3600
+        )
+        self.assertEqual(already_processed, (False, False))
+
+    def test_cross_signal_ignores_stale_crossover(self):
+        candles = [
+            {"timestamp": 1_800_000_000 + i * 3600, "close": 10.0}
+            for i in range(36)
+        ]
+        candles.extend([
+            {"timestamp": 1_800_000_000 + i * 3600, "close": 20.0}
+            for i in range(36, 42)
+        ])
+        self.assertEqual(
+            worker._cross_signal(candles, after_timestamp=0),
+            (False, False),
+        )
+
     def test_worker_simulates_buy_on_new_closed_candle(self):
         saved = []
         with (
