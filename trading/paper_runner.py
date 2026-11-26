@@ -34,6 +34,7 @@ def main() -> int:
         fee_rate=config["fee_rate"],
         slippage_rate=config["slippage_rate"],
         minimum_notional=config["minimum_notional"],
+        minimum_order_sizes=config.get("minimum_order_sizes", {}),
     )
     market = scan()
     actions = run_cycle(broker, market["results"])
