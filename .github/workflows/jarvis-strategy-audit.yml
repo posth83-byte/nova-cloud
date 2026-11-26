@@ -51,23 +51,26 @@ jobs:
       - name: Compare 2.0% and 1.8% stops with pair-specific minimum volumes and taker costs
         run: |
           for symbol in btc eth; do
-            input="/tmp/${symbol}-eur.json"
             if [ "$symbol" = "btc" ]; then min_size="${{ steps.market-limits.outputs.btc_min_size }}"; min_cost="${{ steps.market-limits.outputs.btc_min_cost }}"; else min_size="${{ steps.market-limits.outputs.eth_min_size }}"; min_cost="${{ steps.market-limits.outputs.eth_min_cost }}"; fi
-            for stop in 2.0 1.8; do
-              output="/tmp/${symbol}-stop-${stop}.json"
-              python trading/backtest.py \
-                --input "$input" \
-                --starting-cash 17.81 \
-                --walk-forward \
-                --test-window 168 \
-                --fee-rate 0.008 \
-                --slippage-rate 0.0005 \
-                --risk-pct 1.0 \
-                --daily-drawdown-pct 2.0 \
-                --stop-distance-pct "$stop" \
-                --minimum-notional "$min_cost" \
-                --minimum-order-size "$min_size" \
-                --output "$output"
+            for timeframe in 1h 4h; do
+              input="/tmp/${symbol}-${timeframe}.json"
+              if [ "$timeframe" = "1h" ]; then window=168; else window=42; fi
+              for stop in 2.0 1.8; do
+                output="/tmp/${symbol}-${timeframe}-stop-${stop}.json"
+                python trading/backtest.py \
+                  --input "$input" \
+                  --starting-cash 17.81 \
+                  --walk-forward \
+                  --test-window "$window" \
+                  --fee-rate 0.008 \
+                  --slippage-rate 0.0005 \
+                  --risk-pct 1.0 \
+                  --daily-drawdown-pct 2.0 \
+                  --stop-distance-pct "$stop" \
+                  --minimum-notional "$min_cost" \
+                  --minimum-order-size "$min_size" \
+                  --output "$output"
+              done
             done
           done
       - name: Print compact comparison
@@ -76,11 +79,13 @@ jobs:
           import json
           from pathlib import Path
           for symbol in ("btc", "eth"):
-              for stop in ("2.0", "1.8"):
-                  path = Path(f"/tmp/{symbol}-stop-{stop}.json")
+              for timeframe in ("1h", "4h"):
+                  for stop in ("2.0", "1.8"):
+                      path = Path(f"/tmp/{symbol}-{timeframe}-stop-{stop}.json")
                   data = json.loads(path.read_text())
                   print(json.dumps({
                       "symbol": symbol.upper() + "/EUR",
+                      "timeframe": timeframe,
                       "stop_distance_pct": stop,
                       "starting_cash_eur": data["starting_cash"],
                       "ending_cash_eur": data["ending_cash"],
