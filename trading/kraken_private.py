@@ -252,7 +252,10 @@ def lookup_order_by_client_id(client_order_id: str) -> dict[str, Any] | None:
 def query_order_by_txid(txid: str) -> dict[str, Any] | None:
     """Fetch authoritative execution quantities and fees for one known order."""
     txid = str(txid or "").strip()
-    if not txid or not txid.isalnum():
+    if (
+        not txid or len(txid) > 40
+        or any(character not in "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-" for character in txid.upper())
+    ):
         raise KrakenPrivateAPIError("Ogiltig Kraken-orderreferens.")
     result = _private_post("QueryOrders", {"txid": txid, "trades": "true"})
     order = result.get(txid)
