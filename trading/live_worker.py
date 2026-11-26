@@ -352,11 +352,14 @@ def run_live_tick() -> dict[str, Any]:
             if len(candles) < 37:
                 continue
             candle_time = int(candles[-1]["timestamp"])
-            if int(processed.get(symbol) or 0) >= candle_time:
+            last_processed = int(processed.get(symbol) or 0)
+            if last_processed >= candle_time:
                 continue
             processed[symbol] = candle_time
             evaluated += 1
-            cross_up, cross_down = _cross_signal(candles)
+            cross_up, cross_down = _cross_signal(
+                candles, after_timestamp=last_processed
+            )
             position = positions.get(symbol)
             side = "sell" if position and cross_down else "buy" if not position and cross_up else None
             if side is None:
