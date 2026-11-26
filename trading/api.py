@@ -1,6 +1,7 @@
 """Safe Kraken market-data and paper-only trading endpoints."""
 import hmac
 import os
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Header, HTTPException, Query
 
@@ -95,7 +96,7 @@ async def trading_status():
         "orders_enabled": False,
         "withdrawals_enabled": False,
         "api_credentials_required": False,
-        "next_step": "Paper ledger is persisted; strategy and market-to-SEK validation remain before autonomous simulation.",
+        "next_step": "Scheduled paper-only SMA worker is available after manual activation; live orders remain disabled.",
     }
 
 
@@ -115,8 +116,18 @@ async def trading_markets(
 @router.get("/paper")
 async def paper_status():
     state, revision = _load()
+    worker = state.get("worker", {})
+    marks = {}
+    marked_at = worker.get("last_marked_at")
+    if marked_at:
+        try:
+            mark_time = datetime.fromisoformat(str(marked_at).replace("Z", "+00:00"))
+            if (datetime.now(timezone.utc) - mark_time).total_seconds() <= 1800:
+                marks = worker.get("last_marks_sek", {})
+        except (TypeError, ValueError):
+            marks = {}
     try:
-        snapshot = portfolio_snapshot(state)
+        snapshot = portfolio_snapshot(state, marks)
         snapshot["valuation_status"] = "complete"
     except PaperTradingError:
         snapshot = {
@@ -137,7 +148,7 @@ async def paper_status():
         "history": state.get("trades", [])[-25:],
         "risk": state.get("risk", {}),
         "stop_reason": state.get("stop_reason"),
-        "worker": state.get("worker", {}),
+        "worker": worker,
     })
     return snapshot
 
