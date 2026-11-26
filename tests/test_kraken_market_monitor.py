@@ -6,7 +6,7 @@ from trading.kraken_monitor import build_market_rows
 class KrakenMarketMonitorTests(unittest.TestCase):
     def test_builds_and_ranks_eur_markets_by_quote_turnover(self):
         pairs = {
-            "XXBTZEUR": {"altname": "XBTEUR", "wsname": "XBT/EUR", "status": "online", "pair_decimals": 1, "lot_decimals": 8},
+            "XXBTZEUR": {"altname": "XBTEUR", "wsname": "XBT/EUR", "status": "online", "pair_decimals": 1, "lot_decimals": 8, "base": "XXBT", "quote": "ZEUR"},
             "XETCZEUR": {"altname": "ETCEUR", "wsname": "ETC/EUR", "status": "online"},
             "USDCZEUR": {"altname": "USDCEUR", "wsname": "USDC/EUR", "status": "online"},
             "XETHZUSD": {"altname": "ETHUSD", "wsname": "ETH/USD", "status": "online"},
@@ -26,6 +26,8 @@ class KrakenMarketMonitorTests(unittest.TestCase):
         self.assertAlmostEqual(rows[0]["bid"], 59970.0)
         self.assertEqual(rows[0]["price_decimals"], 1)
         self.assertEqual(rows[0]["lot_decimals"], 8)
+        self.assertEqual(rows[0]["base_asset"], "XXBT")
+        self.assertEqual(rows[0]["quote_asset"], "ZEUR")
 
 
     def test_preserves_zero_precision_metadata(self):
