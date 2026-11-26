@@ -167,7 +167,7 @@ def _recover_unapplied(
             revision = save_live_state(state, revision)
             changed = False
         mark_order_ledger_applied(client_id)
-    return state, revision, False
+    return state, revision, True
 
 
 def run_live_tick() -> dict[str, Any]:
@@ -228,7 +228,22 @@ def run_live_tick() -> dict[str, Any]:
         if equity <= peak * Decimal("0.90"):
             raise LiveWorkerError("Maximal portföljnedgång på 10 procent är nådd.")
 
-        state, revision, _ = _recover_unapplied(state, revision, rate)
+        state, revision, recovered = _recover_unapplied(state, revision, rate)
+        if recovered:
+            worker.update({
+                "status": "reconciled_previous_order",
+                "last_success_at": now.isoformat(),
+                "last_error": None,
+                "last_fx": fx,
+            })
+            state["worker"] = worker
+            revision = save_live_state(state, revision)
+            return {
+                "ok": True, "status": "reconciled_previous_order",
+                "live_enabled": bool(state.get("enabled")),
+                "actions": [], "revision": revision,
+                "orders_enabled": False, "withdrawals_enabled": False,
+            }
         positions = dict(state.get("positions") or {})
         risk = state["risk"]
         budget_cap = min(_d(risk["max_budget_sek"]), Decimal("200.00"))
