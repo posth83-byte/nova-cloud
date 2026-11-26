@@ -13,8 +13,10 @@ from typing import Any
 
 from trading.kraken_monitor import KrakenPublicAPIError, fetch_ohlc_candles, scan_markets
 from trading.strategy import StrategyDataError, fetch_eur_sek_rate
+from trading.opportunity_radar import rank_opportunities
 from trading.worker import (
-    _cross_signal, _momentum_entry_signal, _select_watchlist, MAX_WATCHLIST,
+    _cross_signal, _momentum_entry_signal, _momentum_exit_signal,
+    _select_watchlist, MAX_WATCHLIST,
 )
 from trading.kraken_private import (
     KrakenPrivateAPIError,
@@ -252,7 +254,7 @@ def run_live_tick() -> dict[str, Any]:
         state["cash_sek"] = format(available_sek, "f")
 
         markets_result = scan_markets(
-            quote="EUR", limit=50,
+            quote="EUR", limit=100,
             include_symbols=list((state.get("positions") or {}).keys()),
         )
         markets = markets_result.get("markets") or []
@@ -327,7 +329,13 @@ def run_live_tick() -> dict[str, Any]:
             if max(min_cost, min_qty * ask) * rate > available_sek:
                 continue
             eligible.append(row)
+        radar = rank_opportunities(
+            eligible, equity_sek=max(float(available_sek), 0.01),
+            eur_sek=float(rate), limit=max(1, len(eligible)),
+        ) if eligible else {"candidates": []}
+        radar_scores = {row["symbol"]: float(row["score"]) for row in radar["candidates"]}
         eligible.sort(key=lambda row: (
+            -radar_scores.get(str(row.get("symbol", "")).upper(), 0.0),
             float(row.get("spread_pct") or 99),
             -float(row.get("volume_24h_quote_est") or 0),
         ))
@@ -364,7 +372,7 @@ def run_live_tick() -> dict[str, Any]:
             )
             position = positions.get(symbol)
             side = (
-                "sell" if position and cross_down
+                "sell" if position and (cross_down or _momentum_exit_signal(candles, after_timestamp=last_processed))
                 else "buy" if not position and (
                     cross_up or _momentum_entry_signal(candles, after_timestamp=last_processed)
                 )
