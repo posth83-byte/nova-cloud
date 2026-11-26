@@ -1,7 +1,11 @@
 """Endpoint-level tests for the safe Trade AI API."""
 import asyncio
+import importlib.util
 import unittest
 from unittest.mock import patch
+
+if importlib.util.find_spec("fastapi") is None:
+    raise unittest.SkipTest("FastAPI is installed in the app validation environment, not lightweight unit jobs")
 
 from fastapi import HTTPException
 
