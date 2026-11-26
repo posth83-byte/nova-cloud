@@ -87,6 +87,19 @@ def execute_journaled_limit_order(
             "client_order_id": client_order_id, "txid": txid,
             "pair": pair, "side": side, "resubmit": False,
         }
+    order_flags = {
+        flag.strip().lower()
+        for flag in str(order.get("oflags") or "").split(",")
+        if flag.strip()
+    }
+    if "fciq" not in order_flags:
+        update_order_intent(
+            client_order_id, status="unknown", txid=txid,
+            exchange_result={"reconciliation": "fee_currency_not_confirmed"},
+        )
+        raise LiveExecutionError(
+            "Kraken bekräftade inte avgift i EUR. Ordern stoppas för manuell avstämning."
+        )
     order_status = str(order.get("status") or "").lower()
     if order_status not in {"closed", "canceled", "expired"}:
         update_order_intent(
@@ -141,6 +154,19 @@ def reconcile_order_intent(client_order_id: str) -> dict[str, Any]:
         # Absence is not proof of non-submission after a network timeout.
         update_order_intent(client_order_id, status="unknown")
         return {"status": "unknown", "client_order_id": client_order_id, "resubmit": False}
+    order_flags = {
+        flag.strip().lower()
+        for flag in str(order.get("oflags") or "").split(",")
+        if flag.strip()
+    }
+    if "fciq" not in order_flags:
+        update_order_intent(
+            client_order_id, status="unknown",
+            exchange_result={"reconciliation": "fee_currency_not_confirmed"},
+        )
+        raise LiveExecutionError(
+            "Avgiftsvalutan kunde inte bekräftas. Ingen ny order skickas."
+        )
     status = str(order.get("status") or "").lower()
     journal_status = "closed" if status in {"closed", "canceled", "expired"} else "accepted"
     update_order_intent(
