@@ -65,6 +65,17 @@ class PaperBrokerTests(unittest.TestCase):
         with self.assertRaises(TradeRejected):
             self.broker.buy("ETH/EUR", 50.0, 47.0)
 
+    def test_200_sek_reference_balance_does_not_force_kraken_minimum(self):
+        small = PaperBroker(
+            self.path.parent / "small.json",
+            17.81,
+            fee_rate=0.008,
+            slippage_rate=0.0005,
+            minimum_notional=5.0,
+        )
+        with self.assertRaises(TradeRejected):
+            small.buy("BTC/EUR", 100.0, 98.0)
+
     def test_minimum_notional_is_not_bypassed(self):
         strict = PaperBroker(self.path.parent / "strict.json", 500.0, minimum_notional=1000.0)
         with self.assertRaises(TradeRejected):
