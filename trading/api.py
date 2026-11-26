@@ -528,7 +528,7 @@ async def live_validate_order(
         markets = scan_markets(quote="EUR", limit=50).get("markets", [])
         radar = rank_opportunities(
             markets,
-            equity_sek=200.0,
+            equity_sek=float(account["eur_balance"]) * float(rate),
             eur_sek=float(rate),
             limit=10,
         )
