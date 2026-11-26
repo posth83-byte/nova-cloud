@@ -29,15 +29,29 @@ jobs:
           python-version: "3.11"
       - name: Install public market-data dependency
         run: python -m pip install -r trading/requirements.txt
-      - name: Download latest 30 days of Kraken BTC/EUR and ETH/EUR hourly candles
+      - name: Read current Kraken pair minimums
+        id: market-limits
         run: |
-          python trading/download_history.py --symbol BTC/EUR --timeframe 1h --days 30 --output /tmp/btc-eur.json
+          python - <<'PY' >> "$GITHUB_OUTPUT"
+          import ccxt
+          exchange = ccxt.kraken({"enableRateLimit": True})
+          markets = exchange.load_markets()
+          for symbol, key in (("BTC/EUR", "btc"), ("ETH/EUR", "eth")):
+              market = markets[symbol]
+              amount_min = market.get("limits", {}).get("amount", {}).get("min") or 0
+              cost_min = market.get("limits", {}).get("cost", {}).get("min") or 0.45
+              print(f"{key}_min_size={amount_min}")
+              print(f"{key}_min_cost={cost_min}")
+          PY
+      - name: Download 180 days of Kraken BTC/EUR and ETH/EUR hourly candles
+        run: |
+          python trading/download_history.py --symbol BTC/EUR --timeframe 1h --days 180 --output /tmp/btc-eur.json
           python trading/download_history.py --symbol ETH/EUR --timeframe 1h --days 180 --output /tmp/eth-eur.json
       - name: Compare 2.0% and 1.8% stops with pair-specific minimum volumes and taker costs
         run: |
           for symbol in btc eth; do
             input="/tmp/${symbol}-eur.json"
-            if [ "$symbol" = "btc" ]; then min_size="0.00006"; else min_size="0.002"; fi
+            if [ "$symbol" = "btc" ]; then min_size="${{ steps.market-limits.outputs.btc_min_size }}"; min_cost="${{ steps.market-limits.outputs.btc_min_cost }}"; else min_size="${{ steps.market-limits.outputs.eth_min_size }}"; min_cost="${{ steps.market-limits.outputs.eth_min_cost }}"; fi
             for stop in 2.0 1.8; do
               output="/tmp/${symbol}-stop-${stop}.json"
               python trading/backtest.py \
