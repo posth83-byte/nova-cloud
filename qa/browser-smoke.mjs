@@ -462,13 +462,25 @@ try {
           await page.locator("#videoTypeSelect").selectOption("humor");
           if (await page.locator("#videoDurationWrap").evaluate(el => getComputedStyle(el).display) !== "none") localFailures.push("Factual duration selector remained visible for humor.");
 
+          let videoIdeasRequestSeen = false;
+          page.on("request", request => {
+            if (request.url().includes("/api/video/team/ideas")) videoIdeasRequestSeen = true;
+          });
           await page.route("**/api/video/team/ideas", route => route.fulfill({
             status: 200, contentType: "application/json",
             body: JSON.stringify({ status: "ok", ideas: [{ title: "Testtrend Sverige", traffic: "20K+", source: "Google Trends Sverige", source_url: "https://trends.google.com/", angle: "Gör en egen version." }], note: "Testdata." })
           }));
+          await page.locator("#videoFindIdeas").scrollIntoViewIfNeeded();
           await page.locator("#videoFindIdeas").click({ force: true });
-          await page.waitForFunction(() => document.querySelector("#videoIdeasList")?.innerText.includes("Testtrend Sverige"), null, { timeout: 5000 });
-          if (!(await page.locator("#videoIdeasList").innerText()).includes("SKAPA EGEN VIDEO")) localFailures.push("Trend result does not offer an original-video action.");
+          const trendRendered = await page.waitForFunction(() => document.querySelector("#videoIdeasList")?.innerText.includes("Testtrend Sverige"), null, { timeout: 5000 }).then(() => true).catch(() => false);
+          if (!trendRendered) {
+            localFailures.push("Trend discovery did not render. requestSeen=" + videoIdeasRequestSeen +
+              "; button=" + JSON.stringify(await page.locator("#videoFindIdeas").evaluate(el => ({ disabled: el.disabled, text: el.textContent }))) +
+              "; status=" + JSON.stringify(await page.locator("#videoCreatorStatus").innerText().catch(() => "")) +
+              "; result=" + JSON.stringify(await page.locator("#videoIdeasList").innerText().catch(() => "")));
+          } else if (!(await page.locator("#videoIdeasList").innerText()).includes("SKAPA EGEN VIDEO")) {
+            localFailures.push("Trend result does not offer an original-video action.");
+          }
 
           let createCount = 0;
           await page.route("**/api/video/team/create", async route => {
