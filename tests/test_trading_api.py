@@ -80,7 +80,7 @@ class TradingApiTests(unittest.TestCase):
             result = asyncio.run(api.paper_strategy_preview())
         self.assertEqual(result["mode"], "paper_preview_only")
         self.assertFalse(result["execution_enabled"])
-        self.assertEqual(result["max_trade_budget_sek"], 20.0)
+        self.assertEqual(result["max_trade_budget_sek"], 200.0)
         self.assertEqual(result["candidate_count"], 1)
 
     def test_opportunities_endpoint_is_read_only(self):
@@ -262,7 +262,9 @@ class TradingApiTests(unittest.TestCase):
                 "orders_enabled": False, "withdrawals_enabled": False,
             }) as worker,
         ):
-            result = asyncio.run(api.live_worker_tick(authorization="Bearer oidc"))
+            result = asyncio.run(api.live_worker_tick(
+                x_trade_control_token=None, authorization="Bearer oidc"
+            ))
         guard.assert_called_once()
         worker.assert_called_once()
         self.assertFalse(result["live_enabled"])
