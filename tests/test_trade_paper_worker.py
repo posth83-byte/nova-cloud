@@ -72,7 +72,7 @@ class PaperWorkerTests(unittest.TestCase):
         candles = [
             {
                 "timestamp": 1_800_000_000 + i * 3600,
-                "close": 10.0 + i * 0.02 + (0.15 if i % 2 == 0 else -0.15),
+                "close": 10.0 + i * 0.02 + (0.10 if i % 2 == 0 else -0.10),
             }
             for i in range(45)
         ]
