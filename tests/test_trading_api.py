@@ -49,6 +49,24 @@ class TradingApiTests(unittest.TestCase):
         self.assertEqual(result["valuation_status"], "awaiting_fresh_sek_market_marks")
         self.assertFalse(result["orders_enabled"])
 
+
+    def test_strategy_preview_is_read_only_and_uses_sek_fx(self):
+        state = create_initial_state("200.00")
+        market = {"markets": [{
+            "symbol": "XBT/EUR", "ask": 60000, "bid": 59900,
+            "spread_pct": 0.1668, "volume_24h_quote_est": 500000,
+            "min_cost_quote": 0.5, "min_order_qty": 0.0001,
+        }]}
+        fx = {"rate": 11.2, "age_days": 1, "date": "2026-11-25", "source": "test"}
+        with patch.object(api, "_load", return_value=(state, 1)), \\
+             patch.object(api, "fetch_eur_sek_rate", return_value=fx), \\
+             patch.object(api, "scan_markets", return_value=market):
+            result = asyncio.run(api.paper_strategy_preview())
+        self.assertEqual(result["mode"], "paper_preview_only")
+        self.assertFalse(result["execution_enabled"])
+        self.assertEqual(result["max_trade_budget_sek"], 20.0)
+        self.assertEqual(result["candidate_count"], 1)
+
     def test_control_guard_fails_closed_when_token_missing(self):
         with patch.dict("os.environ", {}, clear=True):
             with self.assertRaises(HTTPException) as exc:
