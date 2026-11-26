@@ -76,6 +76,10 @@ python -m pip install -r trading/requirements.txt
 python -m unittest discover -s trading -p "test_*.py" -v
 ```
 
+## Latest research verdict
+
+The 2026-11-26 fee-aware walk-forward audit found negative net returns for the current EMA/RSI/volume baseline across BTC/EUR and ETH/EUR on both 1h and 4h candles. **This strategy is not approved for live trading.** See `research/2026-11-26-baseline-audit.md` for assumptions and results. The next step is to research a different low-turnover strategy and/or conservative maker-limit execution model; risk limits will not be relaxed to force trades.
+
 ## Enabling scheduled paper runs
 
 The GitHub Actions workflow safely skips until these repository secrets exist:
