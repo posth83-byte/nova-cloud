@@ -1,0 +1,45 @@
+name: Trade AI Live Scheduler
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: trade-ai-live-scheduler
+  cancel-in-progress: false
+
+jobs:
+  live-tick:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Authenticate with GitHub OIDC and run guarded live worker
+        env:
+          WORKER_URL: https://nova-cloud-c4t9.onrender.com/api/trading/live/worker-tick
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -z "${ACTIONS_ID_TOKEN_REQUEST_URL:-}" || -z "${ACTIONS_ID_TOKEN_REQUEST_TOKEN:-}" ]]; then
+            echo "GitHub Actions OIDC is not available for this run."
+            exit 1
+          fi
+
+          oidc_response="$(curl --fail --silent --show-error --get "${ACTIONS_ID_TOKEN_REQUEST_URL}" \
+            --data-urlencode "audience=nova-cloud-trade-worker" \
+            -H "Authorization: Bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}")"
+          oidc_token="$(printf '%s' "$oidc_response" | python -c "import json,sys; print(json.load(sys.stdin)['value'])")"
+
+          # Deliberately no automatic retry: a timed-out tick must be reconciled
+          # from the durable order journal by the next scheduled invocation.
+          response="$(curl --fail --silent --show-error --max-time 240 \
+            -X POST "${WORKER_URL}" \
+            -H "Authorization: Bearer ${oidc_token}" \
+            -H "Content-Type: application/json" -d '{}')"
+
+          printf '%s\n' "$response" | python -c \
+            "import json,sys; result=json.load(sys.stdin); print(json.dumps(result, ensure_ascii=False)); sys.exit(0 if result.get('ok') is True else 1)"
