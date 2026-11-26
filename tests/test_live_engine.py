@@ -22,6 +22,9 @@ class LiveEngineTests(unittest.TestCase):
             patch.object(live_engine, "create_order_intent", side_effect=journal),
             patch.object(live_engine, "update_order_intent", side_effect=update),
             patch.object(live_engine, "submit_limit_order", side_effect=submit),
+            patch.object(live_engine, "query_order_by_txid", return_value={
+                "status": "closed", "vol_exec": "1", "cost": "8.4", "fee": "0.03"
+            }),
         ):
             result = live_engine.execute_journaled_limit_order(
                 pair="LINKEUR", side="buy", volume=Decimal("1"),
