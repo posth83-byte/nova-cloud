@@ -61,6 +61,8 @@ def main() -> int:
     while True:
         try:
             market = scan()
+            # Refresh the allowlist from the filtered live Kraken EUR spot universe.
+            broker.allowed_symbols = tuple(item["symbol"] for item in market["results"])
             actions = run_cycle(broker, market["results"])
             if store is not None:
                 store.save(broker.state)
