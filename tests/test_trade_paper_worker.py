@@ -88,6 +88,23 @@ class PaperWorkerTests(unittest.TestCase):
         ]
         self.assertFalse(worker._momentum_entry_signal(candles, after_timestamp=0))
 
+    def test_momentum_exit_detects_fresh_confirmed_downtrend(self):
+        candles = [
+            {"timestamp": 1_800_000_000 + i * 3600, "close": 20.0 - i * 0.12}
+            for i in range(45)
+        ]
+        self.assertTrue(worker._momentum_exit_signal(candles, after_timestamp=0))
+        self.assertFalse(worker._momentum_exit_signal(
+            candles, after_timestamp=candles[-1]["timestamp"]
+        ))
+
+    def test_momentum_exit_does_not_trigger_on_steady_uptrend(self):
+        candles = [
+            {"timestamp": 1_800_000_000 + i * 3600, "close": 10.0 + i * 0.03}
+            for i in range(45)
+        ]
+        self.assertFalse(worker._momentum_exit_signal(candles, after_timestamp=0))
+
     def test_worker_simulates_buy_on_new_closed_candle(self):
         saved = []
         with (
