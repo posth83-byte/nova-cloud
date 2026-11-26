@@ -33,7 +33,7 @@ AI is advisory. Deterministic code has final authority and can reject any propos
 - `paper_engine.py` is an offline, deterministic, long-only spot paper broker.
 - It supports one open position, allowlisted symbols, stop-based sizing, automatic stop-loss monitoring, a 1% maximum risk budget per trade and a 2% daily drawdown entry stop.
 - Entry/exit fees and configurable slippage are included in simulated fills and realized P&L.
-- Paper state is persisted atomically to a local JSON file; a restart reloads the same portfolio.
+- Paper state is persisted atomically to a local JSON file in file mode. `supabase_state.py` adds server-side persistence to the RLS-protected `jarvis_trading_state` table for scheduled runs; only the Supabase service role can access it.
 - Realized profit remains in the cash balance and can be reinvested; external funding is tracked separately.
 - The broker has no exchange client, no API credentials and no live-order path.
 - `paper_strategy.py` adds a transparent EMA-trend/RSI/volume baseline with automatic stop-loss and trend exits; it is for paper evaluation only, not a proven profitable strategy.
