@@ -7,7 +7,7 @@ retries an ambiguous exchange outcome.
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from decimal import Decimal, ROUND_DOWN, ROUND_HALF_UP
+from decimal import Decimal, ROUND_DOWN, ROUND_UP, ROUND_HALF_UP
 from typing import Any
 
 from trading.kraken_monitor import KrakenPublicAPIError, fetch_ohlc_candles, scan_markets
@@ -152,7 +152,13 @@ def _recover_unapplied(
     changed = False
     for row in rows:
         client_id = str(row["client_order_id"])
-        if row.get("status") not in {"closed", "rejected"}:
+        if row.get("status") == "prepared":
+            from trading.live_store import update_order_intent
+            update_order_intent(client_id, status="rejected", exchange_result={
+                "reason": "prepared_intent_never_submitted"
+            })
+            row = get_order_intent(client_id) or row
+        elif row.get("status") not in {"closed", "rejected"}:
             result = reconcile_order_intent(client_id)
             if result.get("status") not in {"closed", "rejected"}:
                 raise LiveWorkerError(
@@ -318,18 +324,20 @@ def run_live_tick() -> dict[str, Any]:
                 fee_rate = _d(risk["fee_rate"])
                 slippage = _d(risk["slippage_rate"])
                 ask = _d(market["ask"])
-                raw_qty = spend_budget / (ask * rate * (Decimal("1") + fee_rate + slippage))
+                price_decimals = int(market.get("price_decimals") or 8)
+                limit_price = ask.quantize(
+                    Decimal(1).scaleb(-price_decimals), rounding=ROUND_UP
+                )
+                raw_qty = spend_budget / (
+                    limit_price * rate * (Decimal("1") + fee_rate + slippage)
+                )
                 lot_decimals = int(market.get("lot_decimals") or 8)
                 qty = raw_qty.quantize(Decimal(1).scaleb(-lot_decimals), rounding=ROUND_DOWN)
                 min_qty = _d(market.get("min_order_qty") or 0)
                 min_cost = _d(market.get("min_cost_quote") or 0)
-                if qty <= ZERO or qty < min_qty or qty * ask < min_cost:
+                if qty <= ZERO or qty < min_qty or qty * limit_price < min_cost:
                     actions.append({"symbol": symbol, "result": "below_exchange_minimum"})
                     continue
-                price_decimals = int(market.get("price_decimals") or 8)
-                limit_price = ask.quantize(
-                    Decimal(1).scaleb(-price_decimals), rounding=ROUND_DOWN
-                )
             else:
                 qty = _d(position["quantity"])
                 actual_asset_balance = _d(balances.get(base_asset, "0"))
@@ -340,6 +348,8 @@ def run_live_tick() -> dict[str, Any]:
                 limit_price = bid.quantize(
                     Decimal(1).scaleb(-price_decimals), rounding=ROUND_DOWN
                 )
+                lot_decimals = int(market.get("lot_decimals") or 8)
+                qty = qty.quantize(Decimal(1).scaleb(-lot_decimals), rounding=ROUND_DOWN)
 
             result = execute_journaled_limit_order(
                 pair=pair, side=side, volume=qty, price=limit_price,
