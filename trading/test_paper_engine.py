@@ -83,6 +83,11 @@ class PaperBrokerTests(unittest.TestCase):
         with self.assertRaises(TradeRejected):
             eth.buy("ETH/EUR", 2700.0, 2646.0)
 
+    def test_exchange_minimum_amount_is_not_bypassed(self):
+        small = PaperBroker(self.path.parent / "amount-min.json", 500.0, minimum_notional=1.0)
+        with self.assertRaises(TradeRejected):
+            small.buy("BTC/EUR", 100.0, 95.0, minimum_amount=1.0)
+
     def test_minimum_notional_is_not_bypassed(self):
         strict = PaperBroker(self.path.parent / "strict.json", 500.0, minimum_notional=1000.0)
         with self.assertRaises(TradeRejected):
