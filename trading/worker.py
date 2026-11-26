@@ -22,6 +22,8 @@ from trading.strategy import StrategyDataError, fetch_eur_sek_rate
 
 
 MAX_WATCHLIST = 8
+MAX_OPEN_POSITIONS = 3
+MAX_TOTAL_EXPOSURE_PCT = 0.50
 MIN_TURNOVER_EUR = 10_000.0
 MAX_SPREAD_PCT = 0.35
 
@@ -148,6 +150,7 @@ def run_paper_tick() -> dict[str, Any]:
         processed = dict(worker_state.get("processed_candles") or {})
         actions = []
         evaluated = 0
+        entry_taken = False
 
         for symbol in sorted(watch_symbols):
             market = market_by_symbol.get(symbol)
@@ -178,12 +181,25 @@ def run_paper_tick() -> dict[str, Any]:
                 )
                 actions.append({"symbol": symbol, "side": "paper_sell", "candle": candle_time})
             elif not position and cross_up:
+                current_positions = state.get("positions", {})
+                current_equity = float(portfolio_snapshot(state, marks)["equity"])
+                current_exposure = sum(
+                    float(item["quantity"]) * float(marks[position_symbol])
+                    for position_symbol, item in current_positions.items()
+                )
+                if entry_taken or len(current_positions) >= MAX_OPEN_POSITIONS or (
+                    current_exposure + current_equity * float(risk["max_trade_pct"])
+                    > current_equity * MAX_TOTAL_EXPOSURE_PCT
+                ):
+                    actions.append({"symbol": symbol, "side": "rejected_portfolio_exposure"})
+                    continue
                 ask_eur = float(market["ask"])
                 ask_sek = Decimal(str(ask_eur)) * Decimal(str(rate))
                 fee = Decimal(str(risk["fee_rate"]))
                 slippage = Decimal(str(risk["slippage_rate"]))
+                current_trade_budget = current_equity * float(risk["max_trade_pct"])
                 budget = min(
-                    Decimal(str(trade_budget)),
+                    Decimal(str(current_trade_budget)),
                     Decimal(str(state["cash"])),
                 )
                 quantity = budget / (ask_sek * (Decimal("1") + slippage) * (Decimal("1") + fee))
@@ -197,6 +213,7 @@ def run_paper_tick() -> dict[str, Any]:
                     price_sek=ask_sek, timestamp=now, marks_sek=marks,
                 )
                 actions.append({"symbol": symbol, "side": "paper_buy", "candle": candle_time})
+                entry_taken = True
 
         worker_state.update({
             "status": "running",
