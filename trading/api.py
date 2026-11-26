@@ -369,8 +369,8 @@ async def live_status():
         "orders_enabled": False,
         "withdrawals_enabled": False,
         "max_authorized_budget_sek": 200.00,
-        "live_order_engine": "journaled_spot_execution_foundation",
-        "next_step": "Complete autonomous live worker and end-to-end fill accounting before activation.",
+        "live_order_engine": "guarded_autonomous_spot_worker",
+        "next_step": "Use the manual Trade AI workflow with arm_live=true to activate after account preflight.",
     }
 
 
@@ -380,7 +380,16 @@ async def live_start(
     authorization: str | None = Header(default=None),
 ):
     """Arm live trading only after server gate and fresh Kraken preflight pass."""
-    _manual_control_guard(x_trade_control_token, authorization)
+    if x_trade_control_token:
+        _control_guard(x_trade_control_token)
+    else:
+        _github_actions_guard(
+            authorization,
+            manual_start=True,
+            allowed_workflows={
+                "posth83-byte/nova-cloud/.github/workflows/trade-live-scheduler.yml@refs/heads/main"
+            },
+        )
     if os.getenv("TRADE_LIVE_ENABLED", "").strip().lower() != "true":
         raise HTTPException(
             status_code=409,
