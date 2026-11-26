@@ -1,0 +1,65 @@
+name: Trade AI Paper Scheduler
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+    inputs:
+      action:
+        description: "Start paper trading once, or run a single safe scan"
+        required: true
+        default: scan
+        type: choice
+        options:
+          - scan
+          - start-paper
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: trade-ai-paper-scheduler
+  cancel-in-progress: false
+
+jobs:
+  paper-tick:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Authenticate with GitHub OIDC and run paper worker
+        env:
+          WORKER_URL: https://nova-cloud-c4t9.onrender.com/api/trading/paper
+          START_PAPER: ${{ github.event_name == 'workflow_dispatch' && inputs.action == 'start-paper' }}
+          ACTIONS_ID_TOKEN_REQUEST_URL: ${{ env.ACTIONS_ID_TOKEN_REQUEST_URL }}
+          ACTIONS_ID_TOKEN_REQUEST_TOKEN: ${{ env.ACTIONS_ID_TOKEN_REQUEST_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -z "${ACTIONS_ID_TOKEN_REQUEST_URL:-}" || -z "${ACTIONS_ID_TOKEN_REQUEST_TOKEN:-}" ]]; then
+            echo "GitHub Actions OIDC is not available for this run."
+            exit 1
+          fi
+
+          oidc_response="$(curl --fail --silent --show-error --get "${ACTIONS_ID_TOKEN_REQUEST_URL}" \
+            --data-urlencode "audience=nova-cloud-trade-worker" \
+            -H "Authorization: Bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}")"
+          oidc_token="$(printf '%s' "$oidc_response" | python -c "import json,sys; print(json.load(sys.stdin)['value'])")"
+
+          post_and_check() {
+            local endpoint="$1"
+            local response
+            response="$(curl --fail --silent --show-error --retry 2 --retry-all-errors \
+              --retry-delay 20 --max-time 240 -X POST "${WORKER_URL}${endpoint}" \
+              -H "Authorization: Bearer ${oidc_token}" \
+              -H "Content-Type: application/json" -d '{}')"
+            printf '%s\n' "$response" | python -c \
+              "import json,sys; result=json.load(sys.stdin); print(json.dumps(result, ensure_ascii=False)); sys.exit(0 if result.get('ok') is True else 1)"
+          }
+
+          if [[ "$START_PAPER" == "true" ]]; then
+            echo "Enabling simulation-only paper trading."
+            post_and_check "/start"
+          fi
+
+          post_and_check "/worker-tick"
