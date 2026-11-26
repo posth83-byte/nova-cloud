@@ -28,8 +28,9 @@ def main() -> int:
     try:
         with urllib.request.urlopen(request, timeout=100) as response:
             payload = response.read().decode("utf-8")
-            print(json.dumps(json.loads(payload), ensure_ascii=False))
-            return 0
+            result = json.loads(payload)
+            print(json.dumps(result, ensure_ascii=False))
+            return 0 if result.get("ok") is True else 1
     except urllib.error.HTTPError as error:
         # Never print request headers or environment values.
         print(f"Trade worker returned HTTP {error.code}.")
