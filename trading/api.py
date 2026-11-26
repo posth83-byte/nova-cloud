@@ -89,11 +89,16 @@ def _github_actions_guard(
         raise HTTPException(status_code=403, detail="Den här schemaläggningshändelsen är inte tillåten.")
 
 
-def _manual_control_guard(token: str | None, authorization: str | None):
+def _manual_control_guard(
+    token: str | None, authorization: str | None,
+    allowed_workflows: set[str] | None = None,
+):
     if token:
         _control_guard(token)
     else:
-        _github_actions_guard(authorization, manual_start=True)
+        _github_actions_guard(
+            authorization, manual_start=True, allowed_workflows=allowed_workflows
+        )
 
 
 def _load():
@@ -380,16 +385,13 @@ async def live_start(
     authorization: str | None = Header(default=None),
 ):
     """Arm live trading only after server gate and fresh Kraken preflight pass."""
-    if x_trade_control_token:
-        _control_guard(x_trade_control_token)
-    else:
-        _github_actions_guard(
-            authorization,
-            manual_start=True,
-            allowed_workflows={
-                "posth83-byte/nova-cloud/.github/workflows/trade-live-scheduler.yml@refs/heads/main"
-            },
-        )
+    _manual_control_guard(
+        x_trade_control_token,
+        authorization,
+        allowed_workflows={
+            "posth83-byte/nova-cloud/.github/workflows/trade-live-scheduler.yml@refs/heads/main"
+        },
+    )
     if os.getenv("TRADE_LIVE_ENABLED", "").strip().lower() != "true":
         raise HTTPException(
             status_code=409,
