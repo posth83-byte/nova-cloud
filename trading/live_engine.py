@@ -14,6 +14,7 @@ from trading.kraken_private import (
     KrakenPrivateAPIError,
     lookup_order_by_client_id,
     submit_limit_order,
+    query_order_by_txid,
 )
 from trading.live_store import (
     LiveStoreError,
@@ -62,16 +63,57 @@ def execute_journaled_limit_order(
         raise LiveExecutionError(
             "Orderutfallet är osäkert. Ordern får endast stämmas av, aldrig skickas om."
         ) from exc
+    txid = str(result["txid"])
+    try:
+        order = query_order_by_txid(txid)
+    except KrakenPrivateAPIError as exc:
+        update_order_intent(
+            client_order_id, status="unknown", txid=txid,
+            exchange_result={"accepted_response": True, "reconciliation": "unavailable"},
+        )
+        raise LiveExecutionError(
+            "Kraken tog emot orderreferensen men fill-status kunde inte verifieras. Ingen ny order skickas."
+        ) from exc
+    if order is None:
+        update_order_intent(
+            client_order_id, status="unknown", txid=txid,
+            exchange_result={"accepted_response": True, "reconciliation": "not_yet_visible"},
+        )
+        return {
+            "accepted": True, "status": "unknown",
+            "client_order_id": client_order_id, "txid": txid,
+            "pair": pair, "side": side, "resubmit": False,
+        }
+    order_status = str(order.get("status") or "").lower()
+    if order_status not in {"closed", "canceled", "expired"}:
+        update_order_intent(
+            client_order_id, status="unknown", txid=txid,
+            exchange_result={"status": order_status, "reconciliation": "not_final"},
+        )
+        return {
+            "accepted": True, "status": "unknown",
+            "client_order_id": client_order_id, "txid": txid,
+            "pair": pair, "side": side, "resubmit": False,
+        }
     update_order_intent(
-        client_order_id, status="accepted", txid=result["txid"],
-        exchange_result={"accepted": True, "mode": "live_spot"},
+        client_order_id, status="closed", txid=txid,
+        exchange_result={
+            "status": order_status,
+            "vol_exec": str(order.get("vol_exec") or "0"),
+            "cost": str(order.get("cost") or "0"),
+            "fee": str(order.get("fee") or "0"),
+        },
     )
     return {
         "accepted": True,
+        "status": "closed",
         "client_order_id": client_order_id,
-        "txid": result["txid"],
+        "txid": txid,
         "pair": pair,
         "side": side,
+        "vol_exec": str(order.get("vol_exec") or "0"),
+        "cost": str(order.get("cost") or "0"),
+        "fee": str(order.get("fee") or "0"),
         "mode": "live_spot",
     }
 
@@ -84,7 +126,10 @@ def reconcile_order_intent(client_order_id: str) -> dict[str, Any]:
     if intent.get("status") in {"closed", "reconciled", "rejected"}:
         return {"status": intent["status"], "client_order_id": client_order_id}
     try:
-        order = lookup_order_by_client_id(client_order_id)
+        if intent.get("txid"):
+            order = query_order_by_txid(str(intent["txid"]))
+        else:
+            order = lookup_order_by_client_id(client_order_id)
     except KrakenPrivateAPIError as exc:
         raise LiveExecutionError(
             "Kraken kunde inte stämma av ordern. Ingen ny order skickas."
