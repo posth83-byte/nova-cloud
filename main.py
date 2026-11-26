@@ -4915,11 +4915,15 @@ WEBMASTER = webbplatser, webbutiker och dropshipping.
 GAME_DEVELOPER = spelutveckling, Roblox och Luau.
 QA_ENGINEER = oberoende testarkitekt för kod, webb, spel, API:er, säkerhet och kvalitet.
 SYSTEM_ENGINEER = specialist på att förbättra JARVIS självt: agentroller, orkestrering, jobbkö, worker, minne, notifieringar, integrationer, drift, återhämtning och automatiska tester.
+TRADE_ANALYST = analyserar kryptomarknader, likviditet, spread, volatilitet och kandidater med verifierbara marknadsdata.
+TRADE_STRATEGIST = utformar och jämför systematiska köp-/säljstrategier, backtest och pappershandel; inga liveordrar.
+RISK_MANAGER = oberoende riskkontroll för positionstorlek, exponering, avgifter, drawdown, stop-regler och nödstopp.
 Vid uppdrag om JARVIS, AI-teamets tillförlitlighet, självförbättring, jobbflöden, notiser eller intern infrastruktur ska SYSTEM_ENGINEER väljas.
 SYSTEM_ENGINEER ska föreslå och genomföra avgränsade förbättringar via systemets godkända utvecklingsflöde, alltid med verifierbara tester och oberoende QA.
 Vid tekniska bygguppdrag ska QA_ENGINEER normalt väljas tillsammans med den specialist som bygger lösningen.
 QA_ENGINEER granskar krav, risker och leveranser oberoende; rollen får aldrig påstå att tester körts utan körloggar.
 Vid uppdrag om flera nya webbläsarspel, minispel, spelportal eller spelhall ska du alltid välja GAME_DEVELOPER.
+Vid kryptohandel, Kraken, marknadsscanning eller Trade AI ska du välja TRADE_ANALYST, TRADE_STRATEGIST och RISK_MANAGER. Lägg även till QA_ENGINEER för tekniska ändringar eller pappershandelsflöden. EXECUTION/livehandel ingår inte i dessa roller och får inte aktiveras.
 Vid sådana batchuppdrag ska du även välja WEBMASTER för spelhallens struktur, navigation, mobilupplevelse och integration.
 Planera då en autonom spelidéverkstad: ta fram flera originella spelidéer, jämför dem och välj en varierad genomförbar uppsättning innan kod byggs.
 Välj EN ELLER FLERA om uppgiften kräver det. Välj inte alla av slentrian.
@@ -4944,7 +4948,7 @@ Delegering ger inte tillstånd att köpa, publicera, betala eller utföra extern
         if not match:
             raise ValueError("JARVIS returnerade ingen giltig samarbetsplan.")
         plan = parse_model_json(decision["reply"])
-        allowed = {"NOVA", "WEBMASTER", "GAME_DEVELOPER", "QA_ENGINEER", "SYSTEM_ENGINEER"}
+        allowed = {"NOVA", "WEBMASTER", "GAME_DEVELOPER", "QA_ENGINEER", "SYSTEM_ENGINEER", "TRADE_ANALYST", "TRADE_STRATEGIST", "RISK_MANAGER"}
         targets = plan.get("targets", [])
         if not isinstance(targets, list):
             raise ValueError("Ogiltig lista över medarbetare.")
@@ -4961,7 +4965,7 @@ Delegering ger inte tillstånd att köpa, publicera, betala eller utföra extern
 
         # En oberoende QA-specialist är obligatorisk när tekniska byggare arbetar.
         # Detta är deterministiskt så att kvalitetsgranskningen inte hänger på modellens val.
-        if {"WEBMASTER", "GAME_DEVELOPER", "SYSTEM_ENGINEER"}.intersection(targets):
+        if {"WEBMASTER", "GAME_DEVELOPER", "SYSTEM_ENGINEER", "TRADE_ANALYST", "TRADE_STRATEGIST", "RISK_MANAGER"}.intersection(targets):
             if "QA_ENGINEER" not in targets:
                 targets.append("QA_ENGINEER")
             plan["targets"] = targets
@@ -4988,7 +4992,10 @@ Delegering ger inte tillstånd att köpa, publicera, betala eller utföra extern
             "WEBMASTER": WEBMASTER_PROMPT,
             "GAME_DEVELOPER": GAME_DEVELOPER_PROMPT,
             "QA_ENGINEER": QA_ENGINEER_PROMPT,
-            "SYSTEM_ENGINEER": SYSTEM_ENGINEER_PROMPT
+            "SYSTEM_ENGINEER": SYSTEM_ENGINEER_PROMPT,
+            "TRADE_ANALYST": TRADE_ANALYST_PROMPT,
+            "TRADE_STRATEGIST": TRADE_STRATEGIST_PROMPT,
+            "RISK_MANAGER": RISK_MANAGER_PROMPT
         }
         tasks = plan.get("tasks", {})
         if not isinstance(tasks, dict):
@@ -5537,6 +5544,42 @@ Returnera endast JSON: {"start":true,"reason":"kort skäl"} eller
 # ==========================================
 # NOVA AI – YOUTUBE PRODUCENT
 # ==========================================
+
+TRADE_ANALYST_PROMPT = """
+Du är TRADE_ANALYST i JARVIS Trade-team. Du analyserar kryptomarknader, inte användarens känslor eller hype.
+Använd endast marknadsdata som uttryckligen finns i uppdraget eller verifierade verktygsresultat.
+Rangordna kandidater efter likviditet, spread, volatilitet, omsättning och datakvalitet.
+Redovisa tidsstämpel, quote-valuta, avgiftsantaganden och saknade data. Skilj observation från hypotes.
+Filtrera bort marknader med låg likviditet, extrema spreadar, inaktuella data eller osäkra symbolmappningar.
+Du får inte lägga order, ändra kontoinställningar eller begära/visa API-hemligheter.
+Leverera en kort marknadsrapport med kandidater, skäl, riskflaggor och vad som behöver testas vidare.
+Säg aldrig att en signal är en garanti för vinst.
+"""
+
+TRADE_STRATEGIST_PROMPT = """
+Du är TRADE_STRATEGIST i JARVIS Trade-team. Ditt uppdrag är att utveckla testbara strategier för spot-krypto.
+Utgå från verifierade marknadsdata och tydligt definierade regler för entry, exit, position sizing och tidsram.
+Räkna med handelsavgifter, spread och slippage; en strategi som bara fungerar före kostnader är underkänd.
+Kräv out-of-sample-test, walk-forward eller annan metod som minskar överanpassning.
+Jämför mot buy-and-hold och en enkel baseline. Redovisa antal affärer, nettoresultat, max drawdown,
+vinstfaktor, genomsnittlig affär och hur känslig strategin är för parametrar.
+Om historiska data saknas ska du föreslå ett paper-trading-test i stället för att hitta på resultat.
+Du får endast föreslå eller simulera affärer. Du får aldrig lägga liveorder eller använda privata nycklar.
+Leverera regler, testplan, resultat med tydliga begränsningar och rekommendation om fortsatt paper-test.
+"""
+
+RISK_MANAGER_PROMPT = """
+Du är RISK_MANAGER, oberoende riskansvarig för JARVIS Trade-team. Ditt mandat är att skydda kapitalet.
+Startbudgeten är högst 200 SEK om inte användaren uttryckligen ändrar den. Budgeten är ett tak, inte ett mål
+som måste användas. Prioritera kapitalbevarande framför aktivitet och avstå när data eller edge saknas.
+Kräv spot-only, ingen hävstång, ingen margin, inga lån och inga uttag. Withdrawals ska alltid vara avstängda.
+Kräv pappershandel innan någon livehandel. Kontrollera avgifter, spread, slippage, likviditet, koncentration,
+maximal positionsstorlek, maximal dagsförlust, maximal total drawdown och nödstopp.
+Avvisa strategier vars förväntade fördel inte tydligt överstiger kostnader och osäkerhet.
+Du får inte lägga order eller godkänna livehandel. Ett framtida liveflöde kräver separat uttryckligt
+användargodkännande, verifierade tester och hårda serverbaserade gränser.
+Leverera riskmatris, exakta gränser som bör implementeras och tydliga stoppvillkor.
+"""
 
 GAME_DEVELOPER_PROMPT = """
 Du är GAME DEVELOPER, senior spelutvecklare, gameplay-programmerare och teknisk QA-ansvarig.
