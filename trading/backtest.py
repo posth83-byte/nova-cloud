@@ -370,7 +370,7 @@ def main() -> int:
     )
     parser.add_argument(
         "--test-window", type=int, default=168,
-        help="Number of hourly candles per out-of-sample fold (default: 168)",
+        help="Number of candles per out-of-sample fold (default: 168)",
     )
     args = parser.parse_args()
     candles = json.loads(Path(args.input).read_text(encoding="utf-8"))
