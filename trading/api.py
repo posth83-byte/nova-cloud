@@ -15,6 +15,7 @@ from trading.paper_engine import (
 from trading.paper_store import PaperStoreError, load_or_create, save_state
 from trading.backtest import run_sma_backtest
 from trading.strategy import StrategyDataError, build_strategy_preview, fetch_eur_sek_rate
+from trading.worker import run_paper_tick
 
 router = APIRouter(prefix="/api/trading", tags=["trading"])
 
@@ -129,6 +130,19 @@ async def paper_emergency_stop(
     updated = activate_emergency_stop(state, reason)
     next_revision = _save(updated, revision)
     return {"ok": True, "paper_enabled": False, "emergency_stop": True, "revision": next_revision, "orders_enabled": False}
+
+
+@router.post("/paper/worker-tick")
+async def paper_worker_tick(x_trade_control_token: str | None = Header(default=None)):
+    """Authenticated scheduler hook; only advances the simulation-only ledger."""
+    _control_guard(x_trade_control_token)
+    try:
+        return run_paper_tick()
+    except PaperStoreError as exc:
+        raise HTTPException(status_code=503, detail="Trade AI kunde inte läsa eller spara pappersjournalen.") from exc
+    except Exception as exc:
+        # Keep internal details out of the public response and never log secrets.
+        raise HTTPException(status_code=503, detail="Trade AI:s schemalagda körning misslyckades säkert.") from exc
 
 
 @router.get("/paper/strategy-preview")
