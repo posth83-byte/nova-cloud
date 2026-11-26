@@ -33,6 +33,23 @@ class LiveEngineTests(unittest.TestCase):
         self.assertEqual(order, ["journal", "state:submitting", "exchange", "state:closed"])
         self.assertEqual(result["txid"], "ORDER1")
 
+    def test_fill_is_not_booked_when_kraken_does_not_confirm_quote_fee_flag(self):
+        with (
+            patch.object(live_engine, "create_order_intent"),
+            patch.object(live_engine, "update_order_intent") as update,
+            patch.object(live_engine, "submit_limit_order", return_value={"txid": "ORDER1"}),
+            patch.object(live_engine, "query_order_by_txid", return_value={
+                "status": "closed", "vol_exec": "1", "cost": "8.4",
+                "fee": "0.03", "oflags": "fcib",
+            }),
+            self.assertRaisesRegex(live_engine.LiveExecutionError, "avgift i EUR"),
+        ):
+            live_engine.execute_journaled_limit_order(
+                pair="LINKEUR", side="buy", volume=Decimal("1"),
+                price=Decimal("8.4"), pair_symbol="LINK/EUR", base_asset="LINK",
+            )
+        self.assertEqual(update.call_args.kwargs["status"], "unknown")
+
     def test_exchange_timeout_is_marked_unknown_and_never_retried(self):
         order = []
         def update(*args, **kwargs):
