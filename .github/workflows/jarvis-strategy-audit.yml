@@ -44,10 +44,12 @@ jobs:
               print(f"{key}_min_size={amount_min}")
               print(f"{key}_min_cost={cost_min}")
           PY
-      - name: Download latest 30 days of Kraken BTC/EUR and ETH/EUR hourly candles
+      - name: Download 30 days of hourly and 120 days of 4-hour Kraken candles
         run: |
-          python trading/download_history.py --symbol BTC/EUR --timeframe 1h --days 30 --output /tmp/btc-eur.json
-          python trading/download_history.py --symbol ETH/EUR --timeframe 1h --days 180 --output /tmp/eth-eur.json
+          python trading/download_history.py --symbol BTC/EUR --timeframe 1h --days 30 --output /tmp/btc-1h.json
+          python trading/download_history.py --symbol ETH/EUR --timeframe 1h --days 30 --output /tmp/eth-1h.json
+          python trading/download_history.py --symbol BTC/EUR --timeframe 4h --days 120 --output /tmp/btc-4h.json
+          python trading/download_history.py --symbol ETH/EUR --timeframe 4h --days 120 --output /tmp/eth-4h.json
       - name: Compare 2.0% and 1.8% stops with pair-specific minimum volumes and taker costs
         run: |
           for symbol in btc eth; do
@@ -82,19 +84,19 @@ jobs:
               for timeframe in ("1h", "4h"):
                   for stop in ("2.0", "1.8"):
                       path = Path(f"/tmp/{symbol}-{timeframe}-stop-{stop}.json")
-                  data = json.loads(path.read_text())
-                  print(json.dumps({
-                      "symbol": symbol.upper() + "/EUR",
-                      "timeframe": timeframe,
-                      "stop_distance_pct": stop,
-                      "starting_cash_eur": data["starting_cash"],
-                      "ending_cash_eur": data["ending_cash"],
-                      "net_return_pct": data["net_return_pct"],
-                      "closed_trades": data["closed_trades"],
-                      "minimum_notional_skips": data["minimum_notional_skips"],
-                      "max_drawdown_pct": data["worst_fold_drawdown_pct"],
-                      "buy_and_hold_return_pct": data["buy_and_hold_return_pct"],
-                      "strategy_vs_buy_and_hold_pct_points": data["strategy_vs_buy_and_hold_pct_points"],
-                      "fold_count": data["fold_count"],
-                  }, ensure_ascii=False))
+                      data = json.loads(path.read_text())
+                      print(json.dumps({
+                          "symbol": symbol.upper() + "/EUR",
+                          "timeframe": timeframe,
+                          "stop_distance_pct": stop,
+                          "starting_cash_eur": data["starting_cash"],
+                          "ending_cash_eur": data["ending_cash"],
+                          "net_return_pct": data["net_return_pct"],
+                          "closed_trades": data["closed_trades"],
+                          "minimum_notional_skips": data["minimum_notional_skips"],
+                          "max_drawdown_pct": data["worst_fold_drawdown_pct"],
+                          "buy_and_hold_return_pct": data["buy_and_hold_return_pct"],
+                          "strategy_vs_buy_and_hold_pct_points": data["strategy_vs_buy_and_hold_pct_points"],
+                          "fold_count": data["fold_count"],
+                      }, ensure_ascii=False))
           PY
