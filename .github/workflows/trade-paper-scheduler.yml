@@ -13,6 +13,8 @@ on:
         options:
           - scan
           - start-paper
+          - pause-paper
+          - emergency-stop
 
 permissions:
   contents: read
@@ -30,7 +32,7 @@ jobs:
       - name: Authenticate with GitHub OIDC and run paper worker
         env:
           WORKER_URL: https://nova-cloud-c4t9.onrender.com/api/trading/paper
-          START_PAPER: ${{ github.event_name == 'workflow_dispatch' && inputs.action == 'start-paper' }}
+          ACTION: ${{ github.event_name == 'workflow_dispatch' && inputs.action || 'scan' }}
         shell: bash
         run: |
           set -euo pipefail
@@ -55,9 +57,25 @@ jobs:
               "import json,sys; result=json.load(sys.stdin); print(json.dumps(result, ensure_ascii=False)); sys.exit(0 if result.get('ok') is True else 1)"
           }
 
-          if [[ "$START_PAPER" == "true" ]]; then
-            echo "Enabling simulation-only paper trading."
-            post_and_check "/start"
-          fi
+          case "$ACTION" in
+            start-paper)
+              echo "Enabling simulation-only paper trading."
+              post_and_check "/start"
+              ;;
+            pause-paper)
+              echo "Pausing simulation-only paper trading."
+              post_and_check "/pause"
+              ;;
+            emergency-stop)
+              echo "Activating the paper-trading emergency stop."
+              post_and_check "/emergency-stop"
+              ;;
+            scan)
+              ;;
+            *)
+              echo "Unknown Trade AI scheduler action."
+              exit 2
+              ;;
+          esac
 
           post_and_check "/worker-tick"
