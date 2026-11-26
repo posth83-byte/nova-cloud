@@ -1,7 +1,7 @@
 """Deterministic, ranked strategy for paper-only evaluation."""
 from __future__ import annotations
 from typing import Any
-from paper_engine import PaperBroker
+from paper_engine import PaperBroker, TradeRejected
 
 STRATEGY_NAME="ranked_eur_spot_trend_rsi_volume_v2"
 STOP_DISTANCE_PCT=2.0
@@ -35,9 +35,19 @@ def run_cycle(broker: PaperBroker, market_results: list[dict[str,Any]]) -> list[
             if item.get("trend")=="bullish" and rv is not None and ENTRY_RSI_MIN<=float(rv)<=ENTRY_RSI_MAX and vr is not None and float(vr)>=MIN_VOLUME_RATIO:
                 price=prices.get(symbol)
                 if price is None: continue
-                fill=broker.buy(symbol,price,price*(1.0-STOP_DISTANCE_PCT/100.0),prices=prices,minimum_amount=item.get("minimum_order_amount"))
-                actions.append({"strategy":STRATEGY_NAME,"opportunity_score":item.get("opportunity_score"),**fill})
-                break
+                try:
+                    fill = broker.buy(
+                        symbol, price, price * (1.0 - STOP_DISTANCE_PCT / 100.0),
+                        prices=prices,
+                        minimum_amount=item.get("minimum_order_amount"),
+                        minimum_notional=item.get("minimum_order_cost_eur"),
+                    )
+                    actions.append({"strategy": STRATEGY_NAME, "opportunity_score": item.get("opportunity_score"), **fill})
+                    break
+                except TradeRejected as exc:
+                    actions.append({"event": "entry_skipped", "symbol": symbol, "reason": str(exc),
+                                    "opportunity_score": item.get("opportunity_score")})
+                    continue
     for symbol,item in by_symbol.items():
         if item.get("last_candle_timestamp") is not None: processed[symbol]=int(item["last_candle_timestamp"])
     broker._save()
