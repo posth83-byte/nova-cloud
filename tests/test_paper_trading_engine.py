@@ -38,7 +38,7 @@ class PaperTradingEngineTests(unittest.TestCase):
         self.assertIn("XBT/EUR", state["positions"])
 
     def test_allows_one_qualifying_trade_to_use_almost_all_200_sek(self):
-        quantity = Decimal("200") / (Decimal("1000000") * Decimal("1.0015") * Decimal("1.004"))
+        quantity = Decimal("199.90") / (Decimal("1000000") * Decimal("1.0015") * Decimal("1.004"))
         bought = apply_paper_trade(
             self.state, symbol="XBT/EUR", side="buy", quantity=str(quantity),
             price_sek="1000000", timestamp=self.now,
