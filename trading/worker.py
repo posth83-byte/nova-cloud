@@ -19,9 +19,10 @@ from trading.paper_engine import (
 from trading.paper_store import load_or_create, save_state
 from trading.paper_engine import create_initial_state
 from trading.strategy import StrategyDataError, fetch_eur_sek_rate
+from trading.opportunity_radar import rank_opportunities
 
 
-MAX_WATCHLIST = 16
+MAX_WATCHLIST = 40
 MAX_OPEN_POSITIONS = 3
 MAX_TOTAL_EXPOSURE_PCT = 1.00
 MIN_TURNOVER_EUR = 10_000.0
@@ -132,12 +133,49 @@ def _momentum_entry_signal(
     distance_from_fast = ((last / fast) - 1.0) * 100.0 if fast > 0 else 999.0
 
     return (
-        fast > slow * 1.001
+        fast > slow * 1.0005
         and last > fast
-        and 50.0 <= rsi <= 68.0
-        and 0.25 <= momentum_3 <= 3.5
-        and 0.0 <= distance_from_fast <= 2.0
+        and 48.0 <= rsi <= 72.0
+        and 0.15 <= momentum_3 <= 4.5
+        and 0.0 <= distance_from_fast <= 2.5
     )
+
+
+def _momentum_exit_signal(
+    candles: list[dict[str, Any]],
+    *,
+    after_timestamp: int = 0,
+) -> bool:
+    """Exit a held position on confirmed trend deterioration, using closed candles only."""
+    clean = []
+    for row in candles:
+        try:
+            timestamp, close = int(row["timestamp"]), float(row["close"])
+        except (KeyError, TypeError, ValueError, OverflowError):
+            continue
+        if timestamp > 0 and close > 0:
+            clean.append((timestamp, close))
+    clean.sort(key=lambda item: item[0])
+    dedup = {timestamp: close for timestamp, close in clean}
+    clean = [(timestamp, dedup[timestamp]) for timestamp in sorted(dedup)]
+    if len(clean) < 37 or clean[-1][0] <= int(after_timestamp or 0):
+        return False
+
+    closes = [close for _, close in clean]
+    def ema(values: list[float], period: int) -> float:
+        alpha = 2.0 / (period + 1.0)
+        value = sum(values[:period]) / period
+        for price in values[period:]:
+            value = alpha * price + (1.0 - alpha) * value
+        return value
+
+    changes = [closes[index] - closes[index - 1] for index in range(len(closes) - 14, len(closes))]
+    gains = sum(max(change, 0.0) for change in changes) / 14.0
+    losses = sum(max(-change, 0.0) for change in changes) / 14.0
+    rsi = 0.0 if losses <= 0 else 100.0 - (100.0 / (1.0 + gains / losses))
+    fast, slow, last = ema(closes, 12), ema(closes, 36), closes[-1]
+    momentum_3 = ((last / closes[-4]) - 1.0) * 100.0
+    return (last < fast and fast < slow and momentum_3 <= -0.5) or (rsi <= 42.0 and momentum_3 <= -0.75)
 
 
 def _select_watchlist(
@@ -188,7 +226,7 @@ def run_paper_tick() -> dict[str, Any]:
         fx = fetch_eur_sek_rate()
         rate = float(fx["rate"])
         market_data = scan_markets(
-            quote="EUR", limit=50, include_symbols=list(state.get("positions", {}).keys())
+            quote="EUR", limit=100, include_symbols=list(state.get("positions", {}).keys())
         )
         markets = market_data.get("markets", [])
         market_by_symbol = {str(row.get("symbol", "")).upper(): row for row in markets}
@@ -265,7 +303,13 @@ def run_paper_tick() -> dict[str, Any]:
                 continue
             candidates.append(row)
 
+        radar = rank_opportunities(
+            candidates, equity_sek=max(trade_budget, 0.01), eur_sek=rate,
+            limit=max(1, len(candidates)),
+        ) if candidates else {"candidates": []}
+        radar_scores = {row["symbol"]: float(row["score"]) for row in radar["candidates"]}
         candidates.sort(key=lambda row: (
+            -radar_scores.get(str(row.get("symbol", "")).upper(), 0.0),
             float(row.get("spread_pct") or 99),
             -float(row.get("volume_24h_quote_est") or 0),
         ))
@@ -302,7 +346,7 @@ def run_paper_tick() -> dict[str, Any]:
             )
             position = state.get("positions", {}).get(symbol)
 
-            if position and cross_down:
+            if position and (cross_down or _momentum_exit_signal(candles, after_timestamp=last_processed)):
                 quantity = str(position["quantity"])
                 state = apply_paper_trade(
                     state, symbol=symbol, side="sell", quantity=quantity,

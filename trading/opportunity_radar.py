@@ -52,7 +52,7 @@ def rank_opportunities(
         minimum_eur = max(min_cost, min_qty * ask)
         minimum_sek = minimum_eur * eur_sek
         if minimum_sek * cost_factor > max_budget_sek:
-            rejected.append({"symbol": symbol, "reason": "minimum_order_exceeds_200_sek"})
+            rejected.append({"symbol": symbol, "reason": "minimum_order_exceeds_available_budget"})
             continue
 
         range_pct = ((high - low) / last) * 100.0

@@ -99,8 +99,8 @@ def scan_markets(
     quote = quote.upper()
     if quote not in {"EUR", "USD"}:
         raise ValueError("quote must be EUR or USD")
-    if not 1 <= limit <= 50:
-        raise ValueError("limit must be between 1 and 50")
+    if not 1 <= limit <= 100:
+        raise ValueError("limit must be between 1 and 100")
     pairs = _public_get("AssetPairs")
     tickers = _public_get("Ticker")
     rows = build_market_rows(pairs, tickers, quote=quote)

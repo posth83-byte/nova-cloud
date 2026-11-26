@@ -88,6 +88,23 @@ class PaperWorkerTests(unittest.TestCase):
         ]
         self.assertFalse(worker._momentum_entry_signal(candles, after_timestamp=0))
 
+    def test_momentum_exit_detects_fresh_confirmed_downtrend(self):
+        candles = [
+            {"timestamp": 1_800_000_000 + i * 3600, "close": 20.0 - i * 0.12}
+            for i in range(45)
+        ]
+        self.assertTrue(worker._momentum_exit_signal(candles, after_timestamp=0))
+        self.assertFalse(worker._momentum_exit_signal(
+            candles, after_timestamp=candles[-1]["timestamp"]
+        ))
+
+    def test_momentum_exit_does_not_trigger_on_steady_uptrend(self):
+        candles = [
+            {"timestamp": 1_800_000_000 + i * 3600, "close": 10.0 + i * 0.03}
+            for i in range(45)
+        ]
+        self.assertFalse(worker._momentum_exit_signal(candles, after_timestamp=0))
+
     def test_worker_simulates_buy_on_new_closed_candle(self):
         saved = []
         with (
@@ -125,17 +142,17 @@ class PaperWorkerTests(unittest.TestCase):
         self.assertEqual(saved[0]["positions"], {})
 
     def test_watchlist_rotates_through_all_eligible_markets(self):
-        candidates = [{"symbol": f"COIN{i}/EUR"} for i in range(20)]
+        candidates = [{"symbol": f"COIN{i}/EUR"} for i in range(50)]
         first_batch, cursor = worker._select_watchlist(candidates, {}, 0)
         second_batch, cursor = worker._select_watchlist(candidates, {}, cursor)
 
         self.assertEqual(len(first_batch), worker.MAX_WATCHLIST)
-        self.assertEqual(len(second_batch), 20 - worker.MAX_WATCHLIST)
+        self.assertEqual(len(second_batch), 50 - worker.MAX_WATCHLIST)
         self.assertEqual(first_batch | second_batch, {row["symbol"] for row in candidates})
         self.assertEqual(cursor, 0)
 
     def test_watchlist_always_includes_existing_positions(self):
-        candidates = [{"symbol": f"COIN{i}/EUR"} for i in range(20)]
+        candidates = [{"symbol": f"COIN{i}/EUR"} for i in range(50)]
         selected, _cursor = worker._select_watchlist(candidates, {"XBT/EUR": {}}, 0)
         self.assertIn("XBT/EUR", selected)
 

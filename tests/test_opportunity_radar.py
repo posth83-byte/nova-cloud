@@ -34,7 +34,7 @@ class OpportunityRadarTests(unittest.TestCase):
         market["min_order_qty"] = 1
         result = rank_opportunities([market], equity_sek=200, eur_sek=11.2)
         self.assertEqual(result["eligible_count"], 0)
-        self.assertEqual(result["rejected_sample"][0]["reason"], "minimum_order_exceeds_200_sek")
+        self.assertEqual(result["rejected_sample"][0]["reason"], "minimum_order_exceeds_available_budget")
 
     def test_rejects_invalid_input(self):
         with self.assertRaises(ValueError):

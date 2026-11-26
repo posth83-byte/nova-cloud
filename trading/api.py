@@ -301,7 +301,7 @@ async def paper_backtest(
     try:
         state, _revision = _load()
         history = fetch_ohlc_candles(pair, interval=60)
-        markets = scan_markets(quote="EUR", limit=50).get("markets", [])
+        markets = scan_markets(quote="EUR", limit=100).get("markets", [])
         current_market = next(
             (row for row in markets if row.get("symbol", "").upper() == pair.upper()),
             None,
@@ -403,13 +403,13 @@ async def live_dashboard(
             })
         eur_balance = Decimal(str(account["eur_balance"]))
         available_eur_sek = (eur_balance * rate).quantize(Decimal("0.01"))
-        markets = scan_markets(quote="EUR", limit=50).get("markets", [])
+        markets = scan_markets(quote="EUR", limit=100).get("markets", [])
         radar = (
             rank_opportunities(
                 markets,
                 equity_sek=float(available_eur_sek),
                 eur_sek=float(rate),
-                limit=8,
+                limit=15,
             )
             if available_eur_sek > 0
             else {"candidates": []}
@@ -657,7 +657,7 @@ async def live_validate_order(
                 status_code=409,
                 detail="Det finns redan öppna Kraken-order. De måste granskas innan ordervalidering.",
             )
-        markets = scan_markets(quote="EUR", limit=50).get("markets", [])
+        markets = scan_markets(quote="EUR", limit=100).get("markets", [])
         radar = rank_opportunities(
             markets,
             equity_sek=float(account["eur_balance"]) * float(rate),
@@ -716,7 +716,7 @@ async def live_validate_order(
             return validation
         raise HTTPException(
             status_code=409,
-            detail="Ingen bevakad EUR-marknad klarar Krakens minsta orderkrav inom 200 kr.",
+            detail="Ingen bevakad EUR-marknad klarar Krakens minsta orderkrav inom tillgängligt EUR-saldo.",
         )
     except HTTPException:
         raise
