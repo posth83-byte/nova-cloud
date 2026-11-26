@@ -23,7 +23,7 @@ from trading.strategy import StrategyDataError, fetch_eur_sek_rate
 
 MAX_WATCHLIST = 8
 MAX_OPEN_POSITIONS = 3
-MAX_TOTAL_EXPOSURE_PCT = 0.50
+MAX_TOTAL_EXPOSURE_PCT = 1.00
 MIN_TURNOVER_EUR = 10_000.0
 MAX_SPREAD_PCT = 0.35
 
@@ -91,6 +91,11 @@ def run_paper_tick() -> dict[str, Any]:
 
         equity = float(portfolio_snapshot(state, marks)["equity"])
         risk = state["risk"]
+        # User-approved paper policy: a qualifying setup may use all available
+        # paper equity; legacy 10%/25% caps are upgraded in the persisted state.
+        risk["max_trade_pct"] = "1.00"
+        risk["max_position_pct"] = "1.00"
+        state["risk"] = risk
         day_key = now.date().isoformat()
         if state.get("day_key") != day_key:
             state["day_key"] = day_key
@@ -118,7 +123,7 @@ def run_paper_tick() -> dict[str, Any]:
                 "withdrawals_enabled": False,
             }
 
-        trade_budget = equity * float(risk["max_trade_pct"])
+        trade_budget = min(equity * float(risk["max_trade_pct"]), float(state["cash"]))
         all_in_cost_factor = (1 + float(risk["fee_rate"])) * (1 + float(risk["slippage_rate"]))
         candidates = []
         for row in markets:
@@ -189,8 +194,12 @@ def run_paper_tick() -> dict[str, Any]:
                     float(item["quantity"]) * float(marks[position_symbol])
                     for position_symbol, item in current_positions.items()
                 )
+                available_allocation = min(
+                    current_equity * float(risk["max_trade_pct"]),
+                    float(state["cash"]),
+                )
                 if entry_taken or len(current_positions) >= MAX_OPEN_POSITIONS or (
-                    current_exposure + current_equity * float(risk["max_trade_pct"])
+                    current_exposure + available_allocation
                     > current_equity * MAX_TOTAL_EXPOSURE_PCT
                 ):
                     actions.append({"symbol": symbol, "side": "rejected_portfolio_exposure"})
@@ -199,7 +208,10 @@ def run_paper_tick() -> dict[str, Any]:
                 ask_sek = Decimal(str(ask_eur)) * Decimal(str(rate))
                 fee = Decimal(str(risk["fee_rate"]))
                 slippage = Decimal(str(risk["slippage_rate"]))
-                current_trade_budget = current_equity * float(risk["max_trade_pct"])
+                current_trade_budget = min(
+                    current_equity * float(risk["max_trade_pct"]),
+                    float(state["cash"]),
+                )
                 budget = min(
                     Decimal(str(current_trade_budget)),
                     Decimal(str(state["cash"])),
