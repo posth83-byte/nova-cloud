@@ -429,11 +429,13 @@ class TradingApiTests(unittest.TestCase):
             patch.object(api, "fetch_eur_sek_rate", return_value=fx),
             patch.object(api, "run_read_only_preflight", return_value=account),
             patch.object(api, "scan_markets", return_value=markets),
-            patch.object(api, "rank_opportunities", return_value=radar),
+            patch.object(api, "rank_opportunities", return_value=radar) as rank,
             patch.object(api, "validate_limit_order", return_value=validated) as validate,
         ):
             result = asyncio.run(api.live_validate_order(x_trade_control_token="expected-secret"))
         validate.assert_called_once()
+        rank.assert_called_once()
+        self.assertAlmostEqual(rank.call_args.kwargs["equity_sek"], 403.2)
         kwargs = validate.call_args.kwargs
         self.assertEqual(kwargs["pair"], "XBTEUR")
         self.assertEqual(kwargs["side"], "buy")
