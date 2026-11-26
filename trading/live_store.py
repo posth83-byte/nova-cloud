@@ -157,7 +157,7 @@ def create_order_intent(*, intent_id: str, client_order_id: str, pair: str,
 def list_unapplied_order_intents(limit: int = 20) -> list[dict[str, Any]]:
     query = urllib.parse.urlencode({
         "ledger_applied": "eq.false",
-        "status": "in.(submitting,unknown,accepted,closed)",
+        "status": "in.(prepared,submitting,unknown,accepted,closed)",
         "select": "*", "order": "created_at.asc", "limit": str(max(1, min(limit, 100))),
     })
     return _request("jarvis_live_order_intents", "GET", query, prefer="")
