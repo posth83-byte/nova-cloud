@@ -29,7 +29,8 @@ class LiveExecutionError(RuntimeError):
 
 
 def execute_journaled_limit_order(
-    *, pair: str, side: str, volume: Decimal, price: Decimal
+    *, pair: str, side: str, volume: Decimal, price: Decimal,
+    pair_symbol: str | None = None, base_asset: str | None = None,
 ) -> dict[str, Any]:
     """Persist unique intent, then submit exactly once; ambiguous outcomes stop."""
     intent_id = str(uuid.uuid4())
@@ -42,6 +43,8 @@ def execute_journaled_limit_order(
         side=side,
         volume=format(volume, "f"),
         limit_price=format(price, "f"),
+        pair_symbol=pair_symbol,
+        base_asset=base_asset,
     )
     update_order_intent(client_order_id, status="submitting")
     try:
