@@ -41,11 +41,12 @@ def run_backtest(
     risk_pct: float = 1.0,
     daily_drawdown_pct: float = 2.0,
     stop_distance_pct: float = 2.0,
-    minimum_notional: float = 5.0,
+    minimum_notional: float = 0.45,
+    minimum_order_size: float = 0.0,
 ) -> dict[str, Any]:
     if len(candles) < 60:
         raise ValueError("At least 60 candles are required")
-    if starting_cash <= 0 or not 0 <= fee_rate < 0.1 or not 0 <= slippage_rate < 0.1 or minimum_notional < 0:
+    if starting_cash <= 0 or not 0 <= fee_rate < 0.1 or not 0 <= slippage_rate < 0.1 or minimum_notional < 0 or minimum_order_size < 0:
         raise ValueError("Invalid cash, fee, slippage or minimum-notional configuration")
     if not 0 < risk_pct <= 1 or not 0 < daily_drawdown_pct <= 2:
         raise ValueError("Risk settings exceed the initial paper policy")
@@ -142,7 +143,7 @@ def run_backtest(
                 notional = quantity * entry_fill
                 entry_fee = notional * fee_rate
                 total_cost = notional + entry_fee
-                if quantity > 0 and notional < minimum_notional:
+                if quantity > 0 and (notional < minimum_notional or quantity < minimum_order_size):
                     minimum_notional_skips += 1
                 elif quantity > 0 and total_cost <= cash:
                     cash -= total_cost
@@ -201,6 +202,7 @@ def run_backtest(
         "fee_rate": fee_rate,
         "slippage_rate": slippage_rate,
         "minimum_notional": minimum_notional,
+        "minimum_order_size": minimum_order_size,
         "minimum_notional_skips": minimum_notional_skips,
         "ending_cash": round(cash, 8),
         "net_profit": round(net_profit, 8),
@@ -276,6 +278,7 @@ def run_walk_forward(
             daily_drawdown_pct=daily_drawdown_pct,
             stop_distance_pct=stop_distance_pct,
             minimum_notional=minimum_notional,
+            minimum_order_size=minimum_order_size,
         )
         cash = float(result["ending_cash"])
         benchmark_entry = float(segment[warmup_candles][1]) * (1.0 + slippage_rate)
@@ -352,7 +355,8 @@ def main() -> int:
     parser.add_argument("--input", required=True, help="JSON file containing a list of OHLCV rows")
     parser.add_argument("--starting-cash", required=True, type=float, help="Starting balance in EUR")
     parser.add_argument("--output", default="trading/backtest-result.json")
-    parser.add_argument("--minimum-notional", type=float, default=5.0, help="Minimum order notional in EUR (default: 5)")
+    parser.add_argument("--minimum-notional", type=float, default=0.45, help="Minimum quote-cost in EUR (default: 0.45)")
+    parser.add_argument("--minimum-order-size", type=float, default=0.0, help="Minimum base-asset volume for this pair")
     parser.add_argument("--fee-rate", type=float, default=0.008, help="Fee per side (default: Kraken Pro Tier 1 taker 0.80%)")
     parser.add_argument("--slippage-rate", type=float, default=0.0005, help="Slippage per side (default: 0.05%)")
     parser.add_argument("--risk-pct", type=float, default=1.0, help="Maximum equity risk per trade (default: 1%)")
@@ -374,6 +378,7 @@ def main() -> int:
             fee_rate=args.fee_rate, slippage_rate=args.slippage_rate,
             risk_pct=args.risk_pct, daily_drawdown_pct=args.daily_drawdown_pct,
             stop_distance_pct=args.stop_distance_pct, minimum_notional=args.minimum_notional,
+            minimum_order_size=args.minimum_order_size,
         )
         if args.walk_forward
         else run_backtest(
