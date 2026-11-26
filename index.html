@@ -1316,6 +1316,13 @@ ox-spelutvecklare. Från spelidé och värld till Luau-kod, system, testning och
   <div class="voice-note">WEBMASTER skapar en komplett HTML-sida och ger dig en klickbar förhandsvisningslänk. Du kan lägga till en egen bild ovan.</div>
  </div></div>
 </section>
+<section class="trade-view hidden" id="tradeView">
+<div class="trade-heading"><h2>TRADE AI COMMAND ROOM</h2></div>
+<div class="trade-access" id="tradeAccessPanel"><label for="tradeDashboardKey">LÅS UPP PRIVAT KRAKEN-ÖVERSIKT</label><input id="tradeDashboardKey" type="password"><button type="button" onclick="unlockTradeDashboard()">ANSLUT</button><small>Hämta TRADE_DASHBOARD_TOKEN i Render Environment. Detta är en separat läsnyckel.</small><div id="tradeAccessMessage"></div></div>
+<div id="tradeDashboardContent" hidden>
+<div id="tradeUpdatedAt"></div><div id="tradeWorkerStatus"></div>
+<div class="trade-metrics"><div class="trade-metric"><small>HELA KRAKEN-KONTOT</small><strong id="tradeTotalValue">—</strong><em id="tradeTotalValueEur"></em></div><div class="trade-metric"><small>TILLGÄNGLIGT FÖR TRADE AI</small><strong id="tradeAvailable">—</strong><em id="tradeAvailableEur"></em></div><div class="trade-metric"><small>INVESTERAT</small><strong id="tradeInvested">—</strong><em id="tradePositionCount"></em></div><div class="trade-metric"><small>DAGENS RESULTAT</small><strong id="tradeDailyPnl">—</strong><em id="tradeRealizedPnl"></em></div></div>
+<div class="trade-grid"><section class="trade-panel"><h3>AKTIVA INNEHAV</h3><div id="tradePositions"></div><h3>ORDER & AFFÄRER</h3><div id="tradeHistory"></div></section><section class="trade-panel"><h3>KRAKEN / SALDO PER TILLGÅNG</h3><div id="tradeAssets"></div><div id="tradeValuationWarning"></div><h3>MÖJLIGHETSRADAR</h3><div id="tradeRadar"></div><h3>SYSTEM & RISKKONTROLL</h3><div id="tradeSystemInfo"></div></section></div></div></section>
 <div class="system-footer">JARVIS × NOVA × WEBMASTER<br>PRIVATE ARTIFICIAL INTELLIGENCE NETWORK<br>ALL SYSTEMS CONNECTED THROUGH NOVA CLOUD</div>
 </main>
 
