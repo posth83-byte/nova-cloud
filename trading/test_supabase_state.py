@@ -39,7 +39,8 @@ class SupabaseStateStoreTests(unittest.TestCase):
         self.assertEqual(saved, 1)
         request = mocked.call_args.args[0]
         self.assertEqual(request.get_method(), "POST")
-        self.assertEqual(request.get_header("Authorization"), "Bearer server-secret")
+        self.assertEqual(request.get_header("Apikey"), "server-secret")
+        self.assertIsNone(request.get_header("Authorization"))
         self.assertIn("resolution=merge-duplicates", request.get_header("Prefer"))
         self.assertEqual(json.loads(request.data)["id"], "primary")
 
