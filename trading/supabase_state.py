@@ -36,12 +36,13 @@ class SupabaseStateStore:
         query = urllib.parse.urlencode({"id": "eq.primary", "select": "state,revision"})
         url = f"{self.url}/rest/v1/{self.TABLE}?{query}"
         headers = {
-            # Supabase secret keys (sb_secret_...) are opaque API keys, not JWTs.
-            # Sending one as Authorization: Bearer would make PostgREST reject it.
-            # The apikey header alone works for both new secret keys and legacy service_role JWT keys.
             "apikey": self.secret_key,
             "Accept": "application/json",
         }
+        # New sb_secret_* keys are opaque and belong only in apikey. Legacy
+        # service_role keys are JWTs and also need the Bearer authorization header.
+        if self.secret_key.startswith("eyJ"):
+            headers["Authorization"] = "Bearer " + self.secret_key
         data = None
         if payload is not None:
             url += "&on_conflict=id"
