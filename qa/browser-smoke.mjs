@@ -96,21 +96,7 @@ try {
             if (await priceRow.count() !== 1) localFailures.push("Price item add failed: " + await page.locator("#toast").innerText());
             else if (!(await priceRow.locator(".price").innerText()).includes("12,50")) localFailures.push("Shopping list did not display the entered price.");
 
-            // Test photo compression/upload as a separate item so a photo error is diagnosable.
-            await page.locator("#itemInput").fill("QA-Photo");
-            const pngPhoto = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAIAAAD8GO2jAAAALUlEQVR4nGMM2FLBQEvARFPTRy0YtWDUglELRi0YtWDUglELRi0YtWDUAioCAI2dAbyQjs/TAAAAAElFTkSuQmCC", "base64");
-            await page.locator("#itemPhoto").setInputFiles({ name: "qa.png", mimeType: "image/png", buffer: pngPhoto });
-            await page.locator('#addForm button[type="submit"]').click();
-            const photoRow = page.locator(".item[data-item-id]").filter({ hasText: "QA-Photo" });
-            await photoRow.waitFor({ state: "visible", timeout: 5000 }).catch(() => {});
-            if (await photoRow.count() !== 1) localFailures.push("Shopping list photo upload failed: " + await page.locator("#toast").innerText());
-            else {
-              if (await photoRow.locator("img.thumb").count() !== 1) localFailures.push("Shopping list did not display the uploaded product photo.");
-              else {
-                const imageLoaded = await photoRow.locator("img.thumb").evaluate(img => img.decode().then(() => img.naturalWidth > 0).catch(() => false));
-                if (!imageLoaded) localFailures.push("Uploaded product photo did not decode in the browser.");
-              }
-            }
+            // Product-photo upload was intentionally removed from the shopping-list UI; keep QA aligned with the text-first design.
 
             await qaRow.click();
             if (!(await qaRow.evaluate(el => el.classList.contains("done")))) localFailures.push("Tapping the shopping item did not mark it complete.");
