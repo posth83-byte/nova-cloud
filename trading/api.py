@@ -72,6 +72,13 @@ def _github_actions_guard(authorization: str | None, *, manual_start: bool = Fal
         raise HTTPException(status_code=403, detail="Den här schemaläggningshändelsen är inte tillåten.")
 
 
+def _manual_control_guard(token: str | None, authorization: str | None):
+    if token:
+        _control_guard(token)
+    else:
+        _github_actions_guard(authorization, manual_start=True)
+
+
 def _load():
     try:
         return load_or_create(create_initial_state)
@@ -158,10 +165,7 @@ async def paper_start(
     x_trade_control_token: str | None = Header(default=None),
     authorization: str | None = Header(default=None),
 ):
-    if x_trade_control_token:
-        _control_guard(x_trade_control_token)
-    else:
-        _github_actions_guard(authorization, manual_start=True)
+    _manual_control_guard(x_trade_control_token, authorization)
     state, revision = _load()
     try:
         updated = set_paper_enabled(state, True)
@@ -172,8 +176,11 @@ async def paper_start(
 
 
 @router.post("/paper/pause")
-async def paper_pause(x_trade_control_token: str | None = Header(default=None)):
-    _control_guard(x_trade_control_token)
+async def paper_pause(
+    x_trade_control_token: str | None = Header(default=None),
+    authorization: str | None = Header(default=None),
+):
+    _manual_control_guard(x_trade_control_token, authorization)
     state, revision = _load()
     updated = set_paper_enabled(state, False)
     next_revision = _save(updated, revision)
@@ -184,8 +191,9 @@ async def paper_pause(x_trade_control_token: str | None = Header(default=None)):
 async def paper_emergency_stop(
     reason: str = "Manuellt nödstopp",
     x_trade_control_token: str | None = Header(default=None),
+    authorization: str | None = Header(default=None),
 ):
-    _control_guard(x_trade_control_token)
+    _manual_control_guard(x_trade_control_token, authorization)
     state, revision = _load()
     updated = activate_emergency_stop(state, reason)
     next_revision = _save(updated, revision)
