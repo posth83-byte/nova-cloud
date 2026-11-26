@@ -374,6 +374,54 @@ async def live_status():
     }
 
 
+@router.post("/live/start")
+async def live_start(
+    x_trade_control_token: str | None = Header(default=None),
+    authorization: str | None = Header(default=None),
+):
+    """Arm live trading only after server gate and fresh Kraken preflight pass."""
+    _manual_control_guard(x_trade_control_token, authorization)
+    if os.getenv("TRADE_LIVE_ENABLED", "").strip().lower() != "true":
+        raise HTTPException(
+            status_code=409,
+            detail="Livehandelns servergrind är fortfarande avstängd.",
+        )
+    try:
+        state, revision = load_or_create_live_state()
+        if state.get("emergency_stop"):
+            raise HTTPException(
+                status_code=409,
+                detail="Nödstoppet är aktivt och måste granskas separat.",
+            )
+        fx = fetch_eur_sek_rate()
+        preflight = run_read_only_preflight(Decimal(str(fx["rate"])))
+        if not preflight.get("connected") or not preflight.get("open_orders_clear"):
+            raise HTTPException(
+                status_code=409,
+                detail="Kraken-kontot klarade inte livehandelns säkerhetskontroll.",
+            )
+        state["enabled"] = True
+        state["worker"] = {
+            **dict(state.get("worker") or {}),
+            "status": "armed",
+            "last_error": None,
+            "armed_at": datetime.now(timezone.utc).isoformat(),
+        }
+        next_revision = save_live_state(state, revision)
+    except HTTPException:
+        raise
+    except (LiveStoreError, StrategyDataError, KrakenPrivateAPIError) as exc:
+        raise HTTPException(
+            status_code=503,
+            detail="Livehandel kunde inte aktiveras säkert.",
+        ) from exc
+    return {
+        "ok": True, "live_enabled": True, "mode": "live_spot",
+        "max_budget_sek": 200.00, "open_orders_clear": True,
+        "withdrawals_enabled": False, "revision": next_revision,
+    }
+
+
 @router.post("/live/pause")
 async def live_pause(
     x_trade_control_token: str | None = Header(default=None),
