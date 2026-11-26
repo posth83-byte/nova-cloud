@@ -102,6 +102,31 @@ class TradingApiTests(unittest.TestCase):
         self.assertTrue(result["ok"])
         run.assert_called_once_with()
 
+    def test_paper_worker_tick_accepts_verified_github_oidc(self):
+        with (
+            patch.object(api, "_github_actions_guard") as guard,
+            patch.object(api, "run_paper_tick", return_value={"ok": True}) as run,
+        ):
+            result = asyncio.run(api.paper_worker_tick(
+                x_trade_control_token=None, authorization="Bearer short-lived-oidc"
+            ))
+        self.assertTrue(result["ok"])
+        guard.assert_called_once_with("Bearer short-lived-oidc")
+        run.assert_called_once_with()
+
+    def test_paper_start_requires_manual_github_dispatch_when_using_oidc(self):
+        state = create_initial_state("200.00")
+        with (
+            patch.object(api, "_github_actions_guard") as guard,
+            patch.object(api, "_load", return_value=(state, 2)),
+            patch.object(api, "_save", return_value=3),
+        ):
+            result = asyncio.run(api.paper_start(
+                x_trade_control_token=None, authorization="Bearer short-lived-oidc"
+            ))
+        self.assertTrue(result["paper_enabled"])
+        guard.assert_called_once_with("Bearer short-lived-oidc", manual_start=True)
+
     def test_control_guard_fails_closed_when_token_missing(self):
         with patch.dict("os.environ", {}, clear=True):
             with self.assertRaises(HTTPException) as exc:
