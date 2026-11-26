@@ -158,6 +158,7 @@ class PaperBroker:
         market_price: float,
         stop_price: float,
         prices: dict[str, float] | None = None,
+        minimum_amount: float | None = None,
     ) -> dict[str, Any]:
         if symbol not in self.allowed_symbols:
             raise TradeRejected(f"Market is not allowlisted: {symbol}")
@@ -185,6 +186,8 @@ class PaperBroker:
         notional = quantity * entry_fill
         if quantity <= 0 or notional < self.minimum_notional:
             raise TradeRejected("Order is below minimum notional or available risk/cash")
+        if minimum_amount is not None and quantity < _number(minimum_amount, "minimum_amount"):
+            raise TradeRejected("Order quantity is below the exchange minimum amount")
         fee = notional * self.fee_rate
         total_cost = notional + fee
         if total_cost > cash + 1e-9:
