@@ -6,6 +6,23 @@ from trading.kraken_monitor import fetch_ohlc_candles
 
 class KrakenOHLCFetchTests(unittest.TestCase):
     @patch("trading.kraken_monitor._public_get")
+    def test_reuses_validated_pair_metadata_without_extra_asset_pairs_request(self, public_get):
+        public_get.return_value = {
+            "XXBTZEUR": [
+                [1700000000, "1", "1", "1", "10", "1", "1", 1],
+                [1700003600, "1", "1", "1", "11", "1", "1", 1],
+            ],
+            "last": 1700007200,
+        }
+        result = fetch_ohlc_candles(
+            "XBT/EUR", api_pair="XBTEUR",
+            min_order_qty=0.0001, min_cost_eur=0.5,
+        )
+        self.assertEqual(public_get.call_count, 1)
+        self.assertEqual(result["min_order_qty"], 0.0001)
+        self.assertEqual(result["min_cost_eur"], 0.5)
+
+    @patch("trading.kraken_monitor._public_get")
     def test_fetches_closed_candles_and_pair_minimums(self, public_get):
         public_get.side_effect = [
             {"XXBTZEUR": {
