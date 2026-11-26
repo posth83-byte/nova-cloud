@@ -214,8 +214,8 @@ def run_live_tick() -> dict[str, Any]:
             _d(item["quantity"]) * marks[symbol]
             for symbol, item in positions.items()
         )
-        if equity <= ZERO or equity > Decimal("200.00") * Decimal("1.5"):
-            raise LiveWorkerError("Liveportföljens värde ligger utanför förväntat intervall.")
+        if equity <= ZERO:
+            raise LiveWorkerError("Liveportföljens värde är ogiltigt.")
         day_key = now.date().isoformat()
         if state.get("day_key") != day_key:
             state["day_key"] = day_key
@@ -327,7 +327,8 @@ def run_live_tick() -> dict[str, Any]:
                 )
 
             result = execute_journaled_limit_order(
-                pair=pair, side=side, volume=qty, price=limit_price
+                pair=pair, side=side, volume=qty, price=limit_price,
+                pair_symbol=symbol, base_asset=base_asset,
             )
             if result.get("status") != "closed":
                 raise LiveWorkerError("Orderns slutstatus är inte bekräftad; ingen ny order skickas.")
@@ -335,13 +336,7 @@ def run_live_tick() -> dict[str, Any]:
             intent = get_order_intent(client_id)
             if not intent:
                 raise LiveWorkerError("Ordern saknas i livejournalen efter Kraken-svar.")
-            intent["pair_symbol"] = symbol
-            intent["base_asset"] = base_asset
-            # Metadata needed to replay the same fill if the process stops mid-tick.
-            # Persist the metadata alongside exchange fill details.
-            from trading.live_store import attach_order_metadata
-            attach_order_metadata(client_id, pair_symbol=symbol, base_asset=base_asset)
-            intent = get_order_intent(client_id) or intent
+            # Market metadata was journaled before Kraken received the order.
             state = _apply_intent_fill(state, intent, rate)
             revision = save_live_state(state, revision)
             mark_order_ledger_applied(client_id)
