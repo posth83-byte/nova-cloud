@@ -18,6 +18,7 @@ from trading.backtest import run_sma_backtest
 from trading.strategy import StrategyDataError, build_strategy_preview, fetch_eur_sek_rate
 from trading.worker import run_paper_tick
 from trading.opportunity_radar import rank_opportunities
+from trading.live_worker import run_live_tick
 from trading.live_store import (
     LiveStoreError,
     load_or_create_live_state,
@@ -43,7 +44,10 @@ def _control_guard(token: str | None):
         raise HTTPException(status_code=401, detail="Ogiltig Trade AI-kontrollnyckel.")
 
 
-def _github_actions_guard(authorization: str | None, *, manual_start: bool = False):
+def _github_actions_guard(
+    authorization: str | None, *, manual_start: bool = False,
+    allowed_workflows: set[str] | None = None,
+):
     """Verify a short-lived GitHub Actions OIDC token; no shared scheduler secret."""
     supplied = (authorization or "").strip()
     if not supplied.lower().startswith("bearer "):
@@ -70,14 +74,14 @@ def _github_actions_guard(authorization: str | None, *, manual_start: bool = Fal
     except Exception as exc:
         raise HTTPException(status_code=401, detail="Schemaläggarens identitet kunde inte verifieras.") from exc
 
-    expected_workflow = (
+    expected_workflows = allowed_workflows or {
         "posth83-byte/nova-cloud/.github/workflows/trade-paper-scheduler.yml@refs/heads/main"
-    )
+    }
     if (
         claims.get("repository") != "posth83-byte/nova-cloud"
         or str(claims.get("repository_id")) != "1442711208"
         or claims.get("ref") != "refs/heads/main"
-        or claims.get("workflow_ref") != expected_workflow
+        or claims.get("workflow_ref") not in expected_workflows
     ):
         raise HTTPException(status_code=403, detail="Den här GitHub-workflowen är inte godkänd.")
     allowed_events = {"workflow_dispatch"} if manual_start else {"schedule", "workflow_dispatch"}
@@ -312,6 +316,33 @@ async def paper_backtest(
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     except (TypeError, KeyError) as exc:
         raise HTTPException(status_code=503, detail="Trade AI kunde inte beräkna ett säkert historiskt test.") from exc
+
+
+@router.post("/live/worker-tick")
+async def live_worker_tick(
+    x_trade_control_token: str | None = Header(default=None),
+    authorization: str | None = Header(default=None),
+):
+    """Authenticated scheduled tick; no work is performed unless live state is enabled."""
+    if x_trade_control_token:
+        _control_guard(x_trade_control_token)
+    else:
+        _github_actions_guard(authorization, allowed_workflows={
+            "posth83-byte/nova-cloud/.github/workflows/trade-paper-scheduler.yml@refs/heads/main",
+            "posth83-byte/nova-cloud/.github/workflows/trade-live-scheduler.yml@refs/heads/main",
+        })
+    try:
+        return run_live_tick()
+    except (LiveStoreError, KrakenPrivateAPIError) as exc:
+        raise HTTPException(
+            status_code=503,
+            detail="Livehandelns säkerhetskontroll misslyckades; inga nya order får skickas.",
+        ) from exc
+    except Exception as exc:
+        raise HTTPException(
+            status_code=503,
+            detail="Livehandelns schemalagda körning stoppades säkert.",
+        ) from exc
 
 
 @router.get("/live/status")
