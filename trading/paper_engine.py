@@ -186,8 +186,12 @@ class PaperBroker:
         notional = quantity * entry_fill
         if quantity <= 0 or notional < self.minimum_notional:
             raise TradeRejected("Order is below minimum notional or available risk/cash")
-        if minimum_amount is not None and quantity < _number(minimum_amount, "minimum_amount"):
-            raise TradeRejected("Order quantity is below the exchange minimum amount")
+        if minimum_amount is not None:
+            minimum = float(minimum_amount)
+            if minimum < 0 or minimum != minimum or minimum == float("inf"):
+                raise TradeRejected("minimum_amount must be finite and non-negative")
+            if minimum > 0 and quantity < minimum:
+                raise TradeRejected("Order quantity is below the exchange minimum amount")
         fee = notional * self.fee_rate
         total_cost = notional + fee
         if total_cost > cash + 1e-9:
