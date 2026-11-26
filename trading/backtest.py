@@ -41,11 +41,12 @@ def run_backtest(
     risk_pct: float = 1.0,
     daily_drawdown_pct: float = 2.0,
     stop_distance_pct: float = 2.0,
+    minimum_notional: float = 5.0,
 ) -> dict[str, Any]:
     if len(candles) < 60:
         raise ValueError("At least 60 candles are required")
-    if starting_cash <= 0 or not 0 <= fee_rate < 0.1 or not 0 <= slippage_rate < 0.1:
-        raise ValueError("Invalid cash, fee or slippage configuration")
+    if starting_cash <= 0 or not 0 <= fee_rate < 0.1 or not 0 <= slippage_rate < 0.1 or minimum_notional < 0:
+        raise ValueError("Invalid cash, fee, slippage or minimum-notional configuration")
     if not 0 < risk_pct <= 1 or not 0 < daily_drawdown_pct <= 2:
         raise ValueError("Risk settings exceed the initial paper policy")
 
@@ -58,6 +59,7 @@ def run_backtest(
     peak_equity = cash
     max_drawdown_pct = 0.0
     blocked_days: set[str] = set()
+    minimum_notional_skips = 0
 
     for i in range(50, len(candles) - 1):
         candle = candles[i]
@@ -140,7 +142,9 @@ def run_backtest(
                 notional = quantity * entry_fill
                 entry_fee = notional * fee_rate
                 total_cost = notional + entry_fee
-                if quantity > 0 and total_cost <= cash:
+                if quantity > 0 and notional < minimum_notional:
+                    minimum_notional_skips += 1
+                elif quantity > 0 and total_cost <= cash:
                     cash -= total_cost
                     position = {
                         "quantity": quantity,
@@ -194,6 +198,10 @@ def run_backtest(
     return {
         "mode": "historical_backtest",
         "starting_cash": round(starting_cash, 8),
+        "fee_rate": fee_rate,
+        "slippage_rate": slippage_rate,
+        "minimum_notional": minimum_notional,
+        "minimum_notional_skips": minimum_notional_skips,
         "ending_cash": round(cash, 8),
         "net_profit": round(net_profit, 8),
         "net_return_pct": round(net_profit / starting_cash * 100, 4),
@@ -229,6 +237,7 @@ def run_walk_forward(
     risk_pct: float = 1.0,
     daily_drawdown_pct: float = 2.0,
     stop_distance_pct: float = 2.0,
+    minimum_notional: float = 5.0,
 ) -> dict[str, Any]:
     """Evaluate the fixed strategy on consecutive, non-overlapping OOS windows.
 
@@ -266,6 +275,7 @@ def run_walk_forward(
             risk_pct=risk_pct,
             daily_drawdown_pct=daily_drawdown_pct,
             stop_distance_pct=stop_distance_pct,
+            minimum_notional=minimum_notional,
         )
         cash = float(result["ending_cash"])
         benchmark_entry = float(segment[warmup_candles][1]) * (1.0 + slippage_rate)
@@ -286,6 +296,7 @@ def run_walk_forward(
             "oos_candles": oos_count,
             "starting_cash": result["starting_cash"],
             "ending_cash": result["ending_cash"],
+            "minimum_notional_skips": result["minimum_notional_skips"],
             "net_return_pct": result["net_return_pct"],
             "closed_trades": result["closed_trades"],
             "win_rate_pct": result["win_rate_pct"],
@@ -308,6 +319,10 @@ def run_walk_forward(
         "mode": "walk_forward_out_of_sample",
         "strategy": "ema_trend_rsi_volume_v1",
         "starting_cash": round(starting_cash, 8),
+        "fee_rate": fee_rate,
+        "slippage_rate": slippage_rate,
+        "minimum_notional": minimum_notional,
+        "minimum_notional_skips": sum(fold["minimum_notional_skips"] for fold in folds),
         "ending_cash": round(cash, 8),
         "net_profit": round(net_profit, 8),
         "net_return_pct": round(net_profit / starting_cash * 100.0, 4),
@@ -337,6 +352,7 @@ def main() -> int:
     parser.add_argument("--input", required=True, help="JSON file containing a list of OHLCV rows")
     parser.add_argument("--starting-cash", required=True, type=float, help="Starting balance in EUR")
     parser.add_argument("--output", default="trading/backtest-result.json")
+    parser.add_argument("--minimum-notional", type=float, default=5.0, help="Minimum order notional in EUR (default: 5)")
     parser.add_argument(
         "--walk-forward", action="store_true",
         help="Run consecutive out-of-sample folds instead of one full-period backtest",
@@ -348,9 +364,9 @@ def main() -> int:
     args = parser.parse_args()
     candles = json.loads(Path(args.input).read_text(encoding="utf-8"))
     result = (
-        run_walk_forward(candles, args.starting_cash, test_window=args.test_window)
+        run_walk_forward(candles, args.starting_cash, test_window=args.test_window, minimum_notional=args.minimum_notional)
         if args.walk_forward
-        else run_backtest(candles, args.starting_cash)
+        else run_backtest(candles, args.starting_cash, minimum_notional=args.minimum_notional)
     )
     Path(args.output).write_text(json.dumps(result, indent=2), encoding="utf-8")
     print(json.dumps({k: v for k, v in result.items() if k not in ("fills", "equity_curve")}, indent=2))
