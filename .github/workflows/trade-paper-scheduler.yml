@@ -8,7 +8,7 @@ on:
       action:
         description: "Start paper trading once, or run a single safe scan"
         required: true
-        default: scan
+        default: start-paper
         type: choice
         options:
           - scan
