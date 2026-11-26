@@ -17,6 +17,7 @@ from trading.paper_store import PaperStoreError, load_or_create, save_state
 from trading.backtest import run_sma_backtest
 from trading.strategy import StrategyDataError, build_strategy_preview, fetch_eur_sek_rate
 from trading.worker import run_paper_tick
+from trading.opportunity_radar import rank_opportunities
 
 router = APIRouter(prefix="/api/trading", tags=["trading"])
 
@@ -118,6 +119,31 @@ async def trading_markets(
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except KrakenPublicAPIError as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
+
+
+@router.get("/opportunities")
+async def trading_opportunities(
+    limit: int = Query(default=10, ge=1, le=20),
+):
+    """Rank liquid Kraken EUR markets for closer monitoring; never place orders."""
+    try:
+        state, _revision = _load()
+        fx = fetch_eur_sek_rate()
+        market_data = scan_markets(quote="EUR", limit=50)
+        result = rank_opportunities(
+            market_data.get("markets", []),
+            equity_sek=float(state.get("starting_cash") or "200.00"),
+            eur_sek=float(fx["rate"]),
+            limit=limit,
+        )
+        result["fx"] = fx
+        result["paper_balance_sek"] = float(state.get("cash") or "0")
+        result["worker_last_tick_at"] = (state.get("worker") or {}).get("last_tick_at")
+        return result
+    except (StrategyDataError, KrakenPublicAPIError) as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+    except (TypeError, ValueError, KeyError) as exc:
+        raise HTTPException(status_code=503, detail="Möjlighetsradarn kunde inte beräkna en säker topplista.") from exc
 
 
 @router.get("/paper")
