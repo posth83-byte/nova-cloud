@@ -60,10 +60,13 @@ class LiveStoreTests(unittest.TestCase):
                 intent_id="12345678-1234-5678-1234-567812345678",
                 client_order_id="a" * 32, pair="LINKEUR", side="buy",
                 volume="1.25", limit_price="8.4",
+                pair_symbol="LINK/EUR", base_asset="LINK",
             )
         self.assertEqual(captured["method"], "POST")
         self.assertIn("jarvis_live_order_intents", captured["url"])
         self.assertEqual(captured["body"]["status"], "prepared")
+        self.assertEqual(captured["body"]["pair_symbol"], "LINK/EUR")
+        self.assertEqual(captured["body"]["base_asset"], "LINK")
         self.assertEqual(row["client_order_id"], "a" * 32)
 
     def test_rejects_invalid_order_intent_before_database_call(self):
