@@ -130,7 +130,9 @@ def load_or_create_live_state() -> tuple[dict[str, Any], int]:
 
 
 def create_order_intent(*, intent_id: str, client_order_id: str, pair: str,
-                        side: str, volume: str, limit_price: str) -> dict[str, Any]:
+                        side: str, volume: str, limit_price: str,
+                        pair_symbol: str | None = None,
+                        base_asset: str | None = None) -> dict[str, Any]:
     try:
         UUID(intent_id)
     except (ValueError, TypeError, AttributeError) as exc:
@@ -142,6 +144,7 @@ def create_order_intent(*, intent_id: str, client_order_id: str, pair: str,
         payload={
             "id": intent_id, "client_order_id": client_order_id, "pair": pair,
             "side": side, "volume": volume, "limit_price": limit_price,
+            "pair_symbol": pair_symbol, "base_asset": base_asset,
             "status": "prepared",
             "request_payload": {"pair": pair, "side": side, "volume": volume, "price": limit_price},
         },
