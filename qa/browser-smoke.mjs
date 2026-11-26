@@ -586,6 +586,17 @@ try {
            if (!(await jarvisVideoBubble.locator("a").count())) localFailures.push("JARVIS chat did not include an MP4 delivery link.");
            if (!(await jarvisVideoBubble.locator("video").count())) localFailures.push("JARVIS chat did not include an inline MP4 preview.");
 
+           // Trade AI's new room must be reachable on both desktop and mobile,
+           // and private Kraken data must remain locked until the read key is supplied.
+           await page.locator("#jarvisView .room-topbar button").filter({ hasText: "AI-TEAMETS RUM" }).click();
+           await page.waitForFunction(() => document.querySelector("#homeView")?.classList.contains("hidden") === false, null, { timeout: 5000 });
+           await page.locator('#teamRoomShell button[onclick="openTradeRoom()"]').click();
+           await page.waitForFunction(() => !document.querySelector("#tradeView")?.classList.contains("hidden"), null, { timeout: 5000 });
+           if (await page.locator("#tradeAccessPanel").isHidden()) localFailures.push("Private Trade AI dashboard access panel is not visible.");
+           if (!(await page.locator("#tradeDashboardKey").count())) localFailures.push("Trade AI dashboard read-key input is missing.");
+           if (!(await page.locator("#tradeDashboardContent").isHidden())) localFailures.push("Private Kraken account data was exposed before dashboard authentication.");
+
+
         }
         const errors = [...pageErrors, ...localFailures];
         if (errors.length) failures.push(route + " [" + viewport.name + "]: " + errors.join(" | "));
