@@ -82,7 +82,7 @@ python -m unittest discover -s trading -p "test_*.py" -v
 - Daily stop: 2% drawdown from start-of-day equity; block new entries after breach.
 - Every entry needs a defined exit/stop rule.
 - No averaging down, martingale, leverage or shorts.
-- Enforce a 5 EUR minimum simulated order notional for Kraken EUR markets; skip smaller setups rather than rounding up.
+- Enforce Kraken pair-specific minimums: 0.00006 BTC for BTC/EUR, 0.002 ETH for ETH/EUR, plus a 0.45 EUR quote-cost minimum. Recheck current exchange limits before any live activation.
 - Skip trades if fees + spread + slippage make expected edge uneconomic.
 - Check exchange minimum, precision, quote balance and fees before each order.
 - Never increase size just to meet an exchange minimum.
@@ -90,7 +90,7 @@ python -m unittest discover -s trading -p "test_*.py" -v
 - User can revoke trading permission at any time.
 - Automatically reinvest available realized profits only while all risk, balance and order checks pass.
 
-At 200 SEK, 1% risk is only 2 SEK. With a 2% stop, Kraken Pro Tier 1 taker fees of 0.80% per side and 0.05% slippage, the risk-sized position is about 4.84 EUR—below Kraken's 5 EUR EUR order minimum. The bot must skip that setup; it must not increase risk or round the order up. A narrower stop might make the minimum possible, but must be evaluated out-of-sample before changing the strategy.
+At 200 SEK, 1% risk is only 2 SEK. Kraken's minimums are pair-specific: a BTC/EUR order may be feasible at this balance, while ETH/EUR may fall below its 0.002 ETH minimum. The engine must check both base-asset volume and EUR cost after fees and slippage; it must never round up or exceed the 1% risk limit.
 
 ## Live activation gates
 - Explicit user approval for the chosen exchange and live automated trading.
