@@ -215,6 +215,7 @@ def run_live_tick() -> dict[str, Any]:
     now = datetime.now(timezone.utc)
     worker = dict(state.get("worker") or {})
     worker["last_tick_at"] = now.isoformat()
+    state["worker"] = worker
 
     if state.get("emergency_stop") or not state.get("enabled"):
         worker["status"] = "emergency_stopped" if state.get("emergency_stop") else "disabled"
@@ -232,6 +233,7 @@ def run_live_tick() -> dict[str, Any]:
                 "live_enabled": True, "orders_enabled": False,
                 "withdrawals_enabled": False,
             }
+        worker = dict(state.get("worker") or {})
         fx = fetch_eur_sek_rate()
         rate = _d(fx["rate"])
         preflight = run_read_only_preflight(rate)
@@ -393,6 +395,12 @@ def run_live_tick() -> dict[str, Any]:
                 lot_decimals = int(market.get("lot_decimals") or 8)
                 qty = qty.quantize(Decimal(1).scaleb(-lot_decimals), rounding=ROUND_DOWN)
 
+            # Persist the candle cursor before placing any order. If the
+            # process crashes after a fill, this signal cannot fire twice.
+            worker["processed_candles"] = dict(list(processed.items())[-100:])
+            worker["watchlist_cursor"] = next_cursor
+            state["worker"] = worker
+            revision = save_live_state(state, revision)
             result = execute_journaled_limit_order(
                 pair=pair, side=side, volume=qty, price=limit_price,
                 pair_symbol=symbol, base_asset=base_asset,
