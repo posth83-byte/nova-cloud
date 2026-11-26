@@ -31,8 +31,6 @@ jobs:
         env:
           WORKER_URL: https://nova-cloud-c4t9.onrender.com/api/trading/paper
           START_PAPER: ${{ github.event_name == 'workflow_dispatch' && inputs.action == 'start-paper' }}
-          ACTIONS_ID_TOKEN_REQUEST_URL: ${{ env.ACTIONS_ID_TOKEN_REQUEST_URL }}
-          ACTIONS_ID_TOKEN_REQUEST_TOKEN: ${{ env.ACTIONS_ID_TOKEN_REQUEST_TOKEN }}
         shell: bash
         run: |
           set -euo pipefail
