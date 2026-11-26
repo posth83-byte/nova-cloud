@@ -6,3 +6,4 @@ edge-tts
 imageio-ffmpeg
 Pillow
 pywebpush>=2.0.0
+PyJWT[crypto]>=2.8,<3
