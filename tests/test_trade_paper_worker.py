@@ -67,6 +67,27 @@ class PaperWorkerTests(unittest.TestCase):
             (False, False),
         )
 
+
+    def test_momentum_entry_requires_confirmed_trend_and_fresh_candle(self):
+        candles = [
+            {
+                "timestamp": 1_800_000_000 + i * 3600,
+                "close": 10.0 + i * 0.02 + (0.15 if i % 2 else -0.15),
+            }
+            for i in range(45)
+        ]
+        self.assertTrue(worker._momentum_entry_signal(candles, after_timestamp=0))
+        self.assertFalse(worker._momentum_entry_signal(
+            candles, after_timestamp=candles[-1]["timestamp"]
+        ))
+
+    def test_momentum_entry_rejects_overbought_vertical_move(self):
+        candles = [
+            {"timestamp": 1_800_000_000 + i * 3600, "close": 10.0 + i * 0.25}
+            for i in range(45)
+        ]
+        self.assertFalse(worker._momentum_entry_signal(candles, after_timestamp=0))
+
     def test_worker_simulates_buy_on_new_closed_candle(self):
         saved = []
         with (
