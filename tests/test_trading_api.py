@@ -82,6 +82,31 @@ class TradingApiTests(unittest.TestCase):
         self.assertEqual(result["max_trade_budget_sek"], 20.0)
         self.assertEqual(result["candidate_count"], 1)
 
+    def test_opportunities_endpoint_is_read_only(self):
+        state = {
+            "starting_cash": "200.00", "cash": "200.00",
+            "worker": {},
+        }
+        market_data = {"markets": [{
+            "symbol": "XBT/EUR", "ask": 60000, "bid": 59940,
+            "spread_pct": 0.1, "volume_24h_quote_est": 500000,
+            "change_24h_pct": 4.2, "high_24h": 62000, "low_24h": 58000,
+            "last": 60000, "min_order_qty": 0.0001, "min_cost_quote": 0.5,
+        }]}
+        fx = {"rate": 11.2, "age_days": 1, "date": "2026-11-25", "source": "test"}
+        with (
+            patch.object(api, "_load", return_value=(state, 1)),
+            patch.object(api, "fetch_eur_sek_rate", return_value=fx),
+            patch.object(api, "scan_markets", return_value=market_data),
+        ):
+            result = asyncio.run(api.trading_opportunities(limit=5))
+        self.assertEqual(result["mode"], "opportunity_radar")
+        self.assertFalse(result["execution_enabled"])
+        self.assertFalse(result["orders_enabled"])
+        self.assertFalse(result["withdrawals_enabled"])
+        self.assertEqual(result["paper_balance_sek"], 200.0)
+        self.assertEqual(result["eligible_count"], 1)
+
     def test_historical_backtest_endpoint_is_read_only(self):
         state = create_initial_state("200.00")
         history = {
