@@ -27,6 +27,36 @@ class PaperStrategyTests(unittest.TestCase):
         self.assertEqual(actions[0]["side"], "buy")
         self.assertIn("BTC/EUR", self.broker.state["positions"])
 
+    def test_monitor_only_position_cannot_be_opened_as_new_trade(self):
+        actions = run_cycle(self.broker, [{
+            "symbol": "BTC/EUR",
+            "last_price_eur": 100.0,
+            "trend": "bullish",
+            "rsi14": 60.0,
+            "volume_ratio": 1.5,
+            "last_candle_timestamp": 1000,
+            "monitor_only": True,
+        }])
+        self.assertEqual(actions, [])
+        self.assertEqual(self.broker.state["positions"], {})
+
+    def test_monitor_only_position_still_triggers_stop(self):
+        self.broker.buy("BTC/EUR", 100.0, 98.0)
+        self.broker.state["processed_candles"]["BTC/EUR"] = 1000
+        self.broker._save()
+        actions = run_cycle(self.broker, [{
+            "symbol": "BTC/EUR",
+            "last_price_eur": 97.0,
+            "trend": "neutral",
+            "rsi14": 45.0,
+            "volume_ratio": 1.0,
+            "last_candle_timestamp": 1000,
+            "monitor_only": True,
+        }])
+        self.assertEqual(len(actions), 1)
+        self.assertEqual(actions[0]["reason"], "stop_loss")
+        self.assertEqual(self.broker.state["positions"], {})
+
     def test_weak_volume_does_not_open_trade(self):
         actions = run_cycle(self.broker, [{
             "symbol": "BTC/EUR",
