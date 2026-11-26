@@ -21,7 +21,7 @@ from trading.paper_engine import create_initial_state
 from trading.strategy import StrategyDataError, fetch_eur_sek_rate
 
 
-MAX_WATCHLIST = 8
+MAX_WATCHLIST = 16
 MAX_OPEN_POSITIONS = 3
 MAX_TOTAL_EXPOSURE_PCT = 1.00
 MIN_TURNOVER_EUR = 10_000.0
@@ -43,6 +43,31 @@ def _cross_signal(candles: list[dict[str, Any]]) -> tuple[bool, bool]:
         fast_previous <= slow_previous and fast_current > slow_current,
         fast_previous >= slow_previous and fast_current < slow_current,
     )
+
+
+def _select_watchlist(
+    candidates: list[dict[str, Any]],
+    positions: dict[str, Any],
+    cursor: int,
+) -> tuple[set[str], int]:
+    """Rotate through eligible markets so the fixed-size batch covers the full list."""
+    symbols = list(dict.fromkeys(
+        str(row.get("symbol", "")).strip().upper()
+        for row in candidates
+        if str(row.get("symbol", "")).strip()
+    ))
+    if not symbols:
+        return {str(symbol).upper() for symbol in positions}, 0
+
+    start = int(cursor) % len(symbols)
+    batch_size = min(MAX_WATCHLIST, len(symbols))
+    selected = {
+        symbols[(start + offset) % len(symbols)]
+        for offset in range(batch_size)
+    }
+    next_cursor = (start + batch_size) % len(symbols)
+    selected.update(str(symbol).upper() for symbol in positions)
+    return selected, next_cursor
 
 
 def run_paper_tick() -> dict[str, Any]:
@@ -152,17 +177,20 @@ def run_paper_tick() -> dict[str, Any]:
             float(row.get("spread_pct") or 99),
             -float(row.get("volume_24h_quote_est") or 0),
         ))
-        watch_symbols = {str(row["symbol"]).upper() for row in candidates[:MAX_WATCHLIST]}
-        watch_symbols.update(symbol.upper() for symbol in positions)
+        watch_symbols, next_watchlist_cursor = _select_watchlist(
+            candidates, positions, int(worker_state.get("watchlist_cursor") or 0)
+        )
         processed = dict(worker_state.get("processed_candles") or {})
         actions = []
         evaluated = 0
+        markets_scanned = 0
         entry_taken = False
 
         for symbol in sorted(watch_symbols):
             market = market_by_symbol.get(symbol)
             if market is None:
                 continue
+            markets_scanned += 1
             history = fetch_ohlc_candles(
                 symbol, interval=60, api_pair=market.get("api_pair"),
                 min_order_qty=market.get("min_order_qty"),
@@ -238,7 +266,9 @@ def run_paper_tick() -> dict[str, Any]:
             "last_fx": fx,
             "last_markets_found": len(markets),
             "last_markets_eligible": len(candidates),
+            "last_markets_scanned": markets_scanned,
             "last_candles_evaluated": evaluated,
+            "watchlist_cursor": next_watchlist_cursor,
             "processed_candles": dict(list(processed.items())[-100:]),
             "last_actions": actions[-MAX_WATCHLIST:],
         })
@@ -247,6 +277,7 @@ def run_paper_tick() -> dict[str, Any]:
         return {
             "ok": True, "status": "running", "paper_enabled": True,
             "markets_found": len(markets), "markets_eligible": len(candidates),
+            "markets_scanned": markets_scanned,
             "candles_evaluated": evaluated, "actions": actions,
             "revision": next_revision, "orders_enabled": False,
             "withdrawals_enabled": False,
