@@ -12,7 +12,8 @@ from trading.paper_engine import (
     portfolio_snapshot,
     set_paper_enabled,
 )
-from trading.paper_store import PaperStoreError, load_or_create, save_state\nfrom trading.backtest import run_sma_backtest
+from trading.paper_store import PaperStoreError, load_or_create, save_state
+from trading.backtest import run_sma_backtest
 from trading.strategy import StrategyDataError, build_strategy_preview, fetch_eur_sek_rate
 
 router = APIRouter(prefix="/api/trading", tags=["trading"])
