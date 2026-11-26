@@ -223,6 +223,15 @@ def validate_limit_order(
     }
 
 
+def get_open_orders() -> dict[str, Any]:
+    """Return open spot orders to internal safety checks only."""
+    result = _private_post("OpenOrders")
+    orders = result.get("open") or {}
+    if not isinstance(orders, dict):
+        raise KrakenPrivateAPIError("Krakens öppna order kunde inte verifieras.")
+    return orders
+
+
 def get_account_balances() -> dict[str, Any]:
     """Return private balance data to server-side trading logic only."""
     return _private_post("Balance")
