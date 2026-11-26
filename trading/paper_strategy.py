@@ -70,7 +70,13 @@ def run_cycle(broker: PaperBroker, market_results: list[dict[str, Any]]) -> list
             ):
                 price = prices[symbol]
                 stop = price * (1.0 - STOP_DISTANCE_PCT / 100.0)
-                fill = broker.buy(symbol, price, stop, prices=prices)
+                fill = broker.buy(
+                    symbol,
+                    price,
+                    stop,
+                    prices=prices,
+                    minimum_amount=item.get("minimum_order_amount"),
+                )
                 actions.append({"strategy": STRATEGY_NAME, **fill})
                 break
 
