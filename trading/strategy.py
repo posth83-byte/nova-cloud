@@ -51,7 +51,7 @@ def build_strategy_preview(
     fx: dict[str, Any],
     *,
     equity_sek: float = 200.0,
-    max_trade_pct: float = 0.10,
+    max_trade_pct: float = 1.00,
     max_spread_pct: float = 0.35,
     min_turnover_eur: float = 10000.0,
 ) -> dict[str, Any]:
@@ -125,6 +125,7 @@ def build_strategy_preview(
         "execution_enabled": False,
         "equity_assumption_sek": round(equity_sek, 2),
         "max_trade_budget_sek": budget,
+        "allocation_policy": "up_to_100_percent_of_available_paper_equity_when_signal_and_risk_checks_pass",
         "fx": fx,
         "criteria": {
             "max_spread_pct": max_spread_pct,

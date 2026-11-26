@@ -52,8 +52,8 @@ def create_initial_state(starting_cash_sek: Any = "200.00") -> dict[str, Any]:
         "day_key": None,
         "day_start_equity": str(cash),
         "risk": {
-            "max_trade_pct": "0.10",
-            "max_position_pct": "0.25",
+            "max_trade_pct": "1.00",
+            "max_position_pct": "1.00",
             "daily_loss_limit_pct": "0.02",
             "max_drawdown_pct": "0.10",
             "fee_rate": "0.0040",

@@ -37,6 +37,16 @@ class PaperTradingEngineTests(unittest.TestCase):
         self.assertEqual(state["trades"][0]["mode"], "paper_only")
         self.assertIn("XBT/EUR", state["positions"])
 
+    def test_allows_one_qualifying_trade_to_use_almost_all_200_sek(self):
+        quantity = Decimal("199.90") / (Decimal("1000000") * Decimal("1.0015") * Decimal("1.004"))
+        bought = apply_paper_trade(
+            self.state, symbol="XBT/EUR", side="buy", quantity=str(quantity),
+            price_sek="1000000", timestamp=self.now,
+        )
+        self.assertLess(Decimal(bought["cash"]), Decimal("0.20"))
+        self.assertGreater(Decimal(bought["cash"]), Decimal("0"))
+        self.assertEqual(bought["risk"]["max_trade_pct"], "1.00")
+
     def test_rejects_oversized_order(self):
         with self.assertRaises(PaperTradingError):
             apply_paper_trade(
