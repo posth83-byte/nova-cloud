@@ -3078,7 +3078,7 @@ async function loadTradeChart(pair,period,containerId){
 }
 function renderTradeHistory(team){
  const target=$("tradeHistory");target.replaceChildren();
- const trades=team.trades||[],intents=team.order_intents||[];
+ const trades=team.trades||[],intents=(team.order_intents||[]).filter(intent=>!intent.ledger_applied);
  if(!trades.length&&!intents.length){target.textContent="Inga order eller genomförda affärer registrerade ännu.";return}
  trades.slice(0,15).forEach(trade=>{
   const row=document.createElement("div");row.className="trade-history-row";
