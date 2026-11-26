@@ -6,8 +6,9 @@ retries an ambiguous exchange outcome.
 """
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal, ROUND_DOWN, ROUND_UP, ROUND_HALF_UP
+import uuid
 from typing import Any
 
 from trading.kraken_monitor import KrakenPublicAPIError, fetch_ohlc_candles, scan_markets
@@ -54,12 +55,44 @@ def _round_money(value: Decimal) -> Decimal:
     return value.quantize(CENT, rounding=ROUND_HALF_UP)
 
 
+def _acquire_lease(
+    state: dict[str, Any], revision: int, now: datetime
+) -> tuple[dict[str, Any], int, str | None]:
+    """Acquire a short database-CAS lease so manual and scheduled ticks cannot overlap."""
+    worker = dict(state.get("worker") or {})
+    lease_until_raw = worker.get("lease_until")
+    if lease_until_raw:
+        try:
+            lease_until = datetime.fromisoformat(str(lease_until_raw))
+            if lease_until.tzinfo is None:
+                lease_until = lease_until.replace(tzinfo=timezone.utc)
+            if lease_until > now:
+                return state, revision, None
+        except ValueError:
+            # Malformed lease is treated as expired, then replaced atomically.
+            pass
+    lease_id = uuid.uuid4().hex
+    worker["lease_id"] = lease_id
+    worker["lease_until"] = (now + timedelta(minutes=6)).isoformat()
+    state["worker"] = worker
+    return state, save_live_state(state, revision), lease_id
+
+
+def _clear_lease(state: dict[str, Any]) -> dict[str, Any]:
+    worker = dict(state.get("worker") or {})
+    worker.pop("lease_id", None)
+    worker.pop("lease_until", None)
+    state["worker"] = worker
+    return state
+
+
 def _halt(state: dict[str, Any], reason: str) -> dict[str, Any]:
     state["enabled"] = False
     state["emergency_stop"] = True
     state["stop_reason"] = str(reason)[:240]
     state["worker"] = {
-        **dict(state.get("worker") or {}),
+        **{key: value for key, value in dict(state.get("worker") or {}).items()
+           if key not in {"lease_id", "lease_until"}},
         "status": "emergency_stopped",
         "last_error": str(reason)[:240],
         "last_tick_at": datetime.now(timezone.utc).isoformat(),
@@ -192,6 +225,13 @@ def run_live_tick() -> dict[str, Any]:
         }
 
     try:
+        state, revision, lease_id = _acquire_lease(state, revision, now)
+        if lease_id is None:
+            return {
+                "ok": True, "status": "already_running",
+                "live_enabled": True, "orders_enabled": False,
+                "withdrawals_enabled": False,
+            }
         fx = fetch_eur_sek_rate()
         rate = _d(fx["rate"])
         preflight = run_read_only_preflight(rate)
@@ -236,6 +276,8 @@ def run_live_tick() -> dict[str, Any]:
 
         state, revision, recovered = _recover_unapplied(state, revision, rate)
         if recovered:
+            state = _clear_lease(state)
+            worker = dict(state.get("worker") or {})
             worker.update({
                 "status": "reconciled_previous_order",
                 "last_success_at": now.isoformat(),
@@ -372,6 +414,8 @@ def run_live_tick() -> dict[str, Any]:
             })
             order_sent = True
 
+        state = _clear_lease(state)
+        worker = dict(state.get("worker") or {})
         worker.update({
             "status": "running",
             "last_success_at": now.isoformat(),
