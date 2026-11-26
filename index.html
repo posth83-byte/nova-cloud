@@ -3003,13 +3003,13 @@ async function refreshTradeDashboard(openedFromUnlock=false){
 function renderTradeDashboard(data){
  const account=data.account||{},team=data.trade_ai||{},positions=team.positions||[];
  $("tradeTotalValue").textContent=tradeSek(account.total_value_sek);
- $("tradeTotalValueEur").textContent=tradeNumber(account.total_value_eur,2)+" EUR på Kraken";
+ $("tradeTotalValueEur").textContent=(account.valuation_complete?"":"Minst ") + tradeNumber(account.total_value_eur,2)+" EUR värderat på Kraken";
  $("tradeAvailable").textContent=tradeSek(account.available_eur_sek);
  $("tradeAvailableEur").textContent=tradeNumber(account.available_eur,4)+" EUR disponibelt för köp";
  const invested=positions.reduce((sum,p)=>sum+(Number(p.market_value_sek)||0),0);
  $("tradeInvested").textContent=tradeSek(invested);$("tradePositionCount").textContent=positions.length+" bekräftade innehav";
  const tradeEquity=(Number(account.available_eur_sek)||0)+invested,dayStart=Number(team.day_start_equity_sek);
- const daily=Number.isFinite(dayStart)&&dayStart>0?tradeEquity-dayStart:null;
+ const daily=Number.isFinite(dayStart)&&dayStart>0&&positions.every(p=>p.market_value_sek!==null)?tradeEquity-dayStart:null;
  $("tradeDailyPnl").textContent=daily===null?"—":(daily>=0?"+":"")+tradeSek(daily);
  $("tradeDailyPnl").style.color=daily===null?"":daily>=0?"#85e6ba":"#ff9b9b";
  $("tradeRealizedPnl").textContent="Realiserat: "+tradeSek(team.realized_pnl_sek);
