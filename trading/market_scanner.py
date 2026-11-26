@@ -84,6 +84,7 @@ def scan() -> dict:
     exchange = ccxt.kraken({"enableRateLimit": True, "timeout": 15000})
     results = []
     errors = []
+    markets = exchange.load_markets()
     for symbol in SYMBOLS:
         try:
             candles = exchange.fetch_ohlcv(symbol, timeframe=TIMEFRAME, limit=CANDLE_LIMIT)
@@ -91,6 +92,12 @@ def scan() -> dict:
             now_ms = exchange.milliseconds()
             closed_candles = [candle for candle in candles if int(candle[0]) + timeframe_ms <= now_ms]
             analysis = analyse_candles(symbol, closed_candles)
+            market = markets.get(symbol, {})
+            limits = market.get("limits", {})
+            amount_limits = limits.get("amount", {})
+            cost_limits = limits.get("cost", {})
+            analysis["minimum_order_amount"] = amount_limits.get("min")
+            analysis["minimum_order_cost_eur"] = cost_limits.get("min")
             try:
                 ticker = exchange.fetch_ticker(symbol)
                 mark = ticker.get("last")
