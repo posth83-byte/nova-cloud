@@ -10,5 +10,5 @@
   "minimum_notional": 0.0,
   "live_orders_enabled": false,
   "automatic_profit_reinvestment": true,
-  "note": "starting_cash is supplied when creating a paper wallet. Convert the 500 SEK test budget to EUR using a current FX rate before initializing the EUR wallet."
+  "note": "starting_cash is supplied when creating a paper wallet. Convert the 200 SEK test budget to EUR using a current FX rate before initializing the EUR wallet."
 }
