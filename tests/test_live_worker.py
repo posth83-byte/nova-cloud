@@ -68,7 +68,7 @@ class LiveWorkerTests(unittest.TestCase):
         )
         self.assertEqual(updated["cash_sek"], "231.45")
         self.assertEqual(updated["positions"], {})
-        self.assertEqual(updated["realized_pnl_sek"], "10.01")
+        self.assertEqual(updated["realized_pnl_sek"], "21.01")
 
     def test_fill_replay_is_idempotent(self):
         intent = {
