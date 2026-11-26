@@ -180,7 +180,7 @@ def run_paper_tick() -> dict[str, Any]:
                     Decimal(str(trade_budget)),
                     Decimal(str(state["cash"])),
                 )
-                quantity = budget / (ask_sek * (Decimal("1") + fee + slippage))
+                quantity = budget / (ask_sek * (Decimal("1") + slippage) * (Decimal("1") + fee))
                 minimum_qty = Decimal(str(history.get("min_order_qty") or 0))
                 minimum_cost = Decimal(str(history.get("min_cost_eur") or 0))
                 if quantity < minimum_qty or quantity * Decimal(str(ask_eur)) < minimum_cost:
