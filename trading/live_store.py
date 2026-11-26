@@ -1,0 +1,133 @@
+"""Durable, isolated persistence for real Kraken order intents and live state."""
+from __future__ import annotations
+
+import json
+import os
+import urllib.error
+import urllib.parse
+import urllib.request
+from typing import Any
+from uuid import UUID
+
+
+class LiveStoreError(RuntimeError):
+    """A safe error from the live-trading journal."""
+
+
+def _config() -> tuple[str, str]:
+    url = os.getenv("SUPABASE_URL", "").strip().rstrip("/")
+    key = (
+        os.getenv("SUPABASE_SECRET_KEY", "").strip()
+        or os.getenv("SUPABASE_SERVICE_ROLE_KEY", "").strip()
+    )
+    if not url or not key:
+        raise LiveStoreError("Supabase är inte konfigurerat för livejournalen.")
+    return url, key
+
+
+def _request(table: str, method: str, query: str = "", payload: Any = None,
+             prefer: str = "return=representation") -> list[dict[str, Any]]:
+    if table not in {"jarvis_live_trading_state", "jarvis_live_order_intents"}:
+        raise LiveStoreError("Ogiltig livejournal.")
+    base, key = _config()
+    url = f"{base}/rest/v1/{table}"
+    if query:
+        url += "?" + query
+    body = None if payload is None else json.dumps(payload).encode("utf-8")
+    headers = {
+        "apikey": key,
+        "Authorization": "Bearer " + key,
+        "Accept": "application/json",
+        "Prefer": prefer,
+    }
+    if body is not None:
+        headers["Content-Type"] = "application/json"
+    request = urllib.request.Request(url, data=body, headers=headers, method=method)
+    try:
+        with urllib.request.urlopen(request, timeout=15) as response:
+            raw = response.read().decode("utf-8")
+            value = json.loads(raw) if raw else []
+    except urllib.error.HTTPError as exc:
+        # Never return the database response body; it may contain account data.
+        raise LiveStoreError(f"Livejournalen svarade med HTTP {exc.code}.") from exc
+    except (urllib.error.URLError, TimeoutError, json.JSONDecodeError) as exc:
+        raise LiveStoreError("Livejournalen kunde inte nås säkert.") from exc
+    if not isinstance(value, list):
+        raise LiveStoreError("Livejournalen returnerade ett ogiltigt svar.")
+    return value
+
+
+def load_live_state() -> tuple[dict[str, Any] | None, int]:
+    query = urllib.parse.urlencode({"id": "eq.primary", "select": "state,revision", "limit": "1"})
+    rows = _request("jarvis_live_trading_state", "GET", query, prefer="")
+    if not rows:
+        return None, 0
+    return rows[0]["state"], int(rows[0]["revision"])
+
+
+def save_live_state(state: dict[str, Any], revision: int) -> int:
+    next_revision = revision + 1
+    if revision == 0:
+        rows = _request(
+            "jarvis_live_trading_state", "POST",
+            payload={"id": "primary", "state": state, "revision": next_revision},
+        )
+    else:
+        query = urllib.parse.urlencode({
+            "id": "eq.primary", "revision": "eq." + str(revision), "select": "revision"
+        })
+        rows = _request(
+            "jarvis_live_trading_state", "PATCH", query,
+            payload={"state": state, "revision": next_revision},
+        )
+    if not rows:
+        raise LiveStoreError("Livejournalens revision ändrades; körningen stoppades.")
+    return next_revision
+
+
+def create_order_intent(*, intent_id: str, client_order_id: str, pair: str,
+                        side: str, volume: str, limit_price: str) -> dict[str, Any]:
+    try:
+        UUID(intent_id)
+    except (ValueError, TypeError, AttributeError) as exc:
+        raise LiveStoreError("Ogiltigt order-intent-ID.") from exc
+    if side not in {"buy", "sell"} or not pair or not pair.isalnum():
+        raise LiveStoreError("Ogiltig orderavsikt.")
+    rows = _request(
+        "jarvis_live_order_intents", "POST",
+        payload={
+            "id": intent_id, "client_order_id": client_order_id, "pair": pair,
+            "side": side, "volume": volume, "limit_price": limit_price,
+            "status": "prepared",
+            "request_payload": {"pair": pair, "side": side, "volume": volume, "price": limit_price},
+        },
+    )
+    if not rows:
+        raise LiveStoreError("Orderavsikten kunde inte journalföras före orderläggning.")
+    return rows[0]
+
+
+def get_order_intent(client_order_id: str) -> dict[str, Any] | None:
+    query = urllib.parse.urlencode({
+        "client_order_id": "eq." + client_order_id, "select": "*", "limit": "1"
+    })
+    rows = _request("jarvis_live_order_intents", "GET", query, prefer="")
+    return rows[0] if rows else None
+
+
+def update_order_intent(client_order_id: str, *, status: str,
+                        txid: str | None = None,
+                        exchange_result: dict[str, Any] | None = None) -> dict[str, Any]:
+    allowed = {"prepared", "submitting", "unknown", "accepted", "closed", "rejected", "reconciled"}
+    if status not in allowed:
+        raise LiveStoreError("Ogiltig orderstatus.")
+    query = urllib.parse.urlencode({"client_order_id": "eq." + client_order_id, "select": "*"})
+    payload: dict[str, Any] = {"status": status}
+    if txid is not None:
+        payload["txid"] = txid
+    if exchange_result is not None:
+        payload["exchange_result"] = exchange_result
+    rows = _request("jarvis_live_order_intents", "PATCH", query, payload=payload)
+    if not rows:
+        raise LiveStoreError("Orderjournalen kunde inte uppdatera orderstatus.")
+    return rows[0]
