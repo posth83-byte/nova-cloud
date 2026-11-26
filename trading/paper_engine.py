@@ -188,6 +188,8 @@ class PaperBroker:
         notional = quantity * entry_fill
         if quantity <= 0 or notional < self.minimum_notional:
             raise TradeRejected("Order is below minimum notional or available risk/cash")
+        if minimum_amount is None:
+            minimum_amount = self.minimum_order_sizes.get(symbol)
         if minimum_amount is not None:
             minimum = float(minimum_amount)
             if minimum < 0 or minimum != minimum or minimum == float("inf"):
