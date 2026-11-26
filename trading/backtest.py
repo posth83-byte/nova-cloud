@@ -147,7 +147,24 @@ def run_sma_backtest(
 
     net_eur = cash - starting_cash_eur
     sell_trades = [trade for trade in trades if trade["side"].startswith("sell")]
-    winners = sum(1 for trade in sell_trades if trade.get("net_trade_pnl_eur", 0) > 0)
+    trade_pnls = [trade.get("net_trade_pnl_eur", 0.0) for trade in sell_trades]
+    winners = sum(1 for pnl in trade_pnls if pnl > 0)
+
+    # Same-sized buy-and-hold benchmark with identical costs and exchange minimums.
+    benchmark_cash = starting_cash_eur
+    benchmark_executed = False
+    benchmark_entry = closes[split] * (1 + spread / 2) * (1 + slippage_rate)
+    benchmark_spend = min(benchmark_cash, max_trade_eur, max_position_eur)
+    benchmark_qty = benchmark_spend / (benchmark_entry * (1 + fee_rate))
+    if (benchmark_qty + 1e-12 >= max(0.0, min_order_qty)
+            and benchmark_qty * closes[split] * (1 + spread / 2) >= max(0.0, min_cost_eur)):
+        benchmark_cost = benchmark_qty * benchmark_entry * (1 + fee_rate)
+        if benchmark_cost <= benchmark_cash and benchmark_cost <= max_position_eur:
+            benchmark_cash -= benchmark_cost
+            benchmark_executed = True
+            benchmark_exit = closes[-1] * (1 - spread / 2) * (1 - slippage_rate)
+            benchmark_cash += benchmark_qty * benchmark_exit * (1 - fee_rate)
+    benchmark_net_eur = benchmark_cash - starting_cash_eur
     return {
         "mode": "historical_backtest_only",
         "execution_enabled": False,
