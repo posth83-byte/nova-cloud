@@ -155,9 +155,14 @@ class LiveWorkerTests(unittest.TestCase):
             patch.object(live_worker, "_cross_signal", return_value=(True, False)),
             patch.object(live_worker, "_select_watchlist", return_value=({"LINK/EUR"}, 0)),
             patch.object(live_worker, "list_unapplied_order_intents", return_value=[]),
-            patch.object(live_worker, "execute_journaled_limit_order", return_value={
-                "status": "closed", "client_order_id": "e" * 32, "vol_exec": "1",
-            }) as execute,
+            patch.object(live_worker, "execute_journaled_limit_order", side_effect=lambda **kwargs: (
+                self.assertEqual(
+                    state["worker"]["processed_candles"]["LINK/EUR"],
+                    candles[-1]["timestamp"],
+                ) or {
+                    "status": "closed", "client_order_id": "e" * 32, "vol_exec": "1",
+                }
+            )) as execute,
             patch.object(live_worker, "get_order_intent", return_value=intent),
             patch.object(live_worker, "mark_order_ledger_applied") as mark,
             patch.object(live_worker, "save_live_state", side_effect=save),
