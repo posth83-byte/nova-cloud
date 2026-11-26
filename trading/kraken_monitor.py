@@ -76,6 +76,8 @@ def build_market_rows(asset_pairs: dict[str, Any], tickers: dict[str, Any], quot
             "spread_pct": round(((ask - bid) / ((ask + bid) / 2.0)) * 100.0, 5),
             "min_order_qty": float(metadata.get("ordermin") or 0),
             "min_cost_quote": float(metadata.get("costmin") or 0),
+            "price_decimals": int(metadata.get("pair_decimals") or 8),
+            "lot_decimals": int(metadata.get("lot_decimals") or 8),
             "change_24h_pct": round(change_pct, 3),
             "volume_24h_base": round(volume_24h, 6),
             "volume_24h_quote_est": round(volume_24h * vwap, 2),
