@@ -31,5 +31,10 @@
   "performance_reporting": "net_of_fees_spread_and_slippage_with_deposits_separated_from_profit",
   "fee_model": "Kraken Pro Tier 1 taker reference",
   "taker_fee_rate_reference": 0.008,
-  "maker_fee_rate_reference": 0.004
+  "maker_fee_rate_reference": 0.004,
+  "minimum_order_sizes": {
+    "BTC/EUR": 0.00006,
+    "ETH/EUR": 0.002
+  },
+  "minimum_quote_cost_eur": 0.45
 }
