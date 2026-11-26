@@ -463,9 +463,14 @@ try {
             status: 200, contentType: "application/json",
             body: JSON.stringify({ status: "ok", ideas: [{ title: "Testtrend Sverige", traffic: "20K+", source: "Google Trends Sverige", source_url: "https://trends.google.com/", angle: "Gör en egen version." }], note: "Testdata." })
           }));
-          await page.locator("#videoFindIdeas").click({ force: true });
-          await page.waitForFunction(() => document.querySelector("#videoIdeasList")?.innerText.includes("Testtrend Sverige"), null, { timeout: 5000 });
-          if (!(await page.locator("#videoIdeasList").innerText()).includes("SKAPA EGEN VIDEO")) localFailures.push("Trend result does not offer an original-video action.");
+          const ideasResponsePromise = page.waitForResponse(response => response.url().includes("/api/video/team/ideas"), { timeout: 8000 }).catch(() => null);
+          await page.locator("#videoFindIdeas").evaluate(button => button.click());
+          const ideasResponse = await ideasResponsePromise;
+          if (!ideasResponse) localFailures.push("Trend button did not issue its API request. Button state: " + JSON.stringify(await page.locator("#videoFindIdeas").evaluate(el => ({ disabled: el.disabled, text: el.textContent }))));
+          else if (!ideasResponse.ok()) localFailures.push("Trend API returned HTTP " + ideasResponse.status());
+          const ideasRendered = await page.waitForFunction(() => document.querySelector("#videoIdeasList")?.innerText.includes("Testtrend Sverige"), null, { timeout: 5000 }).then(() => true).catch(() => false);
+          if (!ideasRendered) localFailures.push("Trend response did not render. Current panel: " + await page.locator("#videoIdeasList").innerText());
+          else if (!(await page.locator("#videoIdeasList").innerText()).includes("SKAPA EGEN VIDEO")) localFailures.push("Trend result does not offer an original-video action.");
 
           let createCount = 0;
           await page.route("**/api/video/team/create", async route => {
