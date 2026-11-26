@@ -40,6 +40,20 @@ class TradingApiTests(unittest.TestCase):
         self.assertEqual(result["storage"], "supabase")
         self.assertEqual(result["revision"], 1)
 
+    def test_paper_status_values_positions_from_recent_worker_marks(self):
+        from datetime import datetime, timezone
+        state = create_initial_state("200.00")
+        state["positions"] = {"XBT/EUR": {"quantity": "0.001", "cost_basis": "50000"}}
+        state["cash"] = "150.00"
+        state["worker"] = {
+            "last_marked_at": datetime.now(timezone.utc).isoformat(),
+            "last_marks_sek": {"XBT/EUR": 60000.0},
+        }
+        with patch.object(api, "_load", return_value=(state, 3)):
+            result = asyncio.run(api.paper_status())
+        self.assertEqual(result["equity"], "210.00")
+        self.assertEqual(result["valuation_status"], "complete")
+
     def test_paper_status_handles_positions_without_fresh_sek_marks(self):
         state = create_initial_state("200.00")
         state["positions"] = {"XBT/EUR": {"quantity": "0.001", "cost_basis": "500000"}}
