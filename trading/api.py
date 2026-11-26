@@ -96,9 +96,12 @@ def _manual_control_guard(
     if token:
         _control_guard(token)
     else:
-        _github_actions_guard(
-            authorization, manual_start=True, allowed_workflows=allowed_workflows
-        )
+        if allowed_workflows is None:
+            _github_actions_guard(authorization, manual_start=True)
+        else:
+            _github_actions_guard(
+                authorization, manual_start=True, allowed_workflows=allowed_workflows
+            )
 
 
 def _load():
