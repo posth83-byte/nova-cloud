@@ -254,6 +254,25 @@ class TradingApiTests(unittest.TestCase):
 
 
 
+    def test_live_worker_tick_requires_scheduler_identity_and_runs_worker(self):
+        with (
+            patch.object(api, "_github_actions_guard") as guard,
+            patch.object(api, "run_live_tick", return_value={
+                "ok": True, "status": "disabled", "live_enabled": False,
+                "orders_enabled": False, "withdrawals_enabled": False,
+            }) as worker,
+        ):
+            result = asyncio.run(api.live_worker_tick(authorization="Bearer oidc"))
+        guard.assert_called_once()
+        worker.assert_called_once()
+        self.assertFalse(result["live_enabled"])
+        self.assertFalse(result["orders_enabled"])
+
+    def test_live_worker_tick_rejects_bad_manual_control_token(self):
+        with patch.object(api, "_control_guard", side_effect=HTTPException(status_code=401)):
+            with self.assertRaises(HTTPException):
+                asyncio.run(api.live_worker_tick(x_trade_control_token="wrong"))
+
     def test_live_status_reads_separate_default_off_ledger(self):
         state = {
             "enabled": False, "emergency_stop": False, "cash_sek": "200.00",
