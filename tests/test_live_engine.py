@@ -30,7 +30,7 @@ class LiveEngineTests(unittest.TestCase):
                 pair="LINKEUR", side="buy", volume=Decimal("1"),
                 price=Decimal("8.4"),
             )
-        self.assertEqual(order, ["journal", "state:submitting", "exchange", "state:accepted"])
+        self.assertEqual(order, ["journal", "state:submitting", "exchange", "state:closed"])
         self.assertEqual(result["txid"], "ORDER1")
 
     def test_exchange_timeout_is_marked_unknown_and_never_retried(self):
