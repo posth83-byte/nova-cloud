@@ -17,7 +17,7 @@ class LiveEngineTests(unittest.TestCase):
             order.append("state:" + kwargs["status"])
         def submit(**kwargs):
             order.append("exchange")
-            return {"txid": "ORDER-1"}
+            return {"txid": "ORDER1"}
         with (
             patch.object(live_engine, "create_order_intent", side_effect=journal),
             patch.object(live_engine, "update_order_intent", side_effect=update),
@@ -31,7 +31,7 @@ class LiveEngineTests(unittest.TestCase):
                 price=Decimal("8.4"),
             )
         self.assertEqual(order, ["journal", "state:submitting", "exchange", "state:accepted"])
-        self.assertEqual(result["txid"], "ORDER-1")
+        self.assertEqual(result["txid"], "ORDER1")
 
     def test_exchange_timeout_is_marked_unknown_and_never_retried(self):
         order = []
