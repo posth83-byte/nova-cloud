@@ -307,7 +307,7 @@ class TradingApiTests(unittest.TestCase):
     def test_live_start_arms_only_after_server_gate_and_clean_preflight(self):
         state = {"enabled": False, "emergency_stop": False, "worker": {}}
         with (
-            patch.object(api, "_manual_control_guard"),
+            patch.object(api, "_github_actions_guard") as guard,
             patch.dict("os.environ", {"TRADE_LIVE_ENABLED": "true"}),
             patch.object(api, "load_or_create_live_state", return_value=(state, 7)),
             patch.object(api, "fetch_eur_sek_rate", return_value={"rate": 11.2}),
@@ -316,13 +316,21 @@ class TradingApiTests(unittest.TestCase):
             }),
             patch.object(api, "save_live_state", return_value=8) as save,
         ):
-            result = asyncio.run(api.live_start(x_trade_control_token="secret"))
+            result = asyncio.run(api.live_start(
+                x_trade_control_token=None, authorization="Bearer oidc"
+            ))
         self.assertTrue(result["live_enabled"])
         self.assertEqual(result["max_budget_sek"], 200.0)
         self.assertFalse(result["withdrawals_enabled"])
         self.assertTrue(state["enabled"])
         self.assertEqual(state["worker"]["status"], "armed")
         save.assert_called_once_with(state, 7)
+        guard.assert_called_once()
+        self.assertTrue(guard.call_args.kwargs["manual_start"])
+        self.assertIn(
+            "posth83-byte/nova-cloud/.github/workflows/trade-live-scheduler.yml@refs/heads/main",
+            guard.call_args.kwargs["allowed_workflows"],
+        )
 
     def test_live_start_requires_clean_kraken_preflight(self):
         state = {"enabled": False, "emergency_stop": False, "worker": {}}
