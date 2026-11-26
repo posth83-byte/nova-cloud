@@ -41,7 +41,7 @@ class PaperWorkerTests(unittest.TestCase):
         ):
             result = worker.run_paper_tick()
 
-        self.assertTrue(result["ok"])
+        self.assertTrue(result["ok"], result)
         self.assertTrue(result["paper_enabled"])
         self.assertFalse(result["orders_enabled"])
         self.assertEqual(result["actions"][0]["side"], "paper_buy")
