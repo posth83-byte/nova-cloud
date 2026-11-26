@@ -252,9 +252,6 @@ class TradingApiTests(unittest.TestCase):
         self.assertEqual(saved[0]["stop_reason"], "test stop")
 
 
-if __name__ == "__main__":
-    unittest.main()
-
 
     def test_live_status_never_enables_orders(self):
         with patch.object(api, "credentials_configured", return_value=True):
@@ -295,3 +292,7 @@ if __name__ == "__main__":
         self.assertFalse(result["orders_enabled"])
         self.assertFalse(result["withdrawals_enabled"])
         self.assertEqual(result["fx_reference"]["date"], "2026-11-26")
+
+
+if __name__ == "__main__":
+    unittest.main()
