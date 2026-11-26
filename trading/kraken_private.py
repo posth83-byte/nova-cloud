@@ -249,6 +249,28 @@ def lookup_order_by_client_id(client_order_id: str) -> dict[str, Any] | None:
     return None
 
 
+def query_order_by_txid(txid: str) -> dict[str, Any] | None:
+    """Fetch authoritative execution quantities and fees for one known order."""
+    txid = str(txid or "").strip()
+    if not txid or not txid.isalnum():
+        raise KrakenPrivateAPIError("Ogiltig Kraken-orderreferens.")
+    result = _private_post("QueryOrders", {"txid": txid, "trades": "true"})
+    order = result.get(txid)
+    if not isinstance(order, dict):
+        return None
+    return {
+        "txid": txid,
+        "status": str(order.get("status") or "").lower(),
+        "vol": str(order.get("vol") or "0"),
+        "vol_exec": str(order.get("vol_exec") or "0"),
+        "cost": str(order.get("cost") or "0"),
+        "fee": str(order.get("fee") or "0"),
+        "price": str(order.get("price") or "0"),
+        "avg_price": str(order.get("price") or "0"),
+        "trades": list(order.get("trades") or []),
+    }
+
+
 def submit_limit_order(
     *,
     pair: str,
