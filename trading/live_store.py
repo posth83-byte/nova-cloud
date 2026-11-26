@@ -85,6 +85,50 @@ def save_live_state(state: dict[str, Any], revision: int) -> int:
     return next_revision
 
 
+def create_initial_live_state() -> dict[str, Any]:
+    """A separate real-money ledger, disabled by default and capped at 200 SEK."""
+    return {
+        "schema_version": 1,
+        "mode": "live_spot",
+        "enabled": False,
+        "emergency_stop": False,
+        "stop_reason": None,
+        "currency": "SEK",
+        "starting_cash_sek": "200.00",
+        "cash_sek": "200.00",
+        "positions": {},
+        "trades": [],
+        "realized_pnl_sek": "0.00",
+        "peak_equity_sek": "200.00",
+        "day_key": None,
+        "day_start_equity_sek": "200.00",
+        "worker": {"status": "disabled", "last_error": None},
+        "risk": {
+            "max_budget_sek": "200.00",
+            "daily_loss_limit_pct": "0.02",
+            "max_drawdown_pct": "0.10",
+            "max_open_positions": 3,
+            "fee_rate": "0.0040",
+            "slippage_rate": "0.0015",
+        },
+    }
+
+
+def load_or_create_live_state() -> tuple[dict[str, Any], int]:
+    state, revision = load_live_state()
+    if state is not None:
+        return state, revision
+    initial = create_initial_live_state()
+    try:
+        return initial, save_live_state(initial, 0)
+    except LiveStoreError:
+        # Another process may have initialized the row concurrently.
+        current, current_revision = load_live_state()
+        if current is not None:
+            return current, current_revision
+        raise
+
+
 def create_order_intent(*, intent_id: str, client_order_id: str, pair: str,
                         side: str, volume: str, limit_price: str) -> dict[str, Any]:
     try:
