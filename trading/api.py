@@ -5,7 +5,10 @@ from datetime import datetime, timezone
 
 from fastapi import APIRouter, Header, HTTPException, Query
 
-from trading.kraken_monitor import KrakenPublicAPIError, fetch_ohlc_candles, scan_markets
+from trading.kraken_monitor import (
+    KrakenPublicAPIError, fetch_ohlc_candles, scan_markets,
+    value_account_balances, fetch_chart_candles,
+)
 from trading.paper_engine import (
     PaperTradingError,
     activate_emergency_stop,
@@ -23,12 +26,14 @@ from trading.live_store import (
     LiveStoreError,
     load_or_create_live_state,
     save_live_state,
+    list_recent_order_intents,
 )
 from trading.kraken_private import (
     KrakenPrivateAPIError,
     credentials_configured,
     run_read_only_preflight,
     validate_limit_order,
+    get_account_balances,
 )
 from decimal import Decimal, ROUND_DOWN
 
@@ -351,6 +356,133 @@ async def live_worker_tick(
             status_code=503,
             detail="Livehandelns schemalagda körning stoppades säkert.",
         ) from exc
+
+
+def _dashboard_guard(token: str | None):
+    expected = os.getenv("TRADE_DASHBOARD_TOKEN", "").strip()
+    if not expected:
+        raise HTTPException(status_code=503, detail="Trade AI-dashboardens läsnyckel är inte konfigurerad.")
+    supplied = (token or "").strip()
+    if not supplied or not hmac.compare_digest(supplied, expected):
+        raise HTTPException(status_code=401, detail="Dashboardnyckeln saknas eller är ogiltig.")
+
+
+@router.get("/live/dashboard")
+async def live_dashboard(
+    x_trade_dashboard_token: str | None = Header(default=None),
+):
+    """Private, read-only Kraken account and live portfolio dashboard."""
+    _dashboard_guard(x_trade_dashboard_token)
+    try:
+        state, revision = load_or_create_live_state()
+        fx = fetch_eur_sek_rate()
+        rate = Decimal(str(fx["rate"]))
+        account = run_read_only_preflight(rate)
+        balances = get_account_balances()
+        valuation = value_account_balances(balances, float(rate))
+        asset_by_code = {row["asset"]: row for row in valuation["assets"]}
+        positions = []
+        for symbol, position in dict(state.get("positions") or {}).items():
+            base_asset = str(position.get("base_asset") or "").upper()
+            market = asset_by_code.get(base_asset)
+            quantity = Decimal(str(position.get("quantity") or "0"))
+            cost_per_unit = Decimal(str(position.get("cost_basis_sek") or "0"))
+            price_eur = Decimal(str(market["price_eur"])) if market else None
+            market_value = (quantity * price_eur * rate) if price_eur is not None else None
+            cost_value = quantity * cost_per_unit
+            positions.append({
+                "symbol": symbol,
+                "base_asset": base_asset,
+                "quantity": str(quantity),
+                "cost_basis_sek_per_unit": str(cost_per_unit),
+                "price_eur": str(price_eur) if price_eur is not None else None,
+                "market_value_sek": str(market_value.quantize(Decimal("0.01"))) if market_value is not None else None,
+                "cost_value_sek": str(cost_value.quantize(Decimal("0.01"))),
+                "unrealized_pnl_sek": str((market_value - cost_value).quantize(Decimal("0.01"))) if market_value is not None else None,
+                "valuation_status": "priced" if market_value is not None else "price_unavailable",
+            })
+        eur_balance = Decimal(str(account["eur_balance"]))
+        available_eur_sek = (eur_balance * rate).quantize(Decimal("0.01"))
+        markets = scan_markets(quote="EUR", limit=50).get("markets", [])
+        radar = (
+            rank_opportunities(
+                markets,
+                equity_sek=float(available_eur_sek),
+                eur_sek=float(rate),
+                limit=8,
+            )
+            if available_eur_sek > 0
+            else {"candidates": []}
+        )
+        intents = list_recent_order_intents(30)
+        safe_intents = []
+        for row in intents:
+            exchange = row.get("exchange_result") or {}
+            safe_intents.append({
+                "client_order_id": row.get("client_order_id"),
+                "symbol": row.get("pair_symbol"),
+                "side": row.get("side"),
+                "status": row.get("status"),
+                "volume": row.get("volume"),
+                "limit_price": row.get("limit_price"),
+                "filled_volume": exchange.get("vol_exec"),
+                "fill_cost_eur": exchange.get("cost"),
+                "fee_eur": exchange.get("fee"),
+                "created_at": row.get("created_at"),
+                "updated_at": row.get("updated_at"),
+                "ledger_applied": bool(row.get("ledger_applied")),
+            })
+        return {
+            "provider": "Kraken private balance + public spot valuation",
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+            "account": {
+                "total_value_eur": valuation["total_eur"],
+                "total_value_sek": valuation["total_sek"],
+                "available_eur": str(eur_balance),
+                "available_eur_sek": str(available_eur_sek),
+                "open_orders_count": account["open_orders_count"],
+                "valuation_complete": valuation["valuation_complete"],
+                "unpriced_assets": valuation["unpriced_assets"],
+                "assets": valuation["assets"],
+                "fx": {"eur_sek": str(rate), "date": fx.get("date"), "source": fx.get("source")},
+            },
+            "opportunities": radar.get("candidates", []),
+            "trade_ai": {
+                "live_enabled": bool(state.get("enabled")),
+                "emergency_stop": bool(state.get("emergency_stop")),
+                "cash_ledger_sek": state.get("cash_sek"),
+                "positions": positions,
+                "position_count": len(positions),
+                "realized_pnl_sek": state.get("realized_pnl_sek"),
+                "day_start_equity_sek": state.get("day_start_equity_sek"),
+                "trades": list(state.get("trades") or [])[-30:][::-1],
+                "order_intents": safe_intents,
+                "worker": state.get("worker") or {},
+                "risk": state.get("risk") or {},
+                "revision": revision,
+            },
+            "budget_policy": "all_available_kraken_eur_balance",
+            "orders_enabled": False,
+            "withdrawals_enabled": False,
+            "valuation_status": "complete" if valuation["valuation_complete"] else "partial_unpriced_assets",
+        }
+    except HTTPException:
+        raise
+    except (LiveStoreError, StrategyDataError, KrakenPrivateAPIError, KrakenPublicAPIError, ValueError, TypeError) as exc:
+        raise HTTPException(status_code=503, detail="Kraken-kontot kunde inte värderas säkert just nu. Försök igen senare.") from exc
+
+
+@router.get("/live/chart")
+async def live_dashboard_chart(
+    pair: str = Query(..., pattern="^[A-Z0-9]+/EUR$"),
+    period: str = Query(default="24h", pattern="^(1h|24h|7d)$"),
+):
+    """Read-only market chart for a selected Kraken EUR pair."""
+    try:
+        interval, limit = (5, 12) if period == "1h" else (60, 24) if period == "24h" else (60, 168)
+        return fetch_chart_candles(pair, interval, limit)
+    except (ValueError, KrakenPublicAPIError) as exc:
+        raise HTTPException(status_code=502, detail="Kursgrafen kunde inte hämtas från Kraken just nu.") from exc
 
 
 @router.get("/live/status")

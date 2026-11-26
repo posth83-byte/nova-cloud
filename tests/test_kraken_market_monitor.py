@@ -1,6 +1,7 @@
 import unittest
+from unittest.mock import patch
 
-from trading.kraken_monitor import build_market_rows
+from trading.kraken_monitor import build_market_rows, value_account_balances
 
 
 class KrakenMarketMonitorTests(unittest.TestCase):
@@ -29,6 +30,28 @@ class KrakenMarketMonitorTests(unittest.TestCase):
         self.assertEqual(rows[0]["base_asset"], "XXBT")
         self.assertEqual(rows[0]["quote_asset"], "ZEUR")
 
+
+    def test_values_all_priced_balances_and_marks_unknown_assets(self):
+        pairs = {
+            "XXBTZEUR": {"altname": "XBTEUR", "wsname": "XBT/EUR", "status": "online", "base": "XXBT"},
+            "ZUSDZEUR": {"altname": "USDEUR", "wsname": "USD/EUR", "status": "online", "base": "ZUSD"},
+            "XETHZUSD": {"altname": "ETHUSD", "wsname": "ETH/USD", "status": "online", "base": "XETH"},
+        }
+        tickers = {
+            "XBTEUR": {"c": ["60000"]},
+            "USDEUR": {"c": ["0.9"]},
+            "ETHUSD": {"c": ["3000"]},
+        }
+        with patch("trading.kraken_monitor._public_get", side_effect=[pairs, tickers]):
+            result = value_account_balances(
+                {"ZEUR": "10", "XXBT": "0.001", "XETH": "0.1", "ZUSD": "5", "UNKNOWN": "3"},
+                11.2,
+            )
+        self.assertAlmostEqual(result["total_eur"], 344.5)
+        self.assertAlmostEqual(result["total_sek"], 3858.4)
+        self.assertFalse(result["valuation_complete"])
+        self.assertEqual(result["unpriced_assets"][0]["asset"], "UNKNOWN")
+        self.assertEqual({row["asset"] for row in result["assets"]}, {"ZEUR", "XXBT", "XETH", "ZUSD"})
 
     def test_preserves_zero_precision_metadata(self):
         pairs = {
