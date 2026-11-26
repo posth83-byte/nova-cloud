@@ -287,7 +287,7 @@ class TradingApiTests(unittest.TestCase):
         ):
             result = asyncio.run(api.live_status())
         self.assertTrue(result["credentials_configured"])
-        self.assertEqual(result["live_order_engine"], "journaled_spot_execution_foundation")
+        self.assertEqual(result["live_order_engine"], "guarded_autonomous_spot_worker")
         self.assertFalse(result["live_enabled"])
         self.assertFalse(result["orders_enabled"])
         self.assertFalse(result["withdrawals_enabled"])
