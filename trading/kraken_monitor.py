@@ -103,3 +103,43 @@ def scan_markets(quote: str = "EUR", limit: int = 25) -> dict[str, Any]:
         "orders_enabled": False,
         "note": "Ranked by estimated 24h quote turnover; ranking is not a buy/sell signal.",
     }
+
+
+def fetch_ohlc_candles(symbol: str, interval: int = 60) -> dict[str, Any]:
+    """Fetch closed public Kraken OHLC candles for one listed EUR market."""
+    symbol = str(symbol or "").strip().upper()
+    if interval != 60:
+        raise ValueError("Endast 60-minutersljusstakar stöds i första versionen.")
+    pairs = _public_get("AssetPairs")
+    metadata = next(
+        (row for row in pairs.values()
+         if isinstance(row, dict) and str(row.get("wsname", "")).upper() == symbol),
+        None,
+    )
+    if not metadata:
+        raise ValueError("Marknaden finns inte i Krakens EUR-lista.")
+    altname = str(metadata.get("altname") or "")
+    if not altname:
+        raise KrakenPublicAPIError("Kraken saknar marknadsidentifierare för paret.")
+    query = urllib.parse.urlencode({"pair": altname, "interval": interval})
+    payload = _public_get("OHLC?" + query)
+    raw_rows = next((value for key, value in payload.items() if key != "last"), None)
+    if not isinstance(raw_rows, list):
+        raise KrakenPublicAPIError("Kraken returnerade inga OHLC-ljusstakar.")
+    candles = []
+    # Kraken's final OHLC row is the still-open candle; exclude it to avoid look-ahead.
+    for row in raw_rows[:-1]:
+        try:
+            timestamp = int(row[0])
+            close = float(row[4])
+        except (IndexError, TypeError, ValueError, OverflowError):
+            continue
+        if timestamp > 0 and close > 0:
+            candles.append({"timestamp": timestamp, "close": close})
+    return {
+        "symbol": symbol,
+        "interval_minutes": interval,
+        "candles": candles[-720:],
+        "min_order_qty": float(metadata.get("ordermin") or 0),
+        "min_cost_eur": float(metadata.get("costmin") or 0),
+    }
