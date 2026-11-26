@@ -15,6 +15,51 @@ from trading.paper_engine import create_initial_state
 
 
 class TradingApiTests(unittest.TestCase):
+    def test_live_dashboard_requires_separate_read_key(self):
+        with patch.dict("os.environ", {"TRADE_DASHBOARD_TOKEN": "read-only-secret"}):
+            with self.assertRaises(HTTPException) as raised:
+                asyncio.run(api.live_dashboard(x_trade_dashboard_token="wrong"))
+        self.assertEqual(raised.exception.status_code, 401)
+
+    def test_live_dashboard_returns_private_account_and_live_filled_positions(self):
+        state = {
+            "enabled": True, "emergency_stop": False, "cash_sek": "100.00",
+            "positions": {"XBT/EUR": {"quantity": "0.001", "cost_basis_sek": "500000", "base_asset": "XXBT"}},
+            "realized_pnl_sek": "2.50", "day_start_equity_sek": "110.00",
+            "trades": [], "worker": {"last_success_at": "2026-11-26T12:00:00+00:00"},
+            "risk": {"max_open_positions": 3, "daily_loss_limit_pct": "0.02"},
+        }
+        fx = {"rate": 11.2, "date": "2026-11-26", "source": "test"}
+        account = {"connected": True, "eur_balance": "10", "open_orders_count": 0}
+        valuation = {
+            "total_eur": 70.0, "total_sek": 784.0, "valuation_complete": True,
+            "unpriced_assets": [],
+            "assets": [
+                {"asset": "ZEUR", "symbol": "EUR", "balance": 10.0, "price_eur": 1.0, "value_eur": 10.0, "value_sek": 112.0},
+                {"asset": "XXBT", "symbol": "XBT/EUR", "balance": 0.001, "price_eur": 60000.0, "value_eur": 60.0, "value_sek": 672.0},
+            ],
+        }
+        radar = {"candidates": [{"symbol": "XBT/EUR", "change_24h_pct": 1.0, "spread_pct": 0.1}]}
+        with (
+            patch.dict("os.environ", {"TRADE_DASHBOARD_TOKEN": "read-only-secret"}),
+            patch.object(api, "load_or_create_live_state", return_value=(state, 5)),
+            patch.object(api, "fetch_eur_sek_rate", return_value=fx),
+            patch.object(api, "run_read_only_preflight", return_value=account),
+            patch.object(api, "get_account_balances", return_value={"ZEUR": "10", "XXBT": "0.001"}),
+            patch.object(api, "value_account_balances", return_value=valuation),
+            patch.object(api, "scan_markets", return_value={"markets": []}),
+            patch.object(api, "rank_opportunities", return_value=radar),
+            patch.object(api, "list_recent_order_intents", return_value=[]),
+        ):
+            result = asyncio.run(api.live_dashboard(x_trade_dashboard_token="read-only-secret"))
+        self.assertEqual(result["account"]["total_value_sek"], 784.0)
+        self.assertEqual(result["account"]["available_eur"], "10")
+        self.assertTrue(result["trade_ai"]["live_enabled"])
+        self.assertEqual(result["trade_ai"]["positions"][0]["market_value_sek"], "672.00")
+        self.assertEqual(result["opportunities"][0]["symbol"], "XBT/EUR")
+        self.assertFalse(result["orders_enabled"])
+        self.assertFalse(result["withdrawals_enabled"])
+
     def test_status_is_read_only_paper_mode(self):
         result = asyncio.run(api.trading_status())
         self.assertEqual(result["status"], "online")
