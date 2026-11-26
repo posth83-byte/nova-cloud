@@ -13,6 +13,7 @@ from trading.paper_engine import (
     set_paper_enabled,
 )
 from trading.paper_store import PaperStoreError, load_or_create, save_state
+from trading.strategy import StrategyDataError, build_strategy_preview, fetch_eur_sek_rate
 
 router = APIRouter(prefix="/api/trading", tags=["trading"])
 
@@ -127,3 +128,21 @@ async def paper_emergency_stop(
     updated = activate_emergency_stop(state, reason)
     next_revision = _save(updated, revision)
     return {"ok": True, "paper_enabled": False, "emergency_stop": True, "revision": next_revision, "orders_enabled": False}
+
+
+@router.get("/paper/strategy-preview")
+async def paper_strategy_preview():
+    """Return a read-only watchlist with EUR prices converted to SEK."""
+    try:
+        state, _revision = _load()
+        fx = fetch_eur_sek_rate()
+        market_data = scan_markets(quote="EUR", limit=50)
+        return build_strategy_preview(
+            market_data.get("markets", []),
+            fx,
+            equity_sek=float(state.get("starting_cash") or "200.00"),
+        )
+    except (StrategyDataError, KrakenPublicAPIError) as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+    except (TypeError, ValueError) as exc:
+        raise HTTPException(status_code=503, detail="Trade AI kunde inte beräkna en säker förhandsanalys.") from exc

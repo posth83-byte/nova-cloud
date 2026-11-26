@@ -49,6 +49,25 @@ class TradingApiTests(unittest.TestCase):
         self.assertEqual(result["valuation_status"], "awaiting_fresh_sek_market_marks")
         self.assertFalse(result["orders_enabled"])
 
+    def test_strategy_preview_is_read_only_and_uses_sek_fx(self):
+        state = create_initial_state("200.00")
+        market = {"markets": [{
+            "symbol": "XBT/EUR", "ask": 60000, "bid": 59900,
+            "spread_pct": 0.1668, "volume_24h_quote_est": 500000,
+            "min_cost_quote": 0.5, "min_order_qty": 0.0001,
+        }]}
+        fx = {"rate": 11.2, "age_days": 1, "date": "2026-11-25", "source": "test"}
+        with (
+            patch.object(api, "_load", return_value=(state, 1)),
+            patch.object(api, "fetch_eur_sek_rate", return_value=fx),
+            patch.object(api, "scan_markets", return_value=market),
+        ):
+            result = asyncio.run(api.paper_strategy_preview())
+        self.assertEqual(result["mode"], "paper_preview_only")
+        self.assertFalse(result["execution_enabled"])
+        self.assertEqual(result["max_trade_budget_sek"], 20.0)
+        self.assertEqual(result["candidate_count"], 1)
+
     def test_control_guard_fails_closed_when_token_missing(self):
         with patch.dict("os.environ", {}, clear=True):
             with self.assertRaises(HTTPException) as exc:
@@ -64,9 +83,11 @@ class TradingApiTests(unittest.TestCase):
     def test_paper_start_requires_guard_and_persists_state(self):
         state = create_initial_state("200.00")
         saved = []
-        with patch.dict("os.environ", {"TRADE_CONTROL_TOKEN": "expected-secret"}), \
-             patch.object(api, "_load", return_value=(state, 4)), \
-             patch.object(api, "_save", side_effect=lambda updated, revision: saved.append((updated, revision)) or 5):
+        with (
+            patch.dict("os.environ", {"TRADE_CONTROL_TOKEN": "expected-secret"}),
+            patch.object(api, "_load", return_value=(state, 4)),
+            patch.object(api, "_save", side_effect=lambda updated, revision: saved.append((updated, revision)) or 5),
+        ):
             result = asyncio.run(api.paper_start(x_trade_control_token="expected-secret"))
         self.assertTrue(result["paper_enabled"])
         self.assertFalse(result["orders_enabled"])
@@ -77,9 +98,11 @@ class TradingApiTests(unittest.TestCase):
         state = create_initial_state("200.00")
         state["paper_enabled"] = True
         saved = []
-        with patch.dict("os.environ", {"TRADE_CONTROL_TOKEN": "expected-secret"}), \
-             patch.object(api, "_load", return_value=(state, 5)), \
-             patch.object(api, "_save", side_effect=lambda updated, revision: saved.append(updated) or 6):
+        with (
+            patch.dict("os.environ", {"TRADE_CONTROL_TOKEN": "expected-secret"}),
+            patch.object(api, "_load", return_value=(state, 5)),
+            patch.object(api, "_save", side_effect=lambda updated, revision: saved.append(updated) or 6),
+        ):
             result = asyncio.run(api.paper_pause(x_trade_control_token="expected-secret"))
         self.assertFalse(result["paper_enabled"])
         self.assertFalse(saved[0]["paper_enabled"])
@@ -88,9 +111,11 @@ class TradingApiTests(unittest.TestCase):
         state = create_initial_state("200.00")
         state["paper_enabled"] = True
         saved = []
-        with patch.dict("os.environ", {"TRADE_CONTROL_TOKEN": "expected-secret"}), \
-             patch.object(api, "_load", return_value=(state, 6)), \
-             patch.object(api, "_save", side_effect=lambda updated, revision: saved.append(updated) or 7):
+        with (
+            patch.dict("os.environ", {"TRADE_CONTROL_TOKEN": "expected-secret"}),
+            patch.object(api, "_load", return_value=(state, 6)),
+            patch.object(api, "_save", side_effect=lambda updated, revision: saved.append(updated) or 7),
+        ):
             result = asyncio.run(api.paper_emergency_stop(
                 reason="test stop", x_trade_control_token="expected-secret"
             ))
