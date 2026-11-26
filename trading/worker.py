@@ -70,7 +70,9 @@ def run_paper_tick() -> dict[str, Any]:
     try:
         fx = fetch_eur_sek_rate()
         rate = float(fx["rate"])
-        market_data = scan_markets(quote="EUR", limit=50)
+        market_data = scan_markets(
+            quote="EUR", limit=50, include_symbols=list(state.get("positions", {}).keys())
+        )
         markets = market_data.get("markets", [])
         market_by_symbol = {str(row.get("symbol", "")).upper(): row for row in markets}
         positions = state.get("positions", {})
