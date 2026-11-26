@@ -66,6 +66,21 @@ class PaperWorkerTests(unittest.TestCase):
         self.assertEqual(result["actions"], [])
         self.assertEqual(saved[0]["positions"], {})
 
+    def test_watchlist_rotates_through_all_eligible_markets(self):
+        candidates = [{"symbol": f"COIN{i}/EUR"} for i in range(20)]
+        first_batch, cursor = worker._select_watchlist(candidates, {}, 0)
+        second_batch, cursor = worker._select_watchlist(candidates, {}, cursor)
+
+        self.assertEqual(len(first_batch), worker.MAX_WATCHLIST)
+        self.assertEqual(len(second_batch), 20 - worker.MAX_WATCHLIST)
+        self.assertEqual(first_batch | second_batch, {row["symbol"] for row in candidates})
+        self.assertEqual(cursor, 0)
+
+    def test_watchlist_always_includes_existing_positions(self):
+        candidates = [{"symbol": f"COIN{i}/EUR"} for i in range(20)]
+        selected, _cursor = worker._select_watchlist(candidates, {"XBT/EUR": {}}, 0)
+        self.assertIn("XBT/EUR", selected)
+
     def test_disabled_paper_worker_does_not_fetch_markets(self):
         self.state["paper_enabled"] = False
         with (
