@@ -95,6 +95,7 @@ async def paper_status():
         "history": state.get("trades", [])[-25:],
         "risk": state.get("risk", {}),
         "stop_reason": state.get("stop_reason"),
+        "worker": state.get("worker", {}),
     })
     return snapshot
 
