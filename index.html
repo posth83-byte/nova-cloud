@@ -2938,6 +2938,175 @@ async function checkCloud(){
 }
 window.addEventListener("load",()=>{refreshJarvisNotificationButton();startTeamRuntimePolling();setTimeout(resumePendingJarvisJob,900)});
 checkCloud();setInterval(checkCloud,30000);
+
+/* TRADE AI COMMAND ROOM — private read-only account dashboard */
+let tradeDashboardTimer=null;
+const TRADE_DASHBOARD_SESSION_KEY="nova_trade_dashboard_read_key";
+function tradeEscape(value){
+ return String(value??"").replace(/[&<>"']/g,char=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[char]));
+}
+function tradeNumber(value,digits=2){
+ const n=Number(value);return Number.isFinite(n)?n.toLocaleString("sv-SE",{minimumFractionDigits:digits,maximumFractionDigits:digits}):"—";
+}
+function tradeSek(value){return tradeNumber(value,2)+" kr";}
+function tradeTime(value){
+ if(!value)return "—";const date=new Date(value);
+ return Number.isNaN(date.getTime())?"—":date.toLocaleString("sv-SE",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"});
+}
+function openTradeRoom(){
+ stopSpeech();activeRoom=null;
+ ["homeView","jarvisView","novaView","webView","gameView"].forEach(id=>$(id).classList.add("hidden"));
+ $("tradeView").classList.remove("hidden");window.scrollTo({top:0,behavior:"smooth"});
+ const saved=sessionStorage.getItem(TRADE_DASHBOARD_SESSION_KEY);
+ if(saved){$("tradeDashboardKey").value=saved;unlockTradeDashboard(true)}
+ else{$("tradeAccessPanel").hidden=false;$("tradeDashboardContent").hidden=true;$("tradeDashboardKey").focus()}
+ logActivity("TRADE AI COMMAND ROOM öppnades","◈","Privat Kraken-översikt");
+}
+async function unlockTradeDashboard(silent=false){
+ const key=String($("tradeDashboardKey").value||"").trim();
+ if(!key){$("tradeAccessMessage").textContent="Klistra in dashboardens läsnyckel först.";return}
+ sessionStorage.setItem(TRADE_DASHBOARD_SESSION_KEY,key);
+ $("tradeAccessMessage").textContent="Verifierar säker anslutning…";
+ const ok=await refreshTradeDashboard(true);
+ if(!ok){sessionStorage.removeItem(TRADE_DASHBOARD_SESSION_KEY);if(!silent)$("tradeAccessMessage").textContent="Nyckeln kunde inte verifieras. Kontrollera värdet i Render."}
+}
+function lockTradeDashboard(){
+ sessionStorage.removeItem(TRADE_DASHBOARD_SESSION_KEY);
+ if(tradeDashboardTimer){clearInterval(tradeDashboardTimer);tradeDashboardTimer=null}
+ $("tradeDashboardContent").hidden=true;$("tradeAccessPanel").hidden=false;
+ $("tradeDashboardKey").value="";$("tradeAccessMessage").textContent="Översikten är låst.";
+ $("tradeConnectionState").textContent="● PRIVAT ÖVERSIKT LÅST";
+}
+async function refreshTradeDashboard(openedFromUnlock=false){
+ const key=sessionStorage.getItem(TRADE_DASHBOARD_SESSION_KEY);
+ if(!key||$("tradeView").classList.contains("hidden"))return false;
+ try{
+  const response=await fetch("/api/trading/live/dashboard",{cache:"no-store",headers:{"X-Trade-Dashboard-Token":key}});
+  if(response.status===401){
+   sessionStorage.removeItem(TRADE_DASHBOARD_SESSION_KEY);$("tradeAccessPanel").hidden=false;$("tradeDashboardContent").hidden=true;
+   $("tradeAccessMessage").textContent="Dashboardnyckeln är ogiltig. Kontrollera Render → Environment.";return false;
+  }
+  if(!response.ok)throw new Error("Kraken kunde inte lämna ut kontodata ("+response.status+").");
+  const data=await response.json();$("tradeAccessPanel").hidden=true;$("tradeDashboardContent").hidden=false;
+  renderTradeDashboard(data);$("tradeConnectionState").textContent="● KRAKEN ANSLUTEN · SKRIVSKYDDAD";
+  if(tradeDashboardTimer)clearInterval(tradeDashboardTimer);
+  tradeDashboardTimer=setInterval(()=>{if(document.visibilityState==="visible"&&!$("tradeView").classList.contains("hidden"))refreshTradeDashboard()},60000);
+  return true;
+ }catch(error){
+  $("tradeConnectionState").textContent="● KRAKEN-DATA EJ TILLGÄNGLIG";
+  if(openedFromUnlock)$("tradeAccessMessage").textContent=error.message;
+  else $("tradeUpdatedAt").textContent="Senaste uppdatering misslyckades · "+error.message;
+  return false;
+ }
+}
+function renderTradeDashboard(data){
+ const account=data.account||{},team=data.trade_ai||{},positions=team.positions||[];
+ $("tradeTotalValue").textContent=tradeSek(account.total_value_sek);
+ $("tradeTotalValueEur").textContent=tradeNumber(account.total_value_eur,2)+" EUR på Kraken";
+ $("tradeAvailable").textContent=tradeSek(account.available_eur_sek);
+ $("tradeAvailableEur").textContent=tradeNumber(account.available_eur,4)+" EUR disponibelt för köp";
+ const invested=positions.reduce((sum,p)=>sum+(Number(p.market_value_sek)||0),0);
+ $("tradeInvested").textContent=tradeSek(invested);$("tradePositionCount").textContent=positions.length+" bekräftade innehav";
+ const tradeEquity=(Number(account.available_eur_sek)||0)+invested,dayStart=Number(team.day_start_equity_sek);
+ const daily=Number.isFinite(dayStart)&&dayStart>0?tradeEquity-dayStart:null;
+ $("tradeDailyPnl").textContent=daily===null?"—":(daily>=0?"+":"")+tradeSek(daily);
+ $("tradeDailyPnl").style.color=daily===null?"":daily>=0?"#85e6ba":"#ff9b9b";
+ $("tradeRealizedPnl").textContent="Realiserat: "+tradeSek(team.realized_pnl_sek);
+ $("tradeUpdatedAt").textContent="Senast uppdaterad: "+tradeTime(data.updated_at)+" · Uppdateras automatiskt varje minut";
+ $("tradeWorkerStatus").textContent=team.emergency_stop?"● NÖDSTOPP":team.live_enabled?"● LIVE-BEVAKNING AKTIV":"● HANDEL EJ AKTIVERAD";
+ $("tradeWorkerStatus").style.color=team.emergency_stop?"#ff8b8b":team.live_enabled?"#8ce9bc":"#ffca91";
+ renderTradeAssets(account);renderTradePositions(positions);renderTradeHistory(team);renderTradeRadar(data.opportunities||[]);
+ const worker=team.worker||{},risk=team.risk||{};
+ $("tradeSystemInfo").innerHTML=
+  "<div>Senaste lyckade körning: <b>"+tradeEscape(tradeTime(worker.last_success_at))+"</b></div>"+
+  "<div>Senaste fel: <b>"+tradeEscape(worker.last_error||"Inget rapporterat")+"</b></div>"+
+  "<div>Öppna Kraken-order: <b>"+tradeEscape(account.open_orders_count??"—")+"</b></div>"+
+  "<div>Max samtidiga innehav: <b>"+tradeEscape(risk.max_open_positions??"—")+"</b></div>"+
+  "<div>Daglig förlustgräns: <b>"+tradeEscape(Number(risk.daily_loss_limit_pct)*100||0)+"%</b></div>"+
+  "<div>Uttag: <b>AVSTÄNGDA</b> · Hävstång: <b>AVSTÄNGD</b></div>";
+}
+function renderTradeAssets(account){
+ const target=$("tradeAssets");target.replaceChildren();
+ (account.assets||[]).forEach(asset=>{
+  const row=document.createElement("div");row.className="trade-assets-row";
+  const name=document.createElement("b");name.textContent=asset.symbol||asset.asset;
+  const value=document.createElement("span");value.textContent=tradeNumber(asset.balance,6)+" · "+tradeSek(asset.value_sek);
+  row.append(name,value);target.append(row);
+ });
+ if(!(account.assets||[]).length)target.textContent="Inga prissatta tillgångar kunde läsas.";
+ const warning=$("tradeValuationWarning");warning.replaceChildren();
+ if(!account.valuation_complete){
+  const box=document.createElement("div");box.className="trade-warning";
+  box.textContent="Värderingen är ofullständig. Följande tillgångar saknar verifierad EUR-kurs: "+(account.unpriced_assets||[]).map(x=>x.asset).join(", ")+". De räknas inte in i totalvärdet.";
+  warning.append(box);
+ }
+}
+function renderTradePositions(positions){
+ const target=$("tradePositions");target.replaceChildren();
+ if(!positions.length){target.textContent="Inga bekräftade Trade AI-innehav ännu. En valuta läggs till här först när Kraken bekräftat ett faktiskt avslut – inte vid enbart köpsignal.";return}
+ positions.forEach(position=>{
+  const card=document.createElement("div");card.className="trade-position";
+  const head=document.createElement("div");head.className="trade-position-head";
+  const name=document.createElement("strong");name.textContent=position.symbol;
+  const value=document.createElement("span");value.textContent=position.market_value_sek===null?"Kurs saknas":tradeSek(position.market_value_sek);
+  head.append(name,value);card.append(head);
+  const meta=document.createElement("div");meta.className="trade-position-meta";
+  meta.textContent="Antal: "+tradeNumber(position.quantity,8)+" · Inköpsvärde: "+tradeSek(position.cost_value_sek)+" · Orealiserat: "+(position.unrealized_pnl_sek===null?"—":tradeSek(position.unrealized_pnl_sek));
+  card.append(meta);
+  const chart=document.createElement("div");chart.className="trade-chart";chart.id="tradeChart_"+position.base_asset;chart.textContent="Hämtar kursgraf…";card.append(chart);
+  const controls=document.createElement("div");controls.className="trade-chart-controls";
+  ["1h","24h","7d"].forEach(period=>{
+   const button=document.createElement("button");button.type="button";button.textContent=period;button.classList.toggle("active",period==="24h");
+   button.onclick=()=>{controls.querySelectorAll("button").forEach(b=>b.classList.remove("active"));button.classList.add("active");loadTradeChart(position.symbol,period,chart.id)};
+   controls.append(button);
+  });
+  card.append(controls);target.append(card);loadTradeChart(position.symbol,"24h",chart.id);
+ });
+}
+async function loadTradeChart(pair,period,containerId){
+ const target=$(containerId);if(!target)return;
+ try{
+  const response=await fetch("/api/trading/live/chart?pair="+encodeURIComponent(pair)+"&period="+encodeURIComponent(period),{cache:"no-store"});
+  if(!response.ok)throw new Error("Kursdata saknas");
+  const data=await response.json(),candles=data.candles||[];
+  if(!candles.length){target.textContent="Ingen stängd kursdata tillgänglig.";return}
+  const values=candles.map(c=>Number(c.close)).filter(Number.isFinite),min=Math.min(...values),max=Math.max(...values),range=max-min||1;
+  const points=values.map((v,i)=>{const x=4+(i/Math.max(1,values.length-1))*292,y=52-((v-min)/range)*44;return x.toFixed(1)+","+y.toFixed(1)}).join(" ");
+  target.innerHTML='<svg viewBox="0 0 300 58" role="img" aria-label="'+tradeEscape(pair+" "+period)+'"><polyline points="'+points+'"></polyline></svg>';
+ }catch(error){target.textContent="Kursgrafen kunde inte hämtas."}
+}
+function renderTradeHistory(team){
+ const target=$("tradeHistory");target.replaceChildren();
+ const trades=team.trades||[],intents=team.order_intents||[];
+ if(!trades.length&&!intents.length){target.textContent="Inga order eller genomförda affärer registrerade ännu.";return}
+ trades.slice(0,15).forEach(trade=>{
+  const row=document.createElement("div");row.className="trade-history-row";
+  const left=document.createElement("div"),side=document.createElement("b");side.className=trade.side==="buy"?"buy":"sell";side.textContent=(trade.side==="buy"?"KÖP ":"SÄLJ ")+(trade.pair||"");
+  const small=document.createElement("small");small.textContent=tradeTime(trade.timestamp)+" · "+tradeNumber(trade.quantity,8)+" st · Avgift "+tradeSek(trade.fee_sek);
+  left.append(side,small);const right=document.createElement("span");right.textContent="Realiserat "+tradeSek(trade.realized_pnl_sek);row.append(left,right);target.append(row);
+ });
+ intents.slice(0,15).forEach(intent=>{
+  const row=document.createElement("div");row.className="trade-history-row";
+  const left=document.createElement("div"),side=document.createElement("b");side.textContent=(intent.side||"").toUpperCase()+" · "+(intent.symbol||"Order");
+  const small=document.createElement("small");small.textContent=tradeTime(intent.created_at)+" · "+(intent.status||"okänd status")+" · Fyllt "+tradeNumber(intent.filled_volume,8);
+  left.append(side,small);const right=document.createElement("span");right.textContent=intent.ledger_applied?"BOKFÖRD":"AVSTÄMNING";row.append(left,right);target.append(row);
+ });
+}
+function renderTradeRadar(candidates){
+ const target=$("tradeRadar");target.replaceChildren();
+ if(!candidates.length){target.textContent="Inga kandidater klarade radarns aktuella villkor just nu. Bevakningen fortsätter.";return}
+ candidates.slice(0,8).forEach(candidate=>{
+  const row=document.createElement("div");row.className="trade-radar-row";
+  const left=document.createElement("b");left.textContent=candidate.symbol||"Okänd marknad";
+  const right=document.createElement("span");right.textContent="24h "+tradeNumber(candidate.change_24h_pct,2)+"% · Spread "+tradeNumber(candidate.spread_pct,3)+"%";
+  row.append(left,right);target.append(row);
+ });
+}
+document.addEventListener("visibilitychange",()=>{
+ if(document.visibilityState!=="visible"){if(tradeDashboardTimer){clearInterval(tradeDashboardTimer);tradeDashboardTimer=null}}
+ else if(!$("tradeView").classList.contains("hidden")&&sessionStorage.getItem(TRADE_DASHBOARD_SESSION_KEY))refreshTradeDashboard();
+});
+
 </script>
 </body>
 </html>
