@@ -76,6 +76,14 @@ python -m pip install -r trading/requirements.txt
 python -m unittest discover -s trading -p "test_*.py" -v
 ```
 
+## Enabling scheduled paper runs
+
+The GitHub Actions workflow safely skips until these repository secrets exist:
+- `SUPABASE_URL`: the Supabase project URL.
+- `SUPABASE_SECRET_KEY`: a Supabase secret API key (`sb_secret_...`) or legacy server-side `service_role` key.
+
+Add them in GitHub → repository Settings → Secrets and variables → Actions → New repository secret. Never put either key in source code or send it in chat. Then run **JARVIS paper trading cycle** from the Actions tab with the feature branch selected. After this PR is merged to the default branch, scheduled paper-only cycles run every 15 minutes. No exchange credentials are used and no live orders can be placed.
+
 ## Initial simulation risk policy
 - One open position at a time.
 - Maximum planned loss per trade: 1% of current equity.
