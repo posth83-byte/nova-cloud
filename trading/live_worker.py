@@ -243,7 +243,11 @@ def run_live_tick() -> dict[str, Any]:
             raise LiveWorkerError("Kraken-kontot eller öppna order klarade inte säkerhetskontrollen.")
         balances = get_account_balances()
         eur_balance = _d(balances.get("ZEUR", balances.get("EUR", "0")))
-        available_sek = min(_d(state["cash_sek"]), eur_balance * rate)
+        # Kraken is the source of truth for spendable EUR cash. This lets
+        # new deposits increase the trading budget automatically; the old
+        # local 200 SEK seed is not a permanent cap.
+        available_sek = _round_money(eur_balance * rate)
+        state["cash_sek"] = format(available_sek, "f")
 
         markets_result = scan_markets(
             quote="EUR", limit=50,
@@ -298,7 +302,8 @@ def run_live_tick() -> dict[str, Any]:
             }
         positions = dict(state.get("positions") or {})
         risk = state["risk"]
-        budget_cap = min(_d(risk["max_budget_sek"]), Decimal("200.00"))
+        # Dynamic ceiling: all current EUR cash plus live positions, bounded
+        # by the actual marked live portfolio equity rather than a fixed seed.
         exposure = sum(
             _d(item["quantity"]) * marks[symbol]
             for symbol, item in positions.items()
@@ -365,7 +370,7 @@ def run_live_tick() -> dict[str, Any]:
                 if len(positions) >= MAX_OPEN_POSITIONS:
                     actions.append({"symbol": symbol, "result": "max_positions"})
                     continue
-                remaining_cap = max(ZERO, budget_cap - exposure)
+                remaining_cap = max(ZERO, equity - exposure)
                 spend_budget = min(available_sek, remaining_cap)
                 fee_rate = _d(risk["fee_rate"])
                 slippage = _d(risk["slippage_rate"])
