@@ -29,6 +29,23 @@ class LiveStoreTests(unittest.TestCase):
         self.env.start()
         self.addCleanup(self.env.stop)
 
+    def test_initial_live_ledger_is_separate_and_disabled_by_default(self):
+        state = live_store.create_initial_live_state()
+        self.assertEqual(state["mode"], "live_spot")
+        self.assertFalse(state["enabled"])
+        self.assertFalse(state["emergency_stop"])
+        self.assertEqual(state["cash_sek"], "200.00")
+        self.assertEqual(state["risk"]["max_budget_sek"], "200.00")
+        self.assertNotIn("paper_enabled", state)
+
+    def test_live_state_initialization_persists_revision_one(self):
+        with patch.object(live_store, "load_live_state", return_value=(None, 0)), \
+             patch.object(live_store, "save_live_state", return_value=1) as save:
+            state, revision = live_store.load_or_create_live_state()
+        self.assertFalse(state["enabled"])
+        self.assertEqual(revision, 1)
+        save.assert_called_once_with(state, 0)
+
     def test_order_intent_is_persisted_before_submission_payload(self):
         captured = {}
 
