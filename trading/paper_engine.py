@@ -39,7 +39,7 @@ class PaperBroker:
         allowed_symbols: tuple[str, ...] = ("BTC/EUR", "ETH/EUR"),
         max_risk_per_trade_pct: float = 1.0,
         max_daily_drawdown_pct: float = 2.0,
-        fee_rate: float = 0.0026,
+        fee_rate: float = 0.008,
         slippage_rate: float = 0.0005,
         minimum_notional: float = 0.0,
     ) -> None:
