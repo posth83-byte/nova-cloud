@@ -183,6 +183,7 @@ def run_sma_backtest(
             "fx_sek_per_eur": fx_sek_per_eur,
             "fx_method": "current reference rate applied uniformly; historical FX unavailable",
             "spread_pct": spread_pct,
+            "spread_method": "current spread snapshot applied uniformly; historical spread unavailable",
             "fee_rate": fee_rate,
             "slippage_rate": slippage_rate,
             "max_trade_pct": 0.10,
