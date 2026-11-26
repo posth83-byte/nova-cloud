@@ -43,7 +43,7 @@ def analyse_candles(symbol: str, candles: list[list[float]]) -> dict:
     return {"symbol":symbol,"timeframe":TIMEFRAME,"last_candle_timestamp":int(candles[-1][0]),
       "last_price_eur":round(last_price,8),"ema20":round(ema20,8) if ema20 is not None else None,
       "ema50":round(ema50,8) if ema50 is not None else None,"rsi14":round(current_rsi,2) if current_rsi is not None else None,
-      "volume_ratio":round(volume_ratio,2) if volume_ratio is not None else None,"trend":trend,"signal":"watch_only"}
+      "volume_ratio":round(volume_ratio,2) if volume_ratio is not None else None,"trend":trend,"signal":"watch_only","warning":"Research signal only. No buy/sell recommendation or order."}
 
 def discover_eur_spot_markets(markets: dict) -> list[str]:
     symbols=[]
