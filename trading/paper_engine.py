@@ -41,7 +41,7 @@ class PaperBroker:
         max_daily_drawdown_pct: float = 2.0,
         fee_rate: float = 0.008,
         slippage_rate: float = 0.0005,
-        minimum_notional: float = 0.0,
+        minimum_notional: float = 5.0,
     ) -> None:
         self.path = Path(state_path)
         self.quote_currency = quote_currency.upper()
