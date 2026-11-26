@@ -152,7 +152,11 @@ def run_paper_tick() -> dict[str, Any]:
             market = market_by_symbol.get(symbol)
             if market is None:
                 continue
-            history = fetch_ohlc_candles(symbol, interval=60)
+            history = fetch_ohlc_candles(
+                symbol, interval=60, api_pair=market.get("api_pair"),
+                min_order_qty=market.get("min_order_qty"),
+                min_cost_eur=market.get("min_cost_quote"),
+            )
             candles = history.get("candles", [])
             if len(candles) < 37:
                 continue
