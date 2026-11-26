@@ -302,6 +302,26 @@ class TradingApiTests(unittest.TestCase):
         self.assertEqual(raised.exception.status_code, 409)
         preflight.assert_not_called()
 
+    def test_live_start_arms_only_after_server_gate_and_clean_preflight(self):
+        state = {"enabled": False, "emergency_stop": False, "worker": {}}
+        with (
+            patch.object(api, "_manual_control_guard"),
+            patch.dict("os.environ", {"TRADE_LIVE_ENABLED": "true"}),
+            patch.object(api, "load_or_create_live_state", return_value=(state, 7)),
+            patch.object(api, "fetch_eur_sek_rate", return_value={"rate": 11.2}),
+            patch.object(api, "run_read_only_preflight", return_value={
+                "connected": True, "open_orders_clear": True,
+            }),
+            patch.object(api, "save_live_state", return_value=8) as save,
+        ):
+            result = asyncio.run(api.live_start(x_trade_control_token="secret"))
+        self.assertTrue(result["live_enabled"])
+        self.assertEqual(result["max_budget_sek"], 200.0)
+        self.assertFalse(result["withdrawals_enabled"])
+        self.assertTrue(state["enabled"])
+        self.assertEqual(state["worker"]["status"], "armed")
+        save.assert_called_once_with(state, 7)
+
     def test_live_start_requires_clean_kraken_preflight(self):
         state = {"enabled": False, "emergency_stop": False, "worker": {}}
         with (
