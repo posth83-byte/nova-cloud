@@ -10,7 +10,7 @@
   "max_daily_drawdown_pct": 2,
   "fee_rate": 0.0026,
   "slippage_rate": 0.0005,
-  "minimum_notional": 0,
+  "minimum_notional": 5,
   "live_orders_enabled": false,
   "automatic_profit_reinvestment": true,
   "note": "Paper-only reference balance: 200 SEK is approximately 17.81 EUR at the indicative 2026-11-26 mid-market rate. This is not a read of the Kraken account balance; actual exchange balance and fees may differ.",
