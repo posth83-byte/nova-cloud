@@ -13,7 +13,9 @@ from typing import Any
 
 from trading.kraken_monitor import KrakenPublicAPIError, fetch_ohlc_candles, scan_markets
 from trading.strategy import StrategyDataError, fetch_eur_sek_rate
-from trading.worker import _cross_signal, _select_watchlist, MAX_WATCHLIST
+from trading.worker import (
+    _cross_signal, _momentum_entry_signal, _select_watchlist, MAX_WATCHLIST,
+)
 from trading.kraken_private import (
     KrakenPrivateAPIError,
     get_account_balances,
@@ -361,7 +363,13 @@ def run_live_tick() -> dict[str, Any]:
                 candles, after_timestamp=last_processed
             )
             position = positions.get(symbol)
-            side = "sell" if position and cross_down else "buy" if not position and cross_up else None
+            side = (
+                "sell" if position and cross_down
+                else "buy" if not position and (
+                    cross_up or _momentum_entry_signal(candles, after_timestamp=last_processed)
+                )
+                else None
+            )
             if side is None:
                 continue
 

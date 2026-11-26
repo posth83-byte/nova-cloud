@@ -82,6 +82,64 @@ def _cross_signal(
     return latest_signal
 
 
+
+def _momentum_entry_signal(
+    candles: list[dict[str, Any]],
+    *,
+    after_timestamp: int = 0,
+) -> bool:
+    """Confirm a fresh, orderly uptrend without chasing sharp/overbought moves.
+
+    This supplements (never replaces) the SMA crossover. It uses closed candles,
+    an EMA12/EMA36 trend filter, a bounded 14-period RSI, and a modest 3-candle
+    return. It is intentionally conservative and does not bypass execution risk
+    checks.
+    """
+    clean = []
+    for row in candles:
+        try:
+            timestamp = int(row["timestamp"])
+            close = float(row["close"])
+        except (KeyError, TypeError, ValueError, OverflowError):
+            continue
+        if timestamp > 0 and close > 0:
+            clean.append((timestamp, close))
+    clean.sort(key=lambda item: item[0])
+    dedup = {timestamp: close for timestamp, close in clean}
+    clean = [(timestamp, dedup[timestamp]) for timestamp in sorted(dedup)]
+    if len(clean) < 37 or clean[-1][0] <= int(after_timestamp or 0):
+        return False
+
+    closes = [close for _, close in clean]
+
+    def ema(values: list[float], period: int) -> float:
+        alpha = 2.0 / (period + 1.0)
+        value = sum(values[:period]) / period
+        for price in values[period:]:
+            value = alpha * price + (1.0 - alpha) * value
+        return value
+
+    changes = [closes[index] - closes[index - 1] for index in range(len(closes) - 14, len(closes))]
+    gains = sum(max(change, 0.0) for change in changes) / 14.0
+    losses = sum(max(-change, 0.0) for change in changes) / 14.0
+    if losses <= 0:
+        return False
+    rsi = 100.0 - (100.0 / (1.0 + gains / losses))
+    fast = ema(closes, 12)
+    slow = ema(closes, 36)
+    last = closes[-1]
+    momentum_3 = ((last / closes[-4]) - 1.0) * 100.0
+    distance_from_fast = ((last / fast) - 1.0) * 100.0 if fast > 0 else 999.0
+
+    return (
+        fast > slow * 1.001
+        and last > fast
+        and 50.0 <= rsi <= 68.0
+        and 0.25 <= momentum_3 <= 3.5
+        and 0.0 <= distance_from_fast <= 2.0
+    )
+
+
 def _select_watchlist(
     candidates: list[dict[str, Any]],
     positions: dict[str, Any],
@@ -252,7 +310,9 @@ def run_paper_tick() -> dict[str, Any]:
                     timestamp=now, marks_sek=marks,
                 )
                 actions.append({"symbol": symbol, "side": "paper_sell", "candle": candle_time})
-            elif not position and cross_up:
+            elif not position and (
+                cross_up or _momentum_entry_signal(candles, after_timestamp=last_processed)
+            ):
                 current_positions = state.get("positions", {})
                 current_equity = float(portfolio_snapshot(state, marks)["equity"])
                 current_exposure = sum(
