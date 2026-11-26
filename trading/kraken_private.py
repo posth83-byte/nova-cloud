@@ -270,6 +270,7 @@ def query_order_by_txid(txid: str) -> dict[str, Any] | None:
         "price": str(order.get("price") or "0"),
         "avg_price": str(order.get("price") or "0"),
         "trades": list(order.get("trades") or []),
+        "oflags": str(order.get("oflags") or ""),
     }
 
 
