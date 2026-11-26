@@ -1,0 +1,68 @@
+name: JARVIS full Kraken market scan
+
+on:
+  push:
+    branches:
+      - feature/jarvis-trading-paper-first
+    paths:
+      - "trading/market_scanner.py"
+      - "trading/requirements.txt"
+      - ".github/workflows/jarvis-market-scan.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install public market-data dependency
+        run: python -m pip install -r trading/requirements.txt
+      - name: Scan the active Kraken EUR spot universe
+        run: python trading/market_scanner.py > /tmp/jarvis-market-scan.json
+      - name: Validate scan output and print ranked shortlist
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          data = json.loads(Path("/tmp/jarvis-market-scan.json").read_text())
+          if data.get("orders_enabled") is not False:
+              raise SystemExit("Safety check failed: orders_enabled must be false")
+          if data.get("mode") != "paper":
+              raise SystemExit("Safety check failed: scan must be paper mode")
+          if data.get("scanned_count", 0) > 30:
+              raise SystemExit("Safety check failed: more than 30 markets analysed")
+          print(json.dumps({
+              "generated_at": data.get("generated_at"),
+              "universe_size": data.get("universe_size"),
+              "liquid_candidates": data.get("liquid_candidates"),
+              "scanned_count": data.get("scanned_count"),
+              "errors": data.get("errors"),
+              "top_candidates": [
+                  {
+                      "symbol": x.get("symbol"),
+                      "score": x.get("opportunity_score"),
+                      "trend": x.get("trend"),
+                      "rsi14": x.get("rsi14"),
+                      "volume_ratio": x.get("volume_ratio"),
+                      "spread_pct": x.get("spread_pct"),
+                      "quote_volume_24h_eur": x.get("quote_volume_24h_eur")
+                  } for x in data.get("results", [])[:10]
+              ],
+              "orders_enabled": data.get("orders_enabled", False)
+          }, indent=2))
+          PY
+      - name: Upload full scan report
+        uses: actions/upload-artifact@v4
+        with:
+          name: jarvis-kraken-market-scan
+          path: /tmp/jarvis-market-scan.json
+          retention-days: 14
