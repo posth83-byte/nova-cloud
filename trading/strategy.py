@@ -62,6 +62,10 @@ def build_strategy_preview(
     if int(fx.get("age_days", 99)) > 4:
         raise StrategyDataError("Valutakursen är för gammal.")
     budget = round(equity_sek * max_trade_pct, 2)
+    # Reserve room inside the trade cap for both fee and conservative slippage.
+    fee_rate = 0.004
+    slippage_rate = 0.0015
+    max_notional_sek = budget / (1.0 + fee_rate + slippage_rate)
     candidates = []
     rejected = []
     for row in markets:
@@ -85,9 +89,19 @@ def build_strategy_preview(
         if spread < 0 or spread > max_spread_pct:
             rejected.append({"symbol": symbol, "reason": "spread_above_threshold"})
             continue
+        # Kraken's minimum base quantity can imply a larger quote notional than
+        # costmin. Enforce the stricter of both constraints; never treat a missing
+        # costmin as zero when ordermin is present.
+        min_qty_notional_eur = min_qty * ask_eur
+        min_notional_eur = max(min_cost_eur, min_qty_notional_eur)
+        min_notional_sek = round(min_notional_eur * rate, 2)
         min_cost_sek = round(min_cost_eur * rate, 2)
-        if min_cost_sek > budget:
-            rejected.append({"symbol": symbol, "reason": "exchange_minimum_exceeds_trade_budget"})
+        if min_notional_sek > max_notional_sek:
+            rejected.append({
+                "symbol": symbol,
+                "reason": "exchange_minimum_exceeds_trade_budget_after_costs",
+                "minimum_notional_sek": min_notional_sek,
+            })
             continue
         candidates.append({
             "symbol": symbol,
@@ -97,8 +111,10 @@ def build_strategy_preview(
             "spread_pct": round(spread, 4),
             "turnover_24h_sek_est": round(turnover * rate, 2),
             "exchange_min_cost_sek": min_cost_sek,
+            "exchange_minimum_notional_sek": min_notional_sek,
             "exchange_min_qty": min_qty,
             "max_simulated_trade_budget_sek": budget,
+            "max_order_notional_sek": round(max_notional_sek, 2),
             "note": "Kandidat för vidare paper-analys; ingen order har lagts.",
         })
     candidates.sort(key=lambda item: (item["spread_pct"], -item["turnover_24h_sek_est"]))
@@ -113,8 +129,8 @@ def build_strategy_preview(
         "criteria": {
             "max_spread_pct": max_spread_pct,
             "min_turnover_eur": min_turnover_eur,
-            "fee_rate_assumption": 0.004,
-            "slippage_rate_assumption": 0.0015,
+            "fee_rate_assumption": fee_rate,
+            "slippage_rate_assumption": slippage_rate,
         },
         "candidate_count": len(candidates),
         "candidates": candidates[:10],
