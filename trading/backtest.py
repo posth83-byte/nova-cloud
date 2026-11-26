@@ -36,7 +36,7 @@ def _indicators(candles: list[list[float]], end: int) -> dict[str, Any]:
 def run_backtest(
     candles: list[list[float]],
     starting_cash: float,
-    fee_rate: float = 0.0026,
+    fee_rate: float = 0.008,
     slippage_rate: float = 0.0005,
     risk_pct: float = 1.0,
     daily_drawdown_pct: float = 2.0,
@@ -224,7 +224,7 @@ def run_walk_forward(
     starting_cash: float,
     test_window: int = 168,
     warmup_candles: int = 50,
-    fee_rate: float = 0.0026,
+    fee_rate: float = 0.008,
     slippage_rate: float = 0.0005,
     risk_pct: float = 1.0,
     daily_drawdown_pct: float = 2.0,
