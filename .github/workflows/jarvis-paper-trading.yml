@@ -1,6 +1,12 @@
 name: JARVIS paper trading cycle
 
 on:
+  push:
+    branches:
+      - feature/jarvis-trading-paper-first
+    paths:
+      - "trading/**"
+      - ".github/workflows/jarvis-paper-trading.yml"
   schedule:
     - cron: "*/15 * * * *"
   workflow_dispatch:
