@@ -29,6 +29,7 @@ def build_broker(args: argparse.Namespace) -> PaperBroker:
         fee_rate=config["fee_rate"],
         slippage_rate=config["slippage_rate"],
         minimum_notional=config["minimum_notional"],
+        minimum_order_sizes=config.get("minimum_order_sizes", {}),
     )
 
 
