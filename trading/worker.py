@@ -114,6 +114,7 @@ def run_paper_tick() -> dict[str, Any]:
             }
 
         trade_budget = equity * float(risk["max_trade_pct"])
+        all_in_cost_factor = (1 + float(risk["fee_rate"])) * (1 + float(risk["slippage_rate"]))
         candidates = []
         for row in markets:
             symbol = str(row.get("symbol", "")).upper()
@@ -133,7 +134,7 @@ def run_paper_tick() -> dict[str, Any]:
             if spread > MAX_SPREAD_PCT or turnover < MIN_TURNOVER_EUR:
                 continue
             minimum_eur = max(min_cost, min_qty * ask)
-            if minimum_eur * rate > trade_budget / 1.0055:
+            if minimum_eur * rate > trade_budget / all_in_cost_factor:
                 continue
             candidates.append(row)
 
