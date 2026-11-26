@@ -86,7 +86,12 @@ def build_market_rows(asset_pairs: dict[str, Any], tickers: dict[str, Any], quot
     return sorted(rows, key=lambda row: row["volume_24h_quote_est"], reverse=True)
 
 
-def scan_markets(quote: str = "EUR", limit: int = 25) -> dict[str, Any]:
+def scan_markets(
+    quote: str = "EUR",
+    limit: int = 25,
+    *,
+    include_symbols: list[str] | None = None,
+) -> dict[str, Any]:
     quote = quote.upper()
     if quote not in {"EUR", "USD"}:
         raise ValueError("quote must be EUR or USD")
@@ -95,11 +100,20 @@ def scan_markets(quote: str = "EUR", limit: int = 25) -> dict[str, Any]:
     pairs = _public_get("AssetPairs")
     tickers = _public_get("Ticker")
     rows = build_market_rows(pairs, tickers, quote=quote)
+    selected = list(rows[:limit])
+    selected_symbols = {str(row.get("symbol", "")).upper() for row in selected}
+    for requested_symbol in (include_symbols or [])[:20]:
+        wanted = str(requested_symbol or "").strip().upper()
+        if wanted and wanted not in selected_symbols:
+            match = next((row for row in rows if str(row.get("symbol", "")).upper() == wanted), None)
+            if match is not None:
+                selected.append(match)
+                selected_symbols.add(wanted)
     return {
         "provider": "Kraken public API",
         "quote": quote,
         "markets_found": len(rows),
-        "markets": rows[:limit],
+        "markets": selected,
         "mode": "read_only",
         "orders_enabled": False,
         "note": "Ranked by estimated 24h quote turnover; ranking is not a buy/sell signal.",
