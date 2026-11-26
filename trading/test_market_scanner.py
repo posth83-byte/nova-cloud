@@ -1,6 +1,6 @@
 import unittest
 
-from market_scanner import analyse_candles, ema, rsi
+from market_scanner import analyse_candles, discover_eur_spot_markets, ema, rank_opportunity, rsi
 
 
 class IndicatorTests(unittest.TestCase):
@@ -37,6 +37,22 @@ class IndicatorTests(unittest.TestCase):
         self.assertEqual(result["signal"], "watch_only")
         self.assertIn("warning", result)
 
+
+    def test_discovers_active_eur_spot_pairs_only(self):
+        markets = {
+            "BTC/EUR": {"active": True, "spot": True, "quote": "EUR", "base": "BTC", "type": "spot"},
+            "DOGE/EUR": {"active": True, "spot": True, "quote": "EUR", "base": "DOGE", "type": "spot"},
+            "BTC/USD": {"active": True, "spot": True, "quote": "USD", "base": "BTC", "type": "spot"},
+            "ETH/EUR:EUR": {"active": True, "swap": True, "quote": "EUR", "base": "ETH", "type": "swap"},
+            "USDT/EUR": {"active": True, "spot": True, "quote": "EUR", "base": "USDT", "type": "spot"},
+            "OLD/EUR": {"active": False, "spot": True, "quote": "EUR", "base": "OLD", "type": "spot"},
+        }
+        self.assertEqual(discover_eur_spot_markets(markets), ["BTC/EUR", "DOGE/EUR"])
+
+    def test_ranking_prefers_stronger_bullish_setup(self):
+        weak = {"trend": "neutral", "rsi14": 42, "volume_ratio": 0.8, "change_24h_pct": -1, "spread_pct": 0.5}
+        strong = {"trend": "bullish", "rsi14": 58, "volume_ratio": 2.0, "change_24h_pct": 4, "spread_pct": 0.1}
+        self.assertGreater(rank_opportunity(strong), rank_opportunity(weak))
 
 if __name__ == "__main__":
     unittest.main()
