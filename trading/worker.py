@@ -22,7 +22,7 @@ from trading.strategy import StrategyDataError, fetch_eur_sek_rate
 from trading.opportunity_radar import rank_opportunities
 
 
-MAX_WATCHLIST = 24
+MAX_WATCHLIST = 40
 MAX_OPEN_POSITIONS = 3
 MAX_TOTAL_EXPOSURE_PCT = 1.00
 MIN_TURNOVER_EUR = 10_000.0
