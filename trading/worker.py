@@ -28,21 +28,58 @@ MIN_TURNOVER_EUR = 10_000.0
 MAX_SPREAD_PCT = 0.35
 
 
-def _cross_signal(candles: list[dict[str, Any]]) -> tuple[bool, bool]:
-    closes = [float(row["close"]) for row in candles if float(row["close"]) > 0]
-    if len(closes) < 37:
+def _cross_signal(
+    candles: list[dict[str, Any]],
+    *,
+    after_timestamp: int = 0,
+    max_signal_age_candles: int = 3,
+) -> tuple[bool, bool]:
+    """Return the newest recent SMA cross since the last scan of this market.
+
+    The market watchlist rotates across several scheduler runs. Looking only at
+    the newest candle can miss a cross that happened between scans. We therefore
+    inspect every newly closed candle, retain the newest cross, and ignore
+    signals older than a small bounded number of candles.
+    """
+    clean = []
+    for row in candles:
+        try:
+            timestamp = int(row["timestamp"])
+            close = float(row["close"])
+        except (KeyError, TypeError, ValueError, OverflowError):
+            continue
+        if timestamp > 0 and close > 0:
+            clean.append({"timestamp": timestamp, "close": close})
+    clean.sort(key=lambda row: row["timestamp"])
+    # Deduplicate timestamps deterministically, retaining the last observation.
+    by_timestamp = {row["timestamp"]: row for row in clean}
+    clean = [by_timestamp[key] for key in sorted(by_timestamp)]
+    closes = [row["close"] for row in clean]
+    if len(closes) < 37 or max_signal_age_candles < 0:
         return False, False
 
     def average(end: int, window: int) -> float:
         return sum(closes[end - window + 1:end + 1]) / window
 
-    end = len(closes) - 1
-    fast_previous, slow_previous = average(end - 1, 12), average(end - 1, 36)
-    fast_current, slow_current = average(end, 12), average(end, 36)
-    return (
-        fast_previous <= slow_previous and fast_current > slow_current,
-        fast_previous >= slow_previous and fast_current < slow_current,
-    )
+    latest_signal = (False, False)
+    latest_signal_index = None
+    for end in range(36, len(closes)):
+        if clean[end]["timestamp"] <= int(after_timestamp or 0):
+            continue
+        fast_previous, slow_previous = average(end - 1, 12), average(end - 1, 36)
+        fast_current, slow_current = average(end, 12), average(end, 36)
+        cross_up = fast_previous <= slow_previous and fast_current > slow_current
+        cross_down = fast_previous >= slow_previous and fast_current < slow_current
+        if cross_up or cross_down:
+            latest_signal = (cross_up, cross_down)
+            latest_signal_index = end
+
+    if latest_signal_index is None:
+        return False, False
+    signal_age = len(clean) - 1 - latest_signal_index
+    if signal_age > max_signal_age_candles:
+        return False, False
+    return latest_signal
 
 
 def _select_watchlist(
@@ -197,11 +234,14 @@ def run_paper_tick() -> dict[str, Any]:
             if len(candles) < 37:
                 continue
             candle_time = int(candles[-1]["timestamp"])
-            if int(processed.get(symbol) or 0) >= candle_time:
+            last_processed = int(processed.get(symbol) or 0)
+            if last_processed >= candle_time:
                 continue
             processed[symbol] = candle_time
             evaluated += 1
-            cross_up, cross_down = _cross_signal(candles)
+            cross_up, cross_down = _cross_signal(
+                candles, after_timestamp=last_processed
+            )
             position = state.get("positions", {}).get(symbol)
 
             if position and cross_down:
