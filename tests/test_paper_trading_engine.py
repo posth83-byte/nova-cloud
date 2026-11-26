@@ -29,7 +29,7 @@ class PaperTradingEngineTests(unittest.TestCase):
 
     def test_buy_applies_fee_and_slippage_and_reduces_cash(self):
         state = apply_paper_trade(
-            self.state, symbol="XBT/EUR", side="buy", quantity="0.0001",
+            self.state, symbol="XBT/EUR", side="buy", quantity="0.00001",
             price_sek="1000000", timestamp=self.now,
         )
         self.assertLess(Decimal(state["cash"]), Decimal("200"))
@@ -60,7 +60,7 @@ class PaperTradingEngineTests(unittest.TestCase):
 
     def test_requires_explicit_sek_price_for_open_positions(self):
         bought = apply_paper_trade(
-            self.state, symbol="XBT/EUR", side="buy", quantity="0.0001",
+            self.state, symbol="XBT/EUR", side="buy", quantity="0.00001",
             price_sek="1000000", timestamp=self.now,
         )
         with self.assertRaises(PaperTradingError):
@@ -68,11 +68,11 @@ class PaperTradingEngineTests(unittest.TestCase):
 
     def test_sell_records_realized_profit_or_loss(self):
         bought = apply_paper_trade(
-            self.state, symbol="XBT/EUR", side="buy", quantity="0.0001",
+            self.state, symbol="XBT/EUR", side="buy", quantity="0.00001",
             price_sek="1000000", timestamp=self.now,
         )
         sold = apply_paper_trade(
-            bought, symbol="XBT/EUR", side="sell", quantity="0.0001",
+            bought, symbol="XBT/EUR", side="sell", quantity="0.00001",
             price_sek="1100000", timestamp=self.now,
             marks_sek={"XBT/EUR": "1100000"},
         )
