@@ -213,3 +213,14 @@ def update_order_intent(client_order_id: str, *, status: str,
     if not rows:
         raise LiveStoreError("Orderjournalen kunde inte uppdatera orderstatus.")
     return rows[0]
+
+
+
+def list_recent_order_intents(limit: int = 30) -> list[dict[str, Any]]:
+    """Read a bounded recent order journal for the private dashboard."""
+    query = urllib.parse.urlencode({
+        "select": "client_order_id,pair_symbol,base_asset,side,volume,limit_price,status,txid,exchange_result,created_at,updated_at,ledger_applied",
+        "order": "created_at.desc",
+        "limit": str(max(1, min(int(limit), 100))),
+    })
+    return _request("jarvis_live_order_intents", "GET", query, prefer="")
