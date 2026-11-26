@@ -8,7 +8,7 @@
   "max_open_positions": 1,
   "max_risk_per_trade_pct": 1,
   "max_daily_drawdown_pct": 2,
-  "fee_rate": 0.0026,
+  "fee_rate": 0.008,
   "slippage_rate": 0.0005,
   "minimum_notional": 5,
   "live_orders_enabled": false,
@@ -16,5 +16,8 @@
   "note": "Paper-only reference balance: 200 SEK is approximately 17.81 EUR at the indicative 2026-11-26 mid-market rate. This is not a read of the Kraken account balance; actual exchange balance and fees may differ.",
   "paper_starting_cash_sek": 200,
   "paper_starting_cash_eur": 17.81,
-  "reference_sek_eur_rate": 0.08905
+  "reference_sek_eur_rate": 0.08905,
+  "fee_model": "Kraken Pro Tier 1 taker reference",
+  "maker_fee_rate_reference": 0.004,
+  "taker_fee_rate_reference": 0.008
 }
