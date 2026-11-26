@@ -41,7 +41,8 @@ class PaperBroker:
         max_daily_drawdown_pct: float = 2.0,
         fee_rate: float = 0.008,
         slippage_rate: float = 0.0005,
-        minimum_notional: float = 5.0,
+        minimum_notional: float = 0.45,
+        minimum_order_sizes: dict[str, float] | None = None,
     ) -> None:
         self.path = Path(state_path)
         self.quote_currency = quote_currency.upper()
@@ -51,6 +52,10 @@ class PaperBroker:
         self.fee_rate = float(fee_rate)
         self.slippage_rate = float(slippage_rate)
         self.minimum_notional = float(minimum_notional)
+        self.minimum_order_sizes = {
+            str(symbol): _number(size, f"minimum_order_sizes[{symbol}]")
+            for symbol, size in (minimum_order_sizes or {}).items()
+        }
         if not 0 <= self.fee_rate < 0.1:
             raise ValueError("fee_rate must be between 0 and 10%")
         if not 0 <= self.slippage_rate < 0.1:
@@ -59,8 +64,8 @@ class PaperBroker:
             raise ValueError("Risk per trade cannot exceed 1% in the initial policy")
         if self.max_daily_drawdown_pct > 2:
             raise ValueError("Daily drawdown cannot exceed 2% in the initial policy")
-        if self.minimum_notional < 0:
-            raise ValueError("minimum_notional cannot be negative")
+        if self.minimum_notional < 0 or any(size < 0 for size in self.minimum_order_sizes.values()):
+            raise ValueError("Exchange minimums cannot be negative")
 
         self.path.parent.mkdir(parents=True, exist_ok=True)
         if self.path.exists():
