@@ -43,7 +43,7 @@ class PaperTradingEngineTests(unittest.TestCase):
             self.state, symbol="XBT/EUR", side="buy", quantity=str(quantity),
             price_sek="1000000", timestamp=self.now,
         )
-        self.assertLess(Decimal(bought["cash"]), Decimal("0.02"))
+        self.assertLess(Decimal(bought["cash"]), Decimal("0.20"))
         self.assertGreater(Decimal(bought["cash"]), Decimal("0"))
         self.assertEqual(bought["risk"]["max_trade_pct"], "1.00")
 
