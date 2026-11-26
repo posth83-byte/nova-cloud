@@ -70,6 +70,8 @@ def build_market_rows(asset_pairs: dict[str, Any], tickers: dict[str, Any], quot
             "api_pair": altname,
             "base": base,
             "quote": pair_quote,
+            "base_asset": str(metadata.get("base") or ""),
+            "quote_asset": str(metadata.get("quote") or ""),
             "last": round(last, 8),
             "ask": round(ask, 8),
             "bid": round(bid, 8),

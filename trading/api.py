@@ -18,6 +18,12 @@ from trading.backtest import run_sma_backtest
 from trading.strategy import StrategyDataError, build_strategy_preview, fetch_eur_sek_rate
 from trading.worker import run_paper_tick
 from trading.opportunity_radar import rank_opportunities
+from trading.live_worker import run_live_tick
+from trading.live_store import (
+    LiveStoreError,
+    load_or_create_live_state,
+    save_live_state,
+)
 from trading.kraken_private import (
     KrakenPrivateAPIError,
     credentials_configured,
@@ -38,7 +44,10 @@ def _control_guard(token: str | None):
         raise HTTPException(status_code=401, detail="Ogiltig Trade AI-kontrollnyckel.")
 
 
-def _github_actions_guard(authorization: str | None, *, manual_start: bool = False):
+def _github_actions_guard(
+    authorization: str | None, *, manual_start: bool = False,
+    allowed_workflows: set[str] | None = None,
+):
     """Verify a short-lived GitHub Actions OIDC token; no shared scheduler secret."""
     supplied = (authorization or "").strip()
     if not supplied.lower().startswith("bearer "):
@@ -65,14 +74,14 @@ def _github_actions_guard(authorization: str | None, *, manual_start: bool = Fal
     except Exception as exc:
         raise HTTPException(status_code=401, detail="Schemaläggarens identitet kunde inte verifieras.") from exc
 
-    expected_workflow = (
+    expected_workflows = allowed_workflows or {
         "posth83-byte/nova-cloud/.github/workflows/trade-paper-scheduler.yml@refs/heads/main"
-    )
+    }
     if (
         claims.get("repository") != "posth83-byte/nova-cloud"
         or str(claims.get("repository_id")) != "1442711208"
         or claims.get("ref") != "refs/heads/main"
-        or claims.get("workflow_ref") != expected_workflow
+        or claims.get("workflow_ref") not in expected_workflows
     ):
         raise HTTPException(status_code=403, detail="Den här GitHub-workflowen är inte godkänd.")
     allowed_events = {"workflow_dispatch"} if manual_start else {"schedule", "workflow_dispatch"}
@@ -309,19 +318,153 @@ async def paper_backtest(
         raise HTTPException(status_code=503, detail="Trade AI kunde inte beräkna ett säkert historiskt test.") from exc
 
 
+@router.post("/live/worker-tick")
+async def live_worker_tick(
+    x_trade_control_token: str | None = Header(default=None),
+    authorization: str | None = Header(default=None),
+):
+    """Authenticated scheduled tick; no work is performed unless live state is enabled."""
+    if x_trade_control_token:
+        _control_guard(x_trade_control_token)
+    else:
+        _github_actions_guard(authorization, allowed_workflows={
+            "posth83-byte/nova-cloud/.github/workflows/trade-paper-scheduler.yml@refs/heads/main",
+            "posth83-byte/nova-cloud/.github/workflows/trade-live-scheduler.yml@refs/heads/main",
+        })
+    try:
+        return run_live_tick()
+    except (LiveStoreError, KrakenPrivateAPIError) as exc:
+        raise HTTPException(
+            status_code=503,
+            detail="Livehandelns säkerhetskontroll misslyckades; inga nya order får skickas.",
+        ) from exc
+    except Exception as exc:
+        raise HTTPException(
+            status_code=503,
+            detail="Livehandelns schemalagda körning stoppades säkert.",
+        ) from exc
+
+
 @router.get("/live/status")
 async def live_status():
-    """Expose readiness metadata only; never expose keys or enable live orders."""
+    """Show isolated live ledger and readiness without exposing private data."""
+    try:
+        state, revision = load_or_create_live_state()
+    except LiveStoreError as exc:
+        raise HTTPException(status_code=503, detail="Livejournalen är inte tillgänglig.") from exc
     return {
-        "mode": "live_disabled",
+        "mode": "live_spot_disabled",
         "exchange": "Kraken Spot",
         "credentials_configured": credentials_configured(),
         "private_api_preflight_available": credentials_configured(),
+        "live_enabled": bool(state.get("enabled")),
+        "emergency_stop": bool(state.get("emergency_stop")),
+        "stop_reason": state.get("stop_reason"),
+        "cash_sek": state.get("cash_sek"),
+        "positions": state.get("positions", {}),
+        "realized_pnl_sek": state.get("realized_pnl_sek"),
+        "revision": revision,
+        "risk": state.get("risk", {}),
+        "worker": state.get("worker", {}),
         "orders_enabled": False,
         "withdrawals_enabled": False,
         "max_authorized_budget_sek": 200.00,
-        "live_order_engine": "not_implemented",
-        "next_step": "Run authenticated read-only Kraken account and permission preflight.",
+        "live_order_engine": "journaled_spot_execution_foundation",
+        "next_step": "Complete autonomous live worker and end-to-end fill accounting before activation.",
+    }
+
+
+@router.post("/live/start")
+async def live_start(
+    x_trade_control_token: str | None = Header(default=None),
+    authorization: str | None = Header(default=None),
+):
+    """Arm live trading only after server gate and fresh Kraken preflight pass."""
+    _manual_control_guard(x_trade_control_token, authorization)
+    if os.getenv("TRADE_LIVE_ENABLED", "").strip().lower() != "true":
+        raise HTTPException(
+            status_code=409,
+            detail="Livehandelns servergrind är fortfarande avstängd.",
+        )
+    try:
+        state, revision = load_or_create_live_state()
+        if state.get("emergency_stop"):
+            raise HTTPException(
+                status_code=409,
+                detail="Nödstoppet är aktivt och måste granskas separat.",
+            )
+        fx = fetch_eur_sek_rate()
+        preflight = run_read_only_preflight(Decimal(str(fx["rate"])))
+        if not preflight.get("connected") or not preflight.get("open_orders_clear"):
+            raise HTTPException(
+                status_code=409,
+                detail="Kraken-kontot klarade inte livehandelns säkerhetskontroll.",
+            )
+        state["enabled"] = True
+        state["worker"] = {
+            **dict(state.get("worker") or {}),
+            "status": "armed",
+            "last_error": None,
+            "armed_at": datetime.now(timezone.utc).isoformat(),
+        }
+        next_revision = save_live_state(state, revision)
+    except HTTPException:
+        raise
+    except (LiveStoreError, StrategyDataError, KrakenPrivateAPIError) as exc:
+        raise HTTPException(
+            status_code=503,
+            detail="Livehandel kunde inte aktiveras säkert.",
+        ) from exc
+    return {
+        "ok": True, "live_enabled": True, "mode": "live_spot",
+        "max_budget_sek": 200.00, "open_orders_clear": True,
+        "withdrawals_enabled": False, "revision": next_revision,
+    }
+
+
+@router.post("/live/pause")
+async def live_pause(
+    x_trade_control_token: str | None = Header(default=None),
+):
+    """Disable future live worker ticks; does not cancel exchange orders."""
+    _control_guard(x_trade_control_token)
+    try:
+        state, revision = load_or_create_live_state()
+        state["enabled"] = False
+        worker = dict(state.get("worker") or {})
+        worker["status"] = "paused"
+        state["worker"] = worker
+        next_revision = save_live_state(state, revision)
+    except LiveStoreError as exc:
+        raise HTTPException(status_code=503, detail="Livejournalen kunde inte pausas säkert.") from exc
+    return {
+        "ok": True, "live_enabled": False, "revision": next_revision,
+        "open_exchange_orders_cancelled": False, "withdrawals_enabled": False,
+    }
+
+
+@router.post("/live/emergency-stop")
+async def live_emergency_stop(
+    reason: str = "Manuellt live-nödstopp",
+    x_trade_control_token: str | None = Header(default=None),
+):
+    """Persist a durable stop that prevents future live worker ticks."""
+    _control_guard(x_trade_control_token)
+    try:
+        state, revision = load_or_create_live_state()
+        state["enabled"] = False
+        state["emergency_stop"] = True
+        state["stop_reason"] = str(reason or "Manuellt live-nödstopp")[:240]
+        worker = dict(state.get("worker") or {})
+        worker.update({"status": "emergency_stopped", "last_error": state["stop_reason"]})
+        state["worker"] = worker
+        next_revision = save_live_state(state, revision)
+    except LiveStoreError as exc:
+        raise HTTPException(status_code=503, detail="Livejournalens nödstopp kunde inte sparas.") from exc
+    return {
+        "ok": True, "live_enabled": False, "emergency_stop": True,
+        "revision": next_revision, "open_exchange_orders_cancelled": False,
+        "withdrawals_enabled": False,
     }
 
 

@@ -25,7 +25,7 @@ REQUIRED_PERMISSIONS = {
     "query-funds",
     "query-open-trades",
     "modify-trades",
-    "close-trades",
+    "query-closed-trades",
 }
 FORBIDDEN_PERMISSIONS = {
     "withdraw-funds",
@@ -220,4 +220,116 @@ def validate_limit_order(
         "client_order_id": client_order_id,
         "orders_enabled": False,
         "withdrawals_enabled": False,
+    }
+
+
+def get_open_orders() -> dict[str, Any]:
+    """Return open spot orders to internal safety checks only."""
+    result = _private_post("OpenOrders")
+    orders = result.get("open") or {}
+    if not isinstance(orders, dict):
+        raise KrakenPrivateAPIError("Krakens öppna order kunde inte verifieras.")
+    return orders
+
+
+def get_account_balances() -> dict[str, Any]:
+    """Return private balance data to server-side trading logic only."""
+    return _private_post("Balance")
+
+
+def lookup_order_by_client_id(client_order_id: str) -> dict[str, Any] | None:
+    """Reconcile a possibly submitted IOC order without ever resubmitting it."""
+    client_order_id = str(client_order_id or "").strip()
+    if not client_order_id:
+        raise KrakenPrivateAPIError("Orderreferensen saknas.")
+    for endpoint, collection in (("OpenOrders", "open"), ("ClosedOrders", "closed")):
+        result = _private_post(endpoint, {"cl_ord_id": client_order_id})
+        orders = result.get(collection) or {}
+        if isinstance(orders, dict) and orders:
+            txid, order = next(iter(orders.items()))
+            if isinstance(order, dict):
+                return {
+                    **order,
+                    "txid": str(txid),
+                    "order_collection": collection,
+                    "client_order_id": client_order_id,
+                }
+    return None
+
+
+def query_order_by_txid(txid: str) -> dict[str, Any] | None:
+    """Fetch authoritative execution quantities and fees for one known order."""
+    txid = str(txid or "").strip()
+    if (
+        not txid or len(txid) > 40
+        or any(character not in "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-" for character in txid.upper())
+    ):
+        raise KrakenPrivateAPIError("Ogiltig Kraken-orderreferens.")
+    result = _private_post("QueryOrders", {"txid": txid, "trades": "true"})
+    order = result.get(txid)
+    if not isinstance(order, dict):
+        return None
+    return {
+        "txid": txid,
+        "status": str(order.get("status") or "").lower(),
+        "vol": str(order.get("vol") or "0"),
+        "vol_exec": str(order.get("vol_exec") or "0"),
+        "cost": str(order.get("cost") or "0"),
+        "fee": str(order.get("fee") or "0"),
+        "price": str(order.get("price") or "0"),
+        "avg_price": str(order.get("price") or "0"),
+        "trades": list(order.get("trades") or []),
+        "oflags": str(order.get("oflags") or ""),
+    }
+
+
+def submit_limit_order(
+    *,
+    pair: str,
+    side: str,
+    volume: Decimal,
+    price: Decimal,
+    client_order_id: str,
+) -> dict[str, Any]:
+    """Submit a real, non-margin, EUR spot limit IOC order behind a hard env gate."""
+    if os.getenv("TRADE_LIVE_ENABLED", "").strip().lower() != "true":
+        raise KrakenPrivateAPIError("Livehandel är avstängd på servernivå.")
+    pair = str(pair or "").strip().upper()
+    side = str(side or "").strip().lower()
+    client_order_id = str(client_order_id or "").strip()
+    if not pair or not pair.isalnum() or len(pair) > 24:
+        raise KrakenPrivateAPIError("Ogiltigt Kraken-marknadspar.")
+    if side not in {"buy", "sell"}:
+        raise KrakenPrivateAPIError("Ogiltig orderriktning.")
+    if not client_order_id or len(client_order_id) > 36 or not client_order_id.isalnum():
+        raise KrakenPrivateAPIError("Ogiltig klientorderreferens.")
+    if not volume.is_finite() or not price.is_finite() or volume <= 0 or price <= 0:
+        raise KrakenPrivateAPIError("Ordervolym och limitpris måste vara positiva.")
+    result = _private_post("AddOrder", {
+        "ordertype": "limit",
+        "type": side,
+        "volume": format(volume, "f"),
+        "pair": pair,
+        "price": format(price, "f"),
+        "timeinforce": "IOC",
+        "oflags": "fciq",
+        "cl_ord_id": client_order_id,
+        # No leverage parameter is sent; this is spot-only.
+    })
+    txids = result.get("txid") or []
+    if not isinstance(txids, list) or not txids:
+        raise KrakenPrivateAPIError(
+            "Kraken bekräftade inte orderreferensen; ordern måste stämmas av manuellt."
+        )
+    return {
+        "accepted": True,
+        "txid": str(txids[0]),
+        "client_order_id": client_order_id,
+        "pair": pair,
+        "side": side,
+        "volume": format(volume, "f"),
+        "price": format(price, "f"),
+        "order_type": "limit",
+        "timeinforce": "IOC",
+        "mode": "live_spot",
     }

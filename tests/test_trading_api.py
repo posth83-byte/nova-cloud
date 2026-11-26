@@ -80,7 +80,7 @@ class TradingApiTests(unittest.TestCase):
             result = asyncio.run(api.paper_strategy_preview())
         self.assertEqual(result["mode"], "paper_preview_only")
         self.assertFalse(result["execution_enabled"])
-        self.assertEqual(result["max_trade_budget_sek"], 20.0)
+        self.assertEqual(result["max_trade_budget_sek"], 200.0)
         self.assertEqual(result["candidate_count"], 1)
 
     def test_opportunities_endpoint_is_read_only(self):
@@ -254,14 +254,122 @@ class TradingApiTests(unittest.TestCase):
 
 
 
-    def test_live_status_never_enables_orders(self):
-        with patch.object(api, "credentials_configured", return_value=True):
+    def test_live_worker_tick_requires_scheduler_identity_and_runs_worker(self):
+        with (
+            patch.object(api, "_github_actions_guard") as guard,
+            patch.object(api, "run_live_tick", return_value={
+                "ok": True, "status": "disabled", "live_enabled": False,
+                "orders_enabled": False, "withdrawals_enabled": False,
+            }) as worker,
+        ):
+            result = asyncio.run(api.live_worker_tick(
+                x_trade_control_token=None, authorization="Bearer oidc"
+            ))
+        guard.assert_called_once()
+        worker.assert_called_once()
+        self.assertFalse(result["live_enabled"])
+        self.assertFalse(result["orders_enabled"])
+
+    def test_live_worker_tick_rejects_bad_manual_control_token(self):
+        with patch.object(api, "_control_guard", side_effect=HTTPException(status_code=401)):
+            with self.assertRaises(HTTPException):
+                asyncio.run(api.live_worker_tick(x_trade_control_token="wrong"))
+
+    def test_live_status_reads_separate_default_off_ledger(self):
+        state = {
+            "enabled": False, "emergency_stop": False, "cash_sek": "200.00",
+            "positions": {}, "realized_pnl_sek": "0.00", "risk": {},
+            "worker": {"status": "disabled"},
+        }
+        with (
+            patch.object(api, "credentials_configured", return_value=True),
+            patch.object(api, "load_or_create_live_state", return_value=(state, 1)),
+        ):
             result = asyncio.run(api.live_status())
         self.assertTrue(result["credentials_configured"])
-        self.assertEqual(result["live_order_engine"], "not_implemented")
+        self.assertEqual(result["live_order_engine"], "journaled_spot_execution_foundation")
+        self.assertFalse(result["live_enabled"])
         self.assertFalse(result["orders_enabled"])
         self.assertFalse(result["withdrawals_enabled"])
         self.assertEqual(result["max_authorized_budget_sek"], 200.0)
+
+    def test_live_start_refuses_when_server_gate_is_off(self):
+        with (
+            patch.object(api, "_manual_control_guard"),
+            patch.dict("os.environ", {"TRADE_LIVE_ENABLED": "false"}),
+            patch.object(api, "run_read_only_preflight") as preflight,
+        ):
+            with self.assertRaises(HTTPException) as raised:
+                asyncio.run(api.live_start(x_trade_control_token="secret"))
+        self.assertEqual(raised.exception.status_code, 409)
+        preflight.assert_not_called()
+
+    def test_live_start_arms_only_after_server_gate_and_clean_preflight(self):
+        state = {"enabled": False, "emergency_stop": False, "worker": {}}
+        with (
+            patch.object(api, "_manual_control_guard"),
+            patch.dict("os.environ", {"TRADE_LIVE_ENABLED": "true"}),
+            patch.object(api, "load_or_create_live_state", return_value=(state, 7)),
+            patch.object(api, "fetch_eur_sek_rate", return_value={"rate": 11.2}),
+            patch.object(api, "run_read_only_preflight", return_value={
+                "connected": True, "open_orders_clear": True,
+            }),
+            patch.object(api, "save_live_state", return_value=8) as save,
+        ):
+            result = asyncio.run(api.live_start(x_trade_control_token="secret"))
+        self.assertTrue(result["live_enabled"])
+        self.assertEqual(result["max_budget_sek"], 200.0)
+        self.assertFalse(result["withdrawals_enabled"])
+        self.assertTrue(state["enabled"])
+        self.assertEqual(state["worker"]["status"], "armed")
+        save.assert_called_once_with(state, 7)
+
+    def test_live_start_requires_clean_kraken_preflight(self):
+        state = {"enabled": False, "emergency_stop": False, "worker": {}}
+        with (
+            patch.object(api, "_manual_control_guard"),
+            patch.dict("os.environ", {"TRADE_LIVE_ENABLED": "true"}),
+            patch.object(api, "load_or_create_live_state", return_value=(state, 7)),
+            patch.object(api, "fetch_eur_sek_rate", return_value={"rate": 11.0}),
+            patch.object(api, "run_read_only_preflight", return_value={
+                "connected": True, "open_orders_clear": False,
+            }),
+            patch.object(api, "save_live_state") as save,
+        ):
+            with self.assertRaises(HTTPException) as raised:
+                asyncio.run(api.live_start(x_trade_control_token="secret"))
+        self.assertEqual(raised.exception.status_code, 409)
+        save.assert_not_called()
+
+    def test_live_pause_persists_disabled_state(self):
+        state = {"enabled": True, "worker": {"status": "running"}}
+        saved = []
+        with (
+            patch.object(api, "_control_guard"),
+            patch.object(api, "load_or_create_live_state", return_value=(state, 3)),
+            patch.object(api, "save_live_state", side_effect=lambda updated, revision: saved.append(updated) or 4),
+        ):
+            result = asyncio.run(api.live_pause(x_trade_control_token="secret"))
+        self.assertFalse(result["live_enabled"])
+        self.assertFalse(saved[0]["enabled"])
+        self.assertEqual(saved[0]["worker"]["status"], "paused")
+        self.assertFalse(result["open_exchange_orders_cancelled"])
+
+    def test_live_emergency_stop_is_durable_and_disables_worker(self):
+        state = {"enabled": True, "emergency_stop": False, "worker": {"status": "running"}}
+        saved = []
+        with (
+            patch.object(api, "_control_guard"),
+            patch.object(api, "load_or_create_live_state", return_value=(state, 5)),
+            patch.object(api, "save_live_state", side_effect=lambda updated, revision: saved.append(updated) or 6),
+        ):
+            result = asyncio.run(api.live_emergency_stop(
+                reason="test stop", x_trade_control_token="secret"
+            ))
+        self.assertTrue(result["emergency_stop"])
+        self.assertFalse(saved[0]["enabled"])
+        self.assertTrue(saved[0]["emergency_stop"])
+        self.assertEqual(saved[0]["stop_reason"], "test stop")
 
     def test_live_preflight_requires_control_token(self):
         with (

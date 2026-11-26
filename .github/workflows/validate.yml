@@ -125,6 +125,7 @@ jobs:
           python -m unittest discover -s tests -p 'test_jarvis_worker_persistence.py'
           python -m unittest discover -s tests -p 'test_system_engineer_delivery.py'
           python -m unittest discover -s tests -p 'test_ai_provider_fallback.py'
+          python -m unittest discover -s tests -p 'test_trading_api.py'
           python qa/test_video_assets.py
           python qa/test_video_storage.py
           python qa/test_video_jobs.py
