@@ -1,10 +1,7 @@
 {
   "mode": "paper",
   "quote_currency": "EUR",
-  "allowed_symbols": [
-    "BTC/EUR",
-    "ETH/EUR"
-  ],
+  "allowed_symbols": [],
   "max_open_positions": 1,
   "max_risk_per_trade_pct": 1,
   "max_daily_drawdown_pct": 2,
@@ -13,7 +10,7 @@
   "minimum_notional": 0.45,
   "live_orders_enabled": false,
   "automatic_profit_reinvestment": true,
-  "note": "Paper-only reference balance: 200 SEK is approximately 17.81 EUR at the indicative 2026-11-26 mid-market rate. This is not a read of the Kraken account balance; actual exchange balance and fees may differ.",
+  "note": "Paper-only reference balance: 200 SEK is approximately 17.81 EUR at the indicative 2026-11-26 mid-market rate. This is not a read of the Kraken account balance; actual exchange balance and fees may differ. Dynamic universe: active Kraken EUR spot pairs, minimum 100,000 EUR 24h quote volume, maximum 0.60% spread, capped at 30 ranked candidates per scan; stablecoin bases excluded.",
   "paper_starting_cash_sek": 200,
   "paper_starting_cash_eur": 17.81,
   "reference_sek_eur_rate": 0.08905,
@@ -24,5 +21,24 @@
     "BTC/EUR": 0.00006,
     "ETH/EUR": 0.002
   },
-  "minimums_note": "Kraken spot minimums are pair-specific: BTC 0.00006 BTC, ETH 0.002 ETH, plus EUR quote-cost minimum 0.45 EUR. Confirm current limits in Kraken before any future live activation."
+  "minimums_note": "Kraken spot minimums are pair-specific: BTC 0.00006 BTC, ETH 0.002 ETH, plus EUR quote-cost minimum 0.45 EUR. Confirm current limits in Kraken before any future live activation.",
+  "dynamic_eur_spot_universe": true,
+  "max_analysis_markets": 30,
+  "minimum_quote_volume_eur": 100000,
+  "maximum_spread_pct": 0.6,
+  "excluded_base_assets": [
+    "EUR",
+    "USD",
+    "USDT",
+    "USDC",
+    "DAI",
+    "EURC",
+    "TUSD",
+    "PYUSD",
+    "USDE",
+    "FDUSD",
+    "UST",
+    "USTC",
+    "USDD"
+  ]
 }
