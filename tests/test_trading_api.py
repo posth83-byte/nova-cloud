@@ -93,6 +93,15 @@ class TradingApiTests(unittest.TestCase):
         self.assertEqual(result["market"], "XBT/EUR")
         self.assertEqual(result["results"]["closed_trades"], 0)
 
+    def test_paper_worker_tick_requires_control_token_and_runs_simulation(self):
+        with (
+            patch.dict("os.environ", {"TRADE_CONTROL_TOKEN": "worker-secret"}),
+            patch.object(api, "run_paper_tick", return_value={"ok": True, "orders_enabled": False}) as run,
+        ):
+            result = asyncio.run(api.paper_worker_tick(x_trade_control_token="worker-secret"))
+        self.assertTrue(result["ok"])
+        run.assert_called_once_with()
+
     def test_control_guard_fails_closed_when_token_missing(self):
         with patch.dict("os.environ", {}, clear=True):
             with self.assertRaises(HTTPException) as exc:
