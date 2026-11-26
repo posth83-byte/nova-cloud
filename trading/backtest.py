@@ -239,7 +239,8 @@ def run_walk_forward(
     risk_pct: float = 1.0,
     daily_drawdown_pct: float = 2.0,
     stop_distance_pct: float = 2.0,
-    minimum_notional: float = 5.0,
+    minimum_notional: float = 0.45,
+    minimum_order_size: float = 0.0,
 ) -> dict[str, Any]:
     """Evaluate the fixed strategy on consecutive, non-overlapping OOS windows.
 
@@ -325,6 +326,7 @@ def run_walk_forward(
         "fee_rate": fee_rate,
         "slippage_rate": slippage_rate,
         "minimum_notional": minimum_notional,
+        "minimum_order_size": minimum_order_size,
         "minimum_notional_skips": sum(fold["minimum_notional_skips"] for fold in folds),
         "ending_cash": round(cash, 8),
         "net_profit": round(net_profit, 8),
@@ -386,6 +388,7 @@ def main() -> int:
             slippage_rate=args.slippage_rate, risk_pct=args.risk_pct,
             daily_drawdown_pct=args.daily_drawdown_pct,
             stop_distance_pct=args.stop_distance_pct, minimum_notional=args.minimum_notional,
+            minimum_order_size=args.minimum_order_size,
         )
     )
     Path(args.output).write_text(json.dumps(result, indent=2), encoding="utf-8")
