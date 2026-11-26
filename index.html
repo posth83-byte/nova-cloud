@@ -1070,6 +1070,7 @@ ox-spelutvecklare. Från spelidé och värld till Luau-kod, system, testning och
    <div class="team-stage-caption">GEMENSAMMA ARBETSSTATIONER · JARVIS FÖRDELAR ARBETET TILL RÄTT SPECIALISTER</div>
   </div>
   <div id="teamBoardMount"></div>
+  <button type="button" class="team-room-link" onclick="openTradeRoom()">◈ ÖPPNA TRADE AI COMMAND ROOM</button>
   <button type="button" class="team-room-link" onclick="enterRoom('jarvis')">← TILLBAKA TILL JARVIS</button>
  </section>
 </div>
@@ -1641,7 +1642,7 @@ function setRoomState(room,state){
  else{if(live)live.textContent="● "+room.toUpperCase()+" ONLINE";if(monitor)monitor.textContent=room==="nova"?"● PRODUCTION ACTIVE":"● SYSTEM ACTIVE"}
 }
 function enterRoom(room){
- activeRoom=room;$("homeView").classList.add("hidden");$("jarvisView").classList.add("hidden");$("novaView").classList.add("hidden");$("webView").classList.add("hidden");$("gameView").classList.add("hidden");
+ activeRoom=room;$("homeView").classList.add("hidden");$("jarvisView").classList.add("hidden");$("novaView").classList.add("hidden");$("webView").classList.add("hidden");$("gameView").classList.add("hidden");$("tradeView").classList.add("hidden");
  $(room+"View").classList.remove("hidden");window.scrollTo({top:0,behavior:"smooth"});loadVoices();
  if(room==="nova")refreshYouTubeCenter();
  logActivity(room.toUpperCase()+"-rummet öppnades",room==="nova"?"✧":"✦","AI-rum aktiverat");
@@ -1660,7 +1661,7 @@ function restartJarvisLandingAnimations(){
  animated.forEach(el=>{el.style.animation=""});
 }
 function goHome(){
- stopSpeech();activeRoom=null;$("jarvisView").classList.add("hidden");$("novaView").classList.add("hidden");$("webView").classList.add("hidden");$("gameView").classList.add("hidden");$("homeView").classList.remove("hidden");
+ stopSpeech();activeRoom=null;$("jarvisView").classList.add("hidden");$("novaView").classList.add("hidden");$("webView").classList.add("hidden");$("gameView").classList.add("hidden");$("tradeView").classList.add("hidden");$("homeView").classList.remove("hidden");
  restartJarvisLandingAnimations();
  window.scrollTo({top:0,behavior:"smooth"});
 }
