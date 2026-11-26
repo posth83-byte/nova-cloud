@@ -195,5 +195,27 @@ class KrakenPrivateTests(unittest.TestCase):
         self.assertEqual(order["order_collection"], "closed")
         self.assertEqual(order["vol_exec"], "1.2")
 
+    def test_query_order_by_txid_returns_authoritative_fill_totals(self):
+        with patch.object(private, "_private_post", return_value={
+            "ORDER123": {
+                "status": "closed", "vol": "2", "vol_exec": "1.5",
+                "cost": "12.3", "fee": "0.05", "price": "8.2",
+                "trades": ["TRADE1"],
+            }
+        }) as post:
+            order = private.query_order_by_txid("ORDER123")
+        post.assert_called_once_with("QueryOrders", {"txid": "ORDER123", "trades": "true"})
+        self.assertEqual(order["vol_exec"], "1.5")
+        self.assertEqual(order["cost"], "12.3")
+        self.assertEqual(order["fee"], "0.05")
+        self.assertEqual(order["status"], "closed")
+
+    def test_query_order_by_txid_rejects_bad_reference(self):
+        with patch.object(private, "_private_post") as post:
+            with self.assertRaises(private.KrakenPrivateAPIError):
+                private.query_order_by_txid("bad-order-id!")
+        post.assert_not_called()
+
+
 if __name__ == "__main__":
     unittest.main()
