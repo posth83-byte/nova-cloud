@@ -23,7 +23,8 @@ class TradeBacktestTests(unittest.TestCase):
         self.assertEqual(result["mode"], "historical_backtest_only")
         self.assertFalse(result["execution_enabled"])
         self.assertFalse(result["orders_enabled"])
-        self.assertIn("buy_and_hold_return_pct", result["results"])\n        self.assertIn("expectancy_sek_est", result["results"])
+        self.assertIn("buy_and_hold_return_pct", result["results"])
+        self.assertIn("expectancy_sek_est", result["results"])
         self.assertEqual(result["sample"]["candles"], 240)
         self.assertEqual(result["sample"]["in_sample_candles"] +
                          result["sample"]["out_of_sample_candles"], 240)
