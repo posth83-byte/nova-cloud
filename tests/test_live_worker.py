@@ -151,7 +151,7 @@ class LiveWorkerTests(unittest.TestCase):
             patch.object(live_worker, "get_account_balances", return_value={"ZEUR": "36.36"}),
             patch.object(live_worker, "scan_markets", return_value={"markets": [market]}),
             patch.object(live_worker, "fetch_ohlc_candles", return_value={"candles": candles}),
-            patch.object(live_worker, "_cross_signal", return_value=(True, False)),
+            patch.object(live_worker, "_cross_signal", return_value=(True, False)) as cross_signal,
             patch.object(live_worker, "_select_watchlist", return_value=({"LINK/EUR"}, 0)),
             patch.object(live_worker, "list_unapplied_order_intents", return_value=[]),
             patch.object(live_worker, "get_open_orders", return_value={}) as open_orders,
@@ -172,6 +172,7 @@ class LiveWorkerTests(unittest.TestCase):
         self.assertTrue(result["ok"], result)
         self.assertEqual(result["status"], "running")
         execute.assert_called_once()
+        cross_signal.assert_called_once_with(candles, after_timestamp=0)
         validate.assert_called_once()
         open_orders.assert_called_once()
         kwargs = execute.call_args.kwargs
