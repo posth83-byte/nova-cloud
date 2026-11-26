@@ -173,7 +173,7 @@ def run_read_only_preflight(eur_sek: Decimal) -> dict[str, Any]:
         "eur_sek_rate": str(eur_sek),
         "open_orders_count": len(open_orders),
         "open_orders_clear": len(open_orders) == 0,
-        "max_authorized_budget_sek": "200.00",
+        "budget_policy": "all_available_kraken_eur_balance",
         "orders_enabled": False,
         "withdrawals_enabled": False,
         "mode": "private_read_only_preflight",

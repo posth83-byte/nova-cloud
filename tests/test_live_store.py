@@ -35,7 +35,7 @@ class LiveStoreTests(unittest.TestCase):
         self.assertFalse(state["enabled"])
         self.assertFalse(state["emergency_stop"])
         self.assertEqual(state["cash_sek"], "200.00")
-        self.assertEqual(state["risk"]["max_budget_sek"], "200.00")
+        self.assertNotIn("max_budget_sek", state["risk"])
         self.assertNotIn("paper_enabled", state)
 
     def test_live_state_initialization_persists_revision_one(self):

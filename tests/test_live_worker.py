@@ -17,7 +17,6 @@ class LiveWorkerTests(unittest.TestCase):
             "realized_pnl_sek": "0.00",
             "applied_order_ids": [],
             "risk": {
-                "max_budget_sek": "200.00",
                 "daily_loss_limit_pct": "0.02",
                 "max_drawdown_pct": "0.10",
                 "max_open_positions": 3,
@@ -149,7 +148,7 @@ class LiveWorkerTests(unittest.TestCase):
             patch.object(live_worker, "run_read_only_preflight", return_value={
                 "connected": True, "open_orders_clear": True,
             }),
-            patch.object(live_worker, "get_account_balances", return_value={"ZEUR": "18.18"}),
+            patch.object(live_worker, "get_account_balances", return_value={"ZEUR": "36.36"}),
             patch.object(live_worker, "scan_markets", return_value={"markets": [market]}),
             patch.object(live_worker, "fetch_ohlc_candles", return_value={"candles": candles}),
             patch.object(live_worker, "_cross_signal", return_value=(True, False)),
@@ -178,10 +177,10 @@ class LiveWorkerTests(unittest.TestCase):
         kwargs = execute.call_args.kwargs
         self.assertEqual(kwargs["pair"], "LINKEUR")
         self.assertEqual(kwargs["side"], "buy")
-        self.assertLessEqual(kwargs["volume"] * kwargs["price"] * Decimal("11"), Decimal("200"))
+        self.assertLessEqual(kwargs["volume"] * kwargs["price"] * Decimal("11"), Decimal("400"))
         mark.assert_called_once_with("e" * 32)
         self.assertEqual(state["positions"]["LINK/EUR"]["quantity"], "1")
-        self.assertEqual(state["cash_sek"], "89.56")
+        self.assertEqual(state["cash_sek"], "289.52")
         self.assertFalse(result["withdrawals_enabled"])
 
     def test_disabled_live_state_does_not_contact_kraken(self):
