@@ -18,9 +18,9 @@ class KrakenMarketMonitorTests(unittest.TestCase):
             "ETHUSD": {"c": ["3000"], "o": "2900", "v": ["10", "10"], "p": ["2950", "2950"], "h": ["3100", "3100"], "l": ["2800", "2800"]},
         }
         rows = build_market_rows(pairs, tickers, quote="EUR")
-        self.assertEqual([row["symbol"] for row in rows], ["ETC/EUR", "XBT/EUR"])
-        self.assertAlmostEqual(rows[1]["change_24h_pct"], 1.695, places=2)
-        self.assertEqual(rows[0]["volume_24h_quote_est"], 2000.0)
+        self.assertEqual([row["symbol"] for row in rows], ["XBT/EUR", "ETC/EUR"])
+        self.assertAlmostEqual(rows[0]["change_24h_pct"], 1.695, places=2)
+        self.assertEqual(rows[1]["volume_24h_quote_est"], 2000.0)
 
     def test_ignores_offline_and_incomplete_pairs(self):
         pairs = {
