@@ -82,6 +82,7 @@ python -m unittest discover -s trading -p "test_*.py" -v
 - Daily stop: 2% drawdown from start-of-day equity; block new entries after breach.
 - Every entry needs a defined exit/stop rule.
 - No averaging down, martingale, leverage or shorts.
+- Enforce a 5 EUR minimum simulated order notional for Kraken EUR markets; skip smaller setups rather than rounding up.
 - Skip trades if fees + spread + slippage make expected edge uneconomic.
 - Check exchange minimum, precision, quote balance and fees before each order.
 - Never increase size just to meet an exchange minimum.
