@@ -120,7 +120,7 @@ class LiveWorkerTests(unittest.TestCase):
         self.assertEqual(state["worker"]["lease_id"], lease_id)
         save.assert_called_once()
 
-    def test_live_tick_journals_one_approved_sma_buy_and_books_fill(self):
+    def test_live_tick_journals_one_approved_momentum_buy_and_books_fill(self):
         state = dict(self.state)
         market = {
             "symbol": "LINK/EUR", "api_pair": "LINKEUR",
@@ -151,7 +151,8 @@ class LiveWorkerTests(unittest.TestCase):
             patch.object(live_worker, "get_account_balances", return_value={"ZEUR": "36.36"}),
             patch.object(live_worker, "scan_markets", return_value={"markets": [market]}),
             patch.object(live_worker, "fetch_ohlc_candles", return_value={"candles": candles}),
-            patch.object(live_worker, "_cross_signal", return_value=(True, False)) as cross_signal,
+            patch.object(live_worker, "_cross_signal", return_value=(False, False)) as cross_signal,
+            patch.object(live_worker, "_momentum_entry_signal", return_value=True) as momentum_signal,
             patch.object(live_worker, "_select_watchlist", return_value=({"LINK/EUR"}, 0)),
             patch.object(live_worker, "list_unapplied_order_intents", return_value=[]),
             patch.object(live_worker, "get_open_orders", return_value={}) as open_orders,
@@ -173,6 +174,7 @@ class LiveWorkerTests(unittest.TestCase):
         self.assertEqual(result["status"], "running")
         execute.assert_called_once()
         cross_signal.assert_called_once_with(candles, after_timestamp=0)
+        momentum_signal.assert_called_once_with(candles, after_timestamp=0)
         validate.assert_called_once()
         open_orders.assert_called_once()
         kwargs = execute.call_args.kwargs
