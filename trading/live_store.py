@@ -173,6 +173,20 @@ def mark_order_ledger_applied(client_order_id: str) -> None:
         raise LiveStoreError("Ordern kunde inte markeras bokförd i livejournalen.")
 
 
+def attach_order_metadata(client_order_id: str, *, pair_symbol: str, base_asset: str) -> None:
+    if not pair_symbol or "/" not in pair_symbol or not base_asset:
+        raise LiveStoreError("Ogiltig tillgångsmetadata för orderjournalen.")
+    query = urllib.parse.urlencode({
+        "client_order_id": "eq." + client_order_id, "select": "client_order_id"
+    })
+    rows = _request(
+        "jarvis_live_order_intents", "PATCH", query,
+        payload={"pair_symbol": pair_symbol, "base_asset": base_asset},
+    )
+    if not rows:
+        raise LiveStoreError("Orderns tillgångsmetadata kunde inte sparas.")
+
+
 def get_order_intent(client_order_id: str) -> dict[str, Any] | None:
     query = urllib.parse.urlencode({
         "client_order_id": "eq." + client_order_id, "select": "*", "limit": "1"
