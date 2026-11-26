@@ -291,7 +291,7 @@ class TradingApiTests(unittest.TestCase):
         self.assertFalse(result["live_enabled"])
         self.assertFalse(result["orders_enabled"])
         self.assertFalse(result["withdrawals_enabled"])
-        self.assertEqual(result["max_authorized_budget_sek"], 200.0)
+        self.assertEqual(result["budget_policy"], "all_available_kraken_eur_balance")
 
     def test_live_start_refuses_when_server_gate_is_off(self):
         with (
@@ -320,7 +320,7 @@ class TradingApiTests(unittest.TestCase):
                 x_trade_control_token=None, authorization="Bearer oidc"
             ))
         self.assertTrue(result["live_enabled"])
-        self.assertEqual(result["max_budget_sek"], 200.0)
+        self.assertEqual(result["budget_policy"], "all_available_kraken_eur_balance")
         self.assertFalse(result["withdrawals_enabled"])
         self.assertTrue(state["enabled"])
         self.assertEqual(state["worker"]["status"], "armed")
@@ -412,9 +412,9 @@ class TradingApiTests(unittest.TestCase):
 
 
 
-    def test_live_validate_order_uses_200_sek_cap_and_never_submits(self):
+    def test_live_validate_order_uses_full_kraken_eur_balance_and_never_submits(self):
         fx = {"rate": 11.2, "date": "2026-11-26", "source": "test", "age_days": 0}
-        account = {"eur_balance": "19.0", "open_orders_clear": True}
+        account = {"eur_balance": "36.0", "open_orders_clear": True}
         markets = {"markets": [{
             "symbol": "XBT/EUR", "api_pair": "XBTEUR", "ask": 60000.0,
             "bid": 59940.0, "spread_pct": 0.1, "volume_24h_quote_est": 500000.0,
@@ -439,8 +439,9 @@ class TradingApiTests(unittest.TestCase):
         self.assertEqual(kwargs["side"], "buy")
         self.assertLessEqual(
             Decimal(kwargs["volume"]) * Decimal(kwargs["price"]) * Decimal("1.005506") * Decimal("11.2"),
-            Decimal("200.01"),
+            Decimal("403.21"),
         )
+        self.assertGreater(Decimal(kwargs["volume"]) * Decimal(kwargs["price"]) * Decimal("1.005506") * Decimal("11.2"), Decimal("200.00"))
         self.assertTrue(result["validated"])
         self.assertFalse(result["orders_enabled"])
         self.assertFalse(result["withdrawals_enabled"])
