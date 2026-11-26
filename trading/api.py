@@ -436,9 +436,16 @@ async def live_start(
 @router.post("/live/pause")
 async def live_pause(
     x_trade_control_token: str | None = Header(default=None),
+    authorization: str | None = Header(default=None),
 ):
     """Disable future live worker ticks; does not cancel exchange orders."""
-    _control_guard(x_trade_control_token)
+    _manual_control_guard(
+        x_trade_control_token,
+        authorization,
+        allowed_workflows={
+            "posth83-byte/nova-cloud/.github/workflows/trade-live-scheduler.yml@refs/heads/main"
+        },
+    )
     try:
         state, revision = load_or_create_live_state()
         state["enabled"] = False
