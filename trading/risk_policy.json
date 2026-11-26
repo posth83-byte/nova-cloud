@@ -4,7 +4,7 @@
   "live_orders_enabled": false,
   "live_enable_requires_explicit_user_approval": true,
   "starting_balance_sek": 200,
-  "max_external_funding_sek": 200,
+  "max_external_funding_sek": 500,
   "allow_account_equity_to_grow_from_profit": true,
   "auto_reinvest_realized_profits": true,
   "markets": [
