@@ -1,10 +1,9 @@
 """Run one paper-trading cycle using public Kraken market data.
 
 Example:
-  python trading/paper_runner.py --starting-cash 470 --state-path trading/paper-state.json
+  python trading/paper_runner.py --starting-cash 17.81 --state-path trading/paper-state.json
 
-starting-cash must be in EUR when trading BTC/EUR and ETH/EUR. Convert the
-user's SEK budget with a current FX rate before first initialization.
+starting-cash must be in EUR when trading BTC/EUR and ETH/EUR. The current 200 SEK paper reference is approximately 17.81 EUR; this does not read the Kraken account balance.
 """
 from __future__ import annotations
 
