@@ -2,6 +2,7 @@
 import asyncio
 import importlib.util
 import unittest
+from decimal import Decimal
 from unittest.mock import patch
 
 if importlib.util.find_spec("fastapi") is None:
