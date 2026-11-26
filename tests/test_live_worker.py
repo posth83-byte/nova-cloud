@@ -169,7 +169,7 @@ class LiveWorkerTests(unittest.TestCase):
             patch.object(live_worker, "save_live_state", side_effect=save),
         ):
             result = live_worker.run_live_tick()
-        self.assertTrue(result["ok"])
+        self.assertTrue(result["ok"], result)
         self.assertEqual(result["status"], "running")
         execute.assert_called_once()
         validate.assert_called_once()
