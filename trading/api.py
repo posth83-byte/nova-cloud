@@ -403,6 +403,13 @@ async def live_dashboard(
             })
         eur_balance = Decimal(str(account["eur_balance"]))
         available_eur_sek = (eur_balance * rate).quantize(Decimal("0.01"))
+        markets = scan_markets(quote="EUR", limit=50).get("markets", [])
+        radar = rank_opportunities(
+            markets,
+            equity_sek=float(available_eur_sek),
+            eur_sek=float(rate),
+            limit=8,
+        )
         intents = list_recent_order_intents(30)
         safe_intents = []
         for row in intents:
@@ -435,6 +442,7 @@ async def live_dashboard(
                 "assets": valuation["assets"],
                 "fx": {"eur_sek": str(rate), "date": fx.get("date"), "source": fx.get("source")},
             },
+            "opportunities": radar.get("candidates", []),
             "trade_ai": {
                 "live_enabled": bool(state.get("enabled")),
                 "emergency_stop": bool(state.get("emergency_stop")),
@@ -442,6 +450,7 @@ async def live_dashboard(
                 "positions": positions,
                 "position_count": len(positions),
                 "realized_pnl_sek": state.get("realized_pnl_sek"),
+                "day_start_equity_sek": state.get("day_start_equity_sek"),
                 "trades": list(state.get("trades") or [])[-30:][::-1],
                 "order_intents": safe_intents,
                 "worker": state.get("worker") or {},
