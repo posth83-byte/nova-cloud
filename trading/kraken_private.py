@@ -25,7 +25,6 @@ REQUIRED_PERMISSIONS = {
     "query-funds",
     "query-open-trades",
     "modify-trades",
-    "close-trades",
     "query-closed-trades",
 }
 FORBIDDEN_PERMISSIONS = {
