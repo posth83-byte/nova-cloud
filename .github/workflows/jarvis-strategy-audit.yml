@@ -38,14 +38,15 @@ jobs:
           markets = exchange.load_markets()
           for symbol, key in (("BTC/EUR", "btc"), ("ETH/EUR", "eth")):
               market = markets[symbol]
-              amount_min = market.get("limits", {}).get("amount", {}).get("min") or 0
+              fallback_amount = {"BTC/EUR": 0.00006, "ETH/EUR": 0.002}[symbol]
+              amount_min = market.get("limits", {}).get("amount", {}).get("min") or fallback_amount
               cost_min = market.get("limits", {}).get("cost", {}).get("min") or 0.45
               print(f"{key}_min_size={amount_min}")
               print(f"{key}_min_cost={cost_min}")
           PY
-      - name: Download 180 days of Kraken BTC/EUR and ETH/EUR hourly candles
+      - name: Download latest 30 days of Kraken BTC/EUR and ETH/EUR hourly candles
         run: |
-          python trading/download_history.py --symbol BTC/EUR --timeframe 1h --days 180 --output /tmp/btc-eur.json
+          python trading/download_history.py --symbol BTC/EUR --timeframe 1h --days 30 --output /tmp/btc-eur.json
           python trading/download_history.py --symbol ETH/EUR --timeframe 1h --days 180 --output /tmp/eth-eur.json
       - name: Compare 2.0% and 1.8% stops with pair-specific minimum volumes and taker costs
         run: |
@@ -64,7 +65,7 @@ jobs:
                 --risk-pct 1.0 \
                 --daily-drawdown-pct 2.0 \
                 --stop-distance-pct "$stop" \
-                --minimum-notional 0.45 \
+                --minimum-notional "$min_cost" \
                 --minimum-order-size "$min_size" \
                 --output "$output"
             done
