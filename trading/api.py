@@ -469,6 +469,7 @@ async def live_dashboard(request: Request, x_trade_dashboard_token: str | None =
             exchange = row.get("exchange_result") or {}
             safe_intents.append({
                 "client_order_id": row.get("client_order_id"),
+                "txid": row.get("txid"),
                 "symbol": row.get("pair_symbol"),
                 "side": row.get("side"),
                 "status": row.get("status"),
