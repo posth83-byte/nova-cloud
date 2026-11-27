@@ -51,6 +51,7 @@ class TradingApiTests(unittest.TestCase):
             patch.object(api, "scan_markets", return_value={"markets": []}),
             patch.object(api, "rank_opportunities", return_value=radar),
             patch.object(api, "list_recent_order_intents", return_value=[]),
+            patch.object(api, "get_recent_closed_orders", return_value=[]),
         ):
             result = asyncio.run(api.live_dashboard(request=Request({"type": "http", "headers": []}), x_trade_dashboard_token="read-only-secret"))
         self.assertEqual(result["account"]["total_value_sek"], 784.0)
