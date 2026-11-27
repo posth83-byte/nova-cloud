@@ -107,7 +107,8 @@ def _halt(state: dict[str, Any], reason: str) -> dict[str, Any]:
 
 
 def _apply_intent_fill(
-    state: dict[str, Any], intent: dict[str, Any], fx_rate: Decimal
+    state: dict[str, Any], intent: dict[str, Any], fx_rate: Decimal,
+    exchange_cash_sek: Decimal | None = None,
 ) -> dict[str, Any]:
     """Apply one confirmed exchange fill exactly once to the live-only ledger."""
     client_id = str(intent["client_order_id"])
@@ -128,7 +129,9 @@ def _apply_intent_fill(
         current_cash = _d(state["cash_sek"])
         if intent["side"] == "buy":
             total_cost = gross_sek + fee_sek
-            if total_cost > current_cash:
+            # A confirmed Kraken fill is authoritative. During recovery the
+            # local ledger may still contain the pre-order cash snapshot.
+            if exchange_cash_sek is None and total_cost > current_cash:
                 raise LiveWorkerError("Bekräftat köp överstiger livebokens disponibla saldo.")
             old = positions.get(symbol, {})
             old_qty = _d(old.get("quantity") or "0")
@@ -177,12 +180,17 @@ def _apply_intent_fill(
             "mode": "live_spot",
         })
         state["trades"] = trades[-500:]
+    if exchange_cash_sek is not None:
+        # Use actual post-fill EUR cash from Kraken, not a stale pre-order
+        # snapshot or an estimate based on fee assumptions.
+        state["cash_sek"] = format(_round_money(exchange_cash_sek), "f")
     state["applied_order_ids"] = list(applied | {client_id})[-500:]
     return state
 
 
 def _recover_unapplied(
-    state: dict[str, Any], revision: int, fx_rate: Decimal
+    state: dict[str, Any], revision: int, fx_rate: Decimal,
+    exchange_cash_sek: Decimal | None = None,
 ) -> tuple[dict[str, Any], int, bool]:
     """Reconcile prior orders and apply their fills before considering new signals."""
     rows = list_unapplied_order_intents()
@@ -205,7 +213,9 @@ def _recover_unapplied(
                 )
             row = get_order_intent(client_id) or row
         if client_id not in set(state.get("applied_order_ids") or []):
-            state = _apply_intent_fill(state, row, fx_rate)
+            state = _apply_intent_fill(
+                state, row, fx_rate, exchange_cash_sek=exchange_cash_sek
+            )
             changed = True
         # Persist the ledger first. applied_order_ids makes recovery idempotent.
         if changed:
@@ -286,7 +296,9 @@ def run_live_tick() -> dict[str, Any]:
         if equity <= peak * Decimal("0.90"):
             raise LiveWorkerError("Maximal portföljnedgång på 10 procent är nådd.")
 
-        state, revision, recovered = _recover_unapplied(state, revision, rate)
+        state, revision, recovered = _recover_unapplied(
+            state, revision, rate, exchange_cash_sek=available_sek
+        )
         if recovered:
             state = _clear_lease(state)
             worker = dict(state.get("worker") or {})
@@ -313,6 +325,7 @@ def run_live_tick() -> dict[str, Any]:
             for symbol, item in positions.items()
         )
         eligible = []
+        market_minimums_eur: list[Decimal] = []
         for row in markets:
             try:
                 ask, bid = _d(row["ask"]), _d(row["bid"])
@@ -326,7 +339,10 @@ def run_live_tick() -> dict[str, Any]:
                 continue
             if spread > Decimal(str(MAX_SPREAD_PCT)) or turnover < Decimal(str(MIN_TURNOVER_EUR)):
                 continue
-            if max(min_cost, min_qty * ask) * rate > available_sek:
+            minimum_eur = max(min_cost, min_qty * ask)
+            if minimum_eur > ZERO:
+                market_minimums_eur.append(minimum_eur)
+            if minimum_eur * rate > available_sek:
                 continue
             eligible.append(row)
         radar = rank_opportunities(
@@ -446,8 +462,17 @@ def run_live_tick() -> dict[str, Any]:
             intent = get_order_intent(client_id)
             if not intent:
                 raise LiveWorkerError("Ordern saknas i livejournalen efter Kraken-svar.")
+            # Refresh spendable cash after the confirmed fill. Kraken's
+            # actual fee tier may differ from the estimate used for sizing.
+            post_trade_balances = get_account_balances()
+            post_trade_eur = _d(
+                post_trade_balances.get("ZEUR", post_trade_balances.get("EUR", "0"))
+            )
+            post_trade_cash_sek = _round_money(post_trade_eur * rate)
             # Market metadata was journaled before Kraken received the order.
-            state = _apply_intent_fill(state, intent, rate)
+            state = _apply_intent_fill(
+                state, intent, rate, exchange_cash_sek=post_trade_cash_sek
+            )
             revision = save_live_state(state, revision)
             mark_order_ledger_applied(client_id)
             actions.append({
@@ -459,6 +484,19 @@ def run_live_tick() -> dict[str, Any]:
 
         state = _clear_lease(state)
         worker = dict(state.get("worker") or {})
+        minimum_order_eur = min(market_minimums_eur) if market_minimums_eur else None
+        if order_sent:
+            last_blocker = None
+        elif not eligible and minimum_order_eur is not None and eur_balance < minimum_order_eur:
+            last_blocker = "insufficient_eur_for_exchange_minimum"
+        elif not eligible:
+            last_blocker = "no_markets_pass_spread_and_liquidity_filters"
+        elif evaluated == 0:
+            last_blocker = "waiting_for_new_closed_candles"
+        elif actions:
+            last_blocker = "signal_blocked_by_position_or_exchange_minimum"
+        else:
+            last_blocker = "no_entry_or_exit_signal_on_latest_closed_candles"
         worker.update({
             "status": "running",
             "last_success_at": now.isoformat(),
@@ -468,6 +506,10 @@ def run_live_tick() -> dict[str, Any]:
             "last_markets_eligible": len(eligible),
             "last_markets_scanned": len(watch),
             "last_candles_evaluated": evaluated,
+            "last_budget_available_eur": format(eur_balance, "f"),
+            "last_minimum_order_eur": format(minimum_order_eur, "f") if minimum_order_eur is not None else None,
+            "last_minimum_order_sek": format(_round_money(minimum_order_eur * rate), "f") if minimum_order_eur is not None else None,
+            "last_blocker": last_blocker,
             "watchlist_cursor": next_cursor,
             "processed_candles": dict(list(processed.items())[-100:]),
             "last_actions": actions[-MAX_WATCHLIST:],
@@ -479,6 +521,9 @@ def run_live_tick() -> dict[str, Any]:
             "ok": True, "status": "running", "live_enabled": True,
             "markets_found": len(markets), "markets_eligible": len(eligible),
             "candles_evaluated": evaluated, "actions": actions,
+            "minimum_order_eur": format(minimum_order_eur, "f") if minimum_order_eur is not None else None,
+            "budget_available_eur": format(eur_balance, "f"),
+            "last_blocker": last_blocker,
             "revision": revision, "orders_enabled": True,
             "withdrawals_enabled": False,
         }

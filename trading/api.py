@@ -109,6 +109,34 @@ def _manual_control_guard(
             )
 
 
+def _live_server_gate_enabled() -> bool:
+    return os.getenv("TRADE_LIVE_ENABLED", "").strip().lower() == "true"
+
+
+def _live_orders_enabled(state: dict) -> bool:
+    return (
+        _live_server_gate_enabled()
+        and bool(state.get("enabled"))
+        and not bool(state.get("emergency_stop"))
+        and credentials_configured()
+    )
+
+
+def _minimum_market_order_eur(markets: list[dict]) -> Decimal | None:
+    requirements = []
+    for row in markets:
+        try:
+            ask = Decimal(str(row.get("ask") or "0"))
+            min_qty = Decimal(str(row.get("min_order_qty") or "0"))
+            min_cost = Decimal(str(row.get("min_cost_quote") or "0"))
+        except (TypeError, ValueError, ArithmeticError):
+            continue
+        required = max(min_cost, min_qty * ask)
+        if ask > 0 and required > 0:
+            requirements.append(required)
+    return min(requirements) if requirements else None
+
+
 def _load():
     try:
         return load_or_create(create_initial_state)
@@ -404,6 +432,10 @@ async def live_dashboard(
         eur_balance = Decimal(str(account["eur_balance"]))
         available_eur_sek = (eur_balance * rate).quantize(Decimal("0.01"))
         markets = scan_markets(quote="EUR", limit=100).get("markets", [])
+        minimum_order_eur = _minimum_market_order_eur(markets)
+        can_afford_minimum_order = (
+            minimum_order_eur is not None and eur_balance >= minimum_order_eur
+        )
         radar = (
             rank_opportunities(
                 markets,
@@ -415,6 +447,7 @@ async def live_dashboard(
             else {"candidates": []}
         )
         intents = list_recent_order_intents(30)
+        orders_enabled = _live_orders_enabled(state)
         safe_intents = []
         for row in intents:
             exchange = row.get("exchange_result") or {}
@@ -440,6 +473,10 @@ async def live_dashboard(
                 "total_value_sek": valuation["total_sek"],
                 "available_eur": str(eur_balance),
                 "available_eur_sek": str(available_eur_sek),
+                "spendable_balance_source": "Kraken EUR cash balance",
+                "minimum_market_order_eur": str(minimum_order_eur) if minimum_order_eur is not None else None,
+                "minimum_market_order_sek": str((minimum_order_eur * rate).quantize(Decimal("0.01"))) if minimum_order_eur is not None else None,
+                "can_afford_minimum_order": can_afford_minimum_order,
                 "open_orders_count": account["open_orders_count"],
                 "valuation_complete": valuation["valuation_complete"],
                 "unpriced_assets": valuation["unpriced_assets"],
@@ -449,6 +486,8 @@ async def live_dashboard(
             "opportunities": radar.get("candidates", []),
             "trade_ai": {
                 "live_enabled": bool(state.get("enabled")),
+                "server_gate_enabled": _live_server_gate_enabled(),
+                "orders_enabled": orders_enabled,
                 "emergency_stop": bool(state.get("emergency_stop")),
                 "cash_ledger_sek": state.get("cash_sek"),
                 "positions": positions,
@@ -462,7 +501,7 @@ async def live_dashboard(
                 "revision": revision,
             },
             "budget_policy": "all_available_kraken_eur_balance",
-            "orders_enabled": False,
+            "orders_enabled": orders_enabled,
             "withdrawals_enabled": False,
             "valuation_status": "complete" if valuation["valuation_complete"] else "partial_unpriced_assets",
         }
@@ -492,10 +531,24 @@ async def live_status():
         state, revision = load_or_create_live_state()
     except LiveStoreError as exc:
         raise HTTPException(status_code=503, detail="Livejournalen är inte tillgänglig.") from exc
+    gate_enabled = _live_server_gate_enabled()
+    creds_ready = credentials_configured()
+    orders_enabled = gate_enabled and bool(state.get("enabled")) and not bool(state.get("emergency_stop")) and creds_ready
+    if state.get("emergency_stop"):
+        mode = "live_spot_emergency_stopped"
+    elif orders_enabled:
+        mode = "live_spot"
+    elif not gate_enabled:
+        mode = "live_spot_server_gate_disabled"
+    elif not creds_ready:
+        mode = "live_spot_credentials_missing"
+    else:
+        mode = "live_spot_not_armed"
     return {
-        "mode": "live_spot_disabled",
+        "mode": mode,
         "exchange": "Kraken Spot",
-        "credentials_configured": credentials_configured(),
+        "credentials_configured": creds_ready,
+        "server_gate_enabled": gate_enabled,
         "private_api_preflight_available": credentials_configured(),
         "live_enabled": bool(state.get("enabled")),
         "emergency_stop": bool(state.get("emergency_stop")),
@@ -506,11 +559,15 @@ async def live_status():
         "revision": revision,
         "risk": state.get("risk", {}),
         "worker": state.get("worker", {}),
-        "orders_enabled": False,
+        "orders_enabled": orders_enabled,
         "withdrawals_enabled": False,
         "budget_policy": "all_available_kraken_eur_balance",
         "live_order_engine": "guarded_autonomous_spot_worker",
-        "next_step": "Use the manual Trade AI workflow with arm_live=true to activate after account preflight.",
+        "next_step": (
+            "Liveorder kan skickas när köpbudget och marknadssignal räcker."
+            if orders_enabled else
+            "Liveorder är spärrad tills servergrind, Kraken-nycklar och aktiverat livekonto är klara."
+        ),
     }
 
 

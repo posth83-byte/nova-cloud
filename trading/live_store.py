@@ -107,7 +107,7 @@ def create_initial_live_state() -> dict[str, Any]:
             "daily_loss_limit_pct": "0.02",
             "max_drawdown_pct": "0.10",
             "max_open_positions": 3,
-            "fee_rate": "0.0040",
+            "fee_rate": "0.0100",
             "slippage_rate": "0.0015",
         },
     }

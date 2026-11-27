@@ -47,6 +47,30 @@ class LiveWorkerTests(unittest.TestCase):
         self.assertEqual(updated["positions"]["LINK/EUR"]["cost_basis_sek"], "55.22")
         self.assertIn("a" * 32, updated["applied_order_ids"])
 
+    def test_confirmed_buy_reconciliation_uses_actual_exchange_cash_not_stale_ledger(self):
+        state = dict(self.state)
+        state["cash_sek"] = "212.85"
+        intent = {
+            "client_order_id": "f" * 32,
+            "pair_symbol": "ALGO/EUR",
+            "base_asset": "ALGO",
+            "side": "buy",
+            "exchange_result": {
+                "vol_exec": "254.25583355",
+                "cost": "18.896294",
+                "fee": "0.151170",
+            },
+        }
+        updated = live_worker._apply_intent_fill(
+            state, intent, Decimal("11.2025"),
+            exchange_cash_sek=Decimal("1.00"),
+        )
+        self.assertEqual(updated["cash_sek"], "1.00")
+        self.assertEqual(
+            updated["positions"]["ALGO/EUR"]["quantity"], "254.25583355"
+        )
+        self.assertEqual(len(updated["trades"]), 1)
+
     def test_confirmed_sell_fill_updates_realized_profit(self):
         self.state["cash_sek"] = "100.00"
         self.state["positions"] = {
@@ -148,7 +172,9 @@ class LiveWorkerTests(unittest.TestCase):
             patch.object(live_worker, "run_read_only_preflight", return_value={
                 "connected": True, "open_orders_clear": True,
             }),
-            patch.object(live_worker, "get_account_balances", return_value={"ZEUR": "36.36"}),
+            patch.object(live_worker, "get_account_balances", side_effect=[
+                {"ZEUR": "36.36"}, {"ZEUR": "26.32"},
+            ]),
             patch.object(live_worker, "scan_markets", return_value={"markets": [market]}),
             patch.object(live_worker, "fetch_ohlc_candles", return_value={"candles": candles}),
             patch.object(live_worker, "_cross_signal", return_value=(False, False)) as cross_signal,
@@ -184,6 +210,7 @@ class LiveWorkerTests(unittest.TestCase):
         mark.assert_called_once_with("e" * 32)
         self.assertEqual(state["positions"]["LINK/EUR"]["quantity"], "1")
         self.assertEqual(state["cash_sek"], "289.52")
+        self.assertEqual(result["budget_available_eur"], "36.36")
         self.assertFalse(result["withdrawals_enabled"])
 
     def test_disabled_live_state_does_not_contact_kraken(self):

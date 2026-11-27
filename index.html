@@ -3015,13 +3015,18 @@ function renderTradeDashboard(data){
  $("tradeDailyPnl").style.color=totalPnl===null?"":totalPnl>=0?"#85e6ba":"#ff9b9b";
  $("tradeRealizedPnl").textContent="Realiserat: "+tradeSek(team.realized_pnl_sek);
  $("tradeUpdatedAt").textContent="Senast uppdaterad: "+tradeTime(data.updated_at)+" · Uppdateras automatiskt varje minut";
- $("tradeWorkerStatus").textContent=team.emergency_stop?"● NÖDSTOPP":team.live_enabled?"● LIVE-BEVAKNING AKTIV":"● HANDEL EJ AKTIVERAD";
- $("tradeWorkerStatus").style.color=team.emergency_stop?"#ff8b8b":team.live_enabled?"#8ce9bc":"#ffca91";
+ const ordersEnabled=Boolean(data.orders_enabled??team.orders_enabled);
+ $("tradeWorkerStatus").textContent=team.emergency_stop?"● NÖDSTOPP":ordersEnabled?"● LIVEORDER AKTIVA":team.live_enabled?"● LIVE PÅ · ORDER SPÄRRADE":"● LIVEHANDEL PAUSAD";
+ $("tradeWorkerStatus").style.color=team.emergency_stop?"#ff8b8b":ordersEnabled?"#8ce9bc":"#ffca91";
  renderTradeAssets(account);renderTradePositions(positions);renderTradeHistory(team);renderTradeRadar(data.opportunities||[]);
  const worker=team.worker||{},risk=team.risk||{};
  $("tradeSystemInfo").innerHTML=
   "<div>Senaste lyckade körning: <b>"+tradeEscape(tradeTime(worker.last_success_at))+"</b></div>"+
   "<div>Senaste fel: <b>"+tradeEscape(worker.last_error||"Inget rapporterat")+"</b></div>"+
+  "<div>Liveorder: <b>"+(ordersEnabled?"AKTIVA":"SPÄRRADE")+"</b> · Servergrind: <b>"+(team.server_gate_enabled?"PÅ":"AV")+"</b></div>"+
+  "<div>Bevakade marknader: <b>"+tradeEscape(worker.last_markets_found??"—")+"</b> · Köpbara efter filter: <b>"+tradeEscape(worker.last_markets_eligible??"—")+"</b></div>"+
+  "<div>Köpbar EUR-kassa: <b>"+tradeEscape(worker.last_budget_available_eur??account.available_eur??"—")+"</b> · Lägsta order: <b>"+tradeEscape(worker.last_minimum_order_eur??account.minimum_market_order_eur??"—")+" EUR</b></div>"+
+  "<div>Orsak till uteblivet köp: <b>"+tradeEscape(worker.last_blocker||"Ingen blockerare rapporterad")+"</b></div>"+
   "<div>Öppna Kraken-order: <b>"+tradeEscape(account.open_orders_count??"—")+"</b></div>"+
   "<div>Max samtidiga innehav: <b>"+tradeEscape(risk.max_open_positions??"—")+"</b></div>"+
   "<div>Daglig förlustgräns: <b>"+tradeEscape(Number(risk.daily_loss_limit_pct)*100||0)+"%</b></div>"+
@@ -3079,7 +3084,7 @@ async function loadTradeChart(pair,period,containerId){
 }
 function renderTradeHistory(team){
  const target=$("tradeHistory");target.replaceChildren();
- const trades=team.trades||[],intents=(team.order_intents||[]).filter(intent=>!intent.ledger_applied);
+ const trades=team.trades||[],tradeIds=new Set(trades.map(trade=>trade.client_order_id).filter(Boolean)),intents=(team.order_intents||[]).filter(intent=>!tradeIds.has(intent.client_order_id));
  if(!trades.length&&!intents.length){target.textContent="Inga order eller genomförda affärer registrerade ännu.";return}
  trades.slice(0,15).forEach(trade=>{
   const row=document.createElement("div");row.className="trade-history-row";
@@ -3090,8 +3095,9 @@ function renderTradeHistory(team){
  intents.slice(0,15).forEach(intent=>{
   const row=document.createElement("div");row.className="trade-history-row";
   const left=document.createElement("div"),side=document.createElement("b");side.textContent=(intent.side||"").toUpperCase()+" · "+(intent.symbol||"Order");
-  const small=document.createElement("small");small.textContent=tradeTime(intent.created_at)+" · "+(intent.status||"okänd status")+" · Fyllt "+tradeNumber(intent.filled_volume,8);
-  left.append(side,small);const right=document.createElement("span");right.textContent=intent.ledger_applied?"BOKFÖRD":"AVSTÄMNING";row.append(left,right);target.append(row);
+  const filled=Number(intent.filled_volume)||0,closed=String(intent.status||"").toLowerCase()==="closed"&&filled>0;
+  const small=document.createElement("small");small.textContent=tradeTime(intent.created_at)+" · "+(closed?"AVSLUT BEKRÄFTAT":intent.status||"okänd status")+" · Fyllt "+tradeNumber(intent.filled_volume,8)+" · Kostnad "+tradeNumber(intent.fill_cost_eur,4)+" EUR · Avgift "+tradeNumber(intent.fee_eur,4)+" EUR";
+  left.append(side,small);const right=document.createElement("span");right.textContent=intent.ledger_applied?"BOKFÖRD":closed?"VÄNTAR PÅ BOKFÖRING":"AVSTÄMNING";row.append(left,right);target.append(row);
  });
 }
 function renderTradeRadar(candidates){

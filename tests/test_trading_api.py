@@ -327,6 +327,7 @@ class TradingApiTests(unittest.TestCase):
             "worker": {"status": "disabled"},
         }
         with (
+            patch.dict("os.environ", {"TRADE_LIVE_ENABLED": "false"}),
             patch.object(api, "credentials_configured", return_value=True),
             patch.object(api, "load_or_create_live_state", return_value=(state, 1)),
         ):
@@ -337,6 +338,22 @@ class TradingApiTests(unittest.TestCase):
         self.assertFalse(result["orders_enabled"])
         self.assertFalse(result["withdrawals_enabled"])
         self.assertEqual(result["budget_policy"], "all_available_kraken_eur_balance")
+
+    def test_live_status_reports_orders_enabled_only_when_all_gates_are_ready(self):
+        state = {
+            "enabled": True, "emergency_stop": False, "cash_sek": "200.00",
+            "positions": {}, "realized_pnl_sek": "0.00", "risk": {},
+            "worker": {"status": "running"},
+        }
+        with (
+            patch.dict("os.environ", {"TRADE_LIVE_ENABLED": "true"}),
+            patch.object(api, "credentials_configured", return_value=True),
+            patch.object(api, "load_or_create_live_state", return_value=(state, 2)),
+        ):
+            result = asyncio.run(api.live_status())
+        self.assertEqual(result["mode"], "live_spot")
+        self.assertTrue(result["server_gate_enabled"])
+        self.assertTrue(result["orders_enabled"])
 
     def test_live_start_refuses_when_server_gate_is_off(self):
         with (
