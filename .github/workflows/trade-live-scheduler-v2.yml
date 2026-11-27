@@ -7,7 +7,7 @@ on:
       - ".github/workflows/trade-live-scheduler-v2.yml"
   schedule:
     # Run away from the top of the hour; frequent ticks let the worker
-    # notice each newly closed hourly candle promptly. Processed-candle
+    # notice each newly closed hourly candle promptly. The API now accepts this workflow identity. Processed-candle
     # cursors and order journaling prevent duplicate orders.
     - cron: "2,7,12,17,22,27,32,37,42,47,52,57 * * * *"
   workflow_dispatch:
