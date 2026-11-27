@@ -7,6 +7,7 @@ retries an ambiguous exchange outcome.
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
+import os
 from decimal import Decimal, ROUND_DOWN, ROUND_UP, ROUND_HALF_UP
 import uuid
 from typing import Any
@@ -238,6 +239,14 @@ def run_live_tick() -> dict[str, Any]:
         state["worker"] = worker
         return {
             "ok": True, "status": worker["status"], "live_enabled": False,
+            "orders_enabled": False, "withdrawals_enabled": False,
+        }
+    if os.getenv("TRADE_LIVE_ENABLED", "").strip().lower() != "true":
+        worker["status"] = "server_gate_disabled"
+        state["worker"] = worker
+        return {
+            "ok": True, "status": "server_gate_disabled",
+            "live_enabled": bool(state.get("enabled")),
             "orders_enabled": False, "withdrawals_enabled": False,
         }
 

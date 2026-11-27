@@ -164,6 +164,7 @@ class LiveWorkerTests(unittest.TestCase):
             saved.append(dict(updated))
             return revision + 1
         with (
+            patch.dict("os.environ", {"TRADE_LIVE_ENABLED": "true"}),
             patch.object(live_worker, "load_or_create_live_state", return_value=(state, 1)),
             patch.object(live_worker, "_acquire_lease", side_effect=lambda s, r, n: (s, r + 1, "lease")),
             patch.object(live_worker, "fetch_eur_sek_rate", return_value={
