@@ -1,0 +1,84 @@
+name: Trade AI Live Scheduler v2
+
+on:
+  schedule:
+    # Run away from the top of the hour; frequent ticks let the worker
+    # notice each newly closed hourly candle promptly. Processed-candle
+    # cursors and order journaling prevent duplicate orders.
+    - cron: "2,7,12,17,22,27,32,37,42,47,52,57 * * * *"
+  workflow_dispatch:
+    inputs:
+      arm_live:
+        description: "Start guarded Kraken Spot trading using available EUR balance within configured risk limits"
+        required: true
+        type: boolean
+        default: false
+      pause_live:
+        description: "Pause future live worker ticks"
+        required: true
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: trade-ai-live-scheduler
+  cancel-in-progress: false
+
+jobs:
+  live-tick:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Authenticate with GitHub OIDC and control guarded live worker
+        env:
+          START_URL: https://nova-cloud-c4t9.onrender.com/api/trading/live/start
+          PAUSE_URL: https://nova-cloud-c4t9.onrender.com/api/trading/live/pause
+          WORKER_URL: https://nova-cloud-c4t9.onrender.com/api/trading/live/worker-tick
+          ARM_LIVE: ${{ inputs.arm_live || 'false' }}
+          PAUSE_LIVE: ${{ inputs.pause_live || 'false' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -z "${ACTIONS_ID_TOKEN_REQUEST_URL:-}" || -z "${ACTIONS_ID_TOKEN_REQUEST_TOKEN:-}" ]]; then
+            echo "GitHub Actions OIDC is not available for this run."
+            exit 1
+          fi
+          if [[ "$ARM_LIVE" == "true" && "$PAUSE_LIVE" == "true" ]]; then
+            echo "Choose either arm_live or pause_live, not both."
+            exit 1
+          fi
+
+          oidc_response="$(curl --fail --silent --show-error --get "${ACTIONS_ID_TOKEN_REQUEST_URL}" \
+            --data-urlencode "audience=nova-cloud-trade-worker" \
+            -H "Authorization: Bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}")"
+          oidc_token="$(printf '%s' "$oidc_response" | python -c "import json,sys; print(json.load(sys.stdin)['value'])")"
+
+          if [[ "$PAUSE_LIVE" == "true" ]]; then
+            response="$(curl --fail --silent --show-error --max-time 30 \
+              -X POST "${PAUSE_URL}" \
+              -H "Authorization: Bearer ${oidc_token}" \
+              -H "Content-Type: application/json" -d '{}')"
+            printf '%s\n' "$response"
+            exit 0
+          fi
+
+          if [[ "$ARM_LIVE" == "true" ]]; then
+            start_response="$(curl --fail --silent --show-error --max-time 45 \
+              -X POST "${START_URL}" \
+              -H "Authorization: Bearer ${oidc_token}" \
+              -H "Content-Type: application/json" -d '{}')"
+            printf '%s\n' "$start_response"
+          fi
+
+          # Deliberately no automatic retry: a timed-out tick must be reconciled
+          # from the durable order journal by the next scheduled invocation.
+          response="$(curl --fail --silent --show-error --max-time 240 \
+            -X POST "${WORKER_URL}" \
+            -H "Authorization: Bearer ${oidc_token}" \
+            -H "Content-Type: application/json" -d '{}')"
+
+          printf '%s\n' "$response" | python -c \
+            "import json,sys; result=json.load(sys.stdin); print(json.dumps(result, ensure_ascii=False)); sys.exit(0 if result.get('ok') is True else 1)"
