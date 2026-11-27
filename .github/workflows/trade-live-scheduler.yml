@@ -2,7 +2,10 @@ name: Trade AI Live Scheduler
 
 on:
   schedule:
-    - cron: "*/10 * * * *"
+    # Run away from the top of the hour; frequent ticks let the worker
+    # notice each newly closed hourly candle promptly. Processed-candle
+    # cursors and order journaling prevent duplicate orders.
+    - cron: "2,7,12,17,22,27,32,37,42,47,52,57 * * * *"
   workflow_dispatch:
     inputs:
       arm_live:
@@ -58,7 +61,7 @@ jobs:
               -X POST "${PAUSE_URL}" \
               -H "Authorization: Bearer ${oidc_token}" \
               -H "Content-Type: application/json" -d '{}')"
-            printf '%s\n' "$response"
+            printf '%s\\n' "$response"
             exit 0
           fi
 
@@ -67,7 +70,7 @@ jobs:
               -X POST "${START_URL}" \
               -H "Authorization: Bearer ${oidc_token}" \
               -H "Content-Type: application/json" -d '{}')"
-            printf '%s\n' "$start_response"
+            printf '%s\\n' "$start_response"
           fi
 
           # Deliberately no automatic retry: a timed-out tick must be reconciled
@@ -77,5 +80,5 @@ jobs:
             -H "Authorization: Bearer ${oidc_token}" \
             -H "Content-Type: application/json" -d '{}')"
 
-          printf '%s\n' "$response" | python -c \
+          printf '%s\\n' "$response" | python -c \
             "import json,sys; result=json.load(sys.stdin); print(json.dumps(result, ensure_ascii=False)); sys.exit(0 if result.get('ok') is True else 1)"
