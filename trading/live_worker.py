@@ -263,9 +263,16 @@ def run_live_tick() -> dict[str, Any]:
         available_sek = _round_money(eur_balance * rate)
         state["cash_sek"] = format(available_sek, "f")
 
+        pending_intents = list_unapplied_order_intents()
+        pending_symbols = [
+            str(row.get("pair_symbol") or "").upper()
+            for row in pending_intents if row.get("pair_symbol")
+        ]
+        include_symbols = sorted(
+            set((state.get("positions") or {}).keys()) | set(pending_symbols)
+        )
         markets_result = scan_markets(
-            quote="EUR", limit=100,
-            include_symbols=list((state.get("positions") or {}).keys()),
+            quote="EUR", limit=100, include_symbols=include_symbols,
         )
         markets = markets_result.get("markets") or []
         by_symbol = {str(row.get("symbol", "")).upper(): row for row in markets}
@@ -278,24 +285,8 @@ def run_live_tick() -> dict[str, Any]:
             for symbol, row in by_symbol.items()
             if _d(row.get("last") or 0) > ZERO
         }
-        equity = available_sek + sum(
-            _d(item["quantity"]) * marks[symbol]
-            for symbol, item in positions.items()
-        )
-        if equity <= ZERO:
-            raise LiveWorkerError("Liveportföljens värde är ogiltigt.")
-        day_key = now.date().isoformat()
-        if state.get("day_key") != day_key:
-            state["day_key"] = day_key
-            state["day_start_equity_sek"] = format(_round_money(equity), "f")
-        peak = max(_d(state.get("peak_equity_sek") or "200"), equity)
-        state["peak_equity_sek"] = format(_round_money(peak), "f")
-        day_start = _d(state.get("day_start_equity_sek") or equity)
-        if equity <= day_start * Decimal("0.98"):
-            raise LiveWorkerError("Dagens förlustgräns på 2 procent är nådd.")
-        if equity <= peak * Decimal("0.90"):
-            raise LiveWorkerError("Maximal portföljnedgång på 10 procent är nådd.")
-
+        # Reconcile confirmed exchange fills before applying portfolio risk
+        # checks. Otherwise a stale empty ledger can look like a huge drawdown.
         state, revision, recovered = _recover_unapplied(
             state, revision, rate, exchange_cash_sek=available_sek
         )
@@ -317,6 +308,23 @@ def run_live_tick() -> dict[str, Any]:
                 "orders_enabled": False, "withdrawals_enabled": False,
             }
         positions = dict(state.get("positions") or {})
+        equity = available_sek + sum(
+            _d(item["quantity"]) * marks[symbol]
+            for symbol, item in positions.items()
+        )
+        if equity <= ZERO:
+            raise LiveWorkerError("Liveportföljens värde är ogiltigt.")
+        day_key = now.date().isoformat()
+        if state.get("day_key") != day_key:
+            state["day_key"] = day_key
+            state["day_start_equity_sek"] = format(_round_money(equity), "f")
+        peak = max(_d(state.get("peak_equity_sek") or "200"), equity)
+        state["peak_equity_sek"] = format(_round_money(peak), "f")
+        day_start = _d(state.get("day_start_equity_sek") or equity)
+        if equity <= day_start * Decimal("0.98"):
+            raise LiveWorkerError("Dagens förlustgräns på 2 procent är nådd.")
+        if equity <= peak * Decimal("0.90"):
+            raise LiveWorkerError("Maximal portföljnedgång på 10 procent är nådd.")
         risk = state["risk"]
         # Dynamic ceiling: all current EUR cash plus live positions, bounded
         # by the actual marked live portfolio equity rather than a fixed seed.
