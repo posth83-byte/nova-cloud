@@ -57,6 +57,10 @@ try {
         status: 200, contentType: "application/json",
         body: JSON.stringify({ status: "idle", task: "", phase: "Browser QA", active: [], completed: [] })
       }));
+      await page.route("**/api/trading/live/dashboard", route => route.fulfill({
+        status: 401, contentType: "application/json",
+        body: JSON.stringify({ detail: "Dashboard locked in browser QA" })
+      }));
       const pageErrors = [];
       const localFailures = [];
       page.on("pageerror", error => pageErrors.push(error.message));
@@ -592,6 +596,7 @@ try {
            await page.waitForFunction(() => document.querySelector("#homeView")?.classList.contains("hidden") === false, null, { timeout: 5000 });
            await page.locator('#teamRoomShell button[onclick="openTradeRoom()"]').click();
            await page.waitForFunction(() => !document.querySelector("#tradeView")?.classList.contains("hidden"), null, { timeout: 5000 });
+           await page.locator("#tradeAccessPanel").waitFor({ state: "visible", timeout: 5000 });
            if (await page.locator("#tradeAccessPanel").isHidden()) localFailures.push("Private Trade AI dashboard access panel is not visible.");
            if (!(await page.locator("#tradeDashboardKey").count())) localFailures.push("Trade AI dashboard read-key input is missing.");
            if (!(await page.locator("#tradeDashboardContent").isHidden())) localFailures.push("Private Kraken account data was exposed before dashboard authentication.");
