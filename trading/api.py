@@ -34,6 +34,7 @@ from trading.kraken_private import (
     run_read_only_preflight,
     validate_limit_order,
     get_account_balances,
+    get_recent_closed_orders,
 )
 from decimal import Decimal, ROUND_DOWN
 
@@ -461,6 +462,7 @@ async def live_dashboard(request: Request, x_trade_dashboard_token: str | None =
             else {"candidates": []}
         )
         intents = list_recent_order_intents(30)
+        kraken_closed_orders = get_recent_closed_orders(50)
         orders_enabled = _live_orders_enabled(state)
         safe_intents = []
         for row in intents:
@@ -495,6 +497,7 @@ async def live_dashboard(request: Request, x_trade_dashboard_token: str | None =
                 "valuation_complete": valuation["valuation_complete"],
                 "unpriced_assets": valuation["unpriced_assets"],
                 "assets": valuation["assets"],
+                "closed_orders": kraken_closed_orders,
                 "fx": {"eur_sek": str(rate), "date": fx.get("date"), "source": fx.get("source")},
             },
             "opportunities": radar.get("candidates", []),
