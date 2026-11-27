@@ -1,0 +1,218 @@
+index.html
+
+<!DOCTYPE html>
+<html lang="sv" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NEXORA — Discover More. Live Better.</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body class="min-h-screen flex flex-col justify-between selection:bg-zinc-900 selection:text-white bg-white text-zinc-900">
+
+    <!-- Top Announcement Bar -->
+    <div class="bg-zinc-900 text-zinc-100 text-xs py-2 px-4 text-center font-medium tracking-wide">
+        Fri frakt på alla beställningar över 500 SEK | 30 dagars öppet köp
+    </div>
+
+    <!-- Navigation Header -->
+    <header class="sticky top-0 z-40 bg-white/90 backdrop-blur-md border-b border-zinc-200">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
+            <a href="#" class="text-2xl font-bold tracking-tighter text-zinc-900 uppercase">
+                NEXORA<span class="text-zinc-400">.</span>
+            </a>
+
+            <nav class="hidden md:flex items-center space-x-8 text-sm font-medium text-zinc-600">
+                <a href="#produkter" class="hover:text-zinc-900 transition-colors">Sortiment</a>
+                <a href="#kategorier" class="hover:text-zinc-900 transition-colors">Kategorier</a>
+                <a href="#om-oss" class="hover:text-zinc-900 transition-colors">Om NEXORA</a>
+            </nav>
+
+            <div class="flex items-center space-x-4">
+                <button id="cart-btn" class="relative bg-zinc-100 hover:bg-zinc-200 text-zinc-900 px-4 py-2.5 rounded-full text-sm font-medium transition-all flex items-center space-x-2 cursor-pointer">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+                    </svg>
+                    <span>Kundvagn</span>
+                    <span id="cart-count" class="bg-zinc-900 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center font-bold">0</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="relative bg-zinc-50 border-b border-zinc-200 py-20 lg:py-32 overflow-hidden">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+            <div class="space-y-6">
+                <span class="text-xs font-semibold uppercase tracking-widest text-zinc-500 bg-zinc-200/60 px-3 py-1.5 rounded-full">
+                    Discover More. Live Better.
+                </span>
+                <h1 class="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight text-zinc-900 leading-[1.1]">
+                    Utvald kvalitet för en enklare vardag.
+                </h1>
+                <p class="text-lg text-zinc-600 max-w-xl font-normal leading-relaxed">
+                    Upptäck NEXORAs handplockade sortiment av moderna livsstilsprodukter, smart teknik och tidlös skandinavisk design. Skapat för att höja livskvaliteten, ett val i taget.
+                </p>
+                <div class="flex flex-col sm:flex-row gap-4 pt-4">
+                    <a href="#produkter" class="bg-zinc-900 hover:bg-zinc-800 text-white font-medium px-8 py-4 rounded-full text-center transition-all shadow-sm">
+                        Utforska sortimentet
+                    </a>
+                    <a href="#kategorier" class="bg-white hover:bg-zinc-100 text-zinc-900 border border-zinc-300 font-medium px-8 py-4 rounded-full text-center transition-all">
+                        Se kategorier
+                    </a>
+                </div>
+            </div>
+            <div class="relative">
+                <div class="aspect-[4/3] rounded-3xl overflow-hidden shadow-2xl border border-zinc-200 bg-zinc-200">
+                    <img src="https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=1200&q=80" alt="NEXORA Lifestyle Produkter" class="w-full h-full object-cover">
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Categories Section -->
+    <section id="kategorier" class="py-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="text-center max-w-2xl mx-auto mb-16 space-y-3">
+            <h2 class="text-3xl font-bold tracking-tight text-zinc-900">Utforska våra kategorier</h2>
+            <p class="text-zinc-600">Noggrant utvalda områden för ett mer harmoniskt och funktionellt liv.</p>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div class="bg-zinc-50 border border-zinc-200 p-8 rounded-2xl hover:border-zinc-400 transition-all">
+                <h3 class="font-bold text-lg text-zinc-900 mb-2">Smart Living & Hem</h3>
+                <p class="text-sm text-zinc-600">Smarta inredningsdetaljer som förenar estetik med modern teknik.</p>
+            </div>
+            <div class="bg-zinc-50 border border-zinc-200 p-8 rounded-2xl hover:border-zinc-400 transition-all">
+                <h3 class="font-bold text-lg text-zinc-900 mb-2">Ljud & Underhållning</h3>
+                <p class="text-sm text-zinc-600">Premium-ljudenheter designade för kristallklart ljud.</p>
+            </div>
+            <div class="bg-zinc-50 border border-zinc-200 p-8 rounded-2xl hover:border-zinc-400 transition-all">
+                <h3 class="font-bold text-lg text-zinc-900 mb-2">Mobilitet & Accessoarer</h3>
+                <p class="text-sm text-zinc-600">Stilrena väskor och bärbara tillbehör för mobila livsstilar.</p>
+            </div>
+            <div class="bg-zinc-50 border border-zinc-200 p-8 rounded-2xl hover:border-zinc-400 transition-all">
+                <h3 class="font-bold text-lg text-zinc-900 mb-2">Välbefinnande</h3>
+                <p class="text-sm text-zinc-600">Produkter skapade för återhämtning, fokus och balans.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Products Catalog Section -->
+    <section id="produkter" class="py-20 bg-zinc-50 border-t border-zinc-200">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex flex-col md:flex-row md:items-end justify-between mb-12">
+                <div>
+                    <h2 class="text-3xl font-bold tracking-tight text-zinc-900">Aktuellt sortiment</h2>
+                    <p class="text-zinc-600 mt-2">Verifierade produkter med direkt tillgänglighet i lager.</p>
+                </div>
+            </div>
+
+            <!-- Product Grid -->
+            <div id="product-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+                <!-- Dynamic Products Injected via app.js -->
+            </div>
+        </div>
+    </section>
+
+    <!-- About Section -->
+    <section id="om-oss" class="py-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center border-t border-zinc-200">
+        <div class="max-w-3xl mx-auto space-y-6">
+            <h2 class="text-3xl font-bold tracking-tight text-zinc-900">Om NEXORA</h2>
+            <p class="text-zinc-600 text-lg leading-relaxed">
+                NEXORA grundades med en enkel vision: att rensa bort bruset och erbjuda noggrant utvalda kvalitetsprodukter som förenklar och förgyller vardagen. Vi prioriterar hållbarhet, funktionell skandinavisk estetik och kompromisslös kvalitet i allt vi gör.
+            </p>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="bg-zinc-900 text-zinc-400 py-16">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 md:grid-cols-3 gap-8">
+            <div>
+                <span class="text-2xl font-bold tracking-tighter text-white uppercase">
+                    NEXORA<span class="text-zinc-500">.</span>
+                </span>
+                <p class="mt-4 text-sm">Discover More. Live Better.</p>
+            </div>
+            <div>
+                <h4 class="text-white font-semibold mb-4">Kundtjänst</h4>
+                <ul class="space-y-2 text-sm">
+                    <li><a href="#" class="hover:text-white transition-colors">Frakt & Leverans</a></li>
+                    <li><a href="#" class="hover:text-white transition-colors">Returer & Villkor</a></li>
+                    <li><a href="#" class="hover:text-white transition-colors">Kontakta oss</a></li>
+                </ul>
+            </div>
+            <div>
+                <h4 class="text-white font-semibold mb-4">Kontakt</h4>
+                <p class="text-sm">E-post: support@nexora.se</p>
+                <p class="text-sm mt-1">Testläge aktivt (E-handel)</p>
+            </div>
+        </div>
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-12 pt-8 border-t border-zinc-800 text-xs text-center">
+            &copy; 2025 NEXORA AB. Alla rättigheter reserverade.
+        </div>
+    </footer>
+
+    <!-- Shopping Cart Slide-over Modal -->
+    <div id="cart-modal" class="fixed inset-0 z-50 overflow-hidden hidden">
+        <div id="cart-backdrop" class="absolute inset-0 bg-black/50 transition-opacity"></div>
+        <div class="absolute inset-y-0 right-0 max-w-full flex pl-10">
+            <div class="w-screen max-w-md bg-white shadow-2xl flex flex-col justify-between">
+                <!-- Cart Header -->
+                <div class="p-6 border-b border-zinc-200 flex items-center justify-between">
+                    <h3 class="text-lg font-bold text-zinc-900">Din kundvagn</h3>
+                    <button id="close-cart" class="text-zinc-400 hover:text-zinc-900 p-2 cursor-pointer">
+                        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+
+                <!-- Cart Items List -->
+                <div id="cart-items" class="p-6 overflow-y-auto flex-1 divide-y divide-zinc-100">
+                    <!-- Dynamic Cart Items -->
+                </div>
+
+                <!-- Cart Footer / Summary -->
+                <div class="p-6 border-t border-zinc-200 bg-zinc-50 space-y-4">
+                    <div class="flex justify-between text-sm text-zinc-600">
+                        <span>Delsumma</span>
+                        <span id="cart-subtotal">0 SEK</span>
+                    </div>
+                    <div class="flex justify-between text-sm text-zinc-600">
+                        <span>Frakt <span class="text-xs text-zinc-400">(Fri frakt över 500 SEK)</span></span>
+                        <span id="cart-shipping">0 SEK</span>
+                    </div>
+                    <div class="flex justify-between text-base font-bold text-zinc-900 pt-2 border-t border-zinc-200">
+                        <span>Att betala</span>
+                        <span id="cart-total">0 SEK</span>
+                    </div>
+                    <button id="checkout-btn" class="w-full bg-zinc-900 hover:bg-zinc-800 text-white font-medium py-3.5 rounded-full transition-all text-center cursor-pointer">
+                        Gå till testkassa
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Product Details Modal -->
+    <div id="product-modal" class="fixed inset-0 z-50 overflow-y-auto hidden">
+        <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+            <div id="product-modal-backdrop" class="fixed inset-0 bg-black/50 transition-opacity"></div>
+            <div class="inline-block align-bottom bg-white rounded-3xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-2xl sm:w-full border border-zinc-200">
+                <div id="product-modal-content" class="p-8">
+                    <!-- Injected via app.js -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed bottom-5 right-5 z-50 bg-zinc-900 text-white px-6 py-3 rounded-full text-sm font-medium shadow-xl transform translate-y-20 opacity-0 transition-all duration-300">
+        Produkt tillagd i kundvagnen
+    </div>
+
+    <!-- JavaScript Application -->
+    <script src="app.js"></script>
+</body>
+</html>
