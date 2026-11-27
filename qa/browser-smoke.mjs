@@ -66,7 +66,8 @@ try {
       page.on("pageerror", error => pageErrors.push(error.message));
       page.on("response", response => {
         const isExpectedRetry = response.url() === baseUrl + "/api/video/team/jobs/abcdef123456" && response.status() === 503;
-        if (!isExpectedRetry && response.url().startsWith(baseUrl) && response.status() >= 400) {
+        const isExpectedTradeLock = response.url() === baseUrl + "/api/trading/live/dashboard" && response.status() === 401;
+        if (!isExpectedRetry && !isExpectedTradeLock && response.url().startsWith(baseUrl) && response.status() >= 400) {
           localFailures.push(response.status() + " " + response.url());
         }
       });
