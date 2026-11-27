@@ -223,6 +223,40 @@ def validate_limit_order(
     }
 
 
+def get_recent_closed_orders(limit: int = 50) -> list[dict[str, Any]]:
+    """Return recent closed Kraken Spot orders (read-only, account-wide)."""
+    limit = max(1, min(int(limit), 50))
+    result = _private_post("ClosedOrders", {"trades": "true", "ofs": "0"})
+    orders = result.get("closed") or {}
+    if not isinstance(orders, dict):
+        raise KrakenPrivateAPIError("Krakens avslutade order kunde inte verifieras.")
+    rows = []
+    for txid, order in orders.items():
+        if not isinstance(order, dict):
+            continue
+        descr = order.get("descr") or {}
+        if not isinstance(descr, dict):
+            descr = {}
+        rows.append({
+            "txid": str(txid),
+            "status": str(order.get("status") or "").lower(),
+            "pair": str(descr.get("pair") or order.get("pair") or ""),
+            "side": str(descr.get("type") or order.get("type") or "").lower(),
+            "order_type": str(descr.get("ordertype") or ""),
+            "volume": str(order.get("vol") or "0"),
+            "filled_volume": str(order.get("vol_exec") or "0"),
+            "cost": str(order.get("cost") or "0"),
+            "fee": str(order.get("fee") or "0"),
+            "price": str(order.get("price") or "0"),
+            "average_price": str(order.get("price") or "0"),
+            "opened_at": order.get("opentm"),
+            "closed_at": order.get("closetm"),
+            "client_order_id": str(order.get("cl_ord_id") or ""),
+        })
+    rows.sort(key=lambda row: float(row.get("closed_at") or row.get("opened_at") or 0), reverse=True)
+    return rows[:limit]
+
+
 def get_open_orders() -> dict[str, Any]:
     """Return open spot orders to internal safety checks only."""
     result = _private_post("OpenOrders")
