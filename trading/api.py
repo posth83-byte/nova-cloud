@@ -45,7 +45,7 @@ def _control_guard(token: str | None):
     if not expected:
         raise HTTPException(status_code=503, detail="Trade-kontroll är inte konfigurerad ännu.")
     supplied = (token or "").strip()
-    if not supplied or not hmac.compare_digest(supplied, expected):
+    if not supplied or not hmac.compare_digest(supplied.encode("utf-8"), expected.encode("utf-8")):
         raise HTTPException(status_code=401, detail="Ogiltig Trade AI-kontrollnyckel.")
 
 
