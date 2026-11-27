@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="sv" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>NEXORA – Discover More. Live Better.</title>
+    <!-- Tailwind CSS v4 CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="min-h-screen flex flex-col justify-between selection:bg-cyan-500 selection:text-black">
+
+    <!-- TOP ANNOUNCEMENT BAR -->
+    <div class="bg-gradient-to-r from-cyan-950 via-slate-900 to-cyan-950 text-cyan-300 text-xs py-2 px-4 text-center font-medium border-b border-cyan-900/40">
+        📦 Fri frakt inom Sverige på alla beställningar över 499 kr | 14 dagars öppet köp
+    </div>
+
+    <!-- HEADER / NAVIGATION -->
+    <header class="border-b border-slate-800 bg-slate-950/90 backdrop-blur-md sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex justify-between items-center">
+            <!-- Logotype -->
+            <div class="flex items-center space-x-3 cursor-pointer" onclick="switchView('home')">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center neon-glow">
+                    <span class="font-heading font-extrabold text-black text-xl tracking-tighter">N</span>
+                </div>
+                <div>
+                    <span class="font-heading font-extrabold text-2xl tracking-wider text-white">NEX<span class="text-cyan-400">ORA</span></span>
+                    <p class="text-[10px] tracking-widest text-slate-400 uppercase font-semibold">Discover More. Live Better.</p>
+                </div>
+            </div>
+
+            <!-- Desktop Nav -->
+            <nav class="hidden md:flex items-center space-x-8 text-sm font-medium text-slate-300">
+                <button onclick="switchView('home')" class="hover:text-cyan-400 transition-colors">Hem</button>
+                <button onclick="switchView('shop')" class="hover:text-cyan-400 transition-colors">Produkter (20)</button>
+                <button onclick="switchView('about')" class="hover:text-cyan-400 transition-colors">Om oss</button>
+                <button onclick="switchView('terms')" class="hover:text-cyan-400 transition-colors">Köpvillkor</button>
+            </nav>
+
+            <!-- Actions / Cart Button -->
+            <div class="flex items-center space-x-4">
+                <button onclick="toggleCart()" class="relative bg-slate-900 hover:bg-slate-800 border border-slate-700/80 px-4 py-2.5 rounded-xl flex items-center space-x-2.5 transition-all text-sm font-medium text-slate-200">
+                    <svg class="w-5 h-5 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path>
+                    </svg>
+                    <span class="hidden sm:inline">Varukorg</span>
+                    <span id="cart-badge" class="bg-cyan-500 text-black text-xs font-bold px-2 py-0.5 rounded-full">0</span>
+                </button>
+                
+                <!-- Mobile menu toggle -->
+                <button onclick="toggleMobileMenu()" class="md:hidden p-2.5 rounded-xl bg-slate-900 border border-slate-800 text-slate-300">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"></path>
+                    </svg>
+                </button>
+            </div>
+        </div>
+
+        <!-- Mobile Menu Dropdown -->
+        <div id="mobile-menu" class="hidden md:hidden bg-slate-950 border-b border-slate-800 px-6 py-4 space-y-3">
+            <button onclick="switchView('home'); toggleMobileMenu();" class="block w-full text-left py-2 text-slate-300 hover:text-cyan-400 font-medium">Hem</button>
+            <button onclick="switchView('shop'); toggleMobileMenu();" class="block w-full text-left py-2 text-slate-300 hover:text-cyan-400 font-medium">Produkter (20)</button>
+            <button onclick="switchView('about'); toggleMobileMenu();" class="block w-full text-left py-2 text-slate-300 hover:text-cyan-400 font-medium">Om oss</button>
+            <button onclick="switchView('terms'); toggleMobileMenu();" class="block w-full text-left py-2 text-slate-300 hover:text-cyan-400 font-medium">Köpvillkor</button>
+        </div>
+    </header>
+
+    <!-- MAIN APP CONTAINER -->
+    <main class="flex-grow">
+
+        <!-- VIEW: HOME -->
+        <div id="view-home" class="view-section">
+            <!-- Hero Section -->
+            <section class="relative overflow-hidden py-20 lg:py-32 bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 border-b border-slate-800">
+                <div class="absolute inset-0 opacity-20 bg-[radial-gradient(#06b6d4_1px,transparent_1px)] [background-size:16px_16px]"></div>
+                <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 text-center">
+                    <span class="inline-block bg-cyan-950/80 text-cyan-400 text-xs font-semibold px-3 py-1 rounded-full border border-cyan-800/60 mb-6 uppercase tracking-widest">
+                        Flaggskeppskollektion 2025
+                    </span>
+                    <h1 class="font-heading font-extrabold text-4xl sm:text-6xl lg:text-7xl tracking-tight text-white mb-6">
+                        Discover More. <span class="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500">Live Better.</span>
+                    </h1>
+                    <p class="max-w-2xl mx-auto text-lg sm:text-xl text-slate-400 mb-10">
+                        NEXORA handplockar marknadens smartaste, mest efterfrågade produkter som förenklar din vardag, höjer livskvaliteten och levererar kompromisslös kvalitet.
+                    </p>
+                    <div class="flex flex-col sm:flex-row justify-center items-center gap-4">
+                        <button onclick="switchView('shop')" class="w-full sm:w-auto bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-black font-heading font-bold px-8 py-4 rounded-xl shadow-lg shadow-cyan-500/20 transition-all text-base">
+                            Utforska Alla 20 Produkter
+                        </button>
+                        <button onclick="switchView('about')" class="w-full sm:w-auto bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-700 font-heading font-semibold px-8 py-4 rounded-xl transition-all text-base">
+                            Om NEXORA
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Highlights / Value Props -->
+            <section class="py-12 bg-slate-950 border-b border-slate-800">
+                <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 md:grid-cols-3 gap-8">
+                    <div class="flex items-start space-x-4 p-6 rounded-2xl bg-slate-900/50 border border-slate-800">
+                        <div class="p-3 rounded-xl bg-cyan-500/10 text-cyan-400">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                        </div>
+                        <div>
+                            <h3 class="font-heading font-bold text-white text-lg mb-1">Snabb Leverans</h3>
+                            <p class="text-slate-400 text-sm">Skickas direkt från lager med spårbar frakt till din dörr eller närmaste ombud.</p>
+                        </div>
+                    </div>
+                    <div class="flex items-start space-x-4 p-6 rounded-2xl bg-slate-900/50 border border-slate-800">
+                        <div class="p-3 rounded-xl bg-cyan-500/10 text-cyan-400">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+                        </div>
+                        <div>
+                            <h3 class="font-heading font-bold text-white text-lg mb-1">Trygg E-handel</h3>
+                            <p class="text-slate-400 text-sm">Säkra betalningar med Klarna, Swish och kort samt 14 dagars öppet köp.</p>
+                        </div>
+                    </div>
+                    <div class="flex items-start space-x-4 p-6 rounded-2xl bg-slate-900/50 border border-slate-800">
+                        <div class="p-3 rounded-xl bg-cyan-500/10 text-cyan-400">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                        </div>
+                        <div>
+                            <h3 class="font-heading font-bold text-white text-lg mb-1">Optimerat Värde</h3>
+                            <p class="text-slate-400 text-sm">Högsta möjliga kvalitet till ett rimligt pris utan onödiga mellanhänder.</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Featured Products Grid (Top 3) -->
+            <section class="py-20 bg-slate-900/50">
+                <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <div class="flex justify-between items-end mb-12">
+                        <div>
+                            <span class="text-cyan-400 text-xs font-semibold uppercase tracking-widest block mb-2">Produktrådets Val</span>
+                            <h2 class="font-heading font-extrabold text-3xl sm:text-4xl text-white">Topprankade Produkter</h2>
+                        </div>
+                        <button onclick="switchView('shop')" class="text-cyan-400 hover:text-cyan-300 font-semibold text-sm flex items-center space-x-1">
+                            <span>Se alla 20 produkter</span>
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                        </button>
+                    </div>
+                    <div id="featured-products-container" class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                        <!-- Populated via JS -->
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <!-- VIEW: SHOP (ALL 20 PRODUCTS) -->
+        <div id="view-shop" class="view-section hidden">
+            <div class="bg-slate-950 py-12 border-b border-slate-800">
+                <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <h1 class="font-heading font-extrabold text-3xl sm:text-5xl text-white mb-4">NEXORA Produktsortiment</h1>
+                    <p class="text-slate-400 max-w-2xl mb-8">Här hittar du alla 20 noggrant utvalda produkter från vårt gemensamma produktråd. Filtrera efter kategori eller sök direkt.</p>
+                    
+                    <!-- Search & Filter Bar -->
+                    <div class="flex flex-col md:flex-row gap-4 justify-between items-center bg-slate-900 p-4 rounded-2xl border border-slate-800">
+                        <div class="w-full md:w-96 relative">
+                            <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-500">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                            </span>
+                            <input type="text" id="search-input" oninput="filterProducts()" placeholder="Sök bland 20 produkter..." class="w-full pl-10 pr-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-white placeholder-slate-500 focus:outline-none neon-border text-sm">
+                        </div>
+                        <div id="category-filters" class="flex flex-wrap gap-2 w-full md:w-auto">
+                            <button onclick="setCategory('Alla')" class="category-btn px-4 py-2 rounded-xl text-xs font-semibold bg-cyan-500 text-black transition-all">Alla</button>
+                            <button onclick="setCategory('Teknologi')" class="category-btn px-4 py-2 rounded-xl text-xs font-semibold bg-slate-950 text-slate-300 border border-slate-800 hover:border-slate-700 transition-all">Teknologi</button>
+                            <button onclick="setCategory('Hem & Livsstil')" class="category-btn px-4 py-2 rounded-xl text-xs font-semibold bg-slate-950 text-slate-300 border border-slate-800 hover:border-slate-700 transition-all">Hem & Livsstil</button>
+                            <button onclick="setCategory('Hälsa & Träning')" class="category-btn px-4 py-2 rounded-xl text-xs font-semibold bg-slate-950 text-slate-300 border border-slate-800 hover:border-slate-700 transition-all">Hälsa & Träning</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+                <div id="shop-products-container" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <!-- Populated via JS -->
+                </div>
+            </div>
+        </div>
+
+        <!-- VIEW: PRODUCT DETAIL -->
+        <div id="view-product-detail" class="view-section hidden">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+                <button onclick="switchView('shop')" class="inline-flex items-center space-x-2 text-cyan-400 hover:text-cyan-300 text-sm font-semibold mb-8">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+                    <span>Tillbaka till produkter</span>
+                </button>
+                <div id="product-detail-content" class="grid grid-cols-1 lg:grid-cols-2 gap-12 bg-slate-900/40 p-8 rounded-3xl border border-slate-800">
+                    <!-- Populated via JS -->
+                </div>
+            </div>
+        </div>
+
+        <!-- VIEW: ABOUT US -->
+        <div id="view-about" class="view-section hidden">
+            <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+                <span class="text-cyan-400 text-xs font-semibold uppercase tracking-widest block mb-3">Vilka är vi?</span>
+                <h1 class="font-heading font-extrabold text-4xl sm:text-5xl text-white mb-6">Om NEXORA</h1>
+                <div class="space-y-6 text-slate-300 text-base sm:text-lg leading-relaxed">
+                    <p class="font-semibold text-white">NEXORA grundades med en enkel vision: att erbjuda marknadens smartaste och mest innovativa produkter utan onödiga mellanhänder.</p>
+                    <p>Med vår slogan <em>”Discover More. Live Better.”</em> i ryggen strävar vi efter att förbättra våra kunders vardag genom noggrant utvalda kvalitetsprodukter inom teknologi, hem, livsstil och hälsa.</p>
+                    <p>Vårt team arbetar agilt med AI-driven produktresearch och noggranna leverantörskontroller för att säkerställa att varje produkt vi säljer håller högsta standard, har snabba och spårbara leveranser till Sverige samt ger maximalt värde för pengarna.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- VIEW: TERMS (KÖPVILLKOR) -->
+        <div id="view-terms" class="view-section hidden">
+            <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+                <span class="text-cyan-400 text-xs font-semibold uppercase tracking-widest block mb-3">Trygghet & Tryckta Regler</span>
+                <h1 class="font-heading font-extrabold text-4xl sm:text-5xl text-white mb-8">Köpvillkor & Integritet</h1>
+                <div class="space-y-8 text-slate-300 text-sm sm:text-base leading-relaxed">
+                    <div class="p-6 bg-slate-900/60 rounded-2xl border border-slate-800">
+                        <h3 class="font-heading font-bold text-white text-lg mb-2">1. Allmän villkor</h3>
+                        <p>NEXORA bedriver e-handel via nätet till kunder i Sverige. För att handla hos oss måste du vara 18 år eller ha målsmans godkännande.</p>
+                    </div>
+                    <div class="p-6 bg-slate-900/60 rounded-2xl border border-slate-800">
+                        <h3 class="font-heading font-bold text-white text-lg mb-2">2. Beställning & Betalning</h3>
+                        <p>Alla beställningar bekräftas via e-post. Vi erbjuder trygga betalningar via kort, Klarna och Swish i samarbete med ledande betalväxlar.</p>
+                    </div>
+                    <div class="p-6 bg-slate-900/60 rounded-2xl border border-slate-800">
+                        <h3 class="font-heading font-bold text-white text-lg mb-2">3. Leverans & Frakt</h3>
+                        <p>Normal leveranstid till svenska kunder är 5-9 arbetsdagar med spårbar frakt. Fri frakt gäller vid köp över 499 kr.</p>
+                    </div>
+                    <div class="p-6 bg-slate-900/60 rounded-2xl border border-slate-800">
+                        <h3 class="font-heading font-bold text-white text-lg mb-2">4. Ångerrätt & Retur (14 dagar)</h3>
+                        <p>Du har alltid 14 dagars öppet köp i enlighet med svensk distansköplag. Produkten ska returneras i oskadat skick i originalförpackning.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- FOOTER -->
+    <footer class="border-t border-slate-800 bg-slate-950 py-12 mt-20">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
+            <div>
+                <div class="flex items-center space-x-3 mb-4">
+                    <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center">
+                        <span class="font-heading font-extrabold text-black text-lg">N</span>
+                    </div>
+                    <span class="font-heading font-bold text-xl text-white">NEX<span class="text-cyan-400">ORA</span></span>
+                </div>
+                <p class="text-slate-400 text-xs">Discover More. Live Better. Professionell e-handel med fokus på smarta kvalitetsprodukter.</p>
+            </div>
+            <div>
+                <h4 class="font-heading font-bold text-white text-sm uppercase tracking-wider mb-4">Snabblänkar</h4>
+                <ul class="space-y-2 text-sm text-slate-400">
+                    <li><button onclick="switchView('home')" class="hover:text-cyan-400">Hem</button></li>
+                    <li><button onclick="switchView('shop')" class="hover:text-cyan-400">Produkter (20)</button></li>
+                    <li><button onclick="switchView('about')" class="hover:text-cyan-400">Om oss</button></li>
+                    <li><button onclick="switchView('terms')" class="hover:text-cyan-400">Köpvillkor</button></li>
+                </ul>
+            </div>
+            <div>
+                <h4 class="font-heading font-bold text-white text-sm uppercase tracking-wider mb-4">Kundservice</h4>
+                <ul class="space-y-2 text-sm text-slate-400">
+                    <li><a href="#" onclick="alert('Kontakta oss via support@nexora.se')" class="hover:text-cyan-400">E-postsupport</a></li>
+                    <li><a href="#" onclick="switchView('terms')" class="hover:text-cyan-400">Returinformation</a></li>
+                    <li><a href="#" onclick="switchView('terms')" class="hover:text-cyan-400">Integritetspolicy</a></li>
+                </ul>
+            </div>
+            <div>
+                <h4 class="font-heading font-bold text-white text-sm uppercase tracking-wider mb-4">Bonus / AI-Demo</h4>
+                <p class="text-slate-400 text-xs mb-3">Spela vårt interaktiva spel i butiken direkt!</p>
+                <a href="game.js" target="_blank" class="inline-block bg-slate-900 hover:bg-slate-800 text-cyan-400 border border-slate-700 text-xs font-semibold px-4 py-2 rounded-xl transition-all">Öppna game.js</a>
+            </div>
+        </div>
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 border-t border-slate-900 text-center text-xs text-slate-500">
+            &copy; 2025 NEXORA AB. Alla rättigheter förbehållna.
+        </div>
+    </footer>
+
+    <!-- CART SIDEBAR / DRAWER -->
+    <div id="cart-drawer" class="fixed inset-0 z-50 overflow-hidden hidden">
+        <div class="absolute inset-0 bg-black/70 backdrop-blur-sm transition-opacity" onclick="toggleCart()"></div>
+        <div class="absolute inset-y-0 right-0 max-w-full flex pl-10">
+            <div class="w-screen max-w-md bg-slate-950 border-l border-slate-800 flex flex-col justify-between">
+                <div class="p-6 border-b border-slate-800 flex items-center justify-between">
+                    <h2 class="font-heading font-bold text-xl text-white flex items-center space-x-2">
+                        <span>Din Varukorg</span>
+                        <span id="cart-count-badge" class="bg-cyan-500 text-black text-xs px-2 py-0.5 rounded-full">0</span>
+                    </h2>
+                    <button onclick="toggleCart()" class="text-slate-400 hover:text-white p-2">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                    </button>
+                </div>
+                
+                <div id="cart-items-container" class="p-6 flex-grow overflow-y-auto space-y-4">
+                    <!-- Populated via JS -->
+                </div>
+
+                <div class="p-6 border-t border-slate-800 bg-slate-900/50">
+                    <div class="flex justify-between items-center mb-4">
+                        <span class="text-slate-400 text-sm">Totalt att betala:</span>
+                        <span id="cart-total-price" class="font-heading font-extrabold text-2xl text-cyan-400">0 kr</span>
+                    </div>
+                    <button onclick="checkout()" class="w-full bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-black font-heading font-bold py-4 rounded-xl shadow-lg shadow-cyan-500/20 transition-all text-base">
+                        Gå till Kassan (Simulering)
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SCRIPT LINK -->
+    <script src="game.js"></script>
+</body>
+</html>
