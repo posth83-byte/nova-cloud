@@ -313,6 +313,10 @@ class TradingApiTests(unittest.TestCase):
                 x_trade_control_token=None, authorization="Bearer oidc"
             ))
         guard.assert_called_once()
+        self.assertIn(
+            "posth83-byte/nova-cloud/.github/workflows/trade-live-scheduler-v2.yml@refs/heads/main",
+            guard.call_args.kwargs["allowed_workflows"],
+        )
         worker.assert_called_once()
         self.assertFalse(result["live_enabled"])
         self.assertFalse(result["orders_enabled"])
@@ -393,6 +397,10 @@ class TradingApiTests(unittest.TestCase):
         self.assertTrue(guard.call_args.kwargs["manual_start"])
         self.assertIn(
             "posth83-byte/nova-cloud/.github/workflows/trade-live-scheduler.yml@refs/heads/main",
+            guard.call_args.kwargs["allowed_workflows"],
+        )
+        self.assertIn(
+            "posth83-byte/nova-cloud/.github/workflows/trade-live-scheduler-v2.yml@refs/heads/main",
             guard.call_args.kwargs["allowed_workflows"],
         )
 
