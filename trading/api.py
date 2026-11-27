@@ -90,7 +90,7 @@ def _github_actions_guard(
         or claims.get("workflow_ref") not in expected_workflows
     ):
         raise HTTPException(status_code=403, detail="Den här GitHub-workflowen är inte godkänd.")
-    allowed_events = {"workflow_dispatch"} if manual_start else {"schedule", "workflow_dispatch"}
+    allowed_events = {"workflow_dispatch"} if manual_start else {"schedule", "workflow_dispatch", "push"}
     if claims.get("event_name") not in allowed_events:
         raise HTTPException(status_code=403, detail="Den här schemaläggningshändelsen är inte tillåten.")
 
@@ -372,6 +372,7 @@ async def live_worker_tick(
         _github_actions_guard(authorization, allowed_workflows={
             "posth83-byte/nova-cloud/.github/workflows/trade-paper-scheduler.yml@refs/heads/main",
             "posth83-byte/nova-cloud/.github/workflows/trade-live-scheduler.yml@refs/heads/main",
+            "posth83-byte/nova-cloud/.github/workflows/trade-live-scheduler-v2.yml@refs/heads/main",
         })
     try:
         return run_live_tick()
@@ -599,7 +600,8 @@ async def live_start(
         x_trade_control_token,
         authorization,
         allowed_workflows={
-            "posth83-byte/nova-cloud/.github/workflows/trade-live-scheduler.yml@refs/heads/main"
+            "posth83-byte/nova-cloud/.github/workflows/trade-live-scheduler.yml@refs/heads/main",
+            "posth83-byte/nova-cloud/.github/workflows/trade-live-scheduler-v2.yml@refs/heads/main"
         },
     )
     if os.getenv("TRADE_LIVE_ENABLED", "").strip().lower() != "true":
@@ -653,7 +655,8 @@ async def live_pause(
         x_trade_control_token,
         authorization,
         allowed_workflows={
-            "posth83-byte/nova-cloud/.github/workflows/trade-live-scheduler.yml@refs/heads/main"
+            "posth83-byte/nova-cloud/.github/workflows/trade-live-scheduler.yml@refs/heads/main",
+            "posth83-byte/nova-cloud/.github/workflows/trade-live-scheduler-v2.yml@refs/heads/main"
         },
     )
     try:
