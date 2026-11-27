@@ -343,6 +343,7 @@ def run_live_tick() -> dict[str, Any]:
         )
         eligible = []
         market_minimums_eur: list[Decimal] = []
+        position_symbols = {str(symbol).upper() for symbol in positions}
         for row in markets:
             try:
                 ask, bid = _d(row["ask"]), _d(row["bid"])
@@ -359,7 +360,11 @@ def run_live_tick() -> dict[str, Any]:
             minimum_eur = max(min_cost, min_qty * ask)
             if minimum_eur > ZERO:
                 market_minimums_eur.append(minimum_eur)
-            if minimum_eur * rate > available_sek:
+            # Existing holdings must remain in the watchlist for exit signals,
+            # even when the EUR cash balance is below the minimum for a new buy.
+            # The exchange balance check below still prevents overselling.
+            held_position = str(row.get("symbol", "")).upper() in position_symbols
+            if minimum_eur * rate > available_sek and not held_position:
                 continue
             eligible.append(row)
         radar = rank_opportunities(
