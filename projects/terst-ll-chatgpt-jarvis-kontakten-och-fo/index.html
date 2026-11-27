@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Arcade Hub - NOVA Cloud</title>
+    <meta name="description" content="Interaktiv spelportal och hemligt projektgränssnitt.">
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --card-bg: #1e293b;
+            --accent: #38bdf8;
+            --text-color: #f8fafc;
+            --text-muted: #94a3b8;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            line-height: 1.5;
+            padding: 2rem;
+        }
+        header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+        h1 { font-size: 2.25rem; margin-bottom: 0.5rem; color: var(--accent); }
+        p { color: var(--text-muted); }
+        .arcade-container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 2rem;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+        }
+        .jarvis-game-wrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1rem;
+            margin-top: 1.5rem;
+        }
+        .jarvis-controls {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+        .jarvis-btn {
+            background-color: var(--accent);
+            color: var(--bg-color);
+            font-weight: bold;
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+        .jarvis-btn:hover { opacity: 0.9; }
+        .jarvis-score {
+            font-size: 1.25rem;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>Arcade Hub</h1>
+        <p>Välkommen till portalen. Spelmodulerna är isolerade för att förhindra DOM-konflikter.</p>
+    </header>
+
+    <main>
+        <div class="arcade-container">
+            <h2>JARVIS Catcher</h2>
+            <p>Fånga dataprogrammen innan de försvinner i molnet. Använd piltangenter (vänster/höger) eller A/D.</p>
+            
+            <!-- Spelbehållare utan statiska ID-krockar -->
+            <div id="jarvis-game-root" class="jarvis-game-wrapper">
+                <div class="jarvis-score">Poäng: <span id="jarvis-score-val">0</span> | Missade: <span id="jarvis-missed-val">0</span></div>
+                <div id="jarvis-canvas-container"></div>
+                <div class="jarvis-controls">
+                    <button class="jarvis-btn" id="jarvis-start-btn">Starta Spel</button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Länk till den separata spelmodulen -->
+    <script src="game.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            if (typeof JarvisCatcher !== 'undefined') {
+                JarvisCatcher.init('jarvis-canvas-container');
+                
+                const startBtn = document.getElementById('jarvis-start-btn');
+                if (startBtn) {
+                    startBtn.addEventListener('click', () => {
+                        if (startBtn.textContent === 'Starta Spel') {
+                            JarvisCatcher.start();
+                            startBtn.textContent = 'Stoppa Spel';
+                        } else {
+                            JarvisCatcher.stop();
+                            startBtn.textContent = 'Starta Spel';
+                        }
+                    });
+                }
+            } else {
+                console.error('JarvisCatcher kunde inte laddas från game.js');
+            }
+        });
+    </script>
+</body>
+</html>
