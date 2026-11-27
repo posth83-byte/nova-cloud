@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>JARVIS Testportal - PR #23</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <header>
+        <div class="logo">JARVIS QA #23</div>
+        <button class="menu-toggle" aria-label="Öppna meny" aria-expanded="false" id="menuToggle">☰</button>
+        <nav id="mainNav">
+            <ul>
+                <li><a href="index.html" class="nav-link">Hem</a></li>
+                <li><a href="#tasks" class="nav-link">Uppgifter</a></li>
+                <li><a href="#about" class="nav-link">Om PR #23</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <main>
+        <section class="card" id="tasks">
+            <h1>Uppgiftshanterare</h1>
+            <p class="task-counter" id="taskCounter">Antal uppgifter: 0</p>
+            
+            <form class="task-form" id="taskForm">
+                <input type="text" id="taskInput" placeholder="Skriv en ny uppgift..." required autocomplete="off">
+                <button type="submit" class="btn" id="addTaskBtn">Lägg till</button>
+            </form>
+
+            <ul class="task-list" id="taskList">
+                <!-- Dynamiska uppgifter hamnar här -->
+            </ul>
+        </section>
+
+        <section class="card" id="about">
+            <h2>Om PR #23</h2>
+            <p>Denna sida är optimerad för en 390px mobilviewport utan horisontell overflow. Alla tester för tillägg, borttagning och räknare hanteras via app.js och verifieras med Playwright i task.spec.js.</p>
+        </section>
+    </main>
+
+    <script src="app.js"></script>
+</body>
+</html>
