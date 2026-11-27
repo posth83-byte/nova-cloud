@@ -444,8 +444,24 @@ def run_live_tick() -> dict[str, Any]:
             else:
                 qty = _d(position["quantity"])
                 actual_asset_balance = _d(balances.get(base_asset, "0"))
-                if not base_asset or actual_asset_balance < qty:
-                    raise LiveWorkerError("Kraken-saldo för innehavet understiger livebokens registrerade mängd.")
+                if not base_asset or actual_asset_balance <= ZERO:
+                    actions.append({
+                        "symbol": symbol,
+                        "result": "position_balance_unavailable",
+                        "detail": "Innehavets fria Kraken-saldo kunde inte verifieras; positionen lämnas orörd.",
+                    })
+                    continue
+                if actual_asset_balance < qty:
+                    # Isolate a balance mismatch to this position. Never sell
+                    # more than Kraken reports as available, and do not halt
+                    # unrelated monitoring or other independently valid positions.
+                    actions.append({
+                        "symbol": symbol,
+                        "result": "position_balance_mismatch",
+                        "ledger_quantity": format(qty, "f"),
+                        "exchange_available": format(actual_asset_balance, "f"),
+                    })
+                    continue
                 bid = _d(market["bid"])
                 price_decimals = int(market.get("price_decimals") or 8)
                 limit_price = bid.quantize(
@@ -510,6 +526,11 @@ def run_live_tick() -> dict[str, Any]:
             last_blocker = "no_markets_pass_spread_and_liquidity_filters"
         elif evaluated == 0:
             last_blocker = "waiting_for_new_closed_candles"
+        elif any(
+            row.get("result") in {"position_balance_mismatch", "position_balance_unavailable"}
+            for row in actions
+        ):
+            last_blocker = "position_balance_reconciliation_required"
         elif actions:
             last_blocker = "signal_blocked_by_position_or_exchange_minimum"
         else:
