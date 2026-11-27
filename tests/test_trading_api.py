@@ -9,6 +9,7 @@ if importlib.util.find_spec("fastapi") is None:
     raise unittest.SkipTest("FastAPI is installed in the app validation environment, not lightweight unit jobs")
 
 from fastapi import HTTPException
+from starlette.requests import Request
 
 from trading import api
 from trading.paper_engine import create_initial_state
@@ -18,7 +19,7 @@ class TradingApiTests(unittest.TestCase):
     def test_live_dashboard_requires_separate_read_key(self):
         with patch.dict("os.environ", {"TRADE_DASHBOARD_TOKEN": "read-only-secret"}):
             with self.assertRaises(HTTPException) as raised:
-                asyncio.run(api.live_dashboard(x_trade_dashboard_token="wrong"))
+                asyncio.run(api.live_dashboard(request=Request({"type": "http", "headers": []}), x_trade_dashboard_token="wrong"))
         self.assertEqual(raised.exception.status_code, 401)
 
     def test_live_dashboard_returns_private_account_and_live_filled_positions(self):
@@ -51,7 +52,7 @@ class TradingApiTests(unittest.TestCase):
             patch.object(api, "rank_opportunities", return_value=radar),
             patch.object(api, "list_recent_order_intents", return_value=[]),
         ):
-            result = asyncio.run(api.live_dashboard(x_trade_dashboard_token="read-only-secret"))
+            result = asyncio.run(api.live_dashboard(request=Request({"type": "http", "headers": []}), x_trade_dashboard_token="read-only-secret"))
         self.assertEqual(result["account"]["total_value_sek"], 784.0)
         self.assertEqual(result["account"]["available_eur"], "10")
         self.assertTrue(result["trade_ai"]["live_enabled"])
