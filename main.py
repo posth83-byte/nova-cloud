@@ -26,7 +26,8 @@ from pydantic import BaseModel, Field
 from job_dedup import normalize_job_task, job_task_fingerprint, is_duplicate_job_task
 from ai_provider_fallback import run_openrouter_with_budget_fallback
 from jarvis_worker_persistence import (
-    persisted_job_matches, final_qa_readback_matches, build_worker_retry_update
+    persisted_job_matches, final_qa_readback_matches, build_worker_retry_update,
+    project_task_status
 )
 from system_engineer_delivery import apply_exact_text_patches, build_source_excerpt, select_independent_review_provider, is_verified_noop_review, is_runtime_evidence_verified, normalize_patch_spec, build_evidence_reconciliation, task_requires_live_runtime_evidence, has_route_decorator, summarize_runtime_payload, normalize_runtime_quality_review, normalize_report_only_quality_review
 from video_engine import router as video_router
@@ -1841,6 +1842,7 @@ def persist_jarvis_project(task, plan, results, final_reply, quality_status):
         raise RuntimeError("Supabase returnerade inget projekt-ID.")
     project_id = project_rows[0]["id"]
     task_rows = []
+    persisted_task_status = project_task_status(quality_status)
     for item in results:
         assignee = str(item.get("target") or "JARVIS")[:40]
         description = str(item.get("task") or task)[:4000]
@@ -1852,7 +1854,7 @@ def persist_jarvis_project(task, plan, results, final_reply, quality_status):
                 "title": description[:160] or f"Arbetsuppgift för {assignee}",
                 "description": description,
                 "assignee": assignee,
-                "status": "planned",
+                "status": persisted_task_status,
                 "priority": 3,
                 "result": str(item.get("reply") or "")[:12000],
                 "metadata": {
@@ -1873,7 +1875,7 @@ def persist_jarvis_project(task, plan, results, final_reply, quality_status):
             "title": "JARVIS: samordning och slutleverans",
             "description": str(plan.get("reason") or task)[:4000],
             "assignee": "JARVIS",
-            "status": "planned",
+            "status": persisted_task_status,
             "priority": 3,
             "result": str(final_reply or "")[:12000],
             "metadata": {

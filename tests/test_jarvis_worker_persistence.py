@@ -4,10 +4,17 @@ from jarvis_worker_persistence import (
     build_worker_retry_update,
     final_qa_readback_matches,
     persisted_job_matches,
+    project_task_status,
 )
 
 
 class WorkerPersistenceTests(unittest.TestCase):
+    def test_project_task_status_reflects_quality_gate(self):
+        self.assertEqual(project_task_status("passed"), "completed")
+        self.assertEqual(project_task_status("needs_changes"), "needs_changes")
+        self.assertEqual(project_task_status("unavailable"), "review_required")
+        self.assertEqual(project_task_status(None), "review_required")
+
     def test_terminal_result_requires_matching_id_status_and_result(self):
         row = {"id": "job-123", "status": "completed", "result": {"reply": "klart"}}
         self.assertTrue(persisted_job_matches(row, "job-123", "completed"))
