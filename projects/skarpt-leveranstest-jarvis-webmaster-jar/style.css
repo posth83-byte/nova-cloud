@@ -1,0 +1,333 @@
+:root {
+    --bg-color: #0b0f19;
+    --card-bg: #111827;
+    --text-color: #f3f4f6;
+    --text-muted: #9ca3af;
+    --accent-color: #06b6d4;
+    --accent-hover: #22d3ee;
+    --danger-color: #ef4444;
+    --border-color: #1f2937;
+    --font-main: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: var(--font-main);
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    line-height: 1.6;
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+
+.container {
+    width: 100%;
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 0 1.5rem;
+}
+
+/* Header */
+.site-header {
+    background-color: rgba(11, 15, 25, 0.95);
+    border-bottom: 1px solid var(--border-color);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    backdrop-filter: blur(8px);
+}
+
+.nav-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    height: 70px;
+}
+
+.logo {
+    font-weight: 800;
+    font-size: 1.25rem;
+    letter-spacing: 0.05em;
+    color: var(--text-color);
+}
+
+.logo span {
+    color: var(--accent-color);
+}
+
+.nav-menu {
+    display: flex;
+    gap: 2rem;
+}
+
+.nav-link {
+    color: var(--text-muted);
+    text-decoration: none;
+    font-weight: 500;
+    transition: color 0.2s;
+}
+
+.nav-link:hover, .nav-link.active {
+    color: var(--accent-color);
+}
+
+.mobile-menu-btn {
+    display: none;
+    background: none;
+    border: none;
+    color: var(--text-color);
+    font-size: 1.5rem;
+    cursor: pointer;
+}
+
+/* Main Content */
+.main-content {
+    flex: 1;
+}
+
+section {
+    padding: 5rem 0;
+}
+
+.hero-section {
+    text-align: center;
+    padding: 7rem 0 5rem 0;
+}
+
+.hero-section h1 {
+    font-size: clamp(2rem, 5vw, 3.5rem);
+    margin-bottom: 1rem;
+    font-weight: 800;
+}
+
+.hero-section p {
+    color: var(--text-muted);
+    max-width: 600px;
+    margin: 0 auto 2rem auto;
+    font-size: 1.1rem;
+}
+
+.hero-actions {
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+}
+
+/* Buttons */
+.btn {
+    display: inline-block;
+    padding: 0.75rem 1.5rem;
+    border-radius: 0.5rem;
+    font-weight: 600;
+    text-decoration: none;
+    cursor: pointer;
+    border: none;
+    transition: background 0.2s, transform 0.1s;
+}
+
+.btn:active {
+    transform: scale(0.98);
+}
+
+.btn-primary {
+    background-color: transparent;
+    color: var(--accent-color);
+    border: 1px solid var(--accent-color);
+}
+
+.btn-primary:hover {
+    background-color: rgba(6, 182, 212, 0.1);
+}
+
+.btn-accent {
+    background-color: var(--accent-color);
+    color: #000;
+}
+
+.btn-accent:hover {
+    background-color: var(--accent-hover);
+}
+
+/* Task Section */
+.task-section {
+    background-color: rgba(17, 24, 39, 0.4);
+    border-top: 1px solid var(--border-color);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.task-section h2 {
+    text-align: center;
+    font-size: 2rem;
+    margin-bottom: 0.5rem;
+}
+
+.section-desc {
+    text-align: center;
+    color: var(--text-muted);
+    margin-bottom: 2.5rem;
+}
+
+.task-card {
+    background-color: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 1rem;
+    padding: 2rem;
+    max-width: 700px;
+    margin: 0 auto;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+}
+
+.task-form {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.task-form input {
+    flex: 1;
+    background-color: var(--bg-color);
+    border: 1px solid var(--border-color);
+    border-radius: 0.5rem;
+    padding: 0.75rem 1rem;
+    color: var(--text-color);
+    font-size: 1rem;
+    outline: none;
+    transition: border-color 0.2s;
+}
+
+.task-form input:focus {
+    border-color: var(--accent-color);
+}
+
+.task-list {
+    list-style: none;
+    margin-bottom: 1.5rem;
+    max-height: 350px;
+    overflow-y: auto;
+}
+
+.task-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.85rem 1rem;
+    background-color: var(--bg-color);
+    border: 1px solid var(--border-color);
+    border-radius: 0.5rem;
+    margin-bottom: 0.75rem;
+    transition: border-color 0.2s;
+}
+
+.task-item:hover {
+    border-color: var(--text-muted);
+}
+
+.task-text {
+    word-break: break-word;
+    margin-right: 1rem;
+}
+
+.delete-btn {
+    background: none;
+    border: none;
+    color: var(--danger-color);
+    cursor: pointer;
+    font-size: 1rem;
+    font-weight: 600;
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.25rem;
+    transition: background 0.2s;
+}
+
+.delete-btn:hover {
+    background-color: rgba(239, 68, 68, 0.1);
+}
+
+.task-counter {
+    font-size: 0.875rem;
+    color: var(--text-muted);
+    text-align: right;
+    border-top: 1px solid var(--border-color);
+    padding-top: 1rem;
+}
+
+/* Status Section */
+.status-section h2 {
+    text-align: center;
+    margin-bottom: 3rem;
+}
+
+.status-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1.5rem;
+}
+
+.status-box {
+    background-color: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 0.75rem;
+    padding: 1.5rem;
+    text-align: center;
+}
+
+.status-box h3 {
+    font-size: 1.1rem;
+    margin-bottom: 0.75rem;
+    color: var(--text-muted);
+}
+
+.status-ok {
+    color: #10b981;
+    font-weight: 700;
+}
+
+.status-pending {
+    color: #f59e0b;
+    font-weight: 700;
+}
+
+/* Footer */
+.site-footer {
+    background-color: var(--card-bg);
+    border-top: 1px solid var(--border-color);
+    text-align: center;
+    padding: 2rem 0;
+    color: var(--text-muted);
+    font-size: 0.875rem;
+}
+
+/* Responsive design for mobile */
+@media (max-width: 768px) {
+    .nav-menu {
+        display: none;
+        flex-direction: column;
+        position: absolute;
+        top: 70px;
+        left: 0;
+        width: 100%;
+        background-color: var(--card-bg);
+        border-bottom: 1px solid var(--border-color);
+        padding: 1.5rem;
+        gap: 1rem;
+        text-align: center;
+    }
+
+    .nav-menu.active {
+        display: flex;
+    }
+
+    .mobile-menu-btn {
+        display: block;
+    }
+
+    .task-form {
+        flex-direction: column;
+    }
+}
