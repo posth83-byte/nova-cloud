@@ -1,6 +1,10 @@
 name: Trade AI Live Scheduler v2
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/trade-live-scheduler-v2.yml"
   schedule:
     # Run away from the top of the hour; frequent ticks let the worker
     # notice each newly closed hourly candle promptly. Processed-candle
