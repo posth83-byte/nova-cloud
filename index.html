@@ -2942,7 +2942,7 @@ checkCloud();setInterval(checkCloud,30000);
 
 /* TRADE AI COMMAND ROOM — private read-only account dashboard */
 let tradeDashboardTimer=null;
-const TRADE_DASHBOARD_SESSION_KEY="nova_trade_dashboard_read_key";
+
 function tradeEscape(value){
  return String(value??"").replace(/[&<>"']/g,char=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[char]));
 }
@@ -2958,33 +2958,38 @@ function openTradeRoom(){
  stopSpeech();activeRoom=null;
  ["homeView","jarvisView","novaView","webView","gameView"].forEach(id=>$(id).classList.add("hidden"));
  $("tradeView").classList.remove("hidden");window.scrollTo({top:0,behavior:"smooth"});
- const saved=sessionStorage.getItem(TRADE_DASHBOARD_SESSION_KEY);
- if(saved){$("tradeDashboardKey").value=saved;unlockTradeDashboard(true)}
- else{$("tradeAccessPanel").hidden=false;$("tradeDashboardContent").hidden=true;$("tradeDashboardKey").focus()}
+ $("tradeAccessMessage").textContent="Kontrollerar sparad säker session…";
+ $("tradeAccessPanel").hidden=true;$("tradeDashboardContent").hidden=true;
+ refreshTradeDashboard(true).then(ok=>{
+  if(!ok){$("tradeAccessPanel").hidden=false;$("tradeDashboardContent").hidden=true;$("tradeAccessMessage").textContent="Anslut till Kraken-översikten första gången på den här enheten."}
+ });
  logActivity("TRADE AI COMMAND ROOM öppnades","◈","Privat Kraken-översikt");
 }
 async function unlockTradeDashboard(silent=false){
  const key=String($("tradeDashboardKey").value||"").trim();
  if(!key){$("tradeAccessMessage").textContent="Klistra in dashboardens läsnyckel först.";return}
- sessionStorage.setItem(TRADE_DASHBOARD_SESSION_KEY,key);
- $("tradeAccessMessage").textContent="Verifierar säker anslutning…";
- const ok=await refreshTradeDashboard(true);
- if(!ok){sessionStorage.removeItem(TRADE_DASHBOARD_SESSION_KEY);if(!silent)$("tradeAccessMessage").textContent="Nyckeln kunde inte verifieras. Kontrollera värdet i Render."}
+ $("tradeAccessMessage").textContent="Verifierar och sparar säker anslutning på den här enheten…";
+ try{
+  const response=await fetch("/api/trading/live/session",{method:"POST",cache:"no-store",headers:{"X-Trade-Dashboard-Token":key}});
+  if(!response.ok)throw new Error("Nyckeln kunde inte verifieras. Kontrollera värdet i Render.");
+  $("tradeDashboardKey").value="";
+  const ok=await refreshTradeDashboard(true);
+  if(!ok)throw new Error("Säker anslutning kunde inte startas.");
+ }catch(error){if(!silent)$("tradeAccessMessage").textContent=error.message||"Anslutningen misslyckades."}
 }
-function lockTradeDashboard(){
- sessionStorage.removeItem(TRADE_DASHBOARD_SESSION_KEY);
+async function lockTradeDashboard(){
  if(tradeDashboardTimer){clearInterval(tradeDashboardTimer);tradeDashboardTimer=null}
+ try{await fetch("/api/trading/live/session",{method:"DELETE",cache:"no-store"})}catch(e){}
  $("tradeDashboardContent").hidden=true;$("tradeAccessPanel").hidden=false;
- $("tradeDashboardKey").value="";$("tradeAccessMessage").textContent="Översikten är låst.";
+ $("tradeDashboardKey").value="";$("tradeAccessMessage").textContent="Översikten är låst på den här enheten.";
  $("tradeConnectionState").textContent="● PRIVAT ÖVERSIKT LÅST";
 }
 async function refreshTradeDashboard(openedFromUnlock=false){
- const key=sessionStorage.getItem(TRADE_DASHBOARD_SESSION_KEY);
- if(!key||$("tradeView").classList.contains("hidden"))return false;
+ if($("tradeView").classList.contains("hidden"))return false;
  try{
-  const response=await fetch("/api/trading/live/dashboard",{cache:"no-store",headers:{"X-Trade-Dashboard-Token":key}});
+  const response=await fetch("/api/trading/live/dashboard",{cache:"no-store"});
   if(response.status===401){
-   sessionStorage.removeItem(TRADE_DASHBOARD_SESSION_KEY);$("tradeAccessPanel").hidden=false;$("tradeDashboardContent").hidden=true;
+$("tradeAccessPanel").hidden=false;$("tradeDashboardContent").hidden=true;
    $("tradeAccessMessage").textContent="Dashboardnyckeln är ogiltig. Kontrollera Render → Environment.";return false;
   }
   if(!response.ok)throw new Error("Kraken kunde inte lämna ut kontodata ("+response.status+").");
@@ -3112,7 +3117,7 @@ function renderTradeRadar(candidates){
 }
 document.addEventListener("visibilitychange",()=>{
  if(document.visibilityState!=="visible"){if(tradeDashboardTimer){clearInterval(tradeDashboardTimer);tradeDashboardTimer=null}}
- else if(!$("tradeView").classList.contains("hidden")&&sessionStorage.getItem(TRADE_DASHBOARD_SESSION_KEY))refreshTradeDashboard();
+ else if(!$("tradeView").classList.contains("hidden"))refreshTradeDashboard();
 });
 
 </script>
