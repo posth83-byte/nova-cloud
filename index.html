@@ -3007,23 +3007,28 @@ $("tradeAccessPanel").hidden=false;$("tradeDashboardContent").hidden=true;
 }
 function renderTradeDashboard(data){
  const account=data.account||{},team=data.trade_ai||{},positions=team.positions||[];
- $("tradeTotalValue").textContent=tradeSek(account.total_value_sek);
- $("tradeTotalValueEur").textContent=(account.valuation_complete?"":"Minst ") + tradeNumber(account.total_value_eur,2)+" EUR värderat på Kraken";
- $("tradeAvailable").textContent=tradeSek(account.available_eur_sek);
- $("tradeAvailableEur").textContent=tradeNumber(account.available_eur,4)+" EUR disponibelt för köp";
- const invested=positions.reduce((sum,p)=>sum+(Number(p.market_value_sek)||0),0);
- $("tradeInvested").textContent=tradeSek(invested);$("tradePositionCount").textContent=positions.length+" bekräftade innehav";
+ const fxRate=Number(account.fx?.eur_sek)||11.2;
+ $("tradeTotalValue").textContent=(account.valuation_complete?"":"Minst ")+tradeNumber(account.total_value_eur,2)+" EUR";
+ $("tradeTotalValueEur").textContent=tradeSek(account.total_value_sek)+" värde i SEK";
+ $("tradeAvailable").textContent=tradeNumber(account.available_eur,4)+" EUR";
+ $("tradeAvailableEur").textContent=tradeSek(account.available_eur_sek)+" tillgängligt för köp";
+ const investedSek=positions.reduce((sum,p)=>sum+(Number(p.market_value_sek)||0),0);
+ const investedEur=positions.reduce((sum,p)=>sum+(p.price_eur===null||p.price_eur===undefined?0:(Number(p.quantity)||0)*(Number(p.price_eur)||0)),0);
+ $("tradeInvested").textContent=tradeNumber(investedEur,2)+" EUR";
+ $("tradePositionCount").textContent=positions.length+" bekräftade innehav · "+tradeSek(investedSek)+" i SEK";
  const unrealizedComplete=positions.every(p=>p.unrealized_pnl_sek!==null);
- const unrealized=unrealizedComplete?positions.reduce((sum,p)=>sum+(Number(p.unrealized_pnl_sek)||0),0):null;
- const totalPnl=unrealized===null?null:(Number(team.realized_pnl_sek)||0)+unrealized;
- $("tradeDailyPnl").textContent=totalPnl===null?"—":(totalPnl>=0?"+":"")+tradeSek(totalPnl);
- $("tradeDailyPnl").style.color=totalPnl===null?"":totalPnl>=0?"#85e6ba":"#ff9b9b";
- $("tradeRealizedPnl").textContent="Realiserat: "+tradeSek(team.realized_pnl_sek);
+ const unrealizedSek=unrealizedComplete?positions.reduce((sum,p)=>sum+(Number(p.unrealized_pnl_sek)||0),0):null;
+ const totalPnlSek=unrealizedSek===null?null:(Number(team.realized_pnl_sek)||0)+unrealizedSek;
+ const totalPnlEur=totalPnlSek===null?null:totalPnlSek/fxRate;
+ $("tradeDailyPnl").textContent=totalPnlEur===null?"—":(totalPnlEur>=0?"+":"")+tradeNumber(totalPnlEur,2)+" EUR";
+ $("tradeDailyPnl").style.color=totalPnlEur===null?"":totalPnlEur>=0?"#85e6ba":"#ff9b9b";
+ const realizedSek=Number(team.realized_pnl_sek)||0;
+ $("tradeRealizedPnl").textContent="Realiserat: "+tradeNumber(realizedSek/fxRate,2)+" EUR · "+tradeSek(realizedSek);
  $("tradeUpdatedAt").textContent="Senast uppdaterad: "+tradeTime(data.updated_at)+" · Uppdateras automatiskt varje minut";
  const ordersEnabled=Boolean(data.orders_enabled??team.orders_enabled);
  $("tradeWorkerStatus").textContent=team.emergency_stop?"● NÖDSTOPP":ordersEnabled?"● LIVEORDER AKTIVA":team.live_enabled?"● LIVE PÅ · ORDER SPÄRRADE":"● LIVEHANDEL PAUSAD";
  $("tradeWorkerStatus").style.color=team.emergency_stop?"#ff8b8b":ordersEnabled?"#8ce9bc":"#ffca91";
- renderTradeAssets(account,positions);renderTradePositions(positions,account.assets||[]);renderTradeHistory(team,account);renderTradeRadar(data.opportunities||[]);
+ renderTradeAssets(account,positions,fxRate);renderTradePositions(positions,account.assets||[],fxRate);renderTradeHistory(team,account);renderTradeRadar(data.opportunities||[]);
  const worker=team.worker||{},risk=team.risk||{};
  $("tradeSystemInfo").innerHTML=
   "<div>Senaste lyckade körning: <b>"+tradeEscape(tradeTime(worker.last_success_at))+"</b></div>"+
@@ -3031,13 +3036,13 @@ function renderTradeDashboard(data){
   "<div>Liveorder: <b>"+(ordersEnabled?"AKTIVA":"SPÄRRADE")+"</b> · Servergrind: <b>"+(team.server_gate_enabled?"PÅ":"AV")+"</b></div>"+
   "<div>Bevakade marknader: <b>"+tradeEscape(worker.last_markets_found??"—")+"</b> · Köpbara efter filter: <b>"+tradeEscape(worker.last_markets_eligible??"—")+"</b></div>"+
   "<div>Köpbar EUR-kassa: <b>"+tradeEscape(worker.last_budget_available_eur??account.available_eur??"—")+"</b> · Lägsta order: <b>"+tradeEscape(worker.last_minimum_order_eur??account.minimum_market_order_eur??"—")+" EUR</b></div>"+
-  "<div>Orsak till uteblivet köp: <b>"+tradeEscape(worker.last_blocker||"Ingen blockerare rapporterad")+"</b></div>"+
+  "<div>Senaste handelsblockerare: <b>"+tradeEscape(worker.last_blocker||"Ingen blockerare rapporterad")+"</b></div>"+
   "<div>Öppna Kraken-order: <b>"+tradeEscape(account.open_orders_count??"—")+"</b></div>"+
   "<div>Max samtidiga innehav: <b>"+tradeEscape(risk.max_open_positions??"—")+"</b></div>"+
   "<div>Daglig förlustgräns: <b>"+tradeEscape(Number(risk.daily_loss_limit_pct)*100||0)+"%</b></div>"+
   "<div>Uttag: <b>AVSTÄNGDA</b> · Hävstång: <b>AVSTÄNGD</b></div>";
 }
-function renderTradeAssets(account,positions=[]){
+function renderTradeAssets(account,positions=[],fxRate=11.2){
  const target=$("tradeAssets");target.replaceChildren();
  const tracked=new Map((positions||[]).map(p=>[String(p.base_asset||"").toUpperCase(),p]));
  const assets=account.assets||[];
@@ -3060,7 +3065,7 @@ function renderTradeAssets(account,positions=[]){
    }
    left.append(status);
   }
-  const value=document.createElement("span");value.textContent=tradeNumber(asset.balance,8)+" · "+tradeSek(asset.value_sek);
+  const value=document.createElement("span");const valueSek=asset.value_sek===null||asset.value_sek===undefined?null:Number(asset.value_sek);value.textContent=tradeNumber(asset.balance,8)+" · "+(valueSek===null?"—":tradeNumber(valueSek/fxRate,2)+" EUR · "+tradeSek(valueSek));
   row.append(left,value);target.append(row);
  });
  (positions||[]).forEach(position=>{
@@ -3090,7 +3095,7 @@ function renderTradeAssets(account,positions=[]){
   warning.append(box);
  }
 }
-function renderTradePositions(positions,assets=[]){
+function renderTradePositions(positions,assets=[],fxRate=11.2){
  const target=$("tradePositions");target.replaceChildren();
  const exchange=new Map((assets||[]).map(a=>[String(a.asset||a.symbol||"").toUpperCase(),Number(a.balance)||0]));
  if(!positions.length){target.textContent="Inga bekräftade Trade AI-innehav i AI-journalen. Kraken-saldon som inte är registrerade visas separat under saldo per tillgång.";return}
@@ -3098,13 +3103,14 @@ function renderTradePositions(positions,assets=[]){
   const card=document.createElement("div");card.className="trade-position";
   const head=document.createElement("div");head.className="trade-position-head";
   const name=document.createElement("strong");name.textContent=position.symbol;
-  const value=document.createElement("span");value.textContent=position.market_value_sek===null?"Kurs saknas":tradeSek(position.market_value_sek);
+  const value=document.createElement("span");const marketValueEur=position.price_eur===null||position.price_eur===undefined?null:(Number(position.quantity)||0)*(Number(position.price_eur)||0);value.textContent=marketValueEur===null?"Kurs saknas":tradeNumber(marketValueEur,2)+" EUR · "+tradeSek(position.market_value_sek);
   head.append(name,value);card.append(head);
   const meta=document.createElement("div");meta.className="trade-position-meta";
   const exchangeQty=exchange.get(String(position.base_asset||"").toUpperCase());
   const hasExchange=exchange.has(String(position.base_asset||"").toUpperCase());
   const matches=hasExchange&&Math.abs(exchangeQty-Number(position.quantity||0))<=Math.max(0.00000001,Math.abs(Number(position.quantity)||0)*0.001);
-  meta.textContent="Antal enligt AI: "+tradeNumber(position.quantity,8)+" · Kraken: "+(hasExchange?tradeNumber(exchangeQty,8):"SAKNAS")+" · "+(matches?"SALDON MATCHAR":"AVSTÄMNING KRÄVS")+" · Inköpsvärde: "+tradeSek(position.cost_value_sek)+" · Orealiserat: "+(position.unrealized_pnl_sek===null?"—":tradeSek(position.unrealized_pnl_sek));
+  const costSek=Number(position.cost_value_sek)||0,unrealizedSek=position.unrealized_pnl_sek===null?null:Number(position.unrealized_pnl_sek);
+  meta.textContent="Antal enligt AI: "+tradeNumber(position.quantity,8)+" · Kraken: "+(hasExchange?tradeNumber(exchangeQty,8):"SAKNAS")+" · "+(matches?"SALDON MATCHAR":"AVSTÄMNING KRÄVS")+" · Inköpsvärde: "+tradeNumber(costSek/fxRate,2)+" EUR ("+tradeSek(costSek)+") · Orealiserat: "+(unrealizedSek===null?"—":tradeNumber(unrealizedSek/fxRate,2)+" EUR ("+tradeSek(unrealizedSek)+")");
   if(!matches)meta.style.color="#ffbd83";
   card.append(meta);
   const chart=document.createElement("div");chart.className="trade-chart";chart.id="tradeChart_"+position.base_asset;chart.textContent="Hämtar kursgraf…";card.append(chart);
@@ -3131,6 +3137,7 @@ async function loadTradeChart(pair,period,containerId){
 }
 function renderTradeHistory(team,account){
  const target=$("tradeHistory");target.replaceChildren();
+ const fxRate=Number(account.fx?.eur_sek)||11.2;
  const trades=team.trades||[],tradeIds=new Set(trades.map(trade=>trade.client_order_id).filter(Boolean)),intents=(team.order_intents||[]).filter(intent=>!tradeIds.has(intent.client_order_id));
  const krakenOrders=account.closed_orders||[],tradeTxids=new Set((team.order_intents||[]).map(x=>x.txid).filter(Boolean));
  if(!trades.length&&!intents.length&&!krakenOrders.length){target.textContent="Kraken rapporterar inga avslutade order i den senaste historiken.";return}
@@ -3148,8 +3155,9 @@ function renderTradeHistory(team,account){
  trades.slice(0,15).forEach(trade=>{
   const row=document.createElement("div");row.className="trade-history-row";
   const left=document.createElement("div"),side=document.createElement("b");side.className=trade.side==="buy"?"buy":"sell";side.textContent=(trade.side==="buy"?"KÖP ":"SÄLJ ")+(trade.pair||"");
-  const small=document.createElement("small");small.textContent=tradeTime(trade.timestamp)+" · "+tradeNumber(trade.quantity,8)+" st · Avgift "+tradeSek(trade.fee_sek);
-  left.append(side,small);const right=document.createElement("span");right.textContent="Realiserat "+tradeSek(trade.realized_pnl_sek);row.append(left,right);target.append(row);
+  const feeSek=Number(trade.fee_sek)||0,realizedSek=Number(trade.realized_pnl_sek)||0;
+  const small=document.createElement("small");small.textContent=tradeTime(trade.timestamp)+" · "+tradeNumber(trade.quantity,8)+" st · Avgift "+tradeNumber(feeSek/fxRate,2)+" EUR ("+tradeSek(feeSek)+")";
+  left.append(side,small);const right=document.createElement("span");right.textContent="Realiserat "+tradeNumber(realizedSek/fxRate,2)+" EUR · "+tradeSek(realizedSek);row.append(left,right);target.append(row);
  });
  intents.slice(0,15).forEach(intent=>{
   const row=document.createElement("div");row.className="trade-history-row";
