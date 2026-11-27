@@ -3023,7 +3023,7 @@ function renderTradeDashboard(data){
  const ordersEnabled=Boolean(data.orders_enabled??team.orders_enabled);
  $("tradeWorkerStatus").textContent=team.emergency_stop?"● NÖDSTOPP":ordersEnabled?"● LIVEORDER AKTIVA":team.live_enabled?"● LIVE PÅ · ORDER SPÄRRADE":"● LIVEHANDEL PAUSAD";
  $("tradeWorkerStatus").style.color=team.emergency_stop?"#ff8b8b":ordersEnabled?"#8ce9bc":"#ffca91";
- renderTradeAssets(account);renderTradePositions(positions);renderTradeHistory(team);renderTradeRadar(data.opportunities||[]);
+ renderTradeAssets(account);renderTradePositions(positions);renderTradeHistory(team,account);renderTradeRadar(data.opportunities||[]);
  const worker=team.worker||{},risk=team.risk||{};
  $("tradeSystemInfo").innerHTML=
   "<div>Senaste lyckade körning: <b>"+tradeEscape(tradeTime(worker.last_success_at))+"</b></div>"+
@@ -3087,10 +3087,22 @@ async function loadTradeChart(pair,period,containerId){
   target.innerHTML='<svg viewBox="0 0 300 58" role="img" aria-label="'+tradeEscape(pair+" "+period)+'"><polyline points="'+points+'"></polyline></svg>';
  }catch(error){target.textContent="Kursgrafen kunde inte hämtas."}
 }
-function renderTradeHistory(team){
+function renderTradeHistory(team,account){
  const target=$("tradeHistory");target.replaceChildren();
  const trades=team.trades||[],tradeIds=new Set(trades.map(trade=>trade.client_order_id).filter(Boolean)),intents=(team.order_intents||[]).filter(intent=>!tradeIds.has(intent.client_order_id));
- if(!trades.length&&!intents.length){target.textContent="Inga order eller genomförda affärer registrerade ännu.";return}
+ const krakenOrders=account.closed_orders||[],tradeTxids=new Set((team.order_intents||[]).map(x=>x.txid).filter(Boolean));
+ if(!trades.length&&!intents.length&&!krakenOrders.length){target.textContent="Kraken rapporterar inga avslutade order i den senaste historiken.";return}
+ const section=document.createElement("div");section.className="trade-muted";section.textContent="KRAKEN · SENASTE AVSLUTADE ORDER (kontoövergripande)";target.append(section);
+ krakenOrders.slice(0,30).forEach(order=>{
+  const row=document.createElement("div");row.className="trade-history-row";
+  const left=document.createElement("div"),side=document.createElement("b");side.className=order.side==="buy"?"buy":"sell";
+  side.textContent=(order.side==="buy"?"KÖP ":order.side==="sell"?"SÄLJ ":"ORDER ")+(order.pair||"Okänt par");
+  const executed=Number(order.filled_volume)||0,stamp=order.closed_at||order.opened_at;
+  const when=stamp?tradeTime(new Date(Number(stamp)*1000).toISOString()):"Tid saknas";
+  const small=document.createElement("small");
+  small.textContent=when+" · "+String(order.status||"okänd status").toUpperCase()+" · Fyllt "+tradeNumber(order.filled_volume,8)+" / "+tradeNumber(order.volume,8)+" · Snitt "+tradeNumber(order.average_price,8)+" · Kostnad "+tradeNumber(order.cost,4)+" EUR · Avgift "+tradeNumber(order.fee,4)+" EUR · "+(tradeTxids.has(order.txid)?"TRADE AI":"KRAKEN-KONTO");
+  left.append(side,small);const right=document.createElement("span");right.textContent=executed>0?"AVSLUT":"EJ FYLLD";row.append(left,right);target.append(row);
+ });
  trades.slice(0,15).forEach(trade=>{
   const row=document.createElement("div");row.className="trade-history-row";
   const left=document.createElement("div"),side=document.createElement("b");side.className=trade.side==="buy"?"buy":"sell";side.textContent=(trade.side==="buy"?"KÖP ":"SÄLJ ")+(trade.pair||"");
