@@ -3,7 +3,7 @@ import hmac
 import os
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Header, HTTPException, Query
+from fastapi import APIRouter, Header, HTTPException, Query, Request, Response
 
 from trading.kraken_monitor import (
     KrakenPublicAPIError, fetch_ohlc_candles, scan_markets,
@@ -386,21 +386,35 @@ async def live_worker_tick(
         ) from exc
 
 
-def _dashboard_guard(token: str | None):
+def _dashboard_guard(token: str | None, cookie_token: str | None = None):
     expected = os.getenv("TRADE_DASHBOARD_TOKEN", "").strip()
     if not expected:
         raise HTTPException(status_code=503, detail="Trade AI-dashboardens läsnyckel är inte konfigurerad.")
-    supplied = (token or "").strip()
+    supplied = (token or cookie_token or "").strip()
     if not supplied or not hmac.compare_digest(supplied, expected):
         raise HTTPException(status_code=401, detail="Dashboardnyckeln saknas eller är ogiltig.")
 
 
-@router.get("/live/dashboard")
-async def live_dashboard(
-    x_trade_dashboard_token: str | None = Header(default=None),
-):
-    """Private, read-only Kraken account and live portfolio dashboard."""
+@router.post("/live/session")
+async def create_live_dashboard_session(response: Response, x_trade_dashboard_token: str | None = Header(default=None)):
+    """Exchange the dashboard read token for a protected browser session."""
     _dashboard_guard(x_trade_dashboard_token)
+    response.set_cookie(key="trade_dashboard_session", value=os.getenv("TRADE_DASHBOARD_TOKEN", "").strip(),
+        max_age=60 * 60 * 24 * 30, httponly=True, secure=True, samesite="strict", path="/api/trading/live")
+    return {"authenticated": True}
+
+
+@router.delete("/live/session")
+async def delete_live_dashboard_session(response: Response):
+    response.delete_cookie(key="trade_dashboard_session", httponly=True, secure=True,
+        samesite="strict", path="/api/trading/live")
+    return {"authenticated": False}
+
+
+@router.get("/live/dashboard")
+async def live_dashboard(request: Request, x_trade_dashboard_token: str | None = Header(default=None)):
+    """Private, read-only Kraken account and live portfolio dashboard."""
+    _dashboard_guard(x_trade_dashboard_token, request.cookies.get("trade_dashboard_session"))
     try:
         state, revision = load_or_create_live_state()
         fx = fetch_eur_sek_rate()
