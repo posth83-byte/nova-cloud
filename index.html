@@ -3023,7 +3023,7 @@ function renderTradeDashboard(data){
  const ordersEnabled=Boolean(data.orders_enabled??team.orders_enabled);
  $("tradeWorkerStatus").textContent=team.emergency_stop?"● NÖDSTOPP":ordersEnabled?"● LIVEORDER AKTIVA":team.live_enabled?"● LIVE PÅ · ORDER SPÄRRADE":"● LIVEHANDEL PAUSAD";
  $("tradeWorkerStatus").style.color=team.emergency_stop?"#ff8b8b":ordersEnabled?"#8ce9bc":"#ffca91";
- renderTradeAssets(account);renderTradePositions(positions);renderTradeHistory(team,account);renderTradeRadar(data.opportunities||[]);
+ renderTradeAssets(account,positions);renderTradePositions(positions,account.assets||[]);renderTradeHistory(team,account);renderTradeRadar(data.opportunities||[]);
  const worker=team.worker||{},risk=team.risk||{};
  $("tradeSystemInfo").innerHTML=
   "<div>Senaste lyckade körning: <b>"+tradeEscape(tradeTime(worker.last_success_at))+"</b></div>"+
@@ -3037,25 +3037,63 @@ function renderTradeDashboard(data){
   "<div>Daglig förlustgräns: <b>"+tradeEscape(Number(risk.daily_loss_limit_pct)*100||0)+"%</b></div>"+
   "<div>Uttag: <b>AVSTÄNGDA</b> · Hävstång: <b>AVSTÄNGD</b></div>";
 }
-function renderTradeAssets(account){
+function renderTradeAssets(account,positions=[]){
  const target=$("tradeAssets");target.replaceChildren();
- (account.assets||[]).forEach(asset=>{
+ const tracked=new Map((positions||[]).map(p=>[String(p.base_asset||"").toUpperCase(),p]));
+ const assets=account.assets||[];
+ assets.forEach(asset=>{
+  const code=String(asset.asset||asset.symbol||"").toUpperCase();
+  const exchangeQty=Number(asset.balance)||0,position=tracked.get(code);
   const row=document.createElement("div");row.className="trade-assets-row";
-  const name=document.createElement("b");name.textContent=asset.symbol||asset.asset;
-  const value=document.createElement("span");value.textContent=tradeNumber(asset.balance,6)+" · "+tradeSek(asset.value_sek);
-  row.append(name,value);target.append(row);
+  const left=document.createElement("div"),name=document.createElement("b");name.textContent=asset.symbol||asset.asset;
+  left.append(name);
+  if(exchangeQty>0){
+   const status=document.createElement("small");status.style.display="block";status.style.marginTop="3px";
+   if(position){
+    const ledgerQty=Number(position.quantity)||0;
+    const tolerance=Math.max(0.00000001,Math.abs(ledgerQty)*0.001);
+    status.textContent=Math.abs(exchangeQty-ledgerQty)<=tolerance?"MATCHAR AI-JOURNAL":"AVVIKELSE MOT AI-JOURNAL · Kraken: "+tradeNumber(exchangeQty,8)+" / AI: "+tradeNumber(ledgerQty,8);
+    status.style.color=Math.abs(exchangeQty-ledgerQty)<=tolerance?"#85e6ba":"#ffbd83";
+   }else{
+    status.textContent="KRAKEN-INNEHAV · EJ REGISTRERAT I TRADE AI";
+    status.style.color="#ffbd83";
+   }
+   left.append(status);
+  }
+  const value=document.createElement("span");value.textContent=tradeNumber(asset.balance,8)+" · "+tradeSek(asset.value_sek);
+  row.append(left,value);target.append(row);
  });
- if(!(account.assets||[]).length)target.textContent="Inga prissatta tillgångar kunde läsas.";
+ (positions||[]).forEach(position=>{
+  const code=String(position.base_asset||"").toUpperCase();
+  if(!assets.some(a=>String(a.asset||a.symbol||"").toUpperCase()===code)){
+   const row=document.createElement("div");row.className="trade-assets-row";
+   const name=document.createElement("b");name.textContent=position.symbol+" · SAKNAS I KRAKEN-SALDOT";
+   name.style.color="#ff8f8f";const value=document.createElement("span");value.textContent="AI-journal: "+tradeNumber(position.quantity,8);
+   row.append(name,value);target.append(row);
+  }
+ });
+ if(!assets.length)target.textContent="Inga prissatta tillgångar kunde läsas.";
  const warning=$("tradeValuationWarning");warning.replaceChildren();
+ const mismatches=assets.filter(a=>{
+  const p=tracked.get(String(a.asset||a.symbol||"").toUpperCase());
+  return p&&(Math.abs((Number(a.balance)||0)-(Number(p.quantity)||0))>Math.max(0.00000001,Math.abs(Number(p.quantity)||0)*0.001));
+ });
+ const untracked=assets.filter(a=>(Number(a.balance)||0)>0&&!tracked.has(String(a.asset||a.symbol||"").toUpperCase()));
+ if(mismatches.length||untracked.length){
+  const box=document.createElement("div");box.className="trade-warning";
+  box.textContent="Avstämning krävs: "+mismatches.length+" saldoavvikelse(r) mellan Kraken och AI-journalen, "+untracked.length+" Kraken-innehav som inte finns i Trade AI:s journal. Dessa innehav hanteras inte automatiskt av AI:ns säljmotor.";
+  warning.append(box);
+ }
  if(!account.valuation_complete){
   const box=document.createElement("div");box.className="trade-warning";
   box.textContent="Värderingen är ofullständig. Följande tillgångar saknar verifierad EUR-kurs: "+(account.unpriced_assets||[]).map(x=>x.asset).join(", ")+". De räknas inte in i totalvärdet.";
   warning.append(box);
  }
 }
-function renderTradePositions(positions){
+function renderTradePositions(positions,assets=[]){
  const target=$("tradePositions");target.replaceChildren();
- if(!positions.length){target.textContent="Inga bekräftade Trade AI-innehav ännu. En valuta läggs till här först när Kraken bekräftat ett faktiskt avslut – inte vid enbart köpsignal.";return}
+ const exchange=new Map((assets||[]).map(a=>[String(a.asset||a.symbol||"").toUpperCase(),Number(a.balance)||0]));
+ if(!positions.length){target.textContent="Inga bekräftade Trade AI-innehav i AI-journalen. Kraken-saldon som inte är registrerade visas separat under saldo per tillgång.";return}
  positions.forEach(position=>{
   const card=document.createElement("div");card.className="trade-position";
   const head=document.createElement("div");head.className="trade-position-head";
@@ -3063,7 +3101,11 @@ function renderTradePositions(positions){
   const value=document.createElement("span");value.textContent=position.market_value_sek===null?"Kurs saknas":tradeSek(position.market_value_sek);
   head.append(name,value);card.append(head);
   const meta=document.createElement("div");meta.className="trade-position-meta";
-  meta.textContent="Antal: "+tradeNumber(position.quantity,8)+" · Inköpsvärde: "+tradeSek(position.cost_value_sek)+" · Orealiserat: "+(position.unrealized_pnl_sek===null?"—":tradeSek(position.unrealized_pnl_sek));
+  const exchangeQty=exchange.get(String(position.base_asset||"").toUpperCase());
+  const hasExchange=exchange.has(String(position.base_asset||"").toUpperCase());
+  const matches=hasExchange&&Math.abs(exchangeQty-Number(position.quantity||0))<=Math.max(0.00000001,Math.abs(Number(position.quantity)||0)*0.001);
+  meta.textContent="Antal enligt AI: "+tradeNumber(position.quantity,8)+" · Kraken: "+(hasExchange?tradeNumber(exchangeQty,8):"SAKNAS")+" · "+(matches?"SALDON MATCHAR":"AVSTÄMNING KRÄVS")+" · Inköpsvärde: "+tradeSek(position.cost_value_sek)+" · Orealiserat: "+(position.unrealized_pnl_sek===null?"—":tradeSek(position.unrealized_pnl_sek));
+  if(!matches)meta.style.color="#ffbd83";
   card.append(meta);
   const chart=document.createElement("div");chart.className="trade-chart";chart.id="tradeChart_"+position.base_asset;chart.textContent="Hämtar kursgraf…";card.append(chart);
   const controls=document.createElement("div");controls.className="trade-chart-controls";
