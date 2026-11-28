@@ -593,6 +593,7 @@ def run_live_tick() -> dict[str, Any]:
             "budget_available_eur": format(eur_balance, "f"),
             "last_blocker": last_blocker,
             "revision": revision, "orders_enabled": True,
+            "trading_mode": "live_spot",
             "buying_enabled": True,
             "selling_enabled": True,
             "withdrawals_enabled": False,
