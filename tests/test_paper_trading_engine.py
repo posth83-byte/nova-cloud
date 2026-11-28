@@ -47,6 +47,19 @@ class PaperTradingEngineTests(unittest.TestCase):
         self.assertGreater(Decimal(bought["cash"]), Decimal("0"))
         self.assertEqual(bought["risk"]["max_trade_pct"], "1.00")
 
+    def test_trade_is_allowed_after_more_than_two_percent_daily_loss(self):
+        state = dict(self.state)
+        state["cash"] = "95.00"
+        state["day_key"] = self.now.date().isoformat()
+        state["day_start_equity"] = "100.00"
+        state["peak_equity"] = "100.00"
+        traded = apply_paper_trade(
+            state, symbol="XBT/EUR", side="buy", quantity="0.000001",
+            price_sek="1000000", timestamp=self.now,
+        )
+        self.assertIn("XBT/EUR", traded["positions"])
+        self.assertNotIn("daily_loss_limit_pct", traded["risk"])
+
     def test_rejects_oversized_order(self):
         with self.assertRaises(PaperTradingError):
             apply_paper_trade(
