@@ -6,6 +6,7 @@ on:
     paths:
       - ".github/workflows/trade-live-scheduler-v2.yml"
   schedule:
+    # Free scheduler refresh: keep the existing cadence; merging this workflow change also emits one guarded catch-up tick.
     # Run away from the top of the hour; frequent ticks let the worker
     # notice each newly closed hourly candle promptly. The API now accepts this workflow identity. Processed-candle
     # cursors and order journaling prevent duplicate orders.
