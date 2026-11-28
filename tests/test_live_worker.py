@@ -220,6 +220,7 @@ class LiveWorkerTests(unittest.TestCase):
         self.assertTrue(result["buying_enabled"])
         self.assertTrue(result["selling_enabled"])
         self.assertNotIn("daily_loss_review", result)
+        self.assertEqual(result["trading_mode"], "live_spot")
 
     def test_existing_position_is_scanned_for_sell_when_eur_is_below_buy_minimum(self):
         state = dict(self.state)
