@@ -146,6 +146,11 @@ class LiveWorkerTests(unittest.TestCase):
 
     def test_live_tick_journals_one_approved_momentum_buy_and_books_fill(self):
         state = dict(self.state)
+        # Cross the 2% daily-loss review threshold without crossing the
+        # separate 10% hard drawdown stop; valid new buys must remain possible.
+        state["day_key"] = live_worker.datetime.now(live_worker.timezone.utc).date().isoformat()
+        state["day_start_equity_sek"] = "410.00"
+        state["peak_equity_sek"] = "430.00"
         market = {
             "symbol": "LINK/EUR", "api_pair": "LINKEUR",
             "base_asset": "LINK", "last": 10.0, "ask": 10.0, "bid": 9.99,
@@ -213,6 +218,10 @@ class LiveWorkerTests(unittest.TestCase):
         self.assertEqual(state["cash_sek"], "289.52")
         self.assertEqual(result["budget_available_eur"], "36.36")
         self.assertFalse(result["withdrawals_enabled"])
+        self.assertTrue(result["buying_enabled"])
+        self.assertTrue(result["selling_enabled"])
+        self.assertTrue(result["daily_loss_review"])
+        self.assertEqual(result["trading_mode"], "live_spot_daily_loss_review")
 
     def test_existing_position_is_scanned_for_sell_when_eur_is_below_buy_minimum(self):
         state = dict(self.state)
@@ -290,9 +299,10 @@ class LiveWorkerTests(unittest.TestCase):
         self.assertEqual(result["budget_available_eur"], "0.1037")
         self.assertFalse(state["emergency_stop"])
         self.assertTrue(state["enabled"])
-        self.assertEqual(state["buy_blocked_reason"], "Dagens förlustgräns på 2 procent är nådd.")
-        self.assertEqual(result["buying_enabled"], False)
+        self.assertNotIn("buy_blocked_reason", state)
+        self.assertEqual(result["buying_enabled"], True)
         self.assertEqual(result["selling_enabled"], True)
+        self.assertTrue(result["daily_loss_review"])
 
     def test_disabled_live_state_does_not_contact_kraken(self):
         state = dict(self.state)
