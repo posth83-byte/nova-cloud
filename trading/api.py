@@ -237,7 +237,7 @@ async def paper_status():
         "revision": revision,
         "storage": "supabase",
         "history": state.get("trades", [])[-25:],
-        "risk": state.get("risk", {}),
+        "risk": visible_risk,
         "stop_reason": state.get("stop_reason"),
         "worker": worker,
     })
@@ -466,6 +466,8 @@ async def live_dashboard(request: Request, x_trade_dashboard_token: str | None =
         kraken_closed_orders = get_recent_closed_orders(50)
         orders_enabled = _live_orders_enabled(state)
         buying_enabled = orders_enabled
+        visible_risk = dict(state.get("risk") or {})
+        visible_risk.pop("daily_loss_limit_pct", None)
         safe_intents = []
         for row in intents:
             exchange = row.get("exchange_result") or {}
@@ -521,7 +523,7 @@ async def live_dashboard(request: Request, x_trade_dashboard_token: str | None =
                 "trades": list(state.get("trades") or [])[-30:][::-1],
                 "order_intents": safe_intents,
                 "worker": state.get("worker") or {},
-                "risk": state.get("risk") or {},
+                "risk": visible_risk,
                 "revision": revision,
             },
             "budget_policy": "all_available_kraken_eur_balance",
@@ -559,6 +561,8 @@ async def live_status():
     creds_ready = credentials_configured()
     orders_enabled = gate_enabled and bool(state.get("enabled")) and not bool(state.get("emergency_stop")) and creds_ready
     buying_enabled = orders_enabled
+    visible_risk = dict(state.get("risk") or {})
+    visible_risk.pop("daily_loss_limit_pct", None)
     if state.get("emergency_stop"):
         mode = "live_spot_emergency_stopped"
     elif orders_enabled:
