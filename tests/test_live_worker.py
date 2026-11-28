@@ -17,7 +17,6 @@ class LiveWorkerTests(unittest.TestCase):
             "realized_pnl_sek": "0.00",
             "applied_order_ids": [],
             "risk": {
-                "daily_loss_limit_pct": "0.02",
                 "max_drawdown_pct": "0.10",
                 "max_open_positions": 3,
                 "fee_rate": "0.0040",
@@ -146,8 +145,8 @@ class LiveWorkerTests(unittest.TestCase):
 
     def test_live_tick_journals_one_approved_momentum_buy_and_books_fill(self):
         state = dict(self.state)
-        # Cross the 2% daily-loss review threshold without crossing the
-        # separate 10% hard drawdown stop; valid new buys must remain possible.
+        # A substantial intraday decline below the old 2% threshold must not
+        # prevent a valid buy while the separate 10% hard drawdown is intact.
         state["day_key"] = live_worker.datetime.now(live_worker.timezone.utc).date().isoformat()
         state["day_start_equity_sek"] = "410.00"
         state["peak_equity_sek"] = "430.00"
@@ -220,8 +219,8 @@ class LiveWorkerTests(unittest.TestCase):
         self.assertFalse(result["withdrawals_enabled"])
         self.assertTrue(result["buying_enabled"])
         self.assertTrue(result["selling_enabled"])
-        self.assertTrue(result["daily_loss_review"])
-        self.assertEqual(result["trading_mode"], "live_spot_daily_loss_review")
+        self.assertNotIn("daily_loss_review", result)
+        self.assertEqual(result["trading_mode"], "live_spot")
 
     def test_existing_position_is_scanned_for_sell_when_eur_is_below_buy_minimum(self):
         state = dict(self.state)
@@ -302,7 +301,7 @@ class LiveWorkerTests(unittest.TestCase):
         self.assertNotIn("buy_blocked_reason", state)
         self.assertEqual(result["buying_enabled"], True)
         self.assertEqual(result["selling_enabled"], True)
-        self.assertTrue(result["daily_loss_review"])
+        self.assertNotIn("daily_loss_review", result)
 
     def test_disabled_live_state_does_not_contact_kraken(self):
         state = dict(self.state)
