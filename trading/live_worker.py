@@ -234,9 +234,9 @@ def run_live_tick() -> dict[str, Any]:
     worker["last_tick_at"] = now.isoformat()
     state["worker"] = worker
 
-    # Migrate the old automatic daily-loss stop to normal live operation.
-    # Daily loss is now a review signal, not a buy/sell lock. Manual emergency
-    # stops and the separate maximum-drawdown hard stop remain unchanged.
+    # One-time migration: clear the legacy automatic 2% stop stored by older
+    # releases. The daily-loss stop is removed; manual stop and 10% drawdown
+    # protection remain active.
     daily_loss_reason = "Dagens förlustgräns på 2 procent är nådd."
     if state.get("emergency_stop") and state.get("stop_reason") == daily_loss_reason:
         state["enabled"] = True
@@ -248,14 +248,18 @@ def run_live_tick() -> dict[str, Any]:
         worker.update({
             "status": "running",
             "last_error": None,
-            "last_blocker": "daily_loss_review_mode",
+            "last_blocker": "legacy_daily_loss_stop_cleared",
         })
         state["worker"] = worker
         revision = save_live_state(state, revision)
-    # Remove legacy daily buy-lock fields so old state cannot silently keep
-    # the strategy in sell-only mode after this release.
+    # Remove all legacy daily-loss controls from persisted live state.
     state.pop("buy_blocked_reason", None)
     state.pop("buy_blocked_day_key", None)
+    risk_settings = dict(state.get("risk") or {})
+    if "daily_loss_limit_pct" in risk_settings:
+        risk_settings.pop("daily_loss_limit_pct", None)
+        state["risk"] = risk_settings
+        revision = save_live_state(state, revision)
 
     if state.get("emergency_stop") or not state.get("enabled"):
         worker["status"] = "emergency_stopped" if state.get("emergency_stop") else "disabled"
