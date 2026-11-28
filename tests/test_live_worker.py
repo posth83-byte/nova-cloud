@@ -303,6 +303,85 @@ class LiveWorkerTests(unittest.TestCase):
         self.assertEqual(result["selling_enabled"], True)
         self.assertNotIn("daily_loss_review", result)
 
+    def test_legacy_base_asset_fee_mismatch_is_reconciled_before_sell(self):
+        state = dict(self.state)
+        state["cash_sek"] = "1.16"
+        state["peak_equity_sek"] = "215.52"
+        state["day_start_equity_sek"] = "220.00"
+        state["day_key"] = live_worker.datetime.now(live_worker.timezone.utc).date().isoformat()
+        state["positions"] = {
+            "ALGO/EUR": {
+                "quantity": "254.25583355",
+                "cost_basis_sek": "0.8392303629",
+                "base_asset": "ALGO",
+            }
+        }
+        market = {
+            "symbol": "ALGO/EUR", "api_pair": "ALGOEUR",
+            "base_asset": "ALGO", "last": 0.074, "ask": 0.0741, "bid": 0.074,
+            "spread_pct": 0.10, "volume_24h_quote_est": 25000.0,
+            "min_order_qty": 1.0, "min_cost_quote": 1.0,
+            "price_decimals": 5, "lot_decimals": 8,
+        }
+        candles = [{"timestamp": 1000 + i * 3600, "close": 0.074} for i in range(40)]
+        actual = "252.22179157"
+        intent = {
+            "client_order_id": "f" * 32,
+            "pair_symbol": "ALGO/EUR", "base_asset": "ALGO", "side": "sell",
+            "exchange_result": {
+                "vol_exec": actual, "cost": "18.0", "fee": "0.15",
+            },
+        }
+        def save(updated, revision):
+            return revision + 1
+        submitted = {}
+        def execute(**kwargs):
+            submitted["quantity_before_order"] = state["positions"]["ALGO/EUR"]["quantity"]
+            submitted["volume"] = kwargs["volume"]
+            return {
+                "status": "closed", "client_order_id": "f" * 32,
+                "vol_exec": actual,
+            }
+        with (
+            patch.dict("os.environ", {"TRADE_LIVE_ENABLED": "true"}),
+            patch.object(live_worker, "load_or_create_live_state", return_value=(state, 1)),
+            patch.object(live_worker, "_acquire_lease", side_effect=lambda s, r, n: (s, r + 1, "lease")),
+            patch.object(live_worker, "fetch_eur_sek_rate", return_value={
+                "rate": 11.0, "age_days": 0, "date": "2026-11-26",
+            }),
+            patch.object(live_worker, "run_read_only_preflight", return_value={
+                "connected": True, "open_orders_clear": True,
+            }),
+            patch.object(live_worker, "get_account_balances", side_effect=[
+                {"ZEUR": "0.1037", "ALGO": actual},
+                {"ZEUR": "19.0", "ALGO": "0"},
+            ]),
+            patch.object(live_worker, "scan_markets", return_value={"markets": [market]}),
+            patch.object(live_worker, "fetch_ohlc_candles", return_value={"candles": candles}),
+            patch.object(live_worker, "_cross_signal", return_value=(False, True)),
+            patch.object(live_worker, "_momentum_exit_signal", return_value=False),
+            patch.object(live_worker, "rank_opportunities", return_value={"candidates": []}),
+            patch.object(live_worker, "_select_watchlist", return_value=({"ALGO/EUR"}, 0)),
+            patch.object(live_worker, "list_unapplied_order_intents", return_value=[]),
+            patch.object(live_worker, "get_open_orders", return_value={}),
+            patch.object(live_worker, "validate_limit_order", return_value={"validated": True}),
+            patch.object(live_worker, "execute_journaled_limit_order", side_effect=execute) as order,
+            patch.object(live_worker, "get_order_intent", return_value=intent),
+            patch.object(live_worker, "mark_order_ledger_applied"),
+            patch.object(live_worker, "save_live_state", side_effect=save),
+        ):
+            result = live_worker.run_live_tick()
+        self.assertTrue(result["ok"], result)
+        self.assertEqual(result["status"], "running")
+        order.assert_called_once()
+        self.assertEqual(submitted["quantity_before_order"], actual)
+        self.assertEqual(submitted["volume"], Decimal(actual))
+        self.assertEqual(state["positions"], {})
+        self.assertEqual(
+            state["worker"]["last_balance_reconciliation"]["reason"],
+            "legacy_0.8pct_base_asset_fee",
+        )
+
     def test_disabled_live_state_does_not_contact_kraken(self):
         state = dict(self.state)
         state["enabled"] = False

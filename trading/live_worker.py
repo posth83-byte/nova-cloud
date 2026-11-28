@@ -482,16 +482,41 @@ def run_live_tick() -> dict[str, Any]:
                     })
                     continue
                 if actual_asset_balance < qty:
-                    # Isolate a balance mismatch to this position. Never sell
-                    # more than Kraken reports as available, and do not halt
-                    # unrelated monitoring or other independently valid positions.
-                    actions.append({
-                        "symbol": symbol,
-                        "result": "position_balance_mismatch",
-                        "ledger_quantity": format(qty, "f"),
-                        "exchange_available": format(actual_asset_balance, "f"),
-                    })
-                    continue
+                    # A legacy Kraken buy could charge its 0.8% fee in the
+                    # base asset. The old ledger recorded gross vol_exec,
+                    # while Kraken's spendable balance reflects net quantity.
+                    # Reconcile only this exact, known legacy fee pattern;
+                    # any other shortfall remains isolated and cannot be sold.
+                    shortfall_ratio = (qty - actual_asset_balance) / qty
+                    legacy_base_fee = Decimal("0.008")
+                    if abs(shortfall_ratio - legacy_base_fee) <= Decimal("0.0001"):
+                        total_cost_basis = qty * _d(position["cost_basis_sek"])
+                        reconciled_basis = total_cost_basis / actual_asset_balance
+                        position = {
+                            **position,
+                            "quantity": format(actual_asset_balance, "f"),
+                            "cost_basis_sek": format(reconciled_basis, "f"),
+                        }
+                        positions[symbol] = position
+                        state["positions"] = positions
+                        worker["last_balance_reconciliation"] = {
+                            "symbol": symbol,
+                            "reason": "legacy_0.8pct_base_asset_fee",
+                            "ledger_quantity_before": format(qty, "f"),
+                            "exchange_available": format(actual_asset_balance, "f"),
+                        }
+                        qty = actual_asset_balance
+                    else:
+                        # Isolate a balance mismatch to this position. Never sell
+                        # more than Kraken reports as available, and do not halt
+                        # unrelated monitoring or other independently valid positions.
+                        actions.append({
+                            "symbol": symbol,
+                            "result": "position_balance_mismatch",
+                            "ledger_quantity": format(qty, "f"),
+                            "exchange_available": format(actual_asset_balance, "f"),
+                        })
+                        continue
                 bid = _d(market["bid"])
                 price_decimals = int(market.get("price_decimals") or 8)
                 limit_price = bid.quantize(
