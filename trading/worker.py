@@ -255,14 +255,11 @@ def run_paper_tick() -> dict[str, Any]:
         if state.get("day_key") != day_key:
             state["day_key"] = day_key
             state["day_start_equity"] = f"{equity:.2f}"
-        day_start = float(state.get("day_start_equity") or equity)
         peak = max(float(state.get("peak_equity") or equity), equity)
         state["peak_equity"] = f"{peak:.2f}"
 
         stop_reason = None
-        if equity <= day_start * (1 - float(risk["daily_loss_limit_pct"])):
-            stop_reason = "Dagens förlustgräns nådd"
-        elif equity <= peak * (1 - float(risk["max_drawdown_pct"])):
+        if equity <= peak * (1 - float(risk["max_drawdown_pct"])):
             stop_reason = "Maximal portföljnedgång nådd"
         if stop_reason:
             state = activate_emergency_stop(state, stop_reason)
