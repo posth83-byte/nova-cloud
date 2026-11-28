@@ -234,12 +234,31 @@ def run_live_tick() -> dict[str, Any]:
     worker["last_tick_at"] = now.isoformat()
     state["worker"] = worker
 
+    # Migrate the legacy automatic daily-loss stop into a sell-only risk lock.
+    # A user-triggered emergency stop (any other reason) remains a hard stop.
+    daily_loss_reason = "Dagens förlustgräns på 2 procent är nådd."
+    if state.get("emergency_stop") and state.get("stop_reason") == daily_loss_reason:
+        state["enabled"] = True
+        state["emergency_stop"] = False
+        state["stop_reason"] = None
+        state["buy_blocked_reason"] = daily_loss_reason
+        state["buy_blocked_day_key"] = now.date().isoformat()
+        worker = dict(state.get("worker") or {})
+        worker.update({
+            "status": "sell_only",
+            "last_error": None,
+            "last_blocker": "daily_loss_limit_sell_only",
+        })
+        state["worker"] = worker
+        revision = save_live_state(state, revision)
+
     if state.get("emergency_stop") or not state.get("enabled"):
         worker["status"] = "emergency_stopped" if state.get("emergency_stop") else "disabled"
         state["worker"] = worker
         return {
             "ok": True, "status": worker["status"], "live_enabled": False,
-            "orders_enabled": False, "withdrawals_enabled": False,
+            "orders_enabled": False, "buying_enabled": False,
+            "selling_enabled": False, "withdrawals_enabled": False,
         }
     if os.getenv("TRADE_LIVE_ENABLED", "").strip().lower() != "true":
         worker["status"] = "server_gate_disabled"
@@ -327,11 +346,18 @@ def run_live_tick() -> dict[str, Any]:
         if state.get("day_key") != day_key:
             state["day_key"] = day_key
             state["day_start_equity_sek"] = format(_round_money(equity), "f")
+            # The daily buy lock expires only when a new trading day begins.
+            if state.get("buy_blocked_day_key") != day_key:
+                state.pop("buy_blocked_day_key", None)
+                state.pop("buy_blocked_reason", None)
         peak = max(_d(state.get("peak_equity_sek") or "200"), equity)
         state["peak_equity_sek"] = format(_round_money(peak), "f")
         day_start = _d(state.get("day_start_equity_sek") or equity)
+        daily_loss_blocked = state.get("buy_blocked_day_key") == day_key
         if equity <= day_start * Decimal("0.98"):
-            raise LiveWorkerError("Dagens förlustgräns på 2 procent är nådd.")
+            daily_loss_blocked = True
+            state["buy_blocked_day_key"] = day_key
+            state["buy_blocked_reason"] = "Dagens förlustgräns på 2 procent är nådd."
         if equity <= peak * Decimal("0.90"):
             raise LiveWorkerError("Maximal portföljnedgång på 10 procent är nådd.")
         risk = state["risk"]
@@ -411,7 +437,7 @@ def run_live_tick() -> dict[str, Any]:
             position = positions.get(symbol)
             side = (
                 "sell" if position and (cross_down or _momentum_exit_signal(candles, after_timestamp=last_processed))
-                else "buy" if not position and (
+                else "buy" if not daily_loss_blocked and not position and (
                     cross_up or _momentum_entry_signal(candles, after_timestamp=last_processed)
                 )
                 else None
@@ -525,6 +551,8 @@ def run_live_tick() -> dict[str, Any]:
         minimum_order_eur = min(market_minimums_eur) if market_minimums_eur else None
         if order_sent:
             last_blocker = None
+        elif daily_loss_blocked:
+            last_blocker = "daily_loss_limit_sell_only"
         elif not eligible and minimum_order_eur is not None and eur_balance < minimum_order_eur:
             last_blocker = "insufficient_eur_for_exchange_minimum"
         elif not eligible:
@@ -541,7 +569,8 @@ def run_live_tick() -> dict[str, Any]:
         else:
             last_blocker = "no_entry_or_exit_signal_on_latest_closed_candles"
         worker.update({
-            "status": "running",
+            "status": "sell_only" if daily_loss_blocked else "running",
+            "buy_blocked_reason": state.get("buy_blocked_reason") if daily_loss_blocked else None,
             "last_success_at": now.isoformat(),
             "last_error": None,
             "last_fx": fx,
@@ -568,6 +597,9 @@ def run_live_tick() -> dict[str, Any]:
             "budget_available_eur": format(eur_balance, "f"),
             "last_blocker": last_blocker,
             "revision": revision, "orders_enabled": True,
+            "buying_enabled": not daily_loss_blocked,
+            "selling_enabled": True,
+            "trading_mode": "sell_only_daily_loss_limit" if daily_loss_blocked else "live_spot",
             "withdrawals_enabled": False,
         }
     except (
