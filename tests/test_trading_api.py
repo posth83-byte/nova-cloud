@@ -28,7 +28,7 @@ class TradingApiTests(unittest.TestCase):
             "positions": {"XBT/EUR": {"quantity": "0.001", "cost_basis_sek": "500000", "base_asset": "XXBT"}},
             "realized_pnl_sek": "2.50", "day_start_equity_sek": "110.00",
             "trades": [], "worker": {"last_success_at": "2026-11-26T12:00:00+00:00"},
-            "risk": {"max_open_positions": 3, "daily_loss_limit_pct": "0.02"},
+            "risk": {"max_open_positions": 3},
         }
         fx = {"rate": 11.2, "date": "2026-11-26", "source": "test"}
         account = {"connected": True, "eur_balance": "10", "open_orders_count": 0}
