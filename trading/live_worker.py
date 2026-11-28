@@ -353,11 +353,6 @@ def run_live_tick() -> dict[str, Any]:
             state["day_start_equity_sek"] = format(_round_money(equity), "f")
         peak = max(_d(state.get("peak_equity_sek") or "200"), equity)
         state["peak_equity_sek"] = format(_round_money(peak), "f")
-        day_start = _d(state.get("day_start_equity_sek") or equity)
-        daily_loss_review = equity <= day_start * Decimal("0.98")
-        # A daily loss triggers heightened review/visibility, never a blanket
-        # buy lock. Individual orders still pass all existing signal, balance,
-        # minimum-size, exposure, position-count and exchange checks.
         if equity <= peak * Decimal("0.90"):
             raise LiveWorkerError("Maximal portföljnedgång på 10 procent är nådd.")
         risk = state["risk"]
@@ -568,8 +563,6 @@ def run_live_tick() -> dict[str, Any]:
             last_blocker = "no_entry_or_exit_signal_on_latest_closed_candles"
         worker.update({
             "status": "running",
-            "daily_loss_review": daily_loss_review,
-            "daily_loss_review_reason": "Dagens portföljnedgång har passerat 2 procent; nya order kräver fortfarande full signal- och riskkontroll." if daily_loss_review else None,
             "last_success_at": now.isoformat(),
             "last_error": None,
             "last_fx": fx,
@@ -598,8 +591,6 @@ def run_live_tick() -> dict[str, Any]:
             "revision": revision, "orders_enabled": True,
             "buying_enabled": True,
             "selling_enabled": True,
-            "daily_loss_review": daily_loss_review,
-            "trading_mode": "live_spot_daily_loss_review" if daily_loss_review else "live_spot",
             "withdrawals_enabled": False,
         }
     except (
