@@ -465,8 +465,8 @@ async def live_dashboard(request: Request, x_trade_dashboard_token: str | None =
         intents = list_recent_order_intents(30)
         kraken_closed_orders = get_recent_closed_orders(50)
         orders_enabled = _live_orders_enabled(state)
-        daily_buy_lock_active = state.get("buy_blocked_day_key") == datetime.now(timezone.utc).date().isoformat()
-        buying_enabled = orders_enabled and not daily_buy_lock_active
+        daily_loss_review = bool((state.get("worker") or {}).get("daily_loss_review"))
+        buying_enabled = orders_enabled
         safe_intents = []
         for row in intents:
             exchange = row.get("exchange_result") or {}
@@ -511,8 +511,10 @@ async def live_dashboard(request: Request, x_trade_dashboard_token: str | None =
                 "orders_enabled": orders_enabled,
                 "buying_enabled": buying_enabled,
                 "selling_enabled": orders_enabled,
-                "trading_mode": "sell_only_daily_loss_limit" if orders_enabled and daily_buy_lock_active else ("live_spot" if orders_enabled else "disabled"),
-                "buy_blocked_reason": state.get("buy_blocked_reason") if daily_buy_lock_active else None,
+                "trading_mode": "live_spot_daily_loss_review" if orders_enabled and daily_loss_review else ("live_spot" if orders_enabled else "disabled"),
+                "daily_loss_review": daily_loss_review,
+                "daily_loss_review_reason": (state.get("worker") or {}).get("daily_loss_review_reason"),
+                "buy_blocked_reason": None,
                 "emergency_stop": bool(state.get("emergency_stop")),
                 "cash_ledger_sek": state.get("cash_sek"),
                 "positions": positions,
@@ -559,12 +561,12 @@ async def live_status():
     gate_enabled = _live_server_gate_enabled()
     creds_ready = credentials_configured()
     orders_enabled = gate_enabled and bool(state.get("enabled")) and not bool(state.get("emergency_stop")) and creds_ready
-    daily_buy_lock_active = state.get("buy_blocked_day_key") == datetime.now(timezone.utc).date().isoformat()
-    buying_enabled = orders_enabled and not daily_buy_lock_active
+    daily_loss_review = bool((state.get("worker") or {}).get("daily_loss_review"))
+    buying_enabled = orders_enabled
     if state.get("emergency_stop"):
         mode = "live_spot_emergency_stopped"
-    elif orders_enabled and daily_buy_lock_active:
-        mode = "live_spot_sell_only_daily_loss_limit"
+    elif orders_enabled and daily_loss_review:
+        mode = "live_spot_daily_loss_review"
     elif orders_enabled:
         mode = "live_spot"
     elif not gate_enabled:
@@ -592,13 +594,15 @@ async def live_status():
         "buying_enabled": buying_enabled,
         "selling_enabled": orders_enabled,
         "trading_mode": mode,
-        "buy_blocked_reason": state.get("buy_blocked_reason") if daily_buy_lock_active else None,
+        "daily_loss_review": daily_loss_review,
+        "daily_loss_review_reason": (state.get("worker") or {}).get("daily_loss_review_reason"),
+        "buy_blocked_reason": None,
         "withdrawals_enabled": False,
         "budget_policy": "all_available_kraken_eur_balance",
         "live_order_engine": "guarded_autonomous_spot_worker",
         "next_step": (
-            "Endast försäljning är tillåten tills nästa handelsdag efter nådd dagsförlustgräns."
-            if orders_enabled and daily_buy_lock_active else
+            "Dagsförlust över 2 procent: teamet fortsätter bevaka, sälja och får köpa vid godkänd signal och full riskkontroll."
+            if orders_enabled and daily_loss_review else
             "Liveorder kan skickas när köpbudget och marknadssignal räcker."
             if orders_enabled else
             "Liveorder är spärrad tills servergrind, Kraken-nycklar och aktiverat livekonto är klara."
