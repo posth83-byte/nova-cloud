@@ -218,7 +218,12 @@ class LiveWorkerTests(unittest.TestCase):
         state = dict(self.state)
         state["cash_sek"] = "1.16"
         state["peak_equity_sek"] = "215.52"
-        state["day_start_equity_sek"] = "200.00"
+        state["day_start_equity_sek"] = "220.00"
+        state["day_key"] = live_worker.datetime.now(live_worker.timezone.utc).date().isoformat()
+        # Simulate the legacy automatic daily-loss stop currently stored in production.
+        state["enabled"] = False
+        state["emergency_stop"] = True
+        state["stop_reason"] = "Dagens förlustgräns på 2 procent är nådd."
         state["positions"] = {
             "ALGO/EUR": {
                 "quantity": "254.25583355",
@@ -283,6 +288,11 @@ class LiveWorkerTests(unittest.TestCase):
         self.assertEqual(state["positions"], {})
         self.assertEqual(state["cash_sek"], "209.00")
         self.assertEqual(result["budget_available_eur"], "0.1037")
+        self.assertFalse(state["emergency_stop"])
+        self.assertTrue(state["enabled"])
+        self.assertEqual(state["buy_blocked_reason"], "Dagens förlustgräns på 2 procent är nådd.")
+        self.assertEqual(result["buying_enabled"], False)
+        self.assertEqual(result["selling_enabled"], True)
 
     def test_disabled_live_state_does_not_contact_kraken(self):
         state = dict(self.state)
