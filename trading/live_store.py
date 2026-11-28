@@ -104,7 +104,6 @@ def create_initial_live_state() -> dict[str, Any]:
         "day_start_equity_sek": "200.00",
         "worker": {"status": "disabled", "last_error": None},
         "risk": {
-            "daily_loss_limit_pct": "0.02",
             "max_drawdown_pct": "0.10",
             "max_open_positions": 3,
             "fee_rate": "0.0100",

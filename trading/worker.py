@@ -206,6 +206,9 @@ def run_paper_tick() -> dict[str, Any]:
     now = datetime.now(timezone.utc)
     worker_state = dict(state.get("worker") or {})
     worker_state["last_tick_at"] = now.isoformat()
+    risk_settings = dict(state.get("risk") or {})
+    risk_settings.pop("daily_loss_limit_pct", None)
+    state["risk"] = risk_settings
 
     if state.get("emergency_stop"):
         return {
@@ -255,14 +258,11 @@ def run_paper_tick() -> dict[str, Any]:
         if state.get("day_key") != day_key:
             state["day_key"] = day_key
             state["day_start_equity"] = f"{equity:.2f}"
-        day_start = float(state.get("day_start_equity") or equity)
         peak = max(float(state.get("peak_equity") or equity), equity)
         state["peak_equity"] = f"{peak:.2f}"
 
         stop_reason = None
-        if equity <= day_start * (1 - float(risk["daily_loss_limit_pct"])):
-            stop_reason = "Dagens förlustgräns nådd"
-        elif equity <= peak * (1 - float(risk["max_drawdown_pct"])):
+        if equity <= peak * (1 - float(risk["max_drawdown_pct"])):
             stop_reason = "Maximal portföljnedgång nådd"
         if stop_reason:
             state = activate_emergency_stop(state, stop_reason)
@@ -425,9 +425,7 @@ def run_paper_tick() -> dict[str, Any]:
         }
     except (StrategyDataError, KrakenPublicAPIError, PaperTradingError, ValueError, KeyError, TypeError) as exc:
         error_text = str(exc)[:300]
-        if isinstance(exc, PaperTradingError) and (
-            "Dagens förlustgräns" in error_text or "Maximal portföljnedgång" in error_text
-        ):
+        if isinstance(exc, PaperTradingError) and "Maximal portföljnedgång" in error_text:
             state = activate_emergency_stop(state, error_text)
             worker_state["status"] = "emergency_stopped"
         else:

@@ -54,7 +54,6 @@ def create_initial_state(starting_cash_sek: Any = "200.00") -> dict[str, Any]:
         "risk": {
             "max_trade_pct": "1.00",
             "max_position_pct": "1.00",
-            "daily_loss_limit_pct": "0.02",
             "max_drawdown_pct": "0.10",
             "fee_rate": "0.0040",
             "slippage_rate": "0.0015",
@@ -156,10 +155,6 @@ def apply_paper_trade(
     if updated.get("day_key") != day_key:
         updated["day_key"] = day_key
         updated["day_start_equity"] = str(current_equity)
-
-    day_start = money(updated["day_start_equity"])
-    if current_equity <= day_start * (Decimal("1") - money(risk["daily_loss_limit_pct"])):
-        raise PaperTradingError("Dagens förlustgräns är nådd.")
 
     peak = max(money(updated["peak_equity"]), current_equity)
     if current_equity <= peak * (Decimal("1") - money(risk["max_drawdown_pct"])):

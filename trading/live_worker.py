@@ -234,9 +234,9 @@ def run_live_tick() -> dict[str, Any]:
     worker["last_tick_at"] = now.isoformat()
     state["worker"] = worker
 
-    # Migrate the old automatic daily-loss stop to normal live operation.
-    # Daily loss is now a review signal, not a buy/sell lock. Manual emergency
-    # stops and the separate maximum-drawdown hard stop remain unchanged.
+    # One-time migration: clear the legacy automatic 2% stop stored by older
+    # releases. The daily-loss stop is removed; manual stop and 10% drawdown
+    # protection remain active.
     daily_loss_reason = "Dagens förlustgräns på 2 procent är nådd."
     if state.get("emergency_stop") and state.get("stop_reason") == daily_loss_reason:
         state["enabled"] = True
@@ -248,14 +248,18 @@ def run_live_tick() -> dict[str, Any]:
         worker.update({
             "status": "running",
             "last_error": None,
-            "last_blocker": "daily_loss_review_mode",
+            "last_blocker": "legacy_daily_loss_stop_cleared",
         })
         state["worker"] = worker
         revision = save_live_state(state, revision)
-    # Remove legacy daily buy-lock fields so old state cannot silently keep
-    # the strategy in sell-only mode after this release.
+    # Remove all legacy daily-loss controls from persisted live state.
     state.pop("buy_blocked_reason", None)
     state.pop("buy_blocked_day_key", None)
+    risk_settings = dict(state.get("risk") or {})
+    if "daily_loss_limit_pct" in risk_settings:
+        risk_settings.pop("daily_loss_limit_pct", None)
+        state["risk"] = risk_settings
+        revision = save_live_state(state, revision)
 
     if state.get("emergency_stop") or not state.get("enabled"):
         worker["status"] = "emergency_stopped" if state.get("emergency_stop") else "disabled"
@@ -353,11 +357,6 @@ def run_live_tick() -> dict[str, Any]:
             state["day_start_equity_sek"] = format(_round_money(equity), "f")
         peak = max(_d(state.get("peak_equity_sek") or "200"), equity)
         state["peak_equity_sek"] = format(_round_money(peak), "f")
-        day_start = _d(state.get("day_start_equity_sek") or equity)
-        daily_loss_review = equity <= day_start * Decimal("0.98")
-        # A daily loss triggers heightened review/visibility, never a blanket
-        # buy lock. Individual orders still pass all existing signal, balance,
-        # minimum-size, exposure, position-count and exchange checks.
         if equity <= peak * Decimal("0.90"):
             raise LiveWorkerError("Maximal portföljnedgång på 10 procent är nådd.")
         risk = state["risk"]
@@ -568,8 +567,6 @@ def run_live_tick() -> dict[str, Any]:
             last_blocker = "no_entry_or_exit_signal_on_latest_closed_candles"
         worker.update({
             "status": "running",
-            "daily_loss_review": daily_loss_review,
-            "daily_loss_review_reason": "Dagens portföljnedgång har passerat 2 procent; nya order kräver fortfarande full signal- och riskkontroll." if daily_loss_review else None,
             "last_success_at": now.isoformat(),
             "last_error": None,
             "last_fx": fx,
@@ -596,10 +593,9 @@ def run_live_tick() -> dict[str, Any]:
             "budget_available_eur": format(eur_balance, "f"),
             "last_blocker": last_blocker,
             "revision": revision, "orders_enabled": True,
+            "trading_mode": "live_spot",
             "buying_enabled": True,
             "selling_enabled": True,
-            "daily_loss_review": daily_loss_review,
-            "trading_mode": "live_spot_daily_loss_review" if daily_loss_review else "live_spot",
             "withdrawals_enabled": False,
         }
     except (
