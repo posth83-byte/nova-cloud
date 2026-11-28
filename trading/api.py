@@ -233,6 +233,8 @@ async def paper_status():
             "orders_enabled": False, "withdrawals_enabled": False,
             "valuation_status": "awaiting_fresh_sek_market_marks",
         }
+    visible_risk = dict(state.get("risk") or {})
+    visible_risk.pop("daily_loss_limit_pct", None)
     snapshot.update({
         "revision": revision,
         "storage": "supabase",
@@ -586,7 +588,7 @@ async def live_status():
         "positions": state.get("positions", {}),
         "realized_pnl_sek": state.get("realized_pnl_sek"),
         "revision": revision,
-        "risk": state.get("risk", {}),
+        "risk": visible_risk,
         "worker": state.get("worker", {}),
         "orders_enabled": orders_enabled,
         "buying_enabled": buying_enabled,
